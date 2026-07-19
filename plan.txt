@@ -1,0 +1,41 @@
+Schau dir Folder daneben an: "SOZ". Das Projekt dort ist viel zu komplex. Machen wir einfach.  App heisst SVEEVEE
+
+Wir übernehmen von dort: 
+1. allgemeine backend/frontend Struktur
+2. lokalisierungsfunktionalität
+3. styles und logo
+4. Menu
+
+Neu
+1. Im app geht es um Ads
+2. Es gibt 2 user typen: user und admin
+3. User Profile Seite hat nur alles, was in Identity in SOZ war. E-Mail gibt es nur eine und sie kommt auch in Identity rein und sie ist login. (kein google Login, keine Bestätigung der Mail, kein ReCaptcha.) 
+4. User kann Ads machen und 1 Businessseite anlegen und 1 Communityseite anlegen. (Im Menü könnten also beide Menüpunkte sein)
+5. In Me Seite kann man Ads anlegen. Ads haben Überschrift, Text, Bild, Typ: private_ad
+6. Business und Communitypages haben page setup und Vorschau wie in SOZ
+7. In Business und Communitypages kann man auch Ads machen (Überschrift, Text, Bild, nur Typen sind busness_ad, community_ad)
+8. Suche page kann Business name, Comunity name, Ad Überschrift, Ad Text, user namen suchen. Ads in dem Suchergebnis haben bage mit dem Typ der ad.
+9. Homepage ist die Seite, in die man nach Login kommt und zeigt Ads aus Nachbarschaft des Users
+10. Kommunikation ist freier Chat, aber zweite Nachricht an den gleichen User kann man erst schicken, wenn er die erste Nachricht geantwortet hat. (Diese Einschränkung muss als Info in Textarea des Chats stehen, bis geantwortet wurde.)
+Man kann nicht mehr als 10 User am Tag anschreiben um Spam zu verhindern. Also bei 11 Chat am Tag muss eine andere Info Mitteilung an der gleichen Stelle stehen, dass man nur 10 am Tag anschreiben kann (in rot). 
+Der Chat ist block in der Me Seite 500px hoch mit innerem scroll. Dort drin links: die user mit denen man komuniziert hat und rechts: der chat selber, ähnlich wie bei WhatsApp
+Wenn jemand den User anschreibt, dann hat dieser User im Menü im Menüpunkt ME einen roten Kreis mit der Zahl der neuen Nachrichten.
+User anschreiben kann man, in dem man seine Seite betritt und dort btn "chatten" drückt. 
+11. Adminseite: Admin hat Liste der User, kann dort Businesspage und Communitypage des Users sehen, den User anschreiben und den User bannen (e-mail bannen)
+12. Homepage nicht eingeloggt: dort ist eine SEO optimierte Page mit hero, Überschriften, Bildern und Texten, die alle diese fitches darlegen, und an richtiger stelle 2 Pricing Blöcke Privat und Business beide mit 0 shach angegeben. Und drin auch Hauptfeatures.
+13. In der Seite der anderen Person sieht man Namen, Foto, eine Zeile mit Block oder 2 Blocks (Business und oder Community mit Namen und publik description -> man kann auf diese Seiten gehen), chatbtn, und wenn man ihn drückt, kommt auch chatblock, aber ohne linke Spalte, da es ja hier um chat mit genau dieser Person geht. Wenn man was reinschreibt, dann bleibt auf der Seite dieser Person für mich Chatfenster und den btn gibt es nicht mehr. Gleichzeitig, wenn man auf die eigene Seite kommt, taucht dieser Chat als einer der chats auf (im eigenen chatblock mit linker Spalte, wie gehabt.)
+14. Lege 1 admin und 1 user an
+
+
+
+start
+
+cd ./frontend
+npm run dev
+
+cd ./backend
+php artisan serve
+
+Logins:
+user@sveevee.local / password
+admin@sveevee.local / password

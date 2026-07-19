@@ -1,0 +1,21 @@
+{
+	"eslint.packageManager": "npm",
+	"eslint.useFlatConfig": false,
+	"eslint.workingDirectories": [
+		{
+			"directory": "frontend",
+			"changeProcessCWD": true
+		}
+	],
+	"eslint.probe": [
+		"javascript",
+		"vue"
+	],
+	"eslint.validate": [
+		"javascript",
+		"vue"
+	],
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit"
+	}
+}

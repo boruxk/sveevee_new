@@ -1,0 +1,87 @@
+<script setup>
+	import { onMounted, ref } from 'vue'
+	import { useI18n } from 'vue-i18n'
+	import { fetchHomeFeed } from '@/services/api/home'
+	import AdCard from '@/components/AdCard.vue'
+
+	const { t } = useI18n()
+	const loading = ref(false)
+	const ads = ref([])
+
+	async function load() {
+		loading.value = true
+		try {
+			const { data } = await fetchHomeFeed()
+			ads.value = data.data || []
+		} finally {
+			loading.value = false
+		}
+	}
+
+	onMounted(load)
+</script>
+
+<template>
+	<q-page padding class="home-page">
+		<div class="page-shell">
+			<section class="soz-section-card page-head">
+				<div>
+					<h1 class="soz-page-title">{{ t('ads.neighborhoodFeed') }}</h1>
+				</div>
+			</section>
+
+			<div v-if="loading" class="row justify-center q-pa-xl">
+				<q-spinner color="primary" size="40px" />
+			</div>
+			<div v-else-if="ads.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
+			<div v-else class="ad-grid">
+				<AdCard v-for="ad in ads" :key="ad.id" :ad="ad" />
+			</div>
+		</div>
+	</q-page>
+</template>
+
+<style scoped lang="scss">
+.home-page {
+  padding: 0 20px 36px;
+}
+
+.page-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.page-head {
+  padding: 28px;
+}
+
+.ad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.empty-state {
+  margin-top: 18px;
+  padding: 24px;
+  border: 1px dashed rgba(17, 34, 45, 0.16);
+  border-radius: 8px;
+}
+
+@media (max-width: 980px) {
+  .ad-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .home-page {
+    padding-inline: 10px;
+  }
+
+  .ad-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
