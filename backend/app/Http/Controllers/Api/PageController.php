@@ -33,6 +33,8 @@ class PageController extends Controller
             ->where('user_id', $request->user()->id)
             ->where('type', $type)
             ->with(['user.profile', 'ads.user.profile', 'ads.page'])
+            ->withCount('ratings')
+            ->withAvg('ratings', 'rating')
             ->first();
 
         return ApiResponseService::success($page ? $this->payloads->page($page, withAds: true) : null);
@@ -83,7 +85,7 @@ class PageController extends Controller
 
         $page->save();
 
-        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page']), withAds: true), 'Page saved.');
+        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
     }
 
     public function show(Page $page)
@@ -92,7 +94,9 @@ class PageController extends Controller
             return ApiResponseService::error('Resource not found.', status: 404);
         }
 
-        $page->load(['user.profile', 'ads.user.profile', 'ads.page']);
+        $page->load(['user.profile', 'ads.user.profile', 'ads.page'])
+            ->loadCount('ratings')
+            ->loadAvg('ratings', 'rating');
 
         return ApiResponseService::success($this->payloads->page($page, withAds: true));
     }

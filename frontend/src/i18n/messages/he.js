@@ -154,6 +154,21 @@ export default {
 			saturday: 'שבת'
 		}
 	},
+	ratings: {
+		title: 'דירוגים',
+		allRatings: 'כל הדירוגים',
+		rate: 'דרגו',
+		ratePage: 'דירוג העמוד',
+		yourRating: 'הדירוג שלכם',
+		comment: 'תגובה',
+		save: 'שמירת דירוג',
+		saved: 'הדירוג נשמר.',
+		saveFailed: 'לא ניתן לשמור את הדירוג.',
+		chooseRating: 'בחרו דירוג מתוך חמישה כוכבים.',
+		editHint: 'אפשר לחזור ולשנות את הדירוג בכל זמן.',
+		noRatings: 'אין עדיין דירוגים',
+		summary: '{average} · {count} דירוגים'
+	},
 	profile: {
 		title: 'פרופיל',
 		subtitle: 'רק הפרטים ששייכים לפרופיל המשתמש.',

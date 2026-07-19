@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Ad;
 use App\Models\Conversation;
 use App\Models\Page;
+use App\Models\PageRating;
 use App\Models\User;
 use App\Models\UserProfile;
 
@@ -84,6 +85,7 @@ class PayloadService
             'palette_key' => $page->palette_key,
             'logo_url' => $page->logo_url,
             'banner_url' => $page->banner_url,
+            'rating_summary' => $this->pageRatingSummary($page),
             'setup' => $setup,
             'owner' => $page->relationLoaded('user') ? $this->user($page->user) : null,
             'created_at' => $page->created_at?->toISOString(),
@@ -96,6 +98,33 @@ class PayloadService
         }
 
         return $payload;
+    }
+
+    public function pageRatingSummary(Page $page): array
+    {
+        $count = $page->ratings_count ?? $page->ratings()->count();
+        $average = $page->ratings_avg_rating ?? $page->ratings()->avg('rating');
+
+        return [
+            'average' => $count > 0 ? round((float) $average, 1) : 0,
+            'count' => (int) $count,
+        ];
+    }
+
+    public function pageRating(PageRating $rating): array
+    {
+        $rating->loadMissing('user.profile');
+
+        return [
+            'id' => $rating->id,
+            'page_id' => $rating->page_id,
+            'user_id' => $rating->user_id,
+            'rating' => $rating->rating,
+            'comment' => $rating->comment,
+            'user' => $this->user($rating->user),
+            'created_at' => $rating->created_at?->toISOString(),
+            'updated_at' => $rating->updated_at?->toISOString(),
+        ];
     }
 
     public function ad(Ad $ad): array

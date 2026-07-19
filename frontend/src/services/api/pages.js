@@ -40,3 +40,11 @@ export function saveMyPage(type, payload) {
 export function fetchPage(id) {
 	return apiClient.get(`/pages/${id}`)
 }
+
+export function fetchPageRatings(id) {
+	return apiClient.get(`/pages/${id}/ratings`)
+}
+
+export function savePageRating(id, payload) {
+	return apiClient.put(`/pages/${id}/ratings/me`, payload)
+}

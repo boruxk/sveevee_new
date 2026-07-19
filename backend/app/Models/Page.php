@@ -44,6 +44,11 @@ class Page extends Model
         return $this->hasMany(Ad::class)->latest();
     }
 
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(PageRating::class)->latest();
+    }
+
     protected function logoUrl(): Attribute
     {
         return Attribute::get(fn () => $this->logo_path ? url(Storage::url($this->logo_path)) : null);

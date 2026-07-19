@@ -1,6 +1,7 @@
 <script setup>
 	import { computed } from 'vue'
 	import { useI18n } from 'vue-i18n'
+	import RatingStars from '@/components/ratings/RatingStars.vue'
 
 	const props = defineProps({
 		page: {
@@ -10,9 +11,14 @@
 		palette: {
 			type: Object,
 			required: true
+		},
+		canRate: {
+			type: Boolean,
+			default: false
 		}
 	})
 
+	const emit = defineEmits(['show-ratings', 'rate'])
 	const { t } = useI18n()
 
 	const pageType = computed(() => props.page?.type || 'business')
@@ -40,6 +46,19 @@
 	const previewOpeningHours = computed(() => props.page?.opening_hours || [])
 	const previewLogoUrl = computed(() => props.page?.logo_url || null)
 	const previewBannerUrl = computed(() => props.page?.banner_url || null)
+	const ratingSummary = computed(() => props.page?.rating_summary || { average: 0, count: 0 })
+	const ratingAverage = computed(() => Number(ratingSummary.value.average || 0))
+	const ratingCount = computed(() => Number(ratingSummary.value.count || 0))
+	const ratingText = computed(() => {
+		if (ratingCount.value === 0) {
+			return t('ratings.noRatings')
+		}
+
+		return t('ratings.summary', {
+			average: ratingAverage.value.toFixed(1),
+			count: ratingCount.value
+		})
+	})
 	const previewStyle = computed(() => ({
 		'--presence-accent': props.palette.accent,
 		'--presence-surface': props.palette.surface,
@@ -88,6 +107,34 @@
 					<div class="page-preview__section-title">{{ t('pages.sections.address') }}</div>
 					<div class="text-body2" :class="{ 'text-grey-7': !previewAddress }">
 						{{ previewAddress || t('pages.noAddress') }}
+					</div>
+				</div>
+
+				<div class="page-preview__detail-card">
+					<div class="page-preview__section-title">{{ t('ratings.title') }}</div>
+					<div class="page-preview__rating-row">
+						<div class="page-preview__rating-score">
+							<RatingStars readonly :value="ratingAverage" />
+							<div class="text-body2 text-grey-7">{{ ratingText }}</div>
+						</div>
+						<div class="page-preview__rating-actions">
+							<q-btn rounded
+								outline
+								color="dark"
+								icon="reviews"
+								:disable="!page?.id"
+								:label="t('ratings.allRatings')"
+								@click="emit('show-ratings')"
+							/>
+							<q-btn v-if="canRate"
+								rounded
+								unelevated
+								color="primary"
+								icon="star"
+								:label="t('ratings.rate')"
+								@click="emit('rate')"
+							/>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -240,6 +287,26 @@
   color: var(--presence-muted);
 }
 
+.page-preview__rating-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.page-preview__rating-score,
+.page-preview__rating-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.page-preview__rating-actions {
+  justify-content: flex-end;
+}
+
 @media (max-width: 900px) {
   .page-preview__intro,
   .page-preview__body {
@@ -256,8 +323,13 @@
     padding: 24px;
   }
 
+  .page-preview__rating-row,
   .page-preview__detail-row {
     grid-template-columns: 1fr;
+  }
+
+  .page-preview__rating-actions {
+    justify-content: flex-start;
   }
 }
 </style>

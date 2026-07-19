@@ -154,6 +154,21 @@ export default {
 			saturday: 'Saturday'
 		}
 	},
+	ratings: {
+		title: 'Ratings',
+		allRatings: 'All Ratings',
+		rate: 'Rate',
+		ratePage: 'Rate this page',
+		yourRating: 'Your rating',
+		comment: 'Comment',
+		save: 'Save rating',
+		saved: 'Rating saved.',
+		saveFailed: 'Rating could not be saved.',
+		chooseRating: 'Choose one of five stars.',
+		editHint: 'You can come back and change your rating anytime.',
+		noRatings: 'No ratings yet',
+		summary: '{average} · {count} ratings'
+	},
 	profile: {
 		title: 'Profile',
 		subtitle: 'Only the profile fields.',

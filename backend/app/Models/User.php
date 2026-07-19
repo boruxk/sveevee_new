@@ -60,6 +60,11 @@ class User extends Authenticatable
         return $this->hasMany(Ad::class)->latest();
     }
 
+    public function pageRatings(): HasMany
+    {
+        return $this->hasMany(PageRating::class)->latest();
+    }
+
     public function conversationsAsUserOne(): HasMany
     {
         return $this->hasMany(Conversation::class, 'user_one_id');

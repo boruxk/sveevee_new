@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Page;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -107,6 +108,41 @@ class SveeveeApiTest extends TestCase
         $this->getJson('/api/v1/me')
             ->assertOk()
             ->assertJsonPath('data.business_page.name', 'Miri Studio');
+    }
+
+    public function test_user_can_rate_page_and_update_rating(): void
+    {
+        $owner = User::factory()->create();
+        $reviewer = User::factory()->create();
+        $page = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Miri Studio',
+        ]);
+
+        Sanctum::actingAs($reviewer);
+
+        $this->putJson("/api/v1/pages/{$page->id}/ratings/me", [
+            'rating' => 4,
+            'comment' => 'Helpful and quick.',
+        ])->assertOk()
+            ->assertJsonPath('data.summary.count', 1)
+            ->assertJsonPath('data.summary.average', 4)
+            ->assertJsonPath('data.rating.comment', 'Helpful and quick.');
+
+        $this->putJson("/api/v1/pages/{$page->id}/ratings/me", [
+            'rating' => 5,
+            'comment' => 'Updated after another visit.',
+        ])->assertOk()
+            ->assertJsonPath('data.summary.count', 1)
+            ->assertJsonPath('data.summary.average', 5)
+            ->assertJsonPath('data.rating.rating', 5);
+
+        $this->getJson("/api/v1/pages/{$page->id}/ratings")
+            ->assertOk()
+            ->assertJsonPath('data.summary.count', 1)
+            ->assertJsonPath('data.items.0.rating', 5)
+            ->assertJsonPath('data.my_rating.rating', 5);
     }
 
     public function test_admin_can_ban_email_and_block_login(): void

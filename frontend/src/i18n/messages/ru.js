@@ -154,6 +154,21 @@ export default {
 			saturday: 'Суббота'
 		}
 	},
+	ratings: {
+		title: 'Рейтинги',
+		allRatings: 'Все рейтинги',
+		rate: 'Оценить',
+		ratePage: 'Оценить страницу',
+		yourRating: 'Ваша оценка',
+		comment: 'Комментарий',
+		save: 'Сохранить оценку',
+		saved: 'Оценка сохранена.',
+		saveFailed: 'Не удалось сохранить оценку.',
+		chooseRating: 'Выберите оценку от одной до пяти звезд.',
+		editHint: 'Вы можете вернуться и изменить оценку в любое время.',
+		noRatings: 'Оценок пока нет',
+		summary: '{average} · {count} оценок'
+	},
 	profile: {
 		title: 'Профиль',
 		subtitle: 'Только поля профиля пользователя.',

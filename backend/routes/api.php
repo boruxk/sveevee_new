@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\HomeFeedController;
 use App\Http\Controllers\Api\PageController;
+use App\Http\Controllers\Api\PageRatingController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PublicUserController;
 use App\Http\Controllers\Api\SearchController;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::get('/search', [SearchController::class, 'index']);
     Route::get('/users/{user}', [PublicUserController::class, 'show']);
+    Route::get('/pages/{page}/ratings', [PageRatingController::class, 'index']);
     Route::get('/pages/{page}', [PageController::class, 'show']);
 
     Route::prefix('auth')->group(function () {
@@ -32,6 +34,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/pages/{type}/mine', [PageController::class, 'mine']);
         Route::post('/pages/{type}', [PageController::class, 'upsert']);
+        Route::put('/pages/{page}/ratings/me', [PageRatingController::class, 'store']);
 
         Route::get('/ads', [AdController::class, 'index']);
         Route::post('/ads', [AdController::class, 'store']);

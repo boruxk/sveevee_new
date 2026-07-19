@@ -10,6 +10,7 @@
 	import AdCard from '@/components/AdCard.vue'
 	import AdComposer from '@/components/AdComposer.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
+	import PageRatingsDialog from '@/components/ratings/PageRatingsDialog.vue'
 
 	const DEFAULT_OPENING_HOURS = [
 		{ weekday: 'sunday', is_open: false, opens_at: null, closes_at: null },
@@ -30,6 +31,7 @@
 	const logoUploading = ref(false)
 	const bannerUploading = ref(false)
 	const setupDialogOpen = ref(false)
+	const ratingsDialogOpen = ref(false)
 	const page = ref(null)
 	const localLogoPreviewUrl = ref(null)
 	const localBannerPreviewUrl = ref(null)
@@ -73,7 +75,8 @@
 		opening_hours: form.opening_hours.map((item) => ({ ...item })),
 		palette_key: form.palette_key,
 		logo_url: localLogoPreviewUrl.value || page.value?.logo_url || null,
-		banner_url: localBannerPreviewUrl.value || page.value?.banner_url || null
+		banner_url: localBannerPreviewUrl.value || page.value?.banner_url || null,
+		rating_summary: page.value?.rating_summary || { average: 0, count: 0 }
 	}))
 
 	function normalizedOpeningHours(value) {
@@ -236,6 +239,17 @@
 		return t(`pages.weekdays.${weekday}`)
 	}
 
+	function syncRatingSummary(summary) {
+		if (!page.value || !summary) {
+			return
+		}
+
+		page.value = {
+			...page.value,
+			rating_summary: summary
+		}
+	}
+
 	function attachObjectPreview(sourceRef, targetRef) {
 		watch(sourceRef, (value, _, onCleanup) => {
 			const resolvedFile = Array.isArray(value) ? value[0] : value
@@ -289,7 +303,12 @@
 				<div v-if="loading" class="row justify-center q-pa-lg">
 					<q-spinner color="primary" />
 				</div>
-				<PagePreview v-else class="q-mt-lg" :page="previewPage" :palette="selectedPalette" />
+				<PagePreview v-else
+					class="q-mt-lg"
+					:page="previewPage"
+					:palette="selectedPalette"
+					@show-ratings="ratingsDialogOpen = true"
+				/>
 			</section>
 
 			<section class="soz-section-card panel q-mt-lg">
@@ -437,6 +456,11 @@
 				</q-card-section>
 			</q-card>
 		</q-dialog>
+		<PageRatingsDialog
+			v-model="ratingsDialogOpen"
+			:page-id="page?.id"
+			@loaded="syncRatingSummary"
+		/>
 	</q-page>
 </template>
 
@@ -593,6 +617,7 @@
   max-width: 1080px;
   max-height: calc(100vh - 32px);
   border-radius: 30px;
+  background: #f9f2eb;
 }
 
 .dialog-head {

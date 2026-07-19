@@ -154,6 +154,21 @@ export default {
 			saturday: 'Samedi'
 		}
 	},
+	ratings: {
+		title: 'Notes',
+		allRatings: 'Toutes les notes',
+		rate: 'Noter',
+		ratePage: 'Noter cette page',
+		yourRating: 'Votre note',
+		comment: 'Commentaire',
+		save: 'Enregistrer la note',
+		saved: 'Note enregistrée.',
+		saveFailed: 'La note n’a pas pu être enregistrée.',
+		chooseRating: 'Choisissez une note sur cinq étoiles.',
+		editHint: 'Vous pouvez revenir et modifier votre note à tout moment.',
+		noRatings: 'Aucune note pour le moment',
+		summary: '{average} · {count} notes'
+	},
 	profile: {
 		title: 'Profil',
 		subtitle: 'Uniquement les champs du profil utilisateur.',
