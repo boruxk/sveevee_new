@@ -100,6 +100,8 @@
 						:unelevated="isActive('login')"
 						:color="isActive('login') ? 'primary' : 'dark'"
 						:text-color="isActive('login') ? 'white' : undefined"
+						class="shell-link"
+						:class="{ 'shell-link--active': isActive('login') }"
 						icon="login"
 						:label="t('nav.login')"
 						:to="{ name: 'login' }"
@@ -111,6 +113,8 @@
 						:unelevated="isActive('register')"
 						:color="isActive('register') ? 'primary' : 'dark'"
 						:text-color="isActive('register') ? 'white' : undefined"
+						class="shell-link"
+						:class="{ 'shell-link--active': isActive('register') }"
 						icon="person_add"
 						:label="t('nav.register')"
 						:to="{ name: 'register' }"
@@ -185,14 +189,14 @@
 }
 
 .shell-link {
-  color: rgba(17, 34, 45, 0.75);
+  color: rgba(21, 31, 59, 0.75);
   transition:
     transform 0.16s ease,
     box-shadow 0.16s ease;
 }
 
 .shell-link--active {
-  box-shadow: 0 12px 24px rgba(140, 91, 61, 0.2);
+  box-shadow: 0 12px 24px rgba(123, 63, 242, 0.24);
 }
 
 .shell-link:hover {
@@ -217,11 +221,15 @@
 }
 
 .shell--user {
-  background: linear-gradient(180deg, rgba(15, 118, 110, 0.07), transparent 30%);
+  background:
+    radial-gradient(circle at top left, rgba(255, 116, 38, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(123, 63, 242, 0.08), transparent 30%);
 }
 
 .shell--admin {
-  background: linear-gradient(180deg, rgba(17, 34, 45, 0.08), transparent 32%);
+  background:
+    radial-gradient(circle at top right, rgba(245, 66, 145, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(21, 31, 59, 0.08), transparent 32%);
 }
 
 @media (max-width: 900px) {

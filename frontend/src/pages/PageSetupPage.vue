@@ -562,7 +562,7 @@
 .palette-card:hover,
 .palette-card--active {
   transform: translateY(-1px);
-  border-color: rgba(255, 125, 92, 0.5);
+  border-color: rgba(245, 66, 145, 0.5);
   box-shadow: 0 16px 30px rgba(17, 34, 45, 0.08);
 }
 

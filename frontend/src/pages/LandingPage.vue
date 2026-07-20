@@ -134,12 +134,14 @@
 .landing-page {
   min-height: 100vh;
   padding-bottom: 72px;
-  background: #f7f8f5;
+  background: #fff8fb;
 }
 
 .landing-hero {
-  background: #ecf7f2;
-  border-bottom: 1px solid rgba(17, 34, 45, 0.08);
+  background:
+    radial-gradient(circle at 86% 10%, rgba(123, 63, 242, 0.12), transparent 26%),
+    linear-gradient(180deg, #ffffff 0%, #fff8fb 100%);
+  border-bottom: 1px solid rgba(123, 63, 242, 0.08);
 }
 
 .landing-hero__inner {
@@ -163,7 +165,10 @@
 
 .landing-hero h1 {
   margin: 0;
-  color: var(--soz-ink);
+  color: var(--soz-primary);
+  background: var(--soz-gradient);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   font-size: clamp(54px, 8vw, 104px);
   line-height: 0.95;
   letter-spacing: 0;
@@ -172,7 +177,7 @@
 .landing-hero p {
   max-width: 540px;
   margin: 24px 0 32px;
-  color: rgba(17, 34, 45, 0.74);
+  color: rgba(21, 31, 59, 0.74);
   font-size: clamp(18px, 2vw, 22px);
   line-height: 1.65;
 }
@@ -187,7 +192,7 @@
   overflow: hidden;
   border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 26px 64px rgba(17, 34, 45, 0.14);
+  box-shadow: 0 26px 64px rgba(64, 28, 145, 0.16);
 }
 
 .landing-hero__visual img {
@@ -235,10 +240,10 @@
 .feature-card,
 .step-item,
 .pricing-card {
-  border: 1px solid rgba(17, 34, 45, 0.1);
+  border: 1px solid rgba(123, 63, 242, 0.12);
   border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 14px 34px rgba(17, 34, 45, 0.06);
+  box-shadow: 0 14px 34px rgba(64, 28, 145, 0.07);
 }
 
 .feature-card {
@@ -252,7 +257,7 @@
   width: 52px;
   height: 52px;
   border-radius: 8px;
-  background: rgba(201, 111, 67, 0.12);
+  background: var(--soz-primary-tint);
 }
 
 .feature-card h3,
@@ -268,7 +273,7 @@
 .workflow-section p,
 .pricing-card p {
   margin: 0;
-  color: rgba(17, 34, 45, 0.68);
+  color: rgba(21, 31, 59, 0.68);
   line-height: 1.62;
 }
 
@@ -308,7 +313,7 @@
   width: 40px;
   height: 40px;
   border-radius: 999px;
-  background: rgba(201, 111, 67, 0.12);
+  background: var(--soz-primary-tint);
   color: var(--soz-primary);
   font-weight: 800;
 }
@@ -336,8 +341,8 @@
 }
 
 .pricing-card--featured {
-  border-color: rgba(201, 111, 67, 0.42);
-  box-shadow: 0 24px 54px rgba(140, 91, 61, 0.16);
+  border-color: rgba(245, 66, 145, 0.38);
+  box-shadow: 0 24px 54px rgba(245, 66, 145, 0.14);
 }
 
 .pricing-card__top {

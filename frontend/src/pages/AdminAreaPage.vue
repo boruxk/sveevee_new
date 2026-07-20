@@ -180,8 +180,8 @@
 
 .user-row--active,
 .user-row:hover {
-  border-color: rgba(201, 111, 67, 0.38);
-  background: rgba(201, 111, 67, 0.08);
+  border-color: rgba(123, 63, 242, 0.38);
+  background: rgba(123, 63, 242, 0.08);
 }
 
 .user-row span {

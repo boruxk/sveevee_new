@@ -185,7 +185,7 @@
 .chat-list {
   overflow-y: auto;
   border-right: 1px solid rgba(17, 34, 45, 0.1);
-  background: rgba(255, 250, 245, 0.72);
+  background: rgba(255, 248, 251, 0.72);
 }
 
 .chat-list__item {
@@ -205,7 +205,7 @@
 
 .chat-list__item--active,
 .chat-list__item:hover {
-  background: rgba(201, 111, 67, 0.1);
+  background: rgba(123, 63, 242, 0.1);
 }
 
 .chat-list__copy {
@@ -265,7 +265,7 @@
 }
 
 .chat-message--own .chat-message__bubble {
-  background: rgba(201, 111, 67, 0.16);
+  background: rgba(123, 63, 242, 0.16);
 }
 
 .chat-message__bubble span {
