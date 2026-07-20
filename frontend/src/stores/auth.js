@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
 import { fetchMe, login, logout, register } from '@/services/api/auth'
 import { tokenStorageKey } from '@/services/api/client'
-import i18n from '@/i18n'
-import { useAppStore } from '@/stores/app'
+import { setLocale } from '@/i18n'
 
 const supportedLocales = ['he', 'en', 'ru', 'fr']
 
@@ -97,10 +96,7 @@ export const useAuthStore = defineStore('auth', {
 			const preferredLocale = savedLocale || this.user?.locale || this.user?.profile?.languages?.[0]
 			const locale = supportedLocales.includes(preferredLocale) ? preferredLocale : 'he'
 
-			i18n.global.locale.value = locale
-			const appStore = useAppStore()
-			appStore.setLocale(locale)
-			appStore.syncDocument(locale)
+			setLocale(locale)
 		},
 		canAccess(allowedRoles = []) {
 			if (allowedRoles.length === 0) {

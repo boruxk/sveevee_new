@@ -143,6 +143,6 @@
 }
 
 .form-submit {
-  margin-left: 0 !important;
+  margin-inline-start: 0 !important;
 }
 </style>

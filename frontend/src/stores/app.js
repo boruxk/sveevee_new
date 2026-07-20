@@ -18,8 +18,21 @@ export const useAppStore = defineStore('app', {
 			localStorage.setItem('sveevee-locale', nextLocale)
 		},
 		syncDocument(locale = this.locale) {
-			document.documentElement.lang = locale
-			document.documentElement.dir = rtlLocales.includes(locale) ? 'rtl' : 'ltr'
+			const nextLocale = supportedLocales.includes(locale) ? locale : 'he'
+			const isRtl = rtlLocales.includes(nextLocale)
+			const dir = isRtl ? 'rtl' : 'ltr'
+			const root = document.documentElement
+
+			root.lang = nextLocale
+			root.dir = dir
+			root.classList.toggle('sveevee-rtl', isRtl)
+			root.classList.toggle('sveevee-ltr', !isRtl)
+
+			if (document.body) {
+				document.body.dir = dir
+				document.body.classList.toggle('sveevee-rtl', isRtl)
+				document.body.classList.toggle('sveevee-ltr', !isRtl)
+			}
 		}
 	}
 })

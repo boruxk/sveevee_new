@@ -7,7 +7,7 @@ import 'quasar/src/css/index.sass'
 import '@/styles/app.scss'
 import App from './App.vue'
 import router from '@/router'
-import i18n from '@/i18n'
+import i18n, { getQuasarLocale } from '@/i18n'
 import { useAppStore } from '@/stores/app'
 
 const app = createApp(App)
@@ -19,6 +19,7 @@ app.use(i18n)
 app.use(Quasar, {
 	plugins: { Notify },
 	iconSet,
+	lang: getQuasarLocale(i18n.global.locale.value),
 	config: {
 		notify: {
 			position: 'top-right',

@@ -174,7 +174,7 @@
   border: 1px solid rgba(17, 34, 45, 0.08);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.64);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 

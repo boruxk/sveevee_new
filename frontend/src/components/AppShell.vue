@@ -127,11 +127,11 @@
 						color="dark"
 						class="profile-menu-trigger"
 					>
-						<q-avatar size="48px" color="primary" text-color="white">
+						<q-avatar size="52px" color="primary" text-color="white">
 							<img v-if="profileAvatarUrl" :src="profileAvatarUrl" alt="Profile" />
 							<span v-else>{{ profileInitials }}</span>
 						</q-avatar>
-						<q-menu anchor="bottom right" self="top right" class="profile-menu">
+						<q-menu anchor="bottom end" self="top end" class="profile-menu">
 							<q-list padding style="min-width: 180px">
 								<q-item clickable v-close-popup @click="openProfile">
 									<q-item-section avatar><q-icon name="badge" /></q-item-section>
@@ -205,8 +205,8 @@
 
 .profile-menu-trigger {
   padding: 0;
-  min-width: 48px;
-  min-height: 48px;
+  min-width: 52px;
+  min-height: 52px;
 }
 
 .profile-menu-trigger :deep(.q-avatar__content img) {

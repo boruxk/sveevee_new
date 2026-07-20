@@ -184,7 +184,7 @@
 
 .chat-list {
   overflow-y: auto;
-  border-right: 1px solid rgba(17, 34, 45, 0.1);
+  border-inline-end: 1px solid rgba(17, 34, 45, 0.1);
   background: rgba(255, 248, 251, 0.72);
 }
 
@@ -199,7 +199,7 @@
   border-bottom: 1px solid rgba(17, 34, 45, 0.08);
   background: transparent;
   color: var(--soz-ink);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -273,7 +273,7 @@
   margin-top: 4px;
   color: rgba(17, 34, 45, 0.48);
   font-size: 11px;
-  text-align: right;
+  text-align: end;
 }
 
 .chat-compose {
@@ -301,7 +301,7 @@
 
   .chat-list {
     max-height: 150px;
-    border-right: 0;
+    border-inline-end: 0;
     border-bottom: 1px solid rgba(17, 34, 45, 0.1);
   }
 }
