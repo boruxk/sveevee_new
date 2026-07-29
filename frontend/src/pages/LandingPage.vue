@@ -286,6 +286,17 @@
   object-position: center;
 }
 
+.landing-page--rtl .landing-hero__visual {
+  right: auto;
+  left: 0;
+  -webkit-mask-image: linear-gradient(to left, transparent 0%, transparent 14%, rgba(0, 0, 0, 0.42) 34%, #000000 62%, #000000 100%);
+  mask-image: linear-gradient(to left, transparent 0%, transparent 14%, rgba(0, 0, 0, 0.42) 34%, #000000 62%, #000000 100%);
+}
+
+.landing-page--rtl .landing-hero__visual img {
+  transform: scaleX(-1);
+}
+
 .landing-section {
   max-width: 1240px;
   margin: 0 auto;
