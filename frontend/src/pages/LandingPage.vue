@@ -2,11 +2,12 @@
 	import { computed } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useAppStore } from '@/stores/app'
-	import heroSrc from '@/assets/hero-neighborhood.png'
+	import heroSrc from '@/assets/hero-main.png'
 	import pricingBusinessSrc from '@/assets/pricing-business.png'
 	import pricingPrivateSrc from '@/assets/pricing-private.png'
+	import workflowHouseSrc from '@/assets/workflow-house.png'
 
-	const { t, tm } = useI18n()
+	const { t, tm, locale } = useI18n()
 	const appStore = useAppStore()
 
 	function listMessage(key) {
@@ -17,6 +18,23 @@
 	const featureCards = computed(() => listMessage('landing.features'))
 	const steps = computed(() => listMessage('landing.steps'))
 	const plans = computed(() => listMessage('landing.plans'))
+	const featureTitleParts = computed(() => {
+		const title = t('landing.featureTitle')
+		const words = title.split(' ')
+		const accentWordCounts = {
+			fr: 11
+		}
+		const accentWordCount = accentWordCounts[locale.value] ?? 5
+
+		if (words.length <= accentWordCount) {
+			return { lead: title, accent: '' }
+		}
+
+		return {
+			lead: words.slice(0, -accentWordCount).join(' '),
+			accent: words.slice(-accentWordCount).join(' ')
+		}
+	})
 	const pricingTitleParts = computed(() => {
 		const title = t('landing.pricingTitle')
 		const words = title.split(' ')
@@ -41,6 +59,14 @@
 
 	function planIcon(plan) {
 		return plan.featured ? 'storefront' : 'person'
+	}
+
+	function featureIcon(item, index) {
+		return ['home', 'storefront', 'chat_bubble'][index] ?? item.icon
+	}
+
+	function stepIcon(index) {
+		return ['person', 'edit', 'search'][index] ?? 'check'
 	}
 </script>
 
@@ -83,13 +109,16 @@
 		<section class="landing-section landing-section--features">
 			<div class="landing-section__head">
 				<div class="section-kicker">{{ t('landing.featureKicker') }}</div>
-				<h2>{{ t('landing.featureTitle') }}</h2>
+				<h2>
+					{{ featureTitleParts.lead }}
+					<span v-if="featureTitleParts.accent">{{ featureTitleParts.accent }}</span>
+				</h2>
 			</div>
 
 			<div class="feature-grid">
-				<article v-for="item in featureCards" :key="item.title" class="feature-card">
+				<article v-for="(item, index) in featureCards" :key="item.title" class="feature-card" :class="`feature-card--${index + 1}`">
 					<span class="feature-card__icon">
-						<q-icon :name="item.icon" size="28px" color="primary" />
+						<q-icon :name="featureIcon(item, index)" size="42px" />
 					</span>
 					<h3>{{ item.title }}</h3>
 					<p>{{ item.body }}</p>
@@ -102,12 +131,16 @@
 				<div class="section-kicker">{{ t('landing.workflowKicker') }}</div>
 				<h2>{{ t('landing.workflowTitle') }}</h2>
 				<p>{{ t('landing.workflowBody') }}</p>
+				<img class="workflow-art" :src="workflowHouseSrc" alt="" />
 			</div>
 
 			<div class="step-list">
-				<article v-for="(item, index) in steps" :key="item.title" class="step-item">
+				<article v-for="(item, index) in steps" :key="item.title" class="step-item" :class="`step-item--${index + 1}`">
 					<span class="step-item__number">{{ index + 1 }}</span>
-					<div>
+					<span class="step-item__icon">
+						<q-icon :name="stepIcon(index)" size="30px" />
+					</span>
+					<div class="step-item__copy">
 						<h3>{{ item.title }}</h3>
 						<p>{{ item.body }}</p>
 					</div>
@@ -176,23 +209,29 @@
 }
 
 .landing-hero {
+  position: relative;
+  overflow: hidden;
   background:
-    radial-gradient(circle at 86% 10%, rgba(123, 63, 242, 0.12), transparent 26%),
     linear-gradient(180deg, #ffffff 0%, #fff8fb 100%);
   border-bottom: 1px solid rgba(123, 63, 242, 0.08);
 }
 
 .landing-hero__inner {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 0.88fr) minmax(420px, 1.12fr);
   gap: clamp(28px, 5vw, 72px);
   align-items: center;
   max-width: 1240px;
+  min-height: clamp(540px, 52vw, 650px);
   margin: 0 auto;
   padding: clamp(42px, 7vw, 84px) 24px clamp(34px, 6vw, 72px);
 }
 
 .landing-hero__copy {
+  position: relative;
+  z-index: 2;
+  grid-column: 1 / 2;
   max-width: 600px;
 }
 
@@ -227,17 +266,23 @@
 }
 
 .landing-hero__visual {
-  overflow: hidden;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 26px 64px rgba(64, 28, 145, 0.16);
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  right: 0;
+  width: 90%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  user-select: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 14%, rgba(0, 0, 0, 0.42) 34%, #000000 62%, #000000 100%);
+  mask-image: linear-gradient(to right, transparent 0%, transparent 14%, rgba(0, 0, 0, 0.42) 34%, #000000 62%, #000000 100%);
 }
 
 .landing-hero__visual img {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 11;
-  object-fit: cover;
+  height: auto;
+  object-fit: contain;
   object-position: center;
 }
 
@@ -247,11 +292,26 @@
   padding: 54px 24px 0;
 }
 
+.landing-section--features {
+  max-width: none;
+  padding: 58px 24px 66px;
+  background:
+    radial-gradient(circle at 0 0, rgba(123, 63, 242, 0.12), transparent 22%),
+    linear-gradient(180deg, #fff8fb 0%, #fffaf5 100%);
+}
+
 .landing-section__head {
   display: grid;
   gap: 8px;
   max-width: 780px;
   margin-bottom: 22px;
+}
+
+.landing-section--features .landing-section__head {
+  justify-items: center;
+  max-width: 820px;
+  margin: 0 auto 30px;
+  text-align: center;
 }
 
 .section-kicker {
@@ -262,6 +322,10 @@
   text-transform: uppercase;
 }
 
+.landing-section--features .section-kicker {
+  color: #f54291;
+}
+
 .landing-section h2 {
   margin: 0;
   color: var(--soz-ink);
@@ -269,10 +333,26 @@
   line-height: 1.12;
 }
 
+.landing-section--features h2 {
+  max-width: 820px;
+  color: #192443;
+  font-size: clamp(34px, 4vw, 44px);
+  font-weight: 900;
+}
+
+.landing-section--features h2 span {
+  color: #7b3ff2;
+  background: linear-gradient(90deg, #7b3ff2 0%, #e24d9a 48%, #ff7426 100%);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 28px;
+  max-width: 1192px;
+  margin: 0 auto;
 }
 
 .feature-card,
@@ -285,25 +365,49 @@
 }
 
 .feature-card {
-  min-height: 220px;
-  padding: 24px;
+  display: grid;
+  align-content: start;
+  min-height: 318px;
+  padding: 38px 34px 34px;
+  border-color: rgba(64, 28, 145, 0.08);
+  box-shadow: 0 22px 48px rgba(21, 31, 59, 0.1);
 }
 
 .feature-card__icon {
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
+  width: 76px;
+  height: 76px;
   border-radius: 8px;
-  background: var(--soz-primary-tint);
+  color: #ffffff;
+  box-shadow: 0 14px 26px rgba(64, 28, 145, 0.24);
+}
+
+.feature-card--1 .feature-card__icon {
+  background: linear-gradient(145deg, #a968ff 0%, #6e2de6 100%);
+}
+
+.feature-card--2 .feature-card__icon {
+  background: linear-gradient(145deg, #ff8f38 0%, #ef5d15 100%);
+  box-shadow: 0 14px 26px rgba(255, 116, 38, 0.26);
+}
+
+.feature-card--3 .feature-card__icon {
+  background: linear-gradient(145deg, #ff6ca6 0%, #e31869 100%);
+  box-shadow: 0 14px 26px rgba(245, 66, 145, 0.26);
 }
 
 .feature-card h3,
 .step-item h3 {
-  margin: 18px 0 8px;
+  margin: 24px 0 10px;
   color: var(--soz-ink);
   font-size: 22px;
   line-height: 1.22;
+}
+
+.feature-card h3 {
+  max-width: 260px;
+  font-weight: 850;
 }
 
 .feature-card p,
@@ -315,45 +419,135 @@
   line-height: 1.62;
 }
 
+.feature-card p {
+  max-width: 320px;
+  font-size: 15px;
+}
+
 .workflow-section {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(420px, 1.08fr);
-  gap: clamp(24px, 4vw, 56px);
+  grid-template-columns: minmax(0, 0.82fr) minmax(520px, 1.18fr);
+  gap: clamp(36px, 6vw, 86px);
   align-items: center;
+  padding-top: 72px;
+  padding-bottom: 66px;
+  overflow: hidden;
 }
 
 .workflow-copy {
   display: grid;
+  align-content: center;
   gap: 14px;
+  min-height: 390px;
 }
 
 .workflow-copy p {
-  max-width: 600px;
+  max-width: 360px;
   font-size: 18px;
+  font-weight: 600;
+}
+
+.workflow-copy .section-kicker {
+  color: #f54291;
+}
+
+.workflow-copy h2 {
+  max-width: 380px;
+  color: #2a176b;
+  font-size: clamp(40px, 4vw, 50px);
+  font-weight: 900;
+}
+
+.workflow-art {
+  width: min(100%, 420px);
+  height: auto;
+  aspect-ratio: 16 / 9;
+  margin-top: 18px;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 8px;
+  filter: saturate(1.04);
 }
 
 .step-list {
   display: grid;
-  gap: 14px;
+  gap: 18px;
 }
 
 .step-item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-  padding: 20px;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  min-height: 124px;
+  padding: 22px 28px;
+  border-color: rgba(64, 28, 145, 0.08);
+  box-shadow: 0 18px 40px rgba(21, 31, 59, 0.09);
 }
 
 .step-item__number {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 54px;
+  height: 54px;
   border-radius: 999px;
-  background: var(--soz-primary-tint);
-  color: var(--soz-primary);
-  font-weight: 800;
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(64, 28, 145, 0.18);
+}
+
+.step-item__icon {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(64, 28, 145, 0.12);
+}
+
+.step-item__copy h3 {
+  margin: 0 0 6px;
+  color: #2a176b;
+  font-size: 22px;
+  font-weight: 850;
+}
+
+.step-item__copy p {
+  max-width: 470px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.step-item--1 .step-item__number {
+  background: linear-gradient(145deg, #8e5bff 0%, #5f28d5 100%);
+}
+
+.step-item--1 .step-item__icon {
+  color: #7b3ff2;
+  background: linear-gradient(180deg, #f4edff 0%, #ffffff 100%);
+}
+
+.step-item--2 .step-item__number {
+  background: linear-gradient(145deg, #ff8f38 0%, #ef5d15 100%);
+  box-shadow: 0 10px 22px rgba(255, 116, 38, 0.22);
+}
+
+.step-item--2 .step-item__icon {
+  color: #ff7426;
+  background: linear-gradient(180deg, #fff0e7 0%, #ffffff 100%);
+}
+
+.step-item--3 .step-item__number {
+  background: linear-gradient(145deg, #ff6ca6 0%, #e31869 100%);
+  box-shadow: 0 10px 22px rgba(245, 66, 145, 0.22);
+}
+
+.step-item--3 .step-item__icon {
+  color: #f54291;
+  background: linear-gradient(180deg, #fff0f8 0%, #ffffff 100%);
 }
 
 .pricing-head {
@@ -370,12 +564,6 @@
   gap: 8px;
   align-items: center;
   color: #f54291;
-}
-
-.pricing-head .section-kicker::before,
-.pricing-head .section-kicker::after {
-  content: "...";
-  color: #d96bff;
 }
 
 .pricing-head h2 {
@@ -588,9 +776,8 @@
 }
 
 .pricing-card--private .pricing-card__button {
-  border: 2px solid #7b3ff2;
-  color: #7b3ff2;
-  background: #ffffff;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7b3ff2 0%, #8d4dff 100%);
 }
 
 .pricing-card--business .pricing-card__button {
@@ -609,6 +796,18 @@
   .landing-hero__copy {
     max-width: 760px;
   }
+
+  .feature-grid {
+    max-width: 520px;
+  }
+
+  .workflow-section {
+    gap: 30px;
+  }
+
+  .workflow-copy {
+    min-height: auto;
+  }
 }
 
 @media (max-width: 640px) {
@@ -624,10 +823,54 @@
     padding: 38px 16px 0;
   }
 
+  .landing-section--features {
+    padding: 42px 16px 50px;
+  }
+
+  .landing-section--features h2 {
+    font-size: 32px;
+  }
+
   .feature-card,
   .step-item,
   .pricing-card {
     padding: 20px;
+  }
+
+  .feature-card {
+    min-height: 248px;
+    padding: 28px 24px;
+  }
+
+  .feature-card__icon {
+    width: 68px;
+    height: 68px;
+  }
+
+  .workflow-section {
+    padding-top: 46px;
+    padding-bottom: 46px;
+  }
+
+  .workflow-art {
+    width: 100%;
+  }
+
+  .step-item {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 14px 16px;
+  }
+
+  .step-item__icon {
+    grid-column: 1;
+    grid-row: 2;
+    width: 54px;
+    height: 54px;
+  }
+
+  .step-item__copy {
+    grid-column: 2;
+    grid-row: 1 / span 2;
   }
 
   .pricing-card__price strong {
