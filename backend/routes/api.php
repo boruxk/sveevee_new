@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\HomeFeedController;
+use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\PageRatingController;
 use App\Http\Controllers\Api\ProfileController;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::get('/search', [SearchController::class, 'index']);
+    Route::get('/locations', [LocationController::class, 'index']);
     Route::get('/users/{user}', [PublicUserController::class, 'show']);
     Route::get('/pages/{page}/ratings', [PageRatingController::class, 'index']);
     Route::get('/pages/{page}', [PageController::class, 'show']);

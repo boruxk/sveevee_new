@@ -4,6 +4,8 @@ function toAdFormData(payload) {
 	const formData = new FormData()
 	formData.append('title', payload.title || '')
 	formData.append('text', payload.text || '')
+	formData.append('city', payload.city || '')
+	formData.append('neighborhood', payload.neighborhood || '')
 
 	if (payload.page_id) {
 		formData.append('page_id', payload.page_id)

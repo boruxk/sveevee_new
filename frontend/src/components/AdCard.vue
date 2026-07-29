@@ -27,6 +27,8 @@
 		business_ad: 'secondary',
 		community_ad: 'positive'
 	}[props.ad.type] || 'dark'))
+
+	const locationLabel = computed(() => [props.ad.neighborhood, props.ad.city].filter(Boolean).join(', '))
 </script>
 
 <template>
@@ -40,6 +42,10 @@
 				</router-link>
 			</div>
 			<h3 class="ad-card__title">{{ ad.title }}</h3>
+			<div v-if="locationLabel" class="ad-card__location">
+				<q-icon name="place" size="16px" />
+				<span>{{ locationLabel }}</span>
+			</div>
 			<p class="ad-card__text">{{ ad.text }}</p>
 			<div class="row items-center justify-between q-gutter-sm">
 				<router-link v-if="ad.page" :to="{ name: 'page-detail', params: { id: ad.page.id } }" class="text-caption text-primary">
@@ -85,5 +91,13 @@
 .ad-card__text {
   color: rgba(17, 34, 45, 0.72);
   white-space: pre-line;
+}
+
+.ad-card__location {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: rgba(17, 34, 45, 0.56);
+  font-size: 13px;
 }
 </style>

@@ -22,6 +22,8 @@ class Ad extends Model
         'text',
         'image_path',
         'status',
+        'city',
+        'neighborhood',
     ];
 
     public function user(): BelongsTo
@@ -37,6 +39,33 @@ class Ad extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');
+    }
+
+    public function scopeInLocation(Builder $query, ?string $city = null, ?string $neighborhood = null): Builder
+    {
+        return $query
+            ->when($city, function (Builder $query, string $city): void {
+                $query->where(function (Builder $query) use ($city): void {
+                    $query
+                        ->where('city', $city)
+                        ->orWhere(function (Builder $query) use ($city): void {
+                            $query
+                                ->whereNull('city')
+                                ->whereHas('user.profile', fn (Builder $profile) => $profile->where('city', $city));
+                        });
+                });
+            })
+            ->when($neighborhood, function (Builder $query, string $neighborhood): void {
+                $query->where(function (Builder $query) use ($neighborhood): void {
+                    $query
+                        ->where('neighborhood', $neighborhood)
+                        ->orWhere(function (Builder $query) use ($neighborhood): void {
+                            $query
+                                ->whereNull('neighborhood')
+                                ->whereHas('user.profile', fn (Builder $profile) => $profile->where('neighborhood', $neighborhood));
+                        });
+                });
+            });
     }
 
     protected function imageUrl(): Attribute

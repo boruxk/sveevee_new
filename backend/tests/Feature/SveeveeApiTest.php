@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Ad;
 use App\Models\Page;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -108,6 +109,61 @@ class SveeveeApiTest extends TestCase
         $this->getJson('/api/v1/me')
             ->assertOk()
             ->assertJsonPath('data.business_page.name', 'Miri Studio');
+    }
+
+    public function test_user_can_create_ad_with_location_and_search_by_location(): void
+    {
+        $owner = User::factory()->create();
+        $owner->profile()->update([
+            'city' => 'Jerusalem',
+            'neighborhood' => 'Ramot',
+        ]);
+
+        $other = User::factory()->create();
+        $other->profile()->update([
+            'city' => 'Jerusalem',
+            'neighborhood' => 'Ramot',
+        ]);
+
+        Sanctum::actingAs($owner);
+
+        $this->postJson('/api/v1/ads', [
+            'title' => 'Desk lamp',
+            'text' => 'Pickup today.',
+            'city' => 'Tel Aviv',
+            'neighborhood' => 'Florentin',
+        ])->assertCreated()
+            ->assertJsonPath('data.city', 'Tel Aviv')
+            ->assertJsonPath('data.neighborhood', 'Florentin');
+
+        Ad::query()->create([
+            'user_id' => $other->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Desk lamp',
+            'text' => 'Pickup from Ramot.',
+            'status' => 'active',
+            'city' => 'Jerusalem',
+            'neighborhood' => 'Ramot',
+        ]);
+
+        $query = http_build_query([
+            'q' => 'Desk',
+            'city' => 'Tel Aviv',
+            'neighborhood' => 'Florentin',
+        ]);
+
+        $this->getJson("/api/v1/search?{$query}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data.ads')
+            ->assertJsonPath('data.ads.0.city', 'Tel Aviv')
+            ->assertJsonPath('data.ads.0.neighborhood', 'Florentin');
+
+        $locations = $this->getJson('/api/v1/locations')
+            ->assertOk()
+            ->assertJsonFragment(['city' => 'Tel Aviv', 'name' => 'Florentin']);
+
+        $this->assertContains('Tel Aviv', $locations->json('data.cities'));
+        $this->assertContains(['city' => 'Tel Aviv', 'name' => 'Ramat Aviv'], $locations->json('data.neighborhoods'));
     }
 
     public function test_user_can_rate_page_and_update_rating(): void

@@ -1,18 +1,36 @@
 <script setup>
-	import { reactive, ref } from 'vue'
+	import { onMounted, reactive, ref, toRef, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { searchEverything } from '@/services/api/search'
+	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import AdCard from '@/components/AdCard.vue'
 
 	const { t } = useI18n()
 	const loading = ref(false)
 	const q = ref('')
+	const filters = reactive({
+		city: '',
+		neighborhood: ''
+	})
 	const results = reactive({ users: [], pages: [], ads: [] })
+	const citySelectOptions = ref([])
+	const neighborhoodSelectOptions = ref([])
+	const {
+		cityOptions,
+		neighborhoodOptions,
+		loadLocationOptions,
+		addOption,
+		filterOptions
+	} = useLocationOptions(toRef(filters, 'city'))
 
 	async function submit() {
 		loading.value = true
 		try {
-			const { data } = await searchEverything(q.value)
+			const { data } = await searchEverything({
+				q: q.value,
+				city: filters.city,
+				neighborhood: filters.neighborhood
+			})
 			results.users = data.data?.users || []
 			results.pages = data.data?.pages || []
 			results.ads = data.data?.ads || []
@@ -20,6 +38,43 @@
 			loading.value = false
 		}
 	}
+
+	function filterCityOptions(value, update) {
+		update(() => {
+			citySelectOptions.value = filterOptions(cityOptions.value, value)
+		})
+	}
+
+	function filterNeighborhoodOptions(value, update) {
+		update(() => {
+			neighborhoodSelectOptions.value = filterOptions(neighborhoodOptions.value, value)
+		})
+	}
+
+	watch(cityOptions, (options) => {
+		citySelectOptions.value = options
+	}, { immediate: true })
+
+	watch(neighborhoodOptions, (options) => {
+		neighborhoodSelectOptions.value = options
+	}, { immediate: true })
+
+	watch(() => filters.city, () => {
+		if (!filters.city) {
+			filters.neighborhood = ''
+			return
+		}
+
+		if (filters.neighborhood && !neighborhoodOptions.value.includes(filters.neighborhood)) {
+			filters.neighborhood = ''
+		}
+	})
+
+	onMounted(async() => {
+		await loadLocationOptions()
+		citySelectOptions.value = cityOptions.value
+		neighborhoodSelectOptions.value = neighborhoodOptions.value
+	})
 </script>
 
 <template>
@@ -31,6 +86,33 @@
 				</div>
 				<q-form class="search-form" @submit.prevent="submit">
 					<q-input v-model="q" outlined clearable :label="t('search.placeholder')" />
+					<q-select v-model="filters.city"
+						outlined
+						clearable
+						use-input
+						hide-selected
+						fill-input
+						input-debounce="0"
+						new-value-mode="add-unique"
+						:options="citySelectOptions"
+						:label="t('auth.city')"
+						@filter="filterCityOptions"
+						@new-value="addOption"
+					/>
+					<q-select v-model="filters.neighborhood"
+						outlined
+						clearable
+						use-input
+						hide-selected
+						fill-input
+						input-debounce="0"
+						new-value-mode="add-unique"
+						:options="neighborhoodSelectOptions"
+						:label="t('auth.neighborhood')"
+						:disable="!filters.city"
+						@filter="filterNeighborhoodOptions"
+						@new-value="addOption"
+					/>
 					<q-btn color="primary"
 						unelevated
 						rounded
@@ -104,8 +186,9 @@
 
 .search-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) auto;
   gap: 12px;
+  align-items: start;
 }
 
 .result-section {

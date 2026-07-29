@@ -22,12 +22,7 @@ class HomeFeedController extends Controller
             ->with(['user.profile', 'page'])
             ->active()
             ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
-            ->when($profile?->neighborhood, function ($query, string $neighborhood): void {
-                $query->whereHas('user.profile', fn ($inner) => $inner->where('neighborhood', $neighborhood));
-            })
-            ->when(! $profile?->neighborhood && $profile?->city, function ($query) use ($profile): void {
-                $query->whereHas('user.profile', fn ($inner) => $inner->where('city', $profile->city));
-            })
+            ->inLocation($profile?->city, $profile?->neighborhood)
             ->latest()
             ->limit(60)
             ->get();

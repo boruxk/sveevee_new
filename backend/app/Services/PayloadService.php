@@ -140,6 +140,8 @@ class PayloadService
             'text' => $ad->text,
             'image_url' => $ad->image_url,
             'status' => $ad->status,
+            'city' => $ad->city ?: $ad->user?->profile?->city,
+            'neighborhood' => $ad->neighborhood ?: $ad->user?->profile?->neighborhood,
             'user' => $this->user($ad->user),
             'page' => $this->page($ad->page),
             'created_at' => $ad->created_at?->toISOString(),

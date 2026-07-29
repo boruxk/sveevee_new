@@ -18,10 +18,14 @@ class AdController extends Controller
 
     public function index(Request $request)
     {
+        $city = $this->nullableString($request->query('city'));
+        $neighborhood = $this->nullableString($request->query('neighborhood'));
+
         $query = Ad::query()
             ->with(['user.profile', 'page'])
             ->active()
             ->whereHas('user', fn ($inner) => $inner->whereNull('banned_at'))
+            ->inLocation($city, $neighborhood)
             ->latest();
 
         if ($request->query('scope') === 'mine') {
@@ -48,6 +52,8 @@ class AdController extends Controller
             'text' => ['required', 'string', 'max:5000'],
             'page_id' => ['nullable', 'integer', 'exists:pages,id'],
             'image' => ['nullable', 'image', 'max:6144'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'neighborhood' => ['nullable', 'string', 'max:120'],
         ]);
 
         $page = null;
@@ -65,6 +71,8 @@ class AdController extends Controller
             'text' => $data['text'],
             'image_path' => $request->hasFile('image') ? $request->file('image')->store('ads', 'public') : null,
             'status' => 'active',
+            'city' => $this->nullableString($data['city'] ?? null) ?? $this->pageCity($page) ?? $request->user()->profile?->city,
+            'neighborhood' => $this->nullableString($data['neighborhood'] ?? null) ?? $request->user()->profile?->neighborhood,
         ]);
 
         return ApiResponseService::success($this->payloads->ad($ad), 'Ad created.', 201);
@@ -81,6 +89,8 @@ class AdController extends Controller
             'text' => ['required', 'string', 'max:5000'],
             'status' => ['nullable', Rule::in(['active', 'paused'])],
             'image' => ['nullable', 'image', 'max:6144'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'neighborhood' => ['nullable', 'string', 'max:120'],
         ]);
 
         $ad->fill([
@@ -88,6 +98,14 @@ class AdController extends Controller
             'text' => $data['text'],
             'status' => $data['status'] ?? $ad->status,
         ]);
+
+        if ($request->has('city')) {
+            $ad->city = $this->nullableString($data['city'] ?? null);
+        }
+
+        if ($request->has('neighborhood')) {
+            $ad->neighborhood = $this->nullableString($data['neighborhood'] ?? null);
+        }
 
         if ($request->hasFile('image')) {
             $ad->image_path = $request->file('image')->store('ads', 'public');
@@ -121,5 +139,20 @@ class AdController extends Controller
     private function canManage(Request $request, Ad $ad): bool
     {
         return $request->user()->id === $ad->user_id || $request->user()->hasRole('admin');
+    }
+
+    private function nullableString(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
+    }
+
+    private function pageCity(?Page $page): ?string
+    {
+        $setup = $page?->setup ?? [];
+        $address = is_array($setup['address'] ?? null) ? $setup['address'] : [];
+
+        return $this->nullableString($address['city'] ?? null);
     }
 }

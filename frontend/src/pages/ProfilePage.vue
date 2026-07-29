@@ -1,8 +1,9 @@
 <script setup>
-	import { computed, onMounted, reactive, ref } from 'vue'
+	import { computed, onMounted, reactive, ref, toRef, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
+	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { fetchProfile, updateProfile, uploadProfilePhoto } from '@/services/api/profile'
 
 	const { t } = useI18n()
@@ -12,6 +13,8 @@
 	const loading = ref(false)
 	const saving = ref(false)
 	const photo = ref(null)
+	const citySelectOptions = ref([])
+	const neighborhoodSelectOptions = ref([])
 	const form = reactive({
 		email: '',
 		given_name: '',
@@ -21,6 +24,14 @@
 		neighborhood: '',
 		languages: ['he']
 	})
+	const {
+		cityOptions,
+		neighborhoodOptions,
+		loadLocationOptions,
+		rememberLocation,
+		addOption,
+		filterOptions
+	} = useLocationOptions(toRef(form, 'city'))
 	const languageOptions = computed(() => [
 		{ label: t('languages.he'), value: 'he' },
 		{ label: t('languages.en'), value: 'en' },
@@ -54,6 +65,7 @@
 		saving.value = true
 		try {
 			await updateProfile(form)
+			rememberLocation(form.city, form.neighborhood)
 			if (photo.value) {
 				await uploadProfilePhoto(photo.value)
 				photo.value = null
@@ -68,7 +80,42 @@
 		}
 	}
 
-	onMounted(load)
+	function filterCityOptions(value, update) {
+		update(() => {
+			citySelectOptions.value = filterOptions(cityOptions.value, value)
+		})
+	}
+
+	function filterNeighborhoodOptions(value, update) {
+		update(() => {
+			neighborhoodSelectOptions.value = filterOptions(neighborhoodOptions.value, value)
+		})
+	}
+
+	watch(cityOptions, (options) => {
+		citySelectOptions.value = options
+	}, { immediate: true })
+
+	watch(neighborhoodOptions, (options) => {
+		neighborhoodSelectOptions.value = options
+	}, { immediate: true })
+
+	watch(() => form.city, () => {
+		if (!form.city) {
+			form.neighborhood = ''
+			return
+		}
+
+		if (form.neighborhood && !neighborhoodOptions.value.includes(form.neighborhood)) {
+			form.neighborhood = ''
+		}
+	})
+
+	onMounted(async() => {
+		await Promise.all([load(), loadLocationOptions()])
+		citySelectOptions.value = cityOptions.value
+		neighborhoodSelectOptions.value = neighborhoodOptions.value
+	})
 </script>
 
 <template>
@@ -90,8 +137,35 @@
 					</div>
 					<div class="row q-col-gutter-md q-pb-md">
 						<q-input class="col-12 col-md-4" v-model="form.phone" outlined :label="t('auth.phone')" />
-						<q-input class="col-12 col-md-4" v-model="form.city" outlined :label="t('auth.city')" />
-						<q-input class="col-12 col-md-4" v-model="form.neighborhood" outlined :label="t('auth.neighborhood')" />
+						<q-select class="col-12 col-md-4"
+							v-model="form.city"
+							outlined
+							clearable
+							use-input
+							hide-selected
+							fill-input
+							input-debounce="0"
+							new-value-mode="add-unique"
+							:options="citySelectOptions"
+							:label="t('auth.city')"
+							@filter="filterCityOptions"
+							@new-value="addOption"
+						/>
+						<q-select class="col-12 col-md-4"
+							v-model="form.neighborhood"
+							outlined
+							clearable
+							use-input
+							hide-selected
+							fill-input
+							input-debounce="0"
+							new-value-mode="add-unique"
+							:options="neighborhoodSelectOptions"
+							:label="t('auth.neighborhood')"
+							:disable="!form.city"
+							@filter="filterNeighborhoodOptions"
+							@new-value="addOption"
+						/>
 					</div>
 					<div class="row q-col-gutter-md q-pb-md">
 						<q-select class="col-12 col-md-6"
