@@ -1,9 +1,13 @@
 <script setup>
 	import { computed } from 'vue'
 	import { useI18n } from 'vue-i18n'
+	import { useAppStore } from '@/stores/app'
 	import heroSrc from '@/assets/hero-neighborhood.png'
+	import pricingBusinessSrc from '@/assets/pricing-business.png'
+	import pricingPrivateSrc from '@/assets/pricing-private.png'
 
 	const { t, tm } = useI18n()
+	const appStore = useAppStore()
 
 	function listMessage(key) {
 		const value = tm(key)
@@ -13,10 +17,35 @@
 	const featureCards = computed(() => listMessage('landing.features'))
 	const steps = computed(() => listMessage('landing.steps'))
 	const plans = computed(() => listMessage('landing.plans'))
+	const pricingTitleParts = computed(() => {
+		const title = t('landing.pricingTitle')
+		const words = title.split(' ')
+
+		if (words.length < 2) {
+			return { lead: title, accent: '' }
+		}
+
+		return {
+			lead: words.slice(0, -1).join(' '),
+			accent: words.at(-1)
+		}
+	})
+
+	function planImage(plan) {
+		return plan.featured ? pricingBusinessSrc : pricingPrivateSrc
+	}
+
+	function planTone(plan) {
+		return plan.featured ? 'business' : 'private'
+	}
+
+	function planIcon(plan) {
+		return plan.featured ? 'storefront' : 'person'
+	}
 </script>
 
 <template>
-	<q-page class="landing-page">
+	<q-page class="landing-page" :class="{ 'landing-page--rtl': appStore.isRtl }">
 		<section class="landing-hero">
 			<div class="landing-hero__inner">
 				<div class="landing-hero__copy">
@@ -89,36 +118,45 @@
 		<section class="landing-section pricing-section">
 			<div class="pricing-head">
 				<div class="section-kicker">{{ t('landing.pricingKicker') }}</div>
-				<h2>{{ t('landing.pricingTitle') }}</h2>
+				<h2>
+					{{ pricingTitleParts.lead }}
+					<span v-if="pricingTitleParts.accent">{{ pricingTitleParts.accent }}</span>
+				</h2>
 			</div>
 
 			<div class="pricing-grid">
-				<article v-for="plan in plans" :key="plan.title" class="pricing-card" :class="{ 'pricing-card--featured': plan.featured }">
+				<article v-for="plan in plans" :key="plan.title" class="pricing-card" :class="[`pricing-card--${planTone(plan)}`, { 'pricing-card--featured': plan.featured }]">
 					<div class="pricing-card__top">
-						<div>
+						<span class="pricing-card__icon">
+							<q-icon :name="planIcon(plan)" size="28px" />
+						</span>
+						<div class="pricing-card__intro">
 							<div class="pricing-card__name">{{ plan.title }}</div>
 							<p>{{ plan.subtitle }}</p>
 						</div>
-						<q-chip v-if="plan.featured" dense color="primary" text-color="white">{{ t('landing.popular') }}</q-chip>
 					</div>
 
-					<div class="pricing-card__price">
-						<span class="pricing-card__currency">{{ t('landing.currency') }}</span>
-						<strong>0</strong>
-						<span>{{ t('landing.month') }}</span>
-					</div>
+					<div class="pricing-card__main">
+						<div class="pricing-card__content">
+							<div class="pricing-card__price">
+								<strong>0</strong>
+								<span class="pricing-card__currency">{{ t('landing.currency') }}</span>
+								<span>{{ t('landing.month') }}</span>
+							</div>
 
-					<ul>
-						<li v-for="feature in plan.features" :key="feature">
-							<q-icon name="check_circle" color="positive" size="20px" />
-							<span>{{ feature }}</span>
-						</li>
-					</ul>
+							<ul>
+								<li v-for="feature in plan.features" :key="feature">
+									<q-icon name="check_circle" size="20px" />
+									<span>{{ feature }}</span>
+								</li>
+							</ul>
+						</div>
+
+						<img class="pricing-card__art" :src="planImage(plan)" alt="" />
+					</div>
 
 					<q-btn
 						class="pricing-card__button"
-						:color="plan.featured ? 'primary' : 'dark'"
-						:outline="!plan.featured"
 						unelevated
 						rounded
 						:label="t('nav.register')"
@@ -322,61 +360,178 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 28px;
   text-align: center;
+}
+
+.pricing-head .section-kicker {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #f54291;
+}
+
+.pricing-head .section-kicker::before,
+.pricing-head .section-kicker::after {
+  content: "...";
+  color: #d96bff;
+}
+
+.pricing-head h2 {
+  position: relative;
+  font-size: 38px;
+}
+
+.pricing-head h2 span {
+  position: relative;
+  color: #ff4f5f;
+}
+
+.pricing-head h2 span::after {
+  position: absolute;
+  right: 0;
+  bottom: -10px;
+  left: 0;
+  height: 12px;
+  background: url("data:image/svg+xml,%3Csvg width='178' height='21' viewBox='0 0 178 21' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 13C38 4 116 1 175 18' stroke='%23E846A2' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M74 16C91 11 107 10 125 12' stroke='%23E846A2' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  content: "";
 }
 
 .pricing-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
+  gap: 28px;
 }
 
 .pricing-card {
+  position: relative;
   display: grid;
-  align-content: start;
-  gap: 24px;
-  padding: 30px;
+  grid-template-rows: auto 1fr auto;
+  gap: 16px;
+  min-height: 390px;
+  overflow: hidden;
+  padding: 28px 32px 26px;
+  box-shadow: 0 18px 42px rgba(64, 28, 145, 0.1);
+}
+
+.pricing-card--private {
+  border-color: rgba(123, 63, 242, 0.2);
+  background:
+    radial-gradient(circle at 76% 44%, rgba(123, 63, 242, 0.08), transparent 28%),
+    #ffffff;
 }
 
 .pricing-card--featured {
-  border-color: rgba(245, 66, 145, 0.38);
-  box-shadow: 0 24px 54px rgba(245, 66, 145, 0.14);
+  border-color: rgba(255, 116, 38, 0.24);
+  background:
+    radial-gradient(circle at 86% 12%, rgba(255, 79, 152, 0.08), transparent 30%),
+    #ffffff;
+  box-shadow: 0 24px 56px rgba(245, 66, 145, 0.14);
 }
 
 .pricing-card__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.pricing-card__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  box-shadow: 0 10px 26px rgba(64, 28, 145, 0.14);
+}
+
+.pricing-card--private .pricing-card__icon {
+  color: #7b3ff2;
+  background: linear-gradient(180deg, #f4edff 0%, #ffffff 100%);
+}
+
+.pricing-card--business .pricing-card__icon {
+  color: #ff7426;
+  background: linear-gradient(180deg, #fff0e7 0%, #ffffff 100%);
+}
+
+.pricing-card__intro {
+  max-width: 285px;
 }
 
 .pricing-card__name {
-  font-size: 24px;
+  color: #24145d;
+  font-size: 22px;
   font-weight: 800;
   line-height: 1.2;
+}
+
+.pricing-card__main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  min-height: 220px;
+  padding-top: 8px;
+  direction: ltr;
+}
+
+.pricing-card__content {
+  order: 1;
+  display: grid;
+  flex: 1 1 56%;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+  direction: ltr;
+}
+
+.landing-page--rtl .pricing-card__content {
+  order: 2;
+  direction: rtl;
+  text-align: right;
 }
 
 .pricing-card__price {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  direction: ltr;
+  gap: 8px;
+}
+
+.landing-page--rtl .pricing-card__price {
+  justify-content: flex-end;
+}
+
+.landing-page--rtl .pricing-card__currency {
+  order: -1;
 }
 
 .pricing-card__currency {
-  font-size: 30px;
-  font-weight: 700;
+  color: #24304f;
+  font-size: 40px;
+  font-weight: 800;
 }
 
 .pricing-card__price strong {
-  font-size: 64px;
+  color: #1c2443;
+  font-size: 66px;
   line-height: 0.95;
+}
+
+.pricing-card__price span:last-child {
+  color: #24304f;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .pricing-card ul {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -388,11 +543,59 @@
   gap: 10px;
   align-items: start;
   min-height: 24px;
+  color: #24304f;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pricing-card--private li .q-icon {
+  color: #7b3ff2;
+}
+
+.pricing-card--business li .q-icon {
+  color: #ff7426;
+}
+
+.pricing-card__art {
+  order: 2;
+  flex: 0 1 44%;
+  justify-self: center;
+  width: min(100%, 220px);
+  max-height: 230px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.landing-page--rtl .pricing-card__art {
+  order: 1;
+}
+
+.pricing-card--business .pricing-card__art {
+  width: min(100%, 280px);
+  max-height: 260px;
 }
 
 .pricing-card__button {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  margin-top: 6px;
+  min-height: 54px;
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.pricing-card--private .pricing-card__button {
+  border: 2px solid #7b3ff2;
+  color: #7b3ff2;
+  background: #ffffff;
+}
+
+.pricing-card--business .pricing-card__button {
+  color: #ffffff;
+  background: linear-gradient(135deg, #ff7426 0%, #f54291 100%);
 }
 
 @media (max-width: 980px) {
@@ -430,5 +633,22 @@
   .pricing-card__price strong {
     font-size: 54px;
   }
+
+  .pricing-card__content {
+    width: 100%;
+  }
+
+  .pricing-card__art,
+  .pricing-card--business .pricing-card__art {
+    justify-self: center;
+    width: min(72%, 230px);
+    max-height: 220px;
+    margin: -6px 0 0;
+  }
+
+  .pricing-card__top {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
 }
 </style>
