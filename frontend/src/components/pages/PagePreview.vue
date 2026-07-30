@@ -119,8 +119,9 @@
 						</div>
 						<div class="page-preview__rating-actions">
 							<q-btn rounded
-								outline
-								color="dark"
+								unelevated
+								color="primary"
+								class="page-preview__ratings-btn"
 								icon="reviews"
 								:disable="!page?.id"
 								:label="t('ratings.allRatings')"
@@ -305,6 +306,11 @@
 
 .page-preview__rating-actions {
   justify-content: flex-end;
+}
+
+.page-preview__ratings-btn.q-btn.bg-primary {
+  background: var(--soz-action-gradient) !important;
+  box-shadow: 0 14px 28px rgba(245, 66, 145, 0.22) !important;
 }
 
 @media (max-width: 900px) {

@@ -45,17 +45,19 @@
 				<h1 class="soz-page-title">{{ t('nav.me') }}</h1>
 				<div v-if="showBusinessPageButton || showCommunityPageButton" class="page-actions">
 					<q-btn v-if="showBusinessPageButton"
-						outline
+						unelevated
 						rounded
-						color="dark"
+						color="primary"
+						class="create-page-btn create-page-btn--pink"
 						icon="storefront"
 						:label="t('actions.createBusinessPage')"
 						:to="{ name: 'business' }"
 					/>
 					<q-btn v-if="showCommunityPageButton"
-						outline
+						unelevated
 						rounded
-						color="dark"
+						color="primary"
+						class="create-page-btn create-page-btn--pink"
 						icon="diversity_3"
 						:label="t('actions.createCommunityPage')"
 						:to="{ name: 'community' }"
@@ -111,6 +113,16 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.create-page-btn--purple.q-btn.bg-primary {
+  background: var(--soz-menu-gradient) !important;
+  box-shadow: 0 12px 24px rgba(123, 63, 242, 0.26) !important;
+}
+
+.create-page-btn--pink.q-btn.bg-primary {
+  background: var(--soz-action-gradient) !important;
+  box-shadow: 0 14px 28px rgba(245, 66, 145, 0.22) !important;
 }
 
 .panel {

@@ -12,7 +12,7 @@
   --soz-gradient: linear-gradient(135deg, #ff7426 0%, #f54291 48%, #703fdc 100%);
   --soz-action-gradient: linear-gradient(135deg, #ff7426 0%, #f54291 100%);
   --soz-menu-gradient: linear-gradient(135deg, #7b3ff2 0%, #8d4dff 100%);
-  --soz-soft-white: rgba(255, 255, 255, 0.88);
+  --soz-soft-white: rgba(250, 248, 252, 0.9);
 }
 
 html,
@@ -28,7 +28,7 @@ html {
 body {
   margin: 0;
   color: var(--soz-ink);
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
   background:
     radial-gradient(circle at top left, rgba(255, 116, 38, 0.12), transparent 24%),
     radial-gradient(circle at top right, rgba(123, 63, 242, 0.12), transparent 28%),
@@ -137,8 +137,19 @@ a {
 }
 
 .soz-page-title {
-  font-family: "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+  font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+  font-weight: 300 !important;
   letter-spacing: -0.04em;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+  font-weight: 300 !important;
 }
 
 .soz-section-card {

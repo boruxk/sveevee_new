@@ -178,17 +178,18 @@
 
 .page-head {
   display: grid;
-  grid-template-columns: 0.8fr 1.2fr;
+  grid-template-columns: 1fr;
   gap: 18px;
-  align-items: end;
+  align-items: start;
   padding: 28px;
 }
 
 .search-form {
   display: grid;
-  grid-template-columns: minmax(180px, 1.2fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) auto;
+  grid-template-columns: minmax(260px, 1.5fr) minmax(190px, 0.8fr) minmax(190px, 0.8fr) auto;
   gap: 12px;
   align-items: start;
+  width: 100%;
 }
 
 .result-section {

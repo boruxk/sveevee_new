@@ -200,6 +200,7 @@ export default {
 		eyebrow: 'Annonces locales, moins de bruit',
 		title: 'SVEEVEE',
 		subtitle: 'Annonces locales, pages entreprise, pages communauté et chat direct pour votre quartier.',
+		searchWithoutRegistration: 'Rechercher sans inscription',
 		featureKicker: 'Ce qui est inclus',
 		featureTitle: 'Tout ce qu’il faut pour trouver des utilisateurs, des entreprises et des annonces près de chez vous',
 		workflowKicker: 'Comment ça marche',

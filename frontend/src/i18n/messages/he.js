@@ -200,6 +200,7 @@ export default {
 		eyebrow: 'מודעות מקומיות, בלי רעש',
 		title: 'SVEEVEE',
 		subtitle: 'מודעות שכונתיות, עמודי עסק, עמודי קהילה וצ׳אט ישיר במקום אחד פשוט.',
+		searchWithoutRegistration: 'חיפוש ללא הרשמה',
 		featureKicker: 'מה יש בפנים',
 		featureTitle: 'כל מה שצריך כדי למצוא אנשים, עסקים ומודעות קרוב לבית',
 		workflowKicker: 'איך זה עובד',

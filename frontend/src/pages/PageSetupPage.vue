@@ -292,8 +292,9 @@
 						<p>{{ t('pages.helper') }}</p>
 					</div>
 					<q-btn rounded
-						outline
-						color="dark"
+						unelevated
+						color="primary"
+						class="page-setup-btn"
 						icon="settings"
 						:label="t('pages.setup')"
 						@click="setupDialogOpen = true"
@@ -312,7 +313,7 @@
 			</section>
 
 			<section class="soz-section-card panel q-mt-lg">
-				<h2>{{ t('actions.createAd') }}</h2>
+				<h2 class="create-ad-title">{{ t('actions.createAd') }}</h2>
 				<AdComposer :page-id="page?.id" :disabled="!page" @saved="load" />
 				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
 			</section>
@@ -491,6 +492,10 @@
   margin: 0;
 }
 
+.create-ad-title {
+  margin-bottom: 28px !important;
+}
+
 .page-head p,
 .preview-head p {
   max-width: 720px;
@@ -504,6 +509,11 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 18px;
   align-items: start;
+}
+
+.page-setup-btn.q-btn.bg-primary {
+  background: var(--soz-action-gradient) !important;
+  box-shadow: 0 14px 28px rgba(245, 66, 145, 0.22) !important;
 }
 
 .presence-grid {

@@ -5,6 +5,7 @@
 	import heroSrc from '@/assets/hero-main.png'
 	import pricingBusinessSrc from '@/assets/pricing-business.png'
 	import pricingPrivateSrc from '@/assets/pricing-private.png'
+	import logoSrc from '@/assets/sveevee-logo.png'
 	import workflowHouseSrc from '@/assets/workflow-house.png'
 
 	const { t, tm, locale } = useI18n()
@@ -79,7 +80,9 @@
 						{{ t('landing.eyebrow') }}
 					</q-chip>
 
-					<h1>{{ t('landing.title') }}</h1>
+					<h1 class="landing-hero__title">
+						<img class="landing-hero__wordmark" :src="logoSrc" :alt="t('landing.title')" />
+					</h1>
 					<p>{{ t('landing.subtitle') }}</p>
 
 					<div class="landing-hero__actions">
@@ -90,11 +93,13 @@
 							:label="t('nav.register')"
 							:to="{ name: 'register' }"
 						/>
-						<q-btn outline
+						<q-btn unelevated
 							rounded
-							color="dark"
+							color="primary"
+							class="landing-hero__search-btn"
 							icon="search"
-							:label="t('nav.search')"
+							:label="t('landing.searchWithoutRegistration')"
+							:title="t('landing.searchWithoutRegistration')"
 							:to="{ name: 'search' }"
 						/>
 					</div>
@@ -242,13 +247,14 @@
 
 .landing-hero h1 {
   margin: 0;
-  color: var(--soz-primary);
-  background: var(--soz-gradient);
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-size: clamp(54px, 8vw, 104px);
   line-height: 0.95;
   letter-spacing: 0;
+}
+
+.landing-hero__wordmark {
+  display: block;
+  width: min(100%, 560px);
+  height: auto;
 }
 
 .landing-hero p {
@@ -263,6 +269,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.landing-hero__search-btn.q-btn.bg-primary {
+  background: var(--soz-menu-gradient) !important;
+  box-shadow: 0 12px 24px rgba(123, 63, 242, 0.26) !important;
+  color: #ffffff !important;
 }
 
 .landing-hero__visual {
@@ -827,7 +839,7 @@
   }
 
   .landing-hero h1 {
-    font-size: 48px;
+    width: min(100%, 330px);
   }
 
   .landing-section {

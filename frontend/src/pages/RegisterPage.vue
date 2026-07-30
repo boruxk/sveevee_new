@@ -1,14 +1,17 @@
 <script setup>
-	import { computed, reactive } from 'vue'
+	import { computed, onMounted, reactive, ref, toRef, watch } from 'vue'
 	import { useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
+	import { useLocationOptions } from '@/composables/useLocationOptions'
 
 	const { t } = useI18n()
 	const $q = useQuasar()
 	const router = useRouter()
 	const authStore = useAuthStore()
+	const citySelectOptions = ref([])
+	const neighborhoodSelectOptions = ref([])
 	const form = reactive({
 		email: '',
 		password: '',
@@ -21,6 +24,14 @@
 		languages: ['he'],
 		locale: 'he'
 	})
+	const {
+		cityOptions,
+		neighborhoodOptions,
+		loadLocationOptions,
+		rememberLocation,
+		addOption,
+		filterOptions
+	} = useLocationOptions(toRef(form, 'city'))
 	const languageOptions = computed(() => [
 		{ label: t('languages.he'), value: 'he' },
 		{ label: t('languages.en'), value: 'en' },
@@ -31,11 +42,49 @@
 	async function submit() {
 		try {
 			await authStore.register(form)
+			rememberLocation(form.city, form.neighborhood)
 			router.push({ name: 'home' })
 		} catch (error) {
 			$q.notify({ type: 'negative', message: error.response?.data?.message || t('auth.registerFailed') })
 		}
 	}
+
+	function filterCityOptions(value, update) {
+		update(() => {
+			citySelectOptions.value = filterOptions(cityOptions.value, value)
+		})
+	}
+
+	function filterNeighborhoodOptions(value, update) {
+		update(() => {
+			neighborhoodSelectOptions.value = filterOptions(neighborhoodOptions.value, value)
+		})
+	}
+
+	watch(cityOptions, (options) => {
+		citySelectOptions.value = options
+	}, { immediate: true })
+
+	watch(neighborhoodOptions, (options) => {
+		neighborhoodSelectOptions.value = options
+	}, { immediate: true })
+
+	watch(() => form.city, () => {
+		if (!form.city) {
+			form.neighborhood = ''
+			return
+		}
+
+		if (form.neighborhood && !neighborhoodOptions.value.includes(form.neighborhood)) {
+			form.neighborhood = ''
+		}
+	})
+
+	onMounted(async() => {
+		await loadLocationOptions()
+		citySelectOptions.value = cityOptions.value
+		neighborhoodSelectOptions.value = neighborhoodOptions.value
+	})
 </script>
 
 <template>
@@ -47,21 +96,48 @@
 					<p class="q-pb-md">{{ t('auth.simpleLogin') }}</p>
 					<q-form class="column q-gutter-md q-pl-md" @submit.prevent="submit">
 						<div class="row q-col-gutter-md q-pb-md">
-							<q-input class="col-12 col-md-6" v-model="form.given_name" outlined :label="t('auth.givenName')" />
-							<q-input class="col-12 col-md-6" v-model="form.family_name" outlined :label="t('auth.familyName')" />
-						</div>
-						<div class="row q-col-gutter-md q-pb-md">
-							<q-input class="col-12 col-md-12" v-model="form.email" outlined type="email" :label="t('auth.email')" />
+							<q-input class="col-12 col-md-4" v-model="form.email" outlined type="email" :label="t('auth.email')" />
+							<q-input class="col-12 col-md-4" v-model="form.given_name" outlined :label="t('auth.givenName')" />
+							<q-input class="col-12 col-md-4" v-model="form.family_name" outlined :label="t('auth.familyName')" />
 						</div>
 						<div class="row q-col-gutter-md q-pb-md">
 							<q-input class="col-12 col-md-6" v-model="form.password" outlined type="password" :label="t('auth.password')" />
 							<q-input class="col-12 col-md-6" v-model="form.password_confirmation" outlined type="password" :label="t('auth.passwordConfirmation')" />
 						</div>
 						<div class="row q-col-gutter-md q-pb-md">
-							<q-input class="col-12 col-md-3" v-model="form.phone" outlined :label="t('auth.phone')" />
-							<q-input class="col-12 col-md-3" v-model="form.city" outlined :label="t('auth.city')" />
-							<q-input class="col-12 col-md-3" v-model="form.neighborhood" outlined :label="t('auth.neighborhood')" />
-							<q-select class="col-12 col-md-3"
+							<q-input class="col-12 col-md-4" v-model="form.phone" outlined :label="t('auth.phone')" />
+							<q-select class="col-12 col-md-4"
+								v-model="form.city"
+								outlined
+								clearable
+								use-input
+								hide-selected
+								fill-input
+								input-debounce="0"
+								new-value-mode="add-unique"
+								:options="citySelectOptions"
+								:label="t('auth.city')"
+								@filter="filterCityOptions"
+								@new-value="addOption"
+							/>
+							<q-select class="col-12 col-md-4"
+								v-model="form.neighborhood"
+								outlined
+								clearable
+								use-input
+								hide-selected
+								fill-input
+								input-debounce="0"
+								new-value-mode="add-unique"
+								:options="neighborhoodSelectOptions"
+								:label="t('auth.neighborhood')"
+								:disable="!form.city"
+								@filter="filterNeighborhoodOptions"
+								@new-value="addOption"
+							/>
+						</div>
+						<div class="row q-col-gutter-md q-pb-md">
+							<q-select class="col-12"
 								v-model="form.languages"
 								outlined
 								multiple
@@ -106,11 +182,12 @@
 }
 
 .auth-panel__inner {
-  width: min(780px, 100%);
+  width: min(1040px, 100%);
   margin: 0 auto;
 }
 
 .form-submit {
-  margin-inline-start: 0 !important;
+  width: min(220px, 100%);
+  margin: 0 auto !important;
 }
 </style>
