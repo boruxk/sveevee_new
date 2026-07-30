@@ -43,6 +43,8 @@ export default {
 		chat: 'Chat',
 		createAd: 'Create ad',
 		addProduct: 'Add product',
+		addEvent: 'Add event',
+		deletePage: 'Delete page',
 		createBusinessPage: 'Create Business Page',
 		createCommunityPage: 'Create Community Page',
 		update: 'Update',
@@ -101,6 +103,18 @@ export default {
 		created: 'Product created.',
 		saveFailed: 'Product could not be saved.'
 	},
+	events: {
+		eventsTitle: 'Events',
+		name: 'Name',
+		description: 'Description',
+		image: 'Image',
+		date: 'Date',
+		time: 'Time',
+		address: 'Address',
+		empty: 'No events yet.',
+		created: 'Event created.',
+		saveFailed: 'Event could not be saved.'
+	},
 	chat: {
 		title: 'Chat',
 		empty: 'Choose a chat on the left.',
@@ -141,6 +155,10 @@ export default {
 		publicCardTitle: 'First impression',
 		saved: 'Page saved.',
 		saveFailed: 'Page could not be saved.',
+		deleted: 'Page deleted.',
+		deleteFailed: 'Page could not be deleted.',
+		deleteTitle: 'Delete page?',
+		deleteMessage: 'This removes the page and its page ads.',
 		saveFirst: 'Save the page first.',
 		logoMissing: 'Please choose a logo first.',
 		logoUploaded: 'Logo uploaded.',

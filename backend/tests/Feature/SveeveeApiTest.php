@@ -233,6 +233,88 @@ class SveeveeApiTest extends TestCase
         ], ['Accept' => 'application/json'])->assertStatus(422);
     }
 
+    public function test_community_page_owner_can_add_event(): void
+    {
+        Storage::fake('public');
+
+        $owner = User::factory()->create();
+        $communityPage = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_COMMUNITY,
+            'name' => 'Miri Community',
+        ]);
+        $businessPage = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Miri Studio',
+        ]);
+
+        Sanctum::actingAs($owner);
+
+        $this->post("/api/v1/pages/{$communityPage->id}/events", [
+            'name' => 'Friday Picnic',
+            'description' => 'Bring snacks and meet the neighbors.',
+            'image' => UploadedFile::fake()->image('picnic.jpg'),
+            'date' => '2026-08-14',
+            'time' => '17:30',
+            'address' => 'Gan HaEm, Haifa',
+        ], ['Accept' => 'application/json'])->assertCreated()
+            ->assertJsonPath('data.name', 'Friday Picnic')
+            ->assertJsonPath('data.date', '2026-08-14')
+            ->assertJsonPath('data.time', '17:30')
+            ->assertJsonPath('data.address', 'Gan HaEm, Haifa');
+
+        $this->getJson("/api/v1/pages/{$communityPage->id}")
+            ->assertOk()
+            ->assertJsonPath('data.events.0.name', 'Friday Picnic')
+            ->assertJsonPath('data.events.0.time', '17:30');
+
+        $this->post("/api/v1/pages/{$businessPage->id}/events", [
+            'name' => 'Business Event',
+            'description' => 'Not allowed here.',
+            'image' => UploadedFile::fake()->image('business-event.jpg'),
+            'date' => '2026-08-14',
+            'time' => '17:30',
+            'address' => 'Herzl 10, Haifa',
+        ], ['Accept' => 'application/json'])->assertStatus(422);
+    }
+
+    public function test_page_owner_can_delete_page_and_its_page_ads(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $page = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Miri Studio',
+        ]);
+        $pageAd = Ad::query()->create([
+            'user_id' => $owner->id,
+            'page_id' => $page->id,
+            'type' => Ad::TYPE_BUSINESS,
+            'title' => 'Studio sale',
+            'text' => 'Today only.',
+            'status' => 'active',
+        ]);
+
+        Sanctum::actingAs($other);
+
+        $this->deleteJson("/api/v1/pages/{$page->id}")
+            ->assertStatus(403);
+
+        Sanctum::actingAs($owner);
+
+        $this->deleteJson("/api/v1/pages/{$page->id}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('pages', ['id' => $page->id]);
+        $this->assertDatabaseMissing('ads', ['id' => $pageAd->id]);
+
+        $this->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('data.business_page', null);
+    }
+
     public function test_user_can_rate_page_and_update_rating(): void
     {
         $owner = User::factory()->create();

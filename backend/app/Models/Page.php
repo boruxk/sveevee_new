@@ -49,6 +49,11 @@ class Page extends Model
         return $this->hasMany(PageProduct::class)->latest();
     }
 
+    public function events(): HasMany
+    {
+        return $this->hasMany(PageEvent::class)->orderBy('event_date')->orderBy('event_time');
+    }
+
     public function ratings(): HasMany
     {
         return $this->hasMany(PageRating::class)->latest();

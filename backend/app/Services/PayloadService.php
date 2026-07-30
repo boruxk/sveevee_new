@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Ad;
 use App\Models\Conversation;
 use App\Models\Page;
+use App\Models\PageEvent;
 use App\Models\PageProduct;
 use App\Models\PageRating;
 use App\Models\User;
@@ -70,7 +71,7 @@ class PayloadService
         $setup = $page->setup ?? [];
         $contact = $this->pageContact($page, $setup);
         $addressDetails = $this->pageAddress($setup);
-        $page->loadMissing('products');
+        $page->loadMissing(['products', 'events']);
 
         $payload = [
             'id' => $page->id,
@@ -89,6 +90,7 @@ class PayloadService
             'banner_url' => $page->banner_url,
             'rating_summary' => $this->pageRatingSummary($page),
             'products' => $page->products->map(fn (PageProduct $product) => $this->product($product))->values()->all(),
+            'events' => $page->events->map(fn (PageEvent $event) => $this->event($event))->values()->all(),
             'setup' => $setup,
             'owner' => $page->relationLoaded('user') ? $this->user($page->user) : null,
             'created_at' => $page->created_at?->toISOString(),
@@ -116,6 +118,22 @@ class PayloadService
             'link' => $product->link,
             'created_at' => $product->created_at?->toISOString(),
             'updated_at' => $product->updated_at?->toISOString(),
+        ];
+    }
+
+    public function event(PageEvent $event): array
+    {
+        return [
+            'id' => $event->id,
+            'page_id' => $event->page_id,
+            'name' => $event->name,
+            'description' => $event->description,
+            'image_url' => $event->image_url,
+            'date' => $event->event_date?->format('Y-m-d'),
+            'time' => $event->event_time,
+            'address' => $event->address,
+            'created_at' => $event->created_at?->toISOString(),
+            'updated_at' => $event->updated_at?->toISOString(),
         ];
     }
 

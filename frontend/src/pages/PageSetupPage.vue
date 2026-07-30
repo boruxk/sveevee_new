@@ -1,16 +1,18 @@
 <script setup>
 	import { computed, onMounted, reactive, ref, toRef, watch } from 'vue'
-	import { useRoute } from 'vue-router'
+	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { deleteAd } from '@/services/api/ads'
-	import { fetchMyPage, saveMyPage } from '@/services/api/pages'
+	import { deletePage, fetchMyPage, saveMyPage } from '@/services/api/pages'
 	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
 	import AdCard from '@/components/AdCard.vue'
 	import AdComposer from '@/components/AdComposer.vue'
+	import EventCard from '@/components/events/EventCard.vue'
+	import EventComposer from '@/components/events/EventComposer.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
 	import ProductComposer from '@/components/products/ProductComposer.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
@@ -27,17 +29,20 @@
 	]
 
 	const route = useRoute()
+	const router = useRouter()
 	const { t } = useI18n()
 	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const loading = ref(false)
 	const saving = ref(false)
+	const deleting = ref(false)
 	const logoUploading = ref(false)
 	const bannerUploading = ref(false)
 	const formRef = ref(null)
 	const setupDialogOpen = ref(false)
 	const adDialogOpen = ref(false)
 	const productDialogOpen = ref(false)
+	const eventDialogOpen = ref(false)
 	const ratingsDialogOpen = ref(false)
 	const page = ref(null)
 	const localLogoPreviewUrl = ref(null)
@@ -64,6 +69,7 @@
 
 	const type = computed(() => route.meta.pageType || 'business')
 	const isBusinessPage = computed(() => type.value === 'business')
+	const isCommunityPage = computed(() => type.value === 'community')
 	const title = computed(() => (type.value === 'business' ? t('pages.businessTitle') : t('pages.communityTitle')))
 	const selectedPalette = computed(() => findPresencePalette(form.palette_key))
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
@@ -264,6 +270,43 @@
 		}
 	}
 
+	function confirmDeletePage() {
+		if (!page.value) {
+			return
+		}
+
+		$q.dialog({
+			title: t('pages.deleteTitle'),
+			message: t('pages.deleteMessage'),
+			cancel: true,
+			persistent: true,
+			ok: {
+				label: t('actions.deletePage'),
+				color: 'negative',
+				unelevated: true,
+				rounded: true
+			}
+		}).onOk(deleteCurrentPage)
+	}
+
+	async function deleteCurrentPage() {
+		if (!page.value) {
+			return
+		}
+
+		deleting.value = true
+		try {
+			await deletePage(page.value.id)
+			await authStore.refreshUser()
+			$q.notify({ type: 'positive', message: t('pages.deleted') })
+			router.push({ name: 'me' })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: error.response?.data?.message || t('pages.deleteFailed') })
+		} finally {
+			deleting.value = false
+		}
+	}
+
 	async function handleAdSaved() {
 		adDialogOpen.value = false
 		await load()
@@ -271,6 +314,11 @@
 
 	async function handleProductSaved() {
 		productDialogOpen.value = false
+		await load()
+	}
+
+	async function handleEventSaved() {
+		eventDialogOpen.value = false
 		await load()
 	}
 
@@ -365,14 +413,26 @@
 						<h2>{{ t('pages.previewDialogTitle') }}</h2>
 						<p>{{ t('pages.helper') }}</p>
 					</div>
-					<q-btn rounded
-						unelevated
-						color="primary"
-						class="page-setup-btn"
-						icon="settings"
-						:label="t('pages.setup')"
-						@click="setupDialogOpen = true"
-					/>
+					<div class="page-toolbar-actions">
+						<q-btn rounded
+							unelevated
+							color="negative"
+							class="page-delete-btn"
+							icon="delete"
+							:disable="!page"
+							:loading="deleting"
+							:label="t('actions.deletePage')"
+							@click="confirmDeletePage"
+						/>
+						<q-btn rounded
+							unelevated
+							color="primary"
+							class="page-setup-btn"
+							icon="settings"
+							:label="t('pages.setup')"
+							@click="setupDialogOpen = true"
+						/>
+					</div>
 				</div>
 
 				<div v-if="loading" class="row justify-center q-pa-lg">
@@ -402,6 +462,25 @@
 				<div v-else-if="!page.products?.length" class="empty-state">{{ t('products.empty') }}</div>
 				<div v-else class="product-grid">
 					<ProductCard v-for="product in page.products" :key="product.id" :product="product" />
+				</div>
+			</section>
+
+			<section v-if="isCommunityPage" class="soz-section-card panel q-mt-lg">
+				<div class="panel-head">
+					<h2>{{ t('events.eventsTitle') }}</h2>
+					<q-btn rounded
+						unelevated
+						color="primary"
+						icon="event"
+						:disable="!page"
+						:label="t('actions.addEvent')"
+						@click="eventDialogOpen = true"
+					/>
+				</div>
+				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
+				<div v-else-if="!page.events?.length" class="empty-state">{{ t('events.empty') }}</div>
+				<div v-else class="event-grid">
+					<EventCard v-for="event in page.events" :key="event.id" :event="event" />
 				</div>
 			</section>
 
@@ -617,6 +696,17 @@
 				</q-card-section>
 			</q-card>
 		</q-dialog>
+		<q-dialog v-model="eventDialogOpen">
+			<q-card class="event-dialog">
+				<q-card-section class="dialog-head">
+					<div class="text-h6">{{ t('actions.addEvent') }}</div>
+					<q-btn flat round icon="close" color="dark" v-close-popup />
+				</q-card-section>
+				<q-card-section>
+					<EventComposer v-if="page?.id" :page-id="page.id" @saved="handleEventSaved" />
+				</q-card-section>
+			</q-card>
+		</q-dialog>
 		<PageRatingsDialog
 			v-model="ratingsDialogOpen"
 			:page-id="page?.id"
@@ -678,6 +768,18 @@
 .page-setup-btn.q-btn.bg-primary {
   background: var(--soz-action-gradient) !important;
   box-shadow: 0 14px 28px rgba(245, 66, 145, 0.22) !important;
+}
+
+.page-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.page-delete-btn.q-btn.bg-negative {
+  background: #e23f57 !important;
+  box-shadow: 0 12px 24px rgba(226, 63, 87, 0.22) !important;
 }
 
 .presence-grid {
@@ -774,7 +876,8 @@
 }
 
 .ad-grid,
-.product-grid {
+.product-grid,
+.event-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
@@ -796,7 +899,8 @@
 }
 
 .ad-dialog,
-.product-dialog {
+.product-dialog,
+.event-dialog {
   width: min(680px, calc(100vw - 24px));
   max-width: 680px;
   border-radius: 24px;
@@ -818,7 +922,8 @@
 @media (max-width: 1100px) {
   .preview-head,
   .ad-grid,
-  .product-grid {
+  .product-grid,
+  .event-grid {
     grid-template-columns: 1fr;
   }
 }

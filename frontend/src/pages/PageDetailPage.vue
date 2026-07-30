@@ -6,6 +6,7 @@
 	import { fetchPage } from '@/services/api/pages'
 	import { findPresencePalette } from '@/constants/presencePalettes'
 	import AdCard from '@/components/AdCard.vue'
+	import EventCard from '@/components/events/EventCard.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
 	import PageRatingsDialog from '@/components/ratings/PageRatingsDialog.vue'
@@ -74,6 +75,14 @@
 				</div>
 			</section>
 
+			<section v-if="page.type === 'community'" class="q-mt-lg">
+				<h2>{{ t('events.eventsTitle') }}</h2>
+				<div v-if="!page.events?.length" class="empty-state">{{ t('events.empty') }}</div>
+				<div v-else class="event-grid">
+					<EventCard v-for="event in page.events" :key="event.id" :event="event" />
+				</div>
+			</section>
+
 			<section class="q-mt-lg">
 				<h2>{{ t('ads.listTitle') }}</h2>
 				<div v-if="!page.ads?.length" class="empty-state">{{ t('ads.empty') }}</div>
@@ -110,7 +119,8 @@
 }
 
 .ad-grid,
-.product-grid {
+.product-grid,
+.event-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
@@ -127,7 +137,8 @@
 
 @media (max-width: 760px) {
   .ad-grid,
-  .product-grid {
+  .product-grid,
+  .event-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -1,5 +1,6 @@
 <script setup>
 	import { computed, onMounted, ref } from 'vue'
+	import { useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
@@ -7,13 +8,17 @@
 	import AdCard from '@/components/AdCard.vue'
 	import AdComposer from '@/components/AdComposer.vue'
 	import ChatBlock from '@/components/ChatBlock.vue'
+	import PageCreateDialog from '@/components/pages/PageCreateDialog.vue'
 
+	const router = useRouter()
 	const { t } = useI18n()
 	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const loading = ref(false)
 	const ads = ref([])
 	const adDialogOpen = ref(false)
+	const pageCreateDialogOpen = ref(false)
+	const pageCreateType = ref('business')
 	const showBusinessPageButton = computed(() => !authStore.user?.business_page)
 	const showCommunityPageButton = computed(() => !authStore.user?.community_page)
 
@@ -41,6 +46,17 @@
 		await loadAds()
 	}
 
+	function openPageCreate(type) {
+		pageCreateType.value = type
+		pageCreateDialogOpen.value = true
+	}
+
+	function handlePageCreated(page) {
+		if (page?.type) {
+			router.push({ name: page.type })
+		}
+	}
+
 	onMounted(loadAds)
 </script>
 
@@ -57,7 +73,7 @@
 						class="create-page-btn create-page-btn--pink"
 						icon="storefront"
 						:label="t('actions.createBusinessPage')"
-						:to="{ name: 'business' }"
+						@click="openPageCreate('business')"
 					/>
 					<q-btn v-if="showCommunityPageButton"
 						unelevated
@@ -66,7 +82,7 @@
 						class="create-page-btn create-page-btn--pink"
 						icon="diversity_3"
 						:label="t('actions.createCommunityPage')"
-						:to="{ name: 'community' }"
+						@click="openPageCreate('community')"
 					/>
 				</div>
 			</section>
@@ -109,6 +125,11 @@
 				</q-card-section>
 			</q-card>
 		</q-dialog>
+		<PageCreateDialog
+			v-model="pageCreateDialogOpen"
+			:type="pageCreateType"
+			@created="handlePageCreated"
+		/>
 	</q-page>
 </template>
 

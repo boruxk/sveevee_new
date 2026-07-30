@@ -43,6 +43,8 @@ export default {
 		chat: 'Chat',
 		createAd: 'Créer une annonce',
 		addProduct: 'Ajouter un produit',
+		addEvent: 'Ajouter un \u00E9v\u00E9nement',
+		deletePage: 'Supprimer la page',
 		createBusinessPage: 'Créer une page entreprise',
 		createCommunityPage: 'Créer une page communauté',
 		update: 'Mettre à jour',
@@ -101,6 +103,18 @@ export default {
 		created: 'Produit créé.',
 		saveFailed: 'Le produit n’a pas pu être enregistré.'
 	},
+	events: {
+		eventsTitle: '\u00C9v\u00E9nements',
+		name: 'Nom',
+		description: 'Description',
+		image: 'Image',
+		date: 'Date',
+		time: 'Heure',
+		address: 'Adresse',
+		empty: 'Aucun \u00E9v\u00E9nement pour le moment.',
+		created: '\u00C9v\u00E9nement cr\u00E9\u00E9.',
+		saveFailed: 'L\u2019\u00E9v\u00E9nement n\u2019a pas pu \u00EAtre enregistr\u00E9.'
+	},
 	chat: {
 		title: 'Chat',
 		empty: 'Choisissez un chat à gauche.',
@@ -141,6 +155,10 @@ export default {
 		publicCardTitle: 'Première impression',
 		saved: 'Page enregistrée.',
 		saveFailed: 'La page n’a pas pu être enregistrée.',
+		deleted: 'Page supprim\u00E9e.',
+		deleteFailed: 'La page n\u2019a pas pu \u00EAtre supprim\u00E9e.',
+		deleteTitle: 'Supprimer la page ?',
+		deleteMessage: 'Cela supprime la page et ses annonces.',
 		saveFirst: 'Enregistrez d’abord la page.',
 		logoMissing: 'Choisissez d’abord un logo.',
 		logoUploaded: 'Logo importé.',

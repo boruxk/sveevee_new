@@ -37,6 +37,10 @@ export function saveMyPage(type, payload) {
 	return apiClient.post(`/pages/${type}`, toPageFormData(payload))
 }
 
+export function deletePage(id) {
+	return apiClient.delete(`/pages/${id}`)
+}
+
 export function fetchPage(id) {
 	return apiClient.get(`/pages/${id}`)
 }

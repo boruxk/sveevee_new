@@ -32,7 +32,7 @@ class PageController extends Controller
         $page = Page::query()
             ->where('user_id', $request->user()->id)
             ->where('type', $type)
-            ->with(['user.profile', 'ads.user.profile', 'ads.page', 'products'])
+            ->with(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'events'])
             ->withCount('ratings')
             ->withAvg('ratings', 'rating')
             ->first();
@@ -89,7 +89,7 @@ class PageController extends Controller
             'neighborhood' => $addressDetails['neighborhood'] ?? null,
         ]);
 
-        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'products'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
+        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'events'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
     }
 
     public function show(Page $page)
@@ -98,11 +98,23 @@ class PageController extends Controller
             return ApiResponseService::error('Resource not found.', status: 404);
         }
 
-        $page->load(['user.profile', 'ads.user.profile', 'ads.page', 'products'])
+        $page->load(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'events'])
             ->loadCount('ratings')
             ->loadAvg('ratings', 'rating');
 
         return ApiResponseService::success($this->payloads->page($page, withAds: true));
+    }
+
+    public function destroy(Request $request, Page $page)
+    {
+        if ($page->user_id !== $request->user()->id && ! $request->user()->hasRole('admin')) {
+            return ApiResponseService::error('This action is unauthorized.', status: 403);
+        }
+
+        $page->ads()->delete();
+        $page->delete();
+
+        return ApiResponseService::success(null, 'Page deleted.');
     }
 
     private function validateType(string $type): void

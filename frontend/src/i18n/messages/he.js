@@ -43,6 +43,8 @@ export default {
 		chat: 'צ׳אט',
 		createAd: 'פרסום מודעה',
 		addProduct: '\u05D4\u05D5\u05E1\u05E4\u05EA \u05DE\u05D5\u05E6\u05E8',
+		addEvent: '\u05D4\u05D5\u05E1\u05E4\u05EA \u05D0\u05D9\u05E8\u05D5\u05E2',
+		deletePage: '\u05DE\u05D7\u05D9\u05E7\u05EA \u05E2\u05DE\u05D5\u05D3',
 		createBusinessPage: 'יצירת עמוד עסק',
 		createCommunityPage: 'יצירת עמוד קהילה',
 		update: 'עדכון',
@@ -101,6 +103,18 @@ export default {
 		created: '\u05D4\u05DE\u05D5\u05E6\u05E8 \u05E0\u05D5\u05E6\u05E8.',
 		saveFailed: '\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05E9\u05DE\u05D5\u05E8 \u05D0\u05EA \u05D4\u05DE\u05D5\u05E6\u05E8.'
 	},
+	events: {
+		eventsTitle: '\u05D0\u05D9\u05E8\u05D5\u05E2\u05D9\u05DD',
+		name: '\u05E9\u05DD',
+		description: '\u05EA\u05D9\u05D0\u05D5\u05E8',
+		image: '\u05EA\u05DE\u05D5\u05E0\u05D4',
+		date: '\u05EA\u05D0\u05E8\u05D9\u05DA',
+		time: '\u05E9\u05E2\u05D4',
+		address: '\u05DB\u05EA\u05D5\u05D1\u05EA',
+		empty: '\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05D0\u05D9\u05E8\u05D5\u05E2\u05D9\u05DD.',
+		created: '\u05D4\u05D0\u05D9\u05E8\u05D5\u05E2 \u05E0\u05D5\u05E6\u05E8.',
+		saveFailed: '\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05E9\u05DE\u05D5\u05E8 \u05D0\u05EA \u05D4\u05D0\u05D9\u05E8\u05D5\u05E2.'
+	},
 	chat: {
 		title: 'צ׳אט',
 		empty: 'בחרו שיחה מהרשימה.',
@@ -141,6 +155,10 @@ export default {
 		publicCardTitle: 'רושם ראשון',
 		saved: 'העמוד נשמר.',
 		saveFailed: 'לא ניתן לשמור את העמוד.',
+		deleted: '\u05D4\u05E2\u05DE\u05D5\u05D3 \u05E0\u05DE\u05D7\u05E7.',
+		deleteFailed: '\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05DE\u05D7\u05D5\u05E7 \u05D0\u05EA \u05D4\u05E2\u05DE\u05D5\u05D3.',
+		deleteTitle: '\u05DC\u05DE\u05D7\u05D5\u05E7 \u05D0\u05EA \u05D4\u05E2\u05DE\u05D5\u05D3?',
+		deleteMessage: '\u05D4\u05E2\u05DE\u05D5\u05D3 \u05D5\u05D4\u05DE\u05D5\u05D3\u05E2\u05D5\u05EA \u05E9\u05DC\u05D5 \u05D9\u05D9\u05DE\u05D7\u05E7\u05D5.',
 		saveFirst: 'יש לשמור קודם את העמוד.',
 		logoMissing: 'צריך לבחור קודם לוגו.',
 		logoUploaded: 'הלוגו הועלה.',
