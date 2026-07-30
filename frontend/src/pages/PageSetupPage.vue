@@ -11,6 +11,8 @@
 	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
 	import AdCard from '@/components/AdCard.vue'
 	import AdComposer from '@/components/AdComposer.vue'
+	import ProductCard from '@/components/products/ProductCard.vue'
+	import ProductComposer from '@/components/products/ProductComposer.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
 	import PageRatingsDialog from '@/components/ratings/PageRatingsDialog.vue'
 
@@ -35,6 +37,7 @@
 	const formRef = ref(null)
 	const setupDialogOpen = ref(false)
 	const adDialogOpen = ref(false)
+	const productDialogOpen = ref(false)
 	const ratingsDialogOpen = ref(false)
 	const page = ref(null)
 	const localLogoPreviewUrl = ref(null)
@@ -60,6 +63,7 @@
 	})
 
 	const type = computed(() => route.meta.pageType || 'business')
+	const isBusinessPage = computed(() => type.value === 'business')
 	const title = computed(() => (type.value === 'business' ? t('pages.businessTitle') : t('pages.communityTitle')))
 	const selectedPalette = computed(() => findPresencePalette(form.palette_key))
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
@@ -265,6 +269,11 @@
 		await load()
 	}
 
+	async function handleProductSaved() {
+		productDialogOpen.value = false
+		await load()
+	}
+
 	function dayLabel(weekday) {
 		return t(`pages.weekdays.${weekday}`)
 	}
@@ -375,6 +384,25 @@
 					:palette="selectedPalette"
 					@show-ratings="ratingsDialogOpen = true"
 				/>
+			</section>
+
+			<section v-if="isBusinessPage" class="soz-section-card panel q-mt-lg">
+				<div class="panel-head">
+					<h2>{{ t('products.storeTitle') }}</h2>
+					<q-btn rounded
+						unelevated
+						color="primary"
+						icon="add_shopping_cart"
+						:disable="!page"
+						:label="t('actions.addProduct')"
+						@click="productDialogOpen = true"
+					/>
+				</div>
+				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
+				<div v-else-if="!page.products?.length" class="empty-state">{{ t('products.empty') }}</div>
+				<div v-else class="product-grid">
+					<ProductCard v-for="product in page.products" :key="product.id" :product="product" />
+				</div>
 			</section>
 
 			<section class="soz-section-card panel q-mt-lg">
@@ -578,6 +606,17 @@
 				</q-card-section>
 			</q-card>
 		</q-dialog>
+		<q-dialog v-model="productDialogOpen">
+			<q-card class="product-dialog">
+				<q-card-section class="dialog-head">
+					<div class="text-h6">{{ t('actions.addProduct') }}</div>
+					<q-btn flat round icon="close" color="dark" v-close-popup />
+				</q-card-section>
+				<q-card-section>
+					<ProductComposer v-if="page?.id" :page-id="page.id" @saved="handleProductSaved" />
+				</q-card-section>
+			</q-card>
+		</q-dialog>
 		<PageRatingsDialog
 			v-model="ratingsDialogOpen"
 			:page-id="page?.id"
@@ -734,7 +773,8 @@
   align-items: center;
 }
 
-.ad-grid {
+.ad-grid,
+.product-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
@@ -755,7 +795,8 @@
   background: #f9f2eb;
 }
 
-.ad-dialog {
+.ad-dialog,
+.product-dialog {
   width: min(680px, calc(100vw - 24px));
   max-width: 680px;
   border-radius: 24px;
@@ -776,7 +817,8 @@
 
 @media (max-width: 1100px) {
   .preview-head,
-  .ad-grid {
+  .ad-grid,
+  .product-grid {
     grid-template-columns: 1fr;
   }
 }

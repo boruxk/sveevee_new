@@ -42,6 +42,7 @@ export default {
 		send: 'Envoyer',
 		chat: 'Chat',
 		createAd: 'Créer une annonce',
+		addProduct: 'Ajouter un produit',
 		createBusinessPage: 'Créer une page entreprise',
 		createCommunityPage: 'Créer une page communauté',
 		update: 'Mettre à jour',
@@ -86,6 +87,19 @@ export default {
 		saveFailed: 'L’annonce n’a pas pu être enregistrée.',
 		deleteFailed: 'L’annonce n’a pas pu être supprimée.',
 		listTitle: 'Annonces'
+	},
+	products: {
+		storeTitle: 'Boutique',
+		name: 'Nom',
+		description: 'Description',
+		image: 'Image',
+		price: 'Prix',
+		link: 'Lien du produit',
+		linkHint: 'Lien vers le produit sur le site du vendeur.',
+		open: 'Voir le produit',
+		empty: 'Aucun produit pour le moment.',
+		created: 'Produit créé.',
+		saveFailed: 'Le produit n’a pas pu être enregistré.'
 	},
 	chat: {
 		title: 'Chat',

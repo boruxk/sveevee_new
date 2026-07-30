@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Ad;
 use App\Models\Conversation;
 use App\Models\Page;
+use App\Models\PageProduct;
 use App\Models\PageRating;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -69,6 +70,7 @@ class PayloadService
         $setup = $page->setup ?? [];
         $contact = $this->pageContact($page, $setup);
         $addressDetails = $this->pageAddress($setup);
+        $page->loadMissing('products');
 
         $payload = [
             'id' => $page->id,
@@ -86,6 +88,7 @@ class PayloadService
             'logo_url' => $page->logo_url,
             'banner_url' => $page->banner_url,
             'rating_summary' => $this->pageRatingSummary($page),
+            'products' => $page->products->map(fn (PageProduct $product) => $this->product($product))->values()->all(),
             'setup' => $setup,
             'owner' => $page->relationLoaded('user') ? $this->user($page->user) : null,
             'created_at' => $page->created_at?->toISOString(),
@@ -98,6 +101,22 @@ class PayloadService
         }
 
         return $payload;
+    }
+
+    public function product(PageProduct $product): array
+    {
+        return [
+            'id' => $product->id,
+            'page_id' => $product->page_id,
+            'name' => $product->name,
+            'description' => $product->description,
+            'image_url' => $product->image_url,
+            'price' => (float) $product->price,
+            'price_label' => '₪'.number_format((float) $product->price, 2),
+            'link' => $product->link,
+            'created_at' => $product->created_at?->toISOString(),
+            'updated_at' => $product->updated_at?->toISOString(),
+        ];
     }
 
     public function pageRatingSummary(Page $page): array

@@ -32,7 +32,7 @@ class PageController extends Controller
         $page = Page::query()
             ->where('user_id', $request->user()->id)
             ->where('type', $type)
-            ->with(['user.profile', 'ads.user.profile', 'ads.page'])
+            ->with(['user.profile', 'ads.user.profile', 'ads.page', 'products'])
             ->withCount('ratings')
             ->withAvg('ratings', 'rating')
             ->first();
@@ -89,7 +89,7 @@ class PageController extends Controller
             'neighborhood' => $addressDetails['neighborhood'] ?? null,
         ]);
 
-        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
+        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'products'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
     }
 
     public function show(Page $page)
@@ -98,7 +98,7 @@ class PageController extends Controller
             return ApiResponseService::error('Resource not found.', status: 404);
         }
 
-        $page->load(['user.profile', 'ads.user.profile', 'ads.page'])
+        $page->load(['user.profile', 'ads.user.profile', 'ads.page', 'products'])
             ->loadCount('ratings')
             ->loadAvg('ratings', 'rating');
 

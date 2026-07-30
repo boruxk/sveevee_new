@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\HomeFeedController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\PageController;
+use App\Http\Controllers\Api\PageProductController;
 use App\Http\Controllers\Api\PageRatingController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PublicUserController;
@@ -36,6 +37,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/pages/{type}/mine', [PageController::class, 'mine']);
         Route::post('/pages/{type}', [PageController::class, 'upsert']);
+        Route::post('/pages/{page}/products', [PageProductController::class, 'store']);
         Route::put('/pages/{page}/ratings/me', [PageRatingController::class, 'store']);
 
         Route::get('/ads', [AdController::class, 'index']);

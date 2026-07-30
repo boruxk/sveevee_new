@@ -44,6 +44,11 @@ class Page extends Model
         return $this->hasMany(Ad::class)->latest();
     }
 
+    public function products(): HasMany
+    {
+        return $this->hasMany(PageProduct::class)->latest();
+    }
+
     public function ratings(): HasMany
     {
         return $this->hasMany(PageRating::class)->latest();

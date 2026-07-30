@@ -42,6 +42,7 @@ export default {
 		send: 'Send',
 		chat: 'Chat',
 		createAd: 'Create ad',
+		addProduct: 'Add product',
 		createBusinessPage: 'Create Business Page',
 		createCommunityPage: 'Create Community Page',
 		update: 'Update',
@@ -86,6 +87,19 @@ export default {
 		saveFailed: 'Ad could not be saved.',
 		deleteFailed: 'Ad could not be deleted.',
 		listTitle: 'Ads'
+	},
+	products: {
+		storeTitle: 'Store',
+		name: 'Name',
+		description: 'Description',
+		image: 'Image',
+		price: 'Price',
+		link: 'Product link',
+		linkHint: "Link to the product on the seller's website.",
+		open: 'View product',
+		empty: 'No products yet.',
+		created: 'Product created.',
+		saveFailed: 'Product could not be saved.'
 	},
 	chat: {
 		title: 'Chat',

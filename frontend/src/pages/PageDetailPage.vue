@@ -6,6 +6,7 @@
 	import { fetchPage } from '@/services/api/pages'
 	import { findPresencePalette } from '@/constants/presencePalettes'
 	import AdCard from '@/components/AdCard.vue'
+	import ProductCard from '@/components/products/ProductCard.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
 	import PageRatingsDialog from '@/components/ratings/PageRatingsDialog.vue'
 	import PageReviewDialog from '@/components/ratings/PageReviewDialog.vue'
@@ -65,6 +66,14 @@
 				</router-link>
 			</section>
 
+			<section v-if="page.type === 'business'" class="q-mt-lg">
+				<h2>{{ t('products.storeTitle') }}</h2>
+				<div v-if="!page.products?.length" class="empty-state">{{ t('products.empty') }}</div>
+				<div v-else class="product-grid">
+					<ProductCard v-for="product in page.products" :key="product.id" :product="product" />
+				</div>
+			</section>
+
 			<section class="q-mt-lg">
 				<h2>{{ t('ads.listTitle') }}</h2>
 				<div v-if="!page.ads?.length" class="empty-state">{{ t('ads.empty') }}</div>
@@ -100,7 +109,8 @@
   margin: 0 auto;
 }
 
-.ad-grid {
+.ad-grid,
+.product-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
@@ -116,7 +126,8 @@
 }
 
 @media (max-width: 760px) {
-  .ad-grid {
+  .ad-grid,
+  .product-grid {
     grid-template-columns: 1fr;
   }
 }

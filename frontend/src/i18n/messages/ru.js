@@ -42,6 +42,7 @@ export default {
 		send: 'Отправить',
 		chat: 'Чат',
 		createAd: 'Создать объявление',
+		addProduct: 'Добавить продукт',
 		createBusinessPage: 'Создать страницу бизнеса',
 		createCommunityPage: 'Создать страницу сообщества',
 		update: 'Обновить',
@@ -86,6 +87,19 @@ export default {
 		saveFailed: 'Не удалось сохранить объявление.',
 		deleteFailed: 'Не удалось удалить объявление.',
 		listTitle: 'Объявления'
+	},
+	products: {
+		storeTitle: 'Магазин',
+		name: 'Название',
+		description: 'Описание',
+		image: 'Изображение',
+		price: 'Цена',
+		link: 'Ссылка на продукт',
+		linkHint: 'Ссылка на продукт на сайте продавца.',
+		open: 'Открыть продукт',
+		empty: 'Продуктов пока нет.',
+		created: 'Продукт создан.',
+		saveFailed: 'Не удалось сохранить продукт.'
 	},
 	chat: {
 		title: 'Чат',

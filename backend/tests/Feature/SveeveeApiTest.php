@@ -6,6 +6,8 @@ use App\Models\Ad;
 use App\Models\Page;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -186,6 +188,49 @@ class SveeveeApiTest extends TestCase
 
         $this->assertContains('Tel Aviv', $locations->json('data.cities'));
         $this->assertContains(['city' => 'Tel Aviv', 'name' => 'Ramat Aviv'], $locations->json('data.neighborhoods'));
+    }
+
+    public function test_business_page_owner_can_add_store_product(): void
+    {
+        Storage::fake('public');
+
+        $owner = User::factory()->create();
+        $businessPage = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Miri Studio',
+        ]);
+        $communityPage = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_COMMUNITY,
+            'name' => 'Miri Community',
+        ]);
+
+        Sanctum::actingAs($owner);
+
+        $this->post("/api/v1/pages/{$businessPage->id}/products", [
+            'name' => 'Ceramic cup',
+            'description' => 'Handmade cup from the studio.',
+            'image' => UploadedFile::fake()->image('cup.jpg'),
+            'price' => '29.90',
+            'link' => 'https://seller.example/products/cup',
+        ], ['Accept' => 'application/json'])->assertCreated()
+            ->assertJsonPath('data.name', 'Ceramic cup')
+            ->assertJsonPath('data.price', 29.9)
+            ->assertJsonPath('data.link', 'https://seller.example/products/cup');
+
+        $this->getJson("/api/v1/pages/{$businessPage->id}")
+            ->assertOk()
+            ->assertJsonPath('data.products.0.name', 'Ceramic cup')
+            ->assertJsonPath('data.products.0.price_label', '₪29.90');
+
+        $this->post("/api/v1/pages/{$communityPage->id}/products", [
+            'name' => 'Community cup',
+            'description' => 'Not allowed here.',
+            'image' => UploadedFile::fake()->image('community-cup.jpg'),
+            'price' => '19.90',
+            'link' => 'https://seller.example/products/community-cup',
+        ], ['Accept' => 'application/json'])->assertStatus(422);
     }
 
     public function test_user_can_rate_page_and_update_rating(): void

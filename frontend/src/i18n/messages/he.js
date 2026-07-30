@@ -42,6 +42,7 @@ export default {
 		send: 'שליחה',
 		chat: 'צ׳אט',
 		createAd: 'פרסום מודעה',
+		addProduct: '\u05D4\u05D5\u05E1\u05E4\u05EA \u05DE\u05D5\u05E6\u05E8',
 		createBusinessPage: 'יצירת עמוד עסק',
 		createCommunityPage: 'יצירת עמוד קהילה',
 		update: 'עדכון',
@@ -86,6 +87,19 @@ export default {
 		saveFailed: 'לא ניתן לשמור את המודעה.',
 		deleteFailed: 'לא ניתן למחוק את המודעה.',
 		listTitle: 'מודעות'
+	},
+	products: {
+		storeTitle: '\u05D7\u05E0\u05D5\u05EA',
+		name: '\u05E9\u05DD',
+		description: '\u05EA\u05D9\u05D0\u05D5\u05E8',
+		image: '\u05EA\u05DE\u05D5\u05E0\u05D4',
+		price: '\u05DE\u05D7\u05D9\u05E8',
+		link: '\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05DE\u05D5\u05E6\u05E8',
+		linkHint: '\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05DE\u05D5\u05E6\u05E8 \u05D1\u05D0\u05EA\u05E8 \u05E9\u05DC \u05D4\u05DE\u05D5\u05DB\u05E8.',
+		open: '\u05DC\u05E6\u05E4\u05D9\u05D9\u05D4 \u05D1\u05DE\u05D5\u05E6\u05E8',
+		empty: '\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD.',
+		created: '\u05D4\u05DE\u05D5\u05E6\u05E8 \u05E0\u05D5\u05E6\u05E8.',
+		saveFailed: '\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05E9\u05DE\u05D5\u05E8 \u05D0\u05EA \u05D4\u05DE\u05D5\u05E6\u05E8.'
 	},
 	chat: {
 		title: 'צ׳אט',
