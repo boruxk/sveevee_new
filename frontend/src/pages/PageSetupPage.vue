@@ -219,6 +219,7 @@
 			await authStore.refreshUser()
 			if (notify) {
 				$q.notify({ type: 'positive', message: t('pages.saved') })
+				setupDialogOpen.value = false
 			}
 			return true
 		} catch (error) {
@@ -610,21 +611,6 @@
 									</div>
 								</section>
 
-								<div class="section-label">{{ t('pages.palette') }}</div>
-								<div class="palette-grid">
-									<button
-										v-for="palette in presencePalettes"
-										:key="palette.key"
-										type="button"
-										class="palette-card"
-										:class="{ 'palette-card--active': palette.key === form.palette_key }"
-										@click="form.palette_key = palette.key"
-									>
-										<span class="palette-card__swatch" :style="{ background: palette.hero }" />
-										<span class="palette-card__name">{{ t(palette.nameKey) }}</span>
-									</button>
-								</div>
-
 								<div class="upload-group q-mt-md">
 									<div class="upload-row">
 										<q-file v-model="form.logo" outlined clearable accept=".jpg,.jpeg,.png,.webp,image/png,image/jpeg,image/webp" :label="t('pages.logo')" />
@@ -649,6 +635,21 @@
 											@click="uploadBanner"
 										/>
 									</div>
+								</div>
+
+								<div class="section-label">{{ t('pages.palette') }}</div>
+								<div class="palette-grid">
+									<button
+										v-for="palette in presencePalettes"
+										:key="palette.key"
+										type="button"
+										class="palette-card"
+										:class="{ 'palette-card--active': palette.key === form.palette_key }"
+										@click="form.palette_key = palette.key"
+									>
+										<span class="palette-card__swatch" :style="{ background: palette.hero }" />
+										<span class="palette-card__name">{{ t(palette.nameKey) }}</span>
+									</button>
 								</div>
 
 								<div class="row items-center q-col-gutter-sm q-mt-md">
@@ -816,7 +817,7 @@
 
 .palette-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -925,6 +926,10 @@
   .product-grid,
   .event-grid {
     grid-template-columns: 1fr;
+  }
+
+  .palette-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

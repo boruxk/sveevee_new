@@ -62,14 +62,23 @@
 	const previewStyle = computed(() => ({
 		'--presence-accent': props.palette.accent,
 		'--presence-surface': props.palette.surface,
+		'--presence-card': props.palette.card || 'rgba(255, 255, 255, 0.78)',
+		'--presence-border': props.palette.border || 'rgba(17, 34, 45, 0.08)',
 		'--presence-hero': props.palette.hero,
+		'--presence-overlay': props.palette.overlay || 'radial-gradient(circle at top right, rgba(255, 255, 255, 0.56), transparent 40%), linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.58))',
 		'--presence-ink': props.palette.ink,
-		'--presence-muted': props.palette.muted
+		'--presence-muted': props.palette.muted,
+		'--presence-banner-border': props.palette.dark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(17, 34, 45, 0.12)',
+		'--presence-logo-bg': props.palette.dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.92)',
+		'--presence-shadow': props.palette.dark ? 'rgba(0, 0, 0, 0.34)' : 'rgba(17, 34, 45, 0.14)'
+	}))
+	const previewClasses = computed(() => ({
+		'page-preview--dark': Boolean(props.palette.dark)
 	}))
 </script>
 
 <template>
-	<article class="page-preview" :style="previewStyle">
+	<article class="page-preview" :class="previewClasses" :style="previewStyle">
 		<div class="page-preview__hero">
 			<div class="page-preview__banner" :style="previewBannerUrl ? { backgroundImage: `url(${previewBannerUrl})` } : null" />
 			<div class="page-preview__overlay" />
@@ -97,12 +106,12 @@
 							<span>{{ item.value }}</span>
 						</div>
 					</div>
-					<div v-else class="text-body2 text-grey-7">{{ t('pages.noContact') }}</div>
+					<div v-else class="text-body2 page-preview__empty">{{ t('pages.noContact') }}</div>
 				</div>
 
 				<div class="page-preview__detail-card">
 					<div class="page-preview__section-title">{{ t('pages.sections.address') }}</div>
-					<div class="text-body2" :class="{ 'text-grey-7': !previewAddress }">
+					<div class="text-body2" :class="{ 'page-preview__empty': !previewAddress }">
 						{{ previewAddress || t('pages.noAddress') }}
 					</div>
 				</div>
@@ -112,7 +121,7 @@
 					<div class="page-preview__rating-row">
 						<div class="page-preview__rating-score">
 							<RatingStars readonly :value="ratingAverage" />
-							<div class="text-body2 text-grey-7">{{ ratingText }}</div>
+							<div class="text-body2 page-preview__empty">{{ ratingText }}</div>
 						</div>
 						<div class="page-preview__rating-actions">
 							<q-btn rounded
@@ -146,7 +155,7 @@
 							<span>{{ item.is_open ? `${item.opens_at} - ${item.closes_at}` : t('pages.closed') }}</span>
 						</div>
 					</div>
-					<div v-else class="text-body2 text-grey-7">{{ t('pages.noOpeningHours') }}</div>
+					<div v-else class="text-body2 page-preview__empty">{{ t('pages.noOpeningHours') }}</div>
 				</div>
 			</div>
 		</div>
@@ -157,6 +166,10 @@
 .page-preview {
   display: grid;
   gap: 26px;
+  padding: 24px;
+  border: 1px solid var(--presence-border);
+  border-radius: 36px;
+  background: var(--presence-surface);
   color: var(--presence-ink);
 }
 
@@ -164,7 +177,7 @@
   position: relative;
   overflow: hidden;
   min-height: 320px;
-  border: 1px solid rgba(17, 34, 45, 0.08);
+  border: 1px solid var(--presence-banner-border);
   border-radius: 36px;
   background: var(--presence-hero);
 }
@@ -182,9 +195,7 @@
 }
 
 .page-preview__overlay {
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.56), transparent 40%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.58));
+  background: var(--presence-overlay);
 }
 
 .page-preview__intro {
@@ -200,11 +211,11 @@
 
 .page-preview__logo {
   border-radius: 28px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--presence-logo-bg);
   color: var(--presence-accent);
   font-size: 38px;
   font-weight: 700;
-  box-shadow: 0 18px 44px rgba(17, 34, 45, 0.14);
+  box-shadow: 0 18px 44px var(--presence-shadow);
 }
 
 .page-preview__logo :deep(img) {
@@ -242,7 +253,7 @@
   align-content: start;
   gap: 14px;
   padding: 24px;
-  border: 1px solid rgba(17, 34, 45, 0.08);
+  border: 1px solid var(--presence-border);
   border-radius: 28px;
   background: var(--presence-surface);
 }
@@ -257,8 +268,9 @@
 
 .page-preview__detail-card {
   padding: 20px;
+  border: 1px solid var(--presence-border);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--presence-card);
 }
 
 .page-preview__detail-list,
@@ -276,6 +288,10 @@
 }
 
 .page-preview__detail-label {
+  color: var(--presence-muted);
+}
+
+.page-preview__empty {
   color: var(--presence-muted);
 }
 
