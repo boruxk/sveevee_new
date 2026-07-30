@@ -94,6 +94,7 @@ class SveeveeApiTest extends TestCase
                     'street' => 'Herzl',
                     'number' => '10',
                     'city' => 'Haifa',
+                    'neighborhood' => 'Hadar',
                 ],
                 'opening_hours' => [
                     ['weekday' => 'monday', 'is_open' => true, 'opens_at' => '08:30', 'closes_at' => '16:00'],
@@ -103,6 +104,7 @@ class SveeveeApiTest extends TestCase
             ->assertJsonPath('data.palette_key', 'sea-glass')
             ->assertJsonPath('data.contact.whatsapp', '+972 50 111 2222')
             ->assertJsonPath('data.address_details.street', 'Herzl')
+            ->assertJsonPath('data.address_details.neighborhood', 'Hadar')
             ->assertJsonPath('data.opening_hours.1.weekday', 'monday')
             ->assertJsonPath('data.opening_hours.1.opens_at', '08:30');
 
@@ -111,7 +113,7 @@ class SveeveeApiTest extends TestCase
             ->assertJsonPath('data.business_page.name', 'Miri Studio');
     }
 
-    public function test_user_can_create_ad_with_location_and_search_by_location(): void
+    public function test_ads_use_owner_location_and_search_by_location(): void
     {
         $owner = User::factory()->create();
         $owner->profile()->update([
@@ -130,8 +132,28 @@ class SveeveeApiTest extends TestCase
         $this->postJson('/api/v1/ads', [
             'title' => 'Desk lamp',
             'text' => 'Pickup today.',
-            'city' => 'Tel Aviv',
-            'neighborhood' => 'Florentin',
+        ])->assertCreated()
+            ->assertJsonPath('data.city', 'Jerusalem')
+            ->assertJsonPath('data.neighborhood', 'Ramot');
+
+        $page = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Florentin Studio',
+            'setup' => [
+                'address' => [
+                    'street' => 'Herzl',
+                    'number' => '10',
+                    'city' => 'Tel Aviv',
+                    'neighborhood' => 'Florentin',
+                ],
+            ],
+        ]);
+
+        $this->postJson('/api/v1/ads', [
+            'title' => 'Desk lamp',
+            'text' => 'Pickup from the studio.',
+            'page_id' => $page->id,
         ])->assertCreated()
             ->assertJsonPath('data.city', 'Tel Aviv')
             ->assertJsonPath('data.neighborhood', 'Florentin');

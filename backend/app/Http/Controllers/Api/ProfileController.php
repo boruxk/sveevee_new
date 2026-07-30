@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Ad;
 use App\Models\EmailBan;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
@@ -57,6 +58,13 @@ class ProfileController extends Controller
             'neighborhood' => $data['neighborhood'] ?? null,
             'languages' => $data['languages'] ?? [$user->locale],
         ]);
+        $user->ads()
+            ->whereNull('page_id')
+            ->where('type', Ad::TYPE_PRIVATE)
+            ->update([
+                'city' => $data['city'] ?? null,
+                'neighborhood' => $data['neighborhood'] ?? null,
+            ]);
 
         return ApiResponseService::success($this->payloads->profile($profile, $user->fresh()), 'Profile saved.');
     }

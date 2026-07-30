@@ -5,7 +5,7 @@ function addressLine(address) {
 		return ''
 	}
 
-	return [address.street, address.number, address.city].filter(Boolean).join(', ')
+	return [address.street, address.number, address.neighborhood, address.city].filter(Boolean).join(', ')
 }
 
 function toPageFormData(payload) {

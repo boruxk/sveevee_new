@@ -5,11 +5,13 @@
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
+	import { useRequiredFields } from '@/composables/useRequiredFields'
 
 	const { t } = useI18n()
 	const $q = useQuasar()
 	const router = useRouter()
 	const authStore = useAuthStore()
+	const formRef = ref(null)
 	const citySelectOptions = ref([])
 	const neighborhoodSelectOptions = ref([])
 	const form = reactive({
@@ -38,8 +40,13 @@
 		{ label: t('languages.ru'), value: 'ru' },
 		{ label: t('languages.fr'), value: 'fr' }
 	])
+	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	async function submit() {
+		if (!(await validateRequiredForm(formRef))) {
+			return
+		}
+
 		try {
 			await authStore.register(form)
 			rememberLocation(form.city, form.neighborhood)
@@ -94,15 +101,43 @@
 				<div class="auth-panel__inner">
 					<h1 class="soz-page-title">{{ t('auth.registerTitle') }}</h1>
 					<p class="q-pb-md">{{ t('auth.simpleLogin') }}</p>
-					<q-form class="column q-gutter-md q-pl-md" @submit.prevent="submit">
+					<q-form ref="formRef" greedy class="column q-gutter-md q-pl-md" @submit.prevent="submit()">
 						<div class="row q-col-gutter-md q-pb-md">
-							<q-input class="col-12 col-md-4" v-model="form.email" outlined type="email" :label="t('auth.email')" />
-							<q-input class="col-12 col-md-4" v-model="form.given_name" outlined :label="t('auth.givenName')" />
-							<q-input class="col-12 col-md-4" v-model="form.family_name" outlined :label="t('auth.familyName')" />
+							<q-input class="col-12 col-md-4"
+								v-model="form.email"
+								outlined
+								type="email"
+								:label="requiredLabel('auth.email')"
+								:rules="[requiredRule]"
+							/>
+							<q-input class="col-12 col-md-4"
+								v-model="form.given_name"
+								outlined
+								:label="requiredLabel('auth.givenName')"
+								:rules="[requiredRule]"
+							/>
+							<q-input class="col-12 col-md-4"
+								v-model="form.family_name"
+								outlined
+								:label="requiredLabel('auth.familyName')"
+								:rules="[requiredRule]"
+							/>
 						</div>
 						<div class="row q-col-gutter-md q-pb-md">
-							<q-input class="col-12 col-md-6" v-model="form.password" outlined type="password" :label="t('auth.password')" />
-							<q-input class="col-12 col-md-6" v-model="form.password_confirmation" outlined type="password" :label="t('auth.passwordConfirmation')" />
+							<q-input class="col-12 col-md-6"
+								v-model="form.password"
+								outlined
+								type="password"
+								:label="requiredLabel('auth.password')"
+								:rules="[requiredRule]"
+							/>
+							<q-input class="col-12 col-md-6"
+								v-model="form.password_confirmation"
+								outlined
+								type="password"
+								:label="requiredLabel('auth.passwordConfirmation')"
+								:rules="[requiredRule]"
+							/>
 						</div>
 						<div class="row q-col-gutter-md q-pb-md">
 							<q-input class="col-12 col-md-4" v-model="form.phone" outlined :label="t('auth.phone')" />
@@ -116,7 +151,8 @@
 								input-debounce="0"
 								new-value-mode="add-unique"
 								:options="citySelectOptions"
-								:label="t('auth.city')"
+								:label="requiredLabel('auth.city')"
+								:rules="[requiredRule]"
 								@filter="filterCityOptions"
 								@new-value="addOption"
 							/>
@@ -130,7 +166,8 @@
 								input-debounce="0"
 								new-value-mode="add-unique"
 								:options="neighborhoodSelectOptions"
-								:label="t('auth.neighborhood')"
+								:label="requiredLabel('auth.neighborhood')"
+								:rules="[requiredRule]"
 								:disable="!form.city"
 								@filter="filterNeighborhoodOptions"
 								@new-value="addOption"
@@ -144,7 +181,8 @@
 								emit-value
 								map-options
 								:options="languageOptions"
-								:label="t('profile.languages')"
+								:label="requiredLabel('profile.languages')"
+								:rules="[requiredRule]"
 							/>
 						</div>
 						<q-btn class="form-submit"

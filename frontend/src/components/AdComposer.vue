@@ -1,10 +1,9 @@
 <script setup>
-	import { computed, onMounted, reactive, ref, toRef, watch } from 'vue'
+	import { reactive, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { createAd } from '@/services/api/ads'
-	import { useLocationOptions } from '@/composables/useLocationOptions'
-	import { useAuthStore } from '@/stores/auth'
+	import { useRequiredFields } from '@/composables/useRequiredFields'
 
 	const props = defineProps({
 		pageId: {
@@ -20,33 +19,17 @@
 	const emit = defineEmits(['saved'])
 	const { t } = useI18n()
 	const $q = useQuasar()
-	const authStore = useAuthStore()
 	const loading = ref(false)
 	const formRef = ref(null)
+	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 	const form = reactive({
 		title: '',
 		text: '',
-		city: '',
-		neighborhood: '',
 		image: null
 	})
-	const citySelectOptions = ref([])
-	const neighborhoodSelectOptions = ref([])
-	const defaultCity = computed(() => authStore.user?.profile?.city || '')
-	const defaultNeighborhood = computed(() => authStore.user?.profile?.neighborhood || '')
-	const {
-		cityOptions,
-		neighborhoodOptions,
-		loadLocationOptions,
-		rememberLocation,
-		addOption,
-		filterOptions
-	} = useLocationOptions(toRef(form, 'city'))
 
 	async function submit() {
-		const valid = await formRef.value?.validate()
-
-		if (!valid) {
+		if (!(await validateRequiredForm(formRef))) {
 			return
 		}
 
@@ -57,7 +40,6 @@
 				...form,
 				page_id: props.pageId
 			})
-			rememberLocation(data.data?.city || form.city, data.data?.neighborhood || form.neighborhood)
 			form.title = ''
 			form.text = ''
 			form.image = null
@@ -70,98 +52,25 @@
 		}
 	}
 
-	function applyDefaultLocation() {
-		if (!form.city && defaultCity.value) {
-			form.city = defaultCity.value
-		}
-
-		if (!form.neighborhood && defaultNeighborhood.value) {
-			form.neighborhood = defaultNeighborhood.value
-		}
-	}
-
-	function filterCityOptions(value, update) {
-		update(() => {
-			citySelectOptions.value = filterOptions(cityOptions.value, value)
-		})
-	}
-
-	function filterNeighborhoodOptions(value, update) {
-		update(() => {
-			neighborhoodSelectOptions.value = filterOptions(neighborhoodOptions.value, value)
-		})
-	}
-
-	watch(() => authStore.user?.profile, applyDefaultLocation, { immediate: true })
-
-	watch(cityOptions, (options) => {
-		citySelectOptions.value = options
-	}, { immediate: true })
-
-	watch(neighborhoodOptions, (options) => {
-		neighborhoodSelectOptions.value = options
-	}, { immediate: true })
-
-	watch(() => form.city, () => {
-		if (!form.city) {
-			form.neighborhood = ''
-			return
-		}
-
-		if (form.neighborhood && !neighborhoodOptions.value.includes(form.neighborhood)) {
-			form.neighborhood = ''
-		}
-	})
-
-	onMounted(async() => {
-		await loadLocationOptions()
-		citySelectOptions.value = cityOptions.value
-		neighborhoodSelectOptions.value = neighborhoodOptions.value
-		applyDefaultLocation()
-	})
 </script>
 
 <template>
-	<q-form ref="formRef" class="ad-composer" @submit.prevent="submit">
-		<q-input v-model="form.title" outlined :label="t('ads.title')" :disable="disabled" :rules="[(value) => !!String(value || '').trim()]" />
+	<q-form ref="formRef" greedy class="ad-composer" @submit.prevent="submit()">
+		<q-input
+			v-model="form.title"
+			outlined
+			:label="requiredLabel('ads.title')"
+			:disable="disabled"
+			:rules="[requiredRule]"
+		/>
 		<q-input v-model="form.text"
 			outlined
 			type="textarea"
 			autogrow
-			:label="t('ads.text')"
+			:label="requiredLabel('ads.text')"
 			:disable="disabled"
-			:rules="[(value) => !!String(value || '').trim()]"
+			:rules="[requiredRule]"
 		/>
-		<div class="ad-composer__row ad-composer__row--location">
-			<q-select v-model="form.city"
-				outlined
-				clearable
-				use-input
-				hide-selected
-				fill-input
-				input-debounce="0"
-				new-value-mode="add-unique"
-				:options="citySelectOptions"
-				:label="t('auth.city')"
-				:disable="disabled"
-				@filter="filterCityOptions"
-				@new-value="addOption"
-			/>
-			<q-select v-model="form.neighborhood"
-				outlined
-				clearable
-				use-input
-				hide-selected
-				fill-input
-				input-debounce="0"
-				new-value-mode="add-unique"
-				:options="neighborhoodSelectOptions"
-				:label="t('auth.neighborhood')"
-				:disable="disabled || !form.city"
-				@filter="filterNeighborhoodOptions"
-				@new-value="addOption"
-			/>
-		</div>
 		<div class="ad-composer__row">
 			<q-file v-model="form.image"
 				outlined
@@ -194,10 +103,6 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-}
-
-.ad-composer__row--location {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 @media (max-width: 700px) {

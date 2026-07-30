@@ -18,6 +18,10 @@ export default {
 		ru: 'Russe',
 		fr: 'Français'
 	},
+	validation: {
+		required: 'Ce champ est obligatoire.',
+		requiredFields: 'Veuillez remplir les champs obligatoires.'
+	},
 	palettes: {
 		sunset: 'Coucher de soleil',
 		olive: 'Olive',
@@ -45,6 +49,7 @@ export default {
 		preview: 'Aperçu',
 		upload: 'Importer',
 		search: 'Rechercher',
+		learnMore: 'En savoir plus',
 		ban: 'Bannir',
 		restore: 'Restaurer'
 	},
@@ -71,6 +76,11 @@ export default {
 		private: 'Annonce privée',
 		business: 'Annonce entreprise',
 		community: 'Annonce communauté',
+		badges: {
+			private: 'Privé',
+			business: 'Entreprise',
+			community: 'Communauté'
+		},
 		empty: 'Aucune annonce pour le moment.',
 		neighborhoodFeed: 'Annonces de votre quartier',
 		saveFailed: 'L’annonce n’a pas pu être enregistrée.',

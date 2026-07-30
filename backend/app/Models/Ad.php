@@ -45,27 +45,47 @@ class Ad extends Model
     {
         return $query
             ->when($city, function (Builder $query, string $city): void {
-                $query->where(function (Builder $query) use ($city): void {
-                    $query
-                        ->where('city', $city)
-                        ->orWhere(function (Builder $query) use ($city): void {
-                            $query
-                                ->whereNull('city')
-                                ->whereHas('user.profile', fn (Builder $profile) => $profile->where('city', $city));
-                        });
-                });
+                $this->whereResolvedLocation($query, 'city', $city);
             })
             ->when($neighborhood, function (Builder $query, string $neighborhood): void {
-                $query->where(function (Builder $query) use ($neighborhood): void {
+                $this->whereResolvedLocation($query, 'neighborhood', $neighborhood);
+            });
+    }
+
+    private function whereResolvedLocation(Builder $query, string $field, string $value): void
+    {
+        $query->where(function (Builder $query) use ($field, $value): void {
+            $query
+                ->where($field, $value)
+                ->orWhere(function (Builder $query) use ($field, $value): void {
                     $query
-                        ->where('neighborhood', $neighborhood)
-                        ->orWhere(function (Builder $query) use ($neighborhood): void {
+                        ->whereNull($field)
+                        ->where(function (Builder $query) use ($field, $value): void {
                             $query
-                                ->whereNull('neighborhood')
-                                ->whereHas('user.profile', fn (Builder $profile) => $profile->where('neighborhood', $neighborhood));
+                                ->where(function (Builder $query) use ($field, $value): void {
+                                    $query
+                                        ->whereNull('page_id')
+                                        ->whereHas('user.profile', fn (Builder $profile) => $profile->where($field, $value));
+                                })
+                                ->orWhere(function (Builder $query) use ($field, $value): void {
+                                    $query
+                                        ->whereNotNull('page_id')
+                                        ->whereHas('page', fn (Builder $page) => $this->wherePageAddressField($page, $field, $value));
+                                });
                         });
                 });
-            });
+        });
+    }
+
+    private function wherePageAddressField(Builder $query, string $field, string $value): void
+    {
+        $query->where(function (Builder $query) use ($field, $value): void {
+            $query->where("setup->address->{$field}", $value);
+
+            if ($field === 'city') {
+                $query->orWhere('address', 'like', '%'.$value.'%');
+            }
+        });
     }
 
     protected function imageUrl(): Attribute

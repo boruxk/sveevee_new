@@ -18,6 +18,10 @@ export default {
 		ru: 'Russian',
 		fr: 'French'
 	},
+	validation: {
+		required: 'This field is required.',
+		requiredFields: 'Please fill in the required fields.'
+	},
 	palettes: {
 		sunset: 'Sunset',
 		olive: 'Olive',
@@ -45,6 +49,7 @@ export default {
 		preview: 'Preview',
 		upload: 'Upload',
 		search: 'Search',
+		learnMore: 'Learn more',
 		ban: 'Ban',
 		restore: 'Restore'
 	},
@@ -71,6 +76,11 @@ export default {
 		private: 'Private ad',
 		business: 'Business ad',
 		community: 'Community ad',
+		badges: {
+			private: 'Private',
+			business: 'Business',
+			community: 'Community'
+		},
 		empty: 'No ads yet.',
 		neighborhoodFeed: 'Ads from your neighborhood',
 		saveFailed: 'Ad could not be saved.',

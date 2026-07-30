@@ -1,9 +1,11 @@
 <script setup>
-	import { computed, onMounted, reactive, ref, watch } from 'vue'
+	import { computed, onMounted, reactive, ref, toRef, watch } from 'vue'
 	import { useRoute } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
+	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { deleteAd } from '@/services/api/ads'
 	import { fetchMyPage, saveMyPage } from '@/services/api/pages'
 	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
@@ -30,11 +32,15 @@
 	const saving = ref(false)
 	const logoUploading = ref(false)
 	const bannerUploading = ref(false)
+	const formRef = ref(null)
 	const setupDialogOpen = ref(false)
+	const adDialogOpen = ref(false)
 	const ratingsDialogOpen = ref(false)
 	const page = ref(null)
 	const localLogoPreviewUrl = ref(null)
 	const localBannerPreviewUrl = ref(null)
+	const citySelectOptions = ref([])
+	const neighborhoodSelectOptions = ref([])
 	const form = reactive({
 		name: '',
 		public_description: '',
@@ -44,7 +50,8 @@
 		address: {
 			street: '',
 			number: '',
-			city: ''
+			city: '',
+			neighborhood: ''
 		},
 		opening_hours: [],
 		palette_key: presencePalettes[0].key,
@@ -55,6 +62,15 @@
 	const type = computed(() => route.meta.pageType || 'business')
 	const title = computed(() => (type.value === 'business' ? t('pages.businessTitle') : t('pages.communityTitle')))
 	const selectedPalette = computed(() => findPresencePalette(form.palette_key))
+	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
+	const {
+		cityOptions,
+		neighborhoodOptions,
+		loadLocationOptions,
+		rememberLocation,
+		addOption,
+		filterOptions
+	} = useLocationOptions(toRef(form.address, 'city'))
 	const previewPage = computed(() => ({
 		id: page.value?.id,
 		type: type.value,
@@ -70,7 +86,8 @@
 		address_details: {
 			street: form.address.street,
 			number: form.address.number,
-			city: form.address.city
+			city: form.address.city,
+			neighborhood: form.address.neighborhood
 		},
 		opening_hours: form.opening_hours.map((item) => ({ ...item })),
 		palette_key: form.palette_key,
@@ -94,7 +111,7 @@
 	}
 
 	function addressLine(address) {
-		return [address.street, address.number, address.city].filter(Boolean).join(', ')
+		return [address.street, address.number, address.neighborhood, address.city].filter(Boolean).join(', ')
 	}
 
 	function cleanPageText(value) {
@@ -128,6 +145,7 @@
 		form.address.street = address.street || ''
 		form.address.number = address.number || ''
 		form.address.city = address.city || ''
+		form.address.neighborhood = address.neighborhood || ''
 		form.opening_hours = normalizedOpeningHours(value?.opening_hours || setup.opening_hours)
 		form.palette_key = findPresencePalette(value?.palette_key || setup.palette_key).key
 		form.logo = null
@@ -151,7 +169,8 @@
 				address: {
 					street: form.address.street.trim() || null,
 					number: form.address.number.trim() || null,
-					city: form.address.city.trim() || null
+					city: form.address.city.trim() || null,
+					neighborhood: form.address.neighborhood.trim() || null
 				},
 				opening_hours: form.opening_hours.map((item) => ({
 					weekday: item.weekday,
@@ -177,10 +196,16 @@
 
 	async function save(options = {}) {
 		const notify = options.notify !== false
+
+		if (options.validate !== false && formRef.value && !(await validateRequiredForm(formRef))) {
+			return false
+		}
+
 		saving.value = true
 		try {
 			const { data } = await saveMyPage(type.value, pagePayload())
 			hydrate(data.data)
+			rememberLocation(form.address.city, form.address.neighborhood)
 			await authStore.refreshUser()
 			if (notify) {
 				$q.notify({ type: 'positive', message: t('pages.saved') })
@@ -235,6 +260,11 @@
 		}
 	}
 
+	async function handleAdSaved() {
+		adDialogOpen.value = false
+		await load()
+	}
+
 	function dayLabel(weekday) {
 		return t(`pages.weekdays.${weekday}`)
 	}
@@ -248,6 +278,18 @@
 			...page.value,
 			rating_summary: summary
 		}
+	}
+
+	function filterCityOptions(value, update) {
+		update(() => {
+			citySelectOptions.value = filterOptions(cityOptions.value, value)
+		})
+	}
+
+	function filterNeighborhoodOptions(value, update) {
+		update(() => {
+			neighborhoodSelectOptions.value = filterOptions(neighborhoodOptions.value, value)
+		})
 	}
 
 	function attachObjectPreview(sourceRef, targetRef) {
@@ -269,10 +311,33 @@
 	}
 
 	watch(type, load)
+	watch(cityOptions, (options) => {
+		citySelectOptions.value = options
+	}, { immediate: true })
+
+	watch(neighborhoodOptions, (options) => {
+		neighborhoodSelectOptions.value = options
+	}, { immediate: true })
+
+	watch(() => form.address.city, () => {
+		if (!form.address.city) {
+			form.address.neighborhood = ''
+			return
+		}
+
+		if (form.address.neighborhood && !neighborhoodOptions.value.includes(form.address.neighborhood)) {
+			form.address.neighborhood = ''
+		}
+	})
+
 	attachObjectPreview(() => form.logo, localLogoPreviewUrl)
 	attachObjectPreview(() => form.banner, localBannerPreviewUrl)
 
-	onMounted(load)
+	onMounted(async() => {
+		await Promise.all([load(), loadLocationOptions()])
+		citySelectOptions.value = cityOptions.value
+		neighborhoodSelectOptions.value = neighborhoodOptions.value
+	})
 </script>
 
 <template>
@@ -313,14 +378,19 @@
 			</section>
 
 			<section class="soz-section-card panel q-mt-lg">
-				<h2 class="create-ad-title">{{ t('actions.createAd') }}</h2>
-				<AdComposer :page-id="page?.id" :disabled="!page" @saved="load" />
+				<div class="panel-head">
+					<h2>{{ t('ads.listTitle') }}</h2>
+					<q-btn rounded
+						unelevated
+						color="primary"
+						icon="add"
+						:disable="!page"
+						:label="t('actions.createAd')"
+						@click="adDialogOpen = true"
+					/>
+				</div>
 				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
-			</section>
-
-			<section class="soz-section-card panel q-mt-lg">
-				<h2>{{ t('ads.listTitle') }}</h2>
-				<div v-if="!page?.ads?.length" class="empty-state">{{ t('ads.empty') }}</div>
+				<div v-else-if="!page.ads?.length" class="empty-state">{{ t('ads.empty') }}</div>
 				<div v-else class="ad-grid">
 					<AdCard v-for="ad in page.ads" :key="ad.id" :ad="ad" editable @delete="removeAd" />
 				</div>
@@ -340,8 +410,8 @@
 				<q-card-section class="setup-dialog__body">
 					<div class="presence-grid">
 						<div class="presence-editor">
-							<q-form v-if="!loading" class="column q-gutter-md" @submit.prevent="save">
-								<q-input v-model="form.name" outlined :label="t('pages.name')" />
+							<q-form v-if="!loading" ref="formRef" greedy class="column q-gutter-md" @submit.prevent="save()">
+								<q-input v-model="form.name" outlined :label="requiredLabel('pages.name')" :rules="[requiredRule]" />
 								<q-input
 									v-model="form.public_description"
 									outlined
@@ -355,10 +425,10 @@
 									<div class="presence-segment__title">{{ t('pages.sections.contact') }}</div>
 									<div class="row q-col-gutter-md">
 										<div class="col-12 col-md-4">
-											<q-input v-model="form.phone" outlined :label="t('pages.tel')" />
+											<q-input v-model="form.phone" outlined :label="requiredLabel('pages.tel')" :rules="[requiredRule]" />
 										</div>
 										<div class="col-12 col-md-4">
-											<q-input v-model="form.contact_email" outlined type="email" :label="t('pages.email')" />
+											<q-input v-model="form.contact_email" outlined type="email" :label="requiredLabel('pages.email')" :rules="[requiredRule]" />
 										</div>
 										<div class="col-12 col-md-4">
 											<q-input v-model="form.whatsapp" outlined :label="t('pages.whatsapp')" />
@@ -369,14 +439,54 @@
 								<section class="presence-segment">
 									<div class="presence-segment__title">{{ t('pages.sections.address') }}</div>
 									<div class="row q-col-gutter-md">
-										<div class="col-12 col-md-5">
-											<q-input v-model="form.address.street" outlined :label="t('pages.street')" />
+										<div class="col-12 col-md-4">
+											<q-input
+												v-model="form.address.street"
+												outlined
+												:label="requiredLabel('pages.street')"
+												:rules="[requiredRule]"
+											/>
+										</div>
+										<div class="col-12 col-md-2">
+											<q-input
+												v-model="form.address.number"
+												outlined
+												:label="requiredLabel('pages.number')"
+												:rules="[requiredRule]"
+											/>
 										</div>
 										<div class="col-12 col-md-3">
-											<q-input v-model="form.address.number" outlined :label="t('pages.number')" />
+											<q-select v-model="form.address.city"
+												outlined
+												clearable
+												use-input
+												hide-selected
+												fill-input
+												input-debounce="0"
+												new-value-mode="add-unique"
+												:options="citySelectOptions"
+												:label="requiredLabel('pages.city')"
+												:rules="[requiredRule]"
+												@filter="filterCityOptions"
+												@new-value="addOption"
+											/>
 										</div>
-										<div class="col-12 col-md-4">
-											<q-input v-model="form.address.city" outlined :label="t('pages.city')" />
+										<div class="col-12 col-md-3">
+											<q-select v-model="form.address.neighborhood"
+												outlined
+												clearable
+												use-input
+												hide-selected
+												fill-input
+												input-debounce="0"
+												new-value-mode="add-unique"
+												:options="neighborhoodSelectOptions"
+												:label="requiredLabel('auth.neighborhood')"
+												:rules="[requiredRule]"
+												:disable="!form.address.city"
+												@filter="filterNeighborhoodOptions"
+												@new-value="addOption"
+											/>
 										</div>
 									</div>
 								</section>
@@ -457,6 +567,17 @@
 				</q-card-section>
 			</q-card>
 		</q-dialog>
+		<q-dialog v-model="adDialogOpen">
+			<q-card class="ad-dialog">
+				<q-card-section class="dialog-head">
+					<div class="text-h6">{{ t('actions.createAd') }}</div>
+					<q-btn flat round icon="close" color="dark" v-close-popup />
+				</q-card-section>
+				<q-card-section>
+					<AdComposer :page-id="page?.id" :disabled="!page" @saved="handleAdSaved" />
+				</q-card-section>
+			</q-card>
+		</q-dialog>
 		<PageRatingsDialog
 			v-model="ratingsDialogOpen"
 			:page-id="page?.id"
@@ -492,10 +613,6 @@
   margin: 0;
 }
 
-.create-ad-title {
-  margin-bottom: 28px !important;
-}
-
 .page-head p,
 .preview-head p {
   max-width: 720px;
@@ -509,6 +626,14 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 18px;
   align-items: start;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .page-setup-btn.q-btn.bg-primary {
@@ -630,6 +755,13 @@
   background: #f9f2eb;
 }
 
+.ad-dialog {
+  width: min(680px, calc(100vw - 24px));
+  max-width: 680px;
+  border-radius: 24px;
+  background: #f9f2eb;
+}
+
 .dialog-head {
   display: flex;
   align-items: center;
@@ -665,6 +797,11 @@
   .page-head,
   .panel {
     padding: 20px;
+  }
+
+  .panel-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

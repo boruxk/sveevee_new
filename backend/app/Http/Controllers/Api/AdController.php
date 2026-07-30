@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Ad;
 use App\Models\Page;
+use App\Models\User;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
 use Illuminate\Http\Request;
@@ -52,8 +53,6 @@ class AdController extends Controller
             'text' => ['required', 'string', 'max:5000'],
             'page_id' => ['nullable', 'integer', 'exists:pages,id'],
             'image' => ['nullable', 'image', 'max:6144'],
-            'city' => ['nullable', 'string', 'max:120'],
-            'neighborhood' => ['nullable', 'string', 'max:120'],
         ]);
 
         $page = null;
@@ -63,6 +62,8 @@ class AdController extends Controller
                 ->findOrFail($data['page_id']);
         }
 
+        $location = $this->locationFor($page, $request->user());
+
         $ad = Ad::query()->create([
             'user_id' => $request->user()->id,
             'page_id' => $page?->id,
@@ -71,8 +72,8 @@ class AdController extends Controller
             'text' => $data['text'],
             'image_path' => $request->hasFile('image') ? $request->file('image')->store('ads', 'public') : null,
             'status' => 'active',
-            'city' => $this->nullableString($data['city'] ?? null) ?? $this->pageCity($page) ?? $request->user()->profile?->city,
-            'neighborhood' => $this->nullableString($data['neighborhood'] ?? null) ?? $request->user()->profile?->neighborhood,
+            'city' => $location['city'],
+            'neighborhood' => $location['neighborhood'],
         ]);
 
         return ApiResponseService::success($this->payloads->ad($ad), 'Ad created.', 201);
@@ -89,23 +90,18 @@ class AdController extends Controller
             'text' => ['required', 'string', 'max:5000'],
             'status' => ['nullable', Rule::in(['active', 'paused'])],
             'image' => ['nullable', 'image', 'max:6144'],
-            'city' => ['nullable', 'string', 'max:120'],
-            'neighborhood' => ['nullable', 'string', 'max:120'],
         ]);
+
+        $ad->loadMissing(['page', 'user.profile']);
+        $location = $this->locationFor($ad->page, $ad->user);
 
         $ad->fill([
             'title' => $data['title'],
             'text' => $data['text'],
             'status' => $data['status'] ?? $ad->status,
+            'city' => $location['city'],
+            'neighborhood' => $location['neighborhood'],
         ]);
-
-        if ($request->has('city')) {
-            $ad->city = $this->nullableString($data['city'] ?? null);
-        }
-
-        if ($request->has('neighborhood')) {
-            $ad->neighborhood = $this->nullableString($data['neighborhood'] ?? null);
-        }
 
         if ($request->hasFile('image')) {
             $ad->image_path = $request->file('image')->store('ads', 'public');
@@ -148,11 +144,28 @@ class AdController extends Controller
         return $value === '' ? null : $value;
     }
 
-    private function pageCity(?Page $page): ?string
+    private function locationFor(?Page $page, ?User $user): array
+    {
+        if ($page) {
+            return [
+                'city' => $this->pageAddressValue($page, 'city'),
+                'neighborhood' => $this->pageAddressValue($page, 'neighborhood'),
+            ];
+        }
+
+        $user?->loadMissing('profile');
+
+        return [
+            'city' => $this->nullableString($user?->profile?->city),
+            'neighborhood' => $this->nullableString($user?->profile?->neighborhood),
+        ];
+    }
+
+    private function pageAddressValue(Page $page, string $field): ?string
     {
         $setup = $page?->setup ?? [];
         $address = is_array($setup['address'] ?? null) ? $setup['address'] : [];
 
-        return $this->nullableString($address['city'] ?? null);
+        return $this->nullableString($address[$field] ?? null);
     }
 }

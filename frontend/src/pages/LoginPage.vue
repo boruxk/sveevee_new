@@ -1,18 +1,25 @@
 <script setup>
-	import { reactive } from 'vue'
+	import { reactive, ref } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
+	import { useRequiredFields } from '@/composables/useRequiredFields'
 
 	const { t } = useI18n()
 	const $q = useQuasar()
 	const route = useRoute()
 	const router = useRouter()
 	const authStore = useAuthStore()
+	const formRef = ref(null)
 	const form = reactive({ email: 'user@sveevee.local', password: 'password' })
+	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	async function submit() {
+		if (!(await validateRequiredForm(formRef))) {
+			return
+		}
+
 		try {
 			await authStore.login(form)
 			router.push(route.query.redirect || { name: 'home' })
@@ -29,9 +36,21 @@
 				<div class="auth-panel__inner">
 					<h1 class="soz-page-title">{{ t('auth.loginTitle') }}</h1>
 					<p>{{ t('auth.simpleLogin') }}</p>
-					<q-form class="column q-gutter-md" @submit.prevent="submit">
-						<q-input v-model="form.email" outlined type="email" :label="t('auth.email')" />
-						<q-input v-model="form.password" outlined type="password" :label="t('auth.password')" />
+					<q-form ref="formRef" greedy class="column q-gutter-md" @submit.prevent="submit()">
+						<q-input
+							v-model="form.email"
+							outlined
+							type="email"
+							:label="requiredLabel('auth.email')"
+							:rules="[requiredRule]"
+						/>
+						<q-input
+							v-model="form.password"
+							outlined
+							type="password"
+							:label="requiredLabel('auth.password')"
+							:rules="[requiredRule]"
+						/>
 						<q-btn color="primary"
 							unelevated
 							rounded

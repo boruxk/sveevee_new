@@ -4,6 +4,7 @@
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
+	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { fetchProfile, updateProfile, uploadProfilePhoto } from '@/services/api/profile'
 
 	const { t } = useI18n()
@@ -12,6 +13,7 @@
 	const supportedLanguages = ['he', 'en', 'ru', 'fr']
 	const loading = ref(false)
 	const saving = ref(false)
+	const formRef = ref(null)
 	const photo = ref(null)
 	const citySelectOptions = ref([])
 	const neighborhoodSelectOptions = ref([])
@@ -38,6 +40,7 @@
 		{ label: t('languages.ru'), value: 'ru' },
 		{ label: t('languages.fr'), value: 'fr' }
 	])
+	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	function hydrate(profile) {
 		form.email = profile?.email || authStore.user?.email || ''
@@ -62,6 +65,10 @@
 	}
 
 	async function save() {
+		if (!(await validateRequiredForm(formRef))) {
+			return
+		}
+
 		saving.value = true
 		try {
 			await updateProfile(form)
@@ -129,11 +136,27 @@
 			</section>
 
 			<section class="soz-section-card profile-panel q-mt-lg">
-				<q-form v-if="!loading" class="column q-gutter-md q-pl-md q-pt-lg" @submit.prevent="save">
+				<q-form v-if="!loading" ref="formRef" greedy class="column q-gutter-md q-pl-md q-pt-lg" @submit.prevent="save()">
 					<div class="row q-col-gutter-md q-pb-md">
-						<q-input class="col-12 col-md-4" v-model="form.email" outlined type="email" :label="t('auth.email')" />
-						<q-input class="col-12 col-md-4" v-model="form.given_name" outlined :label="t('auth.givenName')" />
-						<q-input class="col-12 col-md-4" v-model="form.family_name" outlined :label="t('auth.familyName')" />
+						<q-input class="col-12 col-md-4"
+							v-model="form.email"
+							outlined
+							type="email"
+							:label="requiredLabel('auth.email')"
+							:rules="[requiredRule]"
+						/>
+						<q-input class="col-12 col-md-4"
+							v-model="form.given_name"
+							outlined
+							:label="requiredLabel('auth.givenName')"
+							:rules="[requiredRule]"
+						/>
+						<q-input class="col-12 col-md-4"
+							v-model="form.family_name"
+							outlined
+							:label="requiredLabel('auth.familyName')"
+							:rules="[requiredRule]"
+						/>
 					</div>
 					<div class="row q-col-gutter-md q-pb-md">
 						<q-input class="col-12 col-md-4" v-model="form.phone" outlined :label="t('auth.phone')" />
@@ -147,7 +170,8 @@
 							input-debounce="0"
 							new-value-mode="add-unique"
 							:options="citySelectOptions"
-							:label="t('auth.city')"
+							:label="requiredLabel('auth.city')"
+							:rules="[requiredRule]"
 							@filter="filterCityOptions"
 							@new-value="addOption"
 						/>
@@ -161,7 +185,8 @@
 							input-debounce="0"
 							new-value-mode="add-unique"
 							:options="neighborhoodSelectOptions"
-							:label="t('auth.neighborhood')"
+							:label="requiredLabel('auth.neighborhood')"
+							:rules="[requiredRule]"
 							:disable="!form.city"
 							@filter="filterNeighborhoodOptions"
 							@new-value="addOption"
@@ -175,7 +200,8 @@
 							emit-value
 							map-options
 							:options="languageOptions"
-							:label="t('profile.languages')"
+							:label="requiredLabel('profile.languages')"
+							:rules="[requiredRule]"
 						/>
 						<q-file class="col-12 col-md-6"
 							v-model="photo"

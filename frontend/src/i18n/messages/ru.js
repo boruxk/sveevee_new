@@ -18,6 +18,10 @@ export default {
 		ru: 'Русский',
 		fr: 'Французский'
 	},
+	validation: {
+		required: '\u042D\u0442\u043E \u043F\u043E\u043B\u0435 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E.',
+		requiredFields: '\u0417\u0430\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u044B\u0435 \u043F\u043E\u043B\u044F.'
+	},
 	palettes: {
 		sunset: 'Закат',
 		olive: 'Олива',
@@ -45,6 +49,7 @@ export default {
 		preview: 'Предпросмотр',
 		upload: 'Загрузить',
 		search: 'Искать',
+		learnMore: 'Узнать больше',
 		ban: 'Забанить',
 		restore: 'Восстановить'
 	},
@@ -71,6 +76,11 @@ export default {
 		private: 'Частное объявление',
 		business: 'Объявление бизнеса',
 		community: 'Объявление сообщества',
+		badges: {
+			private: 'Частное',
+			business: 'Бизнес',
+			community: 'Сообщество'
+		},
 		empty: 'Объявлений пока нет.',
 		neighborhoodFeed: 'Объявления из вашего района',
 		saveFailed: 'Не удалось сохранить объявление.',

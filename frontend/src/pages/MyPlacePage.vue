@@ -13,6 +13,7 @@
 	const authStore = useAuthStore()
 	const loading = ref(false)
 	const ads = ref([])
+	const adDialogOpen = ref(false)
 	const showBusinessPageButton = computed(() => !authStore.user?.business_page)
 	const showCommunityPageButton = computed(() => !authStore.user?.community_page)
 
@@ -33,6 +34,11 @@
 		} catch (error) {
 			$q.notify({ type: 'negative', message: error.response?.data?.message || t('ads.deleteFailed') })
 		}
+	}
+
+	async function handleAdSaved() {
+		adDialogOpen.value = false
+		await loadAds()
 	}
 
 	onMounted(loadAds)
@@ -71,8 +77,16 @@
 			</section>
 
 			<section class="soz-section-card panel q-mt-lg">
-				<h2>{{ t('actions.createAd') }}</h2>
-				<AdComposer @saved="loadAds" />
+				<div class="panel-head">
+					<h2>{{ t('ads.listTitle') }}</h2>
+					<q-btn rounded
+						unelevated
+						color="primary"
+						icon="add"
+						:label="t('actions.createAd')"
+						@click="adDialogOpen = true"
+					/>
+				</div>
 
 				<div v-if="loading" class="row justify-center q-pa-lg">
 					<q-spinner color="primary" />
@@ -83,6 +97,18 @@
 				</div>
 			</section>
 		</div>
+
+		<q-dialog v-model="adDialogOpen">
+			<q-card class="ad-dialog">
+				<q-card-section class="dialog-head">
+					<div class="text-h6">{{ t('actions.createAd') }}</div>
+					<q-btn flat round icon="close" color="dark" v-close-popup />
+				</q-card-section>
+				<q-card-section>
+					<AdComposer @saved="handleAdSaved" />
+				</q-card-section>
+			</q-card>
+		</q-dialog>
 	</q-page>
 </template>
 
@@ -130,7 +156,15 @@
 }
 
 .panel h2 {
-  margin: 0 0 18px;
+  margin: 0;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .ad-list {
@@ -145,6 +179,20 @@
   color: rgba(17, 34, 45, 0.62);
 }
 
+.ad-dialog {
+  width: min(680px, calc(100vw - 24px));
+  max-width: 680px;
+  border-radius: 24px;
+  background: #f9f2eb;
+}
+
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 @media (max-width: 900px) {
   .page-head {
     display: grid;
@@ -152,6 +200,11 @@
 
   .page-actions {
     justify-content: flex-start;
+  }
+
+  .panel-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .ad-list {

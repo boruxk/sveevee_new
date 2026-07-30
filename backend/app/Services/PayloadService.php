@@ -140,8 +140,8 @@ class PayloadService
             'text' => $ad->text,
             'image_url' => $ad->image_url,
             'status' => $ad->status,
-            'city' => $ad->city ?: $ad->user?->profile?->city,
-            'neighborhood' => $ad->neighborhood ?: $ad->user?->profile?->neighborhood,
+            'city' => $this->adLocationValue($ad, 'city'),
+            'neighborhood' => $this->adLocationValue($ad, 'neighborhood'),
             'user' => $this->user($ad->user),
             'page' => $this->page($ad->page),
             'created_at' => $ad->created_at?->toISOString(),
@@ -222,7 +222,23 @@ class PayloadService
             'street' => $address['street'] ?? null,
             'number' => $address['number'] ?? null,
             'city' => $address['city'] ?? null,
+            'neighborhood' => $address['neighborhood'] ?? null,
         ];
+    }
+
+    private function adLocationValue(Ad $ad, string $field): ?string
+    {
+        if (filled($ad->{$field})) {
+            return $ad->{$field};
+        }
+
+        if ($ad->page_id && $ad->page) {
+            $address = $this->pageAddress($ad->page->setup ?? []);
+
+            return $address[$field] ?? null;
+        }
+
+        return $ad->user?->profile?->{$field};
     }
 
     private function normalizedOpeningHours(mixed $openingHours): array

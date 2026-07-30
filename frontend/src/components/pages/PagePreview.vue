@@ -41,7 +41,7 @@
 			return address
 		}
 
-		return [address.street, address.number, address.city].filter(Boolean).join(', ')
+		return [address.street, address.number, address.neighborhood, address.city].filter(Boolean).join(', ')
 	})
 	const previewOpeningHours = computed(() => props.page?.opening_hours || [])
 	const previewLogoUrl = computed(() => props.page?.logo_url || null)
@@ -81,9 +81,6 @@
 				</q-avatar>
 
 				<div class="page-preview__copy">
-					<q-chip dense square class="page-preview__badge">
-						{{ pageTypeLabel }}
-					</q-chip>
 					<h2 class="page-preview__title">{{ previewTitle }}</h2>
 					<p class="page-preview__description">{{ previewDescription }}</p>
 				</div>
@@ -218,12 +215,6 @@
 
 .page-preview__copy {
   max-width: 760px;
-}
-
-.page-preview__badge {
-  margin-bottom: 14px;
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--presence-ink);
 }
 
 .page-preview__title {

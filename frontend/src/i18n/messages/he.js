@@ -18,6 +18,10 @@ export default {
 		ru: 'רוסית',
 		fr: 'צרפתית'
 	},
+	validation: {
+		required: '\u05E9\u05D3\u05D4 \u05D7\u05D5\u05D1\u05D4.',
+		requiredFields: '\u05DE\u05DC\u05D0\u05D5 \u05D0\u05EA \u05E9\u05D3\u05D5\u05EA \u05D4\u05D7\u05D5\u05D1\u05D4.'
+	},
 	palettes: {
 		sunset: 'שקיעה',
 		olive: 'זית',
@@ -45,6 +49,7 @@ export default {
 		preview: 'תצוגה מקדימה',
 		upload: 'העלאה',
 		search: 'חיפוש',
+		learnMore: 'למידע נוסף',
 		ban: 'חסימה',
 		restore: 'שחזור'
 	},
@@ -71,6 +76,11 @@ export default {
 		private: 'מודעה פרטית',
 		business: 'מודעת עסק',
 		community: 'מודעת קהילה',
+		badges: {
+			private: 'פרטי',
+			business: 'עסק',
+			community: 'קהילה'
+		},
 		empty: 'אין עדיין מודעות.',
 		neighborhoodFeed: 'מודעות מהשכונה שלך',
 		saveFailed: 'לא ניתן לשמור את המודעה.',

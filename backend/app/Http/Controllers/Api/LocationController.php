@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ad;
+use App\Models\Page;
 use App\Models\UserProfile;
 use App\Services\ApiResponseService;
 
@@ -31,10 +32,16 @@ class LocationController extends Controller
             ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
             ->get(['city', 'neighborhood']);
 
+        $pages = Page::query()
+            ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
+            ->get(['setup'])
+            ->map(fn (Page $page) => $this->pageAddress($page));
+
         $cities = $configuredLocations
             ->pluck('city')
             ->merge($profiles->pluck('city'))
             ->merge($ads->pluck('city'))
+            ->merge($pages->pluck('city'))
             ->map(fn ($value) => $this->nullableString($value))
             ->filter()
             ->unique(fn (string $value) => mb_strtolower($value))
@@ -46,6 +53,7 @@ class LocationController extends Controller
                 ->map(fn (string $neighborhood) => $this->neighborhoodPayload($location['city'], $neighborhood)))
             ->merge($profiles->map(fn ($location) => $this->neighborhoodPayload($location->city, $location->neighborhood)))
             ->merge($ads->map(fn ($location) => $this->neighborhoodPayload($location->city, $location->neighborhood)))
+            ->merge($pages->map(fn (array $location) => $this->neighborhoodPayload($location['city'], $location['neighborhood'])))
             ->filter(fn (array $location) => filled($location['name']))
             ->unique(fn (array $location) => mb_strtolower(($location['city'] ?? '').'|'.$location['name']))
             ->sortBy(fn (array $location) => mb_strtolower(($location['city'] ?? '').'|'.$location['name']))
@@ -62,6 +70,17 @@ class LocationController extends Controller
         return [
             'city' => $this->nullableString($city),
             'name' => $this->nullableString($neighborhood),
+        ];
+    }
+
+    private function pageAddress(Page $page): array
+    {
+        $setup = $page->setup ?? [];
+        $address = is_array($setup['address'] ?? null) ? $setup['address'] : [];
+
+        return [
+            'city' => $this->nullableString($address['city'] ?? null),
+            'neighborhood' => $this->nullableString($address['neighborhood'] ?? null),
         ];
     }
 

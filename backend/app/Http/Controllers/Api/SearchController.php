@@ -69,12 +69,12 @@ class SearchController extends Controller
             ->when($city, function (Builder $query, string $city): void {
                 $query->where(function (Builder $query) use ($city): void {
                     $query
-                        ->where('address', 'like', '%'.$city.'%')
-                        ->orWhereHas('user.profile', fn (Builder $profile) => $profile->where('city', $city));
+                        ->where('setup->address->city', $city)
+                        ->orWhere('address', 'like', '%'.$city.'%');
                 });
             })
             ->when($neighborhood, function (Builder $query, string $neighborhood): void {
-                $query->whereHas('user.profile', fn (Builder $profile) => $profile->where('neighborhood', $neighborhood));
+                $query->where('setup->address->neighborhood', $neighborhood);
             })
             ->limit(20)
             ->get()

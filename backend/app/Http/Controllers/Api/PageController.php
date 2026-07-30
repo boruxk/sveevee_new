@@ -84,6 +84,10 @@ class PageController extends Controller
         }
 
         $page->save();
+        $page->ads()->update([
+            'city' => $addressDetails['city'] ?? null,
+            'neighborhood' => $addressDetails['neighborhood'] ?? null,
+        ]);
 
         return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
     }
@@ -133,6 +137,7 @@ class PageController extends Controller
                 'street' => $this->nullableString($address['street'] ?? null),
                 'number' => $this->nullableString($address['number'] ?? null),
                 'city' => $this->nullableString($address['city'] ?? null),
+                'neighborhood' => $this->nullableString($address['neighborhood'] ?? null),
             ],
             'opening_hours' => $this->normalizedOpeningHours($decoded['opening_hours'] ?? []),
         ]);
@@ -172,6 +177,7 @@ class PageController extends Controller
         $line = collect([
             $address['street'] ?? null,
             $address['number'] ?? null,
+            $address['neighborhood'] ?? null,
             $address['city'] ?? null,
         ])->filter(fn ($value) => filled($value))->implode(', ');
 
