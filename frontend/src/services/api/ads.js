@@ -1,6 +1,7 @@
 import apiClient from '@/services/api/client'
+import { appendImageFile } from '@/utils/imageFiles'
 
-function toAdFormData(payload) {
+async function toAdFormData(payload) {
 	const formData = new FormData()
 	formData.append('title', payload.title || '')
 	formData.append('text', payload.text || '')
@@ -13,8 +14,12 @@ function toAdFormData(payload) {
 		formData.append('status', payload.status)
 	}
 
+	if (payload.image_remove) {
+		formData.append('image_remove', '1')
+	}
+
 	if (payload.image) {
-		formData.append('image', Array.isArray(payload.image) ? payload.image[0] : payload.image)
+		await appendImageFile(formData, 'image', payload.image)
 	}
 
 	return formData
@@ -24,12 +29,15 @@ export function fetchAds(params = {}) {
 	return apiClient.get('/ads', { params })
 }
 
-export function createAd(payload) {
-	return apiClient.post('/ads', toAdFormData(payload))
+export async function createAd(payload) {
+	return apiClient.post('/ads', await toAdFormData(payload))
 }
 
-export function updateAd(id, payload) {
-	return apiClient.post(`/ads/${id}?_method=PUT`, toAdFormData(payload))
+export async function updateAd(id, payload) {
+	const formData = await toAdFormData(payload)
+	formData.append('_method', 'PUT')
+
+	return apiClient.post(`/ads/${id}`, formData)
 }
 
 export function deleteAd(id) {

@@ -21,10 +21,19 @@ class Ad extends Model
         'title',
         'text',
         'image_path',
+        'image_original_name',
         'status',
+        'expires_at',
         'city',
         'neighborhood',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'expires_at' => 'datetime',
+        ];
+    }
 
     public function user(): BelongsTo
     {
@@ -38,7 +47,33 @@ class Ad extends Model
 
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('status', 'active');
+        return $query->where('status', 'active')->notExpired();
+    }
+
+    public function scopeNotExpired(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query
+                ->whereNull('expires_at')
+                ->orWhere('expires_at', '>', now());
+        });
+    }
+
+    public function scopeExpired(Builder $query): Builder
+    {
+        return $query
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now());
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->expires_at !== null && $this->expires_at->lte(now());
+    }
+
+    public function isVisible(): bool
+    {
+        return $this->status === 'active' && ! $this->isExpired();
     }
 
     public function scopeInLocation(Builder $query, ?string $city = null, ?string $neighborhood = null): Builder

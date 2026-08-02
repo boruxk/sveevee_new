@@ -1,6 +1,7 @@
 import apiClient from '@/services/api/client'
+import { appendImageFile } from '@/utils/imageFiles'
 
-function toEventFormData(payload) {
+async function toEventFormData(payload) {
 	const formData = new FormData()
 	formData.append('name', payload.name || '')
 	formData.append('description', payload.description || '')
@@ -9,12 +10,12 @@ function toEventFormData(payload) {
 	formData.append('address', payload.address || '')
 
 	if (payload.image) {
-		formData.append('image', Array.isArray(payload.image) ? payload.image[0] : payload.image)
+		await appendImageFile(formData, 'image', payload.image)
 	}
 
 	return formData
 }
 
-export function createEvent(pageId, payload) {
-	return apiClient.post(`/pages/${pageId}/events`, toEventFormData(payload))
+export async function createEvent(pageId, payload) {
+	return apiClient.post(`/pages/${pageId}/events`, await toEventFormData(payload))
 }

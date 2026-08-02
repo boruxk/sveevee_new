@@ -34,7 +34,7 @@
 				<q-spinner color="primary" size="40px" />
 			</div>
 			<div v-else-if="ads.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
-			<div v-else class="ad-grid">
+			<div v-else class="listing-grid">
 				<AdCard v-for="ad in ads" :key="ad.id" :ad="ad" />
 			</div>
 		</div>
@@ -55,9 +55,9 @@
   padding: 28px;
 }
 
-.ad-grid {
+.listing-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 16px;
   margin-top: 18px;
 }
@@ -70,8 +70,8 @@
 }
 
 @media (max-width: 980px) {
-  .ad-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .listing-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -80,7 +80,7 @@
     padding-inline: 10px;
   }
 
-  .ad-grid {
+  .listing-grid {
     grid-template-columns: 1fr;
   }
 }

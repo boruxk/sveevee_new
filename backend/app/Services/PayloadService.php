@@ -55,6 +55,7 @@ class PayloadService
         return [
             'email' => $user?->email,
             'photo_url' => $profile?->photo_url,
+            'photo_name' => $profile?->photo_original_name,
             'phone' => $profile?->phone,
             'city' => $profile?->city,
             'neighborhood' => $profile?->neighborhood,
@@ -87,7 +88,9 @@ class PayloadService
             'opening_hours' => $this->normalizedOpeningHours($setup['opening_hours'] ?? []),
             'palette_key' => $page->palette_key,
             'logo_url' => $page->logo_url,
+            'logo_name' => $page->logo_original_name,
             'banner_url' => $page->banner_url,
+            'banner_name' => $page->banner_original_name,
             'rating_summary' => $this->pageRatingSummary($page),
             'products' => $page->products->map(fn (PageProduct $product) => $this->product($product))->values()->all(),
             'events' => $page->events->map(fn (PageEvent $event) => $this->event($event))->values()->all(),
@@ -98,8 +101,11 @@ class PayloadService
         ];
 
         if ($withAds) {
-            $page->loadMissing(['ads.user.profile', 'ads.page']);
-            $payload['ads'] = $page->ads->map(fn (Ad $ad) => $this->ad($ad))->values()->all();
+            $ads = $page->relationLoaded('ads')
+                ? $page->ads->filter(fn (Ad $ad) => $ad->isVisible())
+                : $page->ads()->with(['user.profile', 'page'])->active()->get();
+
+            $payload['ads'] = $ads->map(fn (Ad $ad) => $this->ad($ad))->values()->all();
         }
 
         return $payload;
@@ -113,6 +119,7 @@ class PayloadService
             'name' => $product->name,
             'description' => $product->description,
             'image_url' => $product->image_url,
+            'image_name' => $product->image_original_name,
             'price' => (float) $product->price,
             'price_label' => '₪'.number_format((float) $product->price, 2),
             'link' => $product->link,
@@ -129,6 +136,7 @@ class PayloadService
             'name' => $event->name,
             'description' => $event->description,
             'image_url' => $event->image_url,
+            'image_name' => $event->image_original_name,
             'date' => $event->event_date?->format('Y-m-d'),
             'time' => $event->event_time,
             'address' => $event->address,
@@ -176,11 +184,13 @@ class PayloadService
             'title' => $ad->title,
             'text' => $ad->text,
             'image_url' => $ad->image_url,
+            'image_name' => $ad->image_original_name,
             'status' => $ad->status,
             'city' => $this->adLocationValue($ad, 'city'),
             'neighborhood' => $this->adLocationValue($ad, 'neighborhood'),
             'user' => $this->user($ad->user),
             'page' => $this->page($ad->page),
+            'expires_at' => $ad->expires_at?->toISOString(),
             'created_at' => $ad->created_at?->toISOString(),
             'updated_at' => $ad->updated_at?->toISOString(),
         ];

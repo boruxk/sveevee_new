@@ -17,10 +17,13 @@
 	const loading = ref(false)
 	const ads = ref([])
 	const adDialogOpen = ref(false)
+	const editingAd = ref(null)
 	const pageCreateDialogOpen = ref(false)
 	const pageCreateType = ref('business')
 	const showBusinessPageButton = computed(() => !authStore.user?.business_page)
 	const showCommunityPageButton = computed(() => !authStore.user?.community_page)
+	const adDialogTitle = computed(() => (editingAd.value ? t('actions.update') : t('actions.createAd')))
+	const visibleAds = computed(() => (Array.isArray(ads.value) ? ads.value.filter((ad) => ad?.id) : []))
 
 	async function loadAds() {
 		loading.value = true
@@ -41,9 +44,38 @@
 		}
 	}
 
-	async function handleAdSaved() {
+	function openCreateAd() {
+		editingAd.value = null
+		adDialogOpen.value = true
+	}
+
+	function openEditAd(ad) {
+		editingAd.value = ad
+		adDialogOpen.value = true
+	}
+
+	function mergeSavedAd(savedAd) {
+		if (!savedAd?.id || savedAd.page_id) {
+			return
+		}
+
+		const currentAds = Array.isArray(ads.value) ? ads.value : []
+		const existingIndex = currentAds.findIndex((ad) => ad.id === savedAd.id)
+		let nextAds = [savedAd, ...currentAds]
+
+		if (existingIndex !== -1) {
+			nextAds = currentAds.map((ad) => (ad.id === savedAd.id ? savedAd : ad))
+		}
+
+		ads.value = nextAds
+	}
+
+	async function handleAdSaved(savedAd) {
 		adDialogOpen.value = false
+		editingAd.value = null
+		mergeSavedAd(savedAd)
 		await loadAds()
+		mergeSavedAd(savedAd)
 	}
 
 	function openPageCreate(type) {
@@ -87,7 +119,7 @@
 				</div>
 			</section>
 
-			<section class="soz-section-card panel q-mt-lg">
+			<section class="soz-section-card panel panel--chat q-mt-lg">
 				<h2>{{ t('chat.title') }}</h2>
 				<ChatBlock />
 			</section>
@@ -100,28 +132,34 @@
 						color="primary"
 						icon="add"
 						:label="t('actions.createAd')"
-						@click="adDialogOpen = true"
+						@click="openCreateAd"
 					/>
 				</div>
 
 				<div v-if="loading" class="row justify-center q-pa-lg">
 					<q-spinner color="primary" />
 				</div>
-				<div v-else-if="ads.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
-				<div v-else class="ad-list">
-					<AdCard v-for="ad in ads" :key="ad.id" :ad="ad" editable @delete="removeAd" />
+				<div v-else-if="visibleAds.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
+				<div v-else class="listing-list">
+					<AdCard v-for="ad in visibleAds"
+						:key="ad.id"
+						:ad="ad"
+						editable
+						@edit="openEditAd"
+						@delete="removeAd"
+					/>
 				</div>
 			</section>
 		</div>
 
 		<q-dialog v-model="adDialogOpen">
-			<q-card class="ad-dialog">
+			<q-card class="listing-dialog">
 				<q-card-section class="dialog-head">
-					<div class="text-h6">{{ t('actions.createAd') }}</div>
+					<div class="text-h6">{{ adDialogTitle }}</div>
 					<q-btn flat round icon="close" color="dark" v-close-popup />
 				</q-card-section>
 				<q-card-section>
-					<AdComposer @saved="handleAdSaved" />
+					<AdComposer :ad="editingAd" @saved="handleAdSaved" />
 				</q-card-section>
 			</q-card>
 		</q-dialog>
@@ -180,6 +218,10 @@
   margin: 0;
 }
 
+.panel--chat h2 {
+  margin-bottom: 24px;
+}
+
 .panel-head {
   display: flex;
   align-items: center;
@@ -188,9 +230,9 @@
   margin-bottom: 18px;
 }
 
-.ad-list {
+.listing-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 16px;
   margin-top: 18px;
 }
@@ -200,7 +242,7 @@
   color: rgba(17, 34, 45, 0.62);
 }
 
-.ad-dialog {
+.listing-dialog {
   width: min(680px, calc(100vw - 24px));
   max-width: 680px;
   border-radius: 24px;
@@ -228,7 +270,7 @@
     flex-direction: column;
   }
 
-  .ad-list {
+  .listing-list {
     grid-template-columns: 1fr;
   }
 }

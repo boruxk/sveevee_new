@@ -86,7 +86,7 @@
 			<section class="q-mt-lg">
 				<h2>{{ t('ads.listTitle') }}</h2>
 				<div v-if="!page.ads?.length" class="empty-state">{{ t('ads.empty') }}</div>
-				<div v-else class="ad-grid">
+				<div v-else class="listing-grid">
 					<AdCard v-for="ad in page.ads" :key="ad.id" :ad="ad" />
 				</div>
 			</section>
@@ -118,11 +118,17 @@
   margin: 0 auto;
 }
 
-.ad-grid,
 .product-grid,
 .event-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.listing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 16px;
   margin-top: 18px;
 }
@@ -136,7 +142,7 @@
 }
 
 @media (max-width: 760px) {
-  .ad-grid,
+  .listing-grid,
   .product-grid,
   .event-grid {
     grid-template-columns: 1fr;

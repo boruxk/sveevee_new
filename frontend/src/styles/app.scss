@@ -84,7 +84,7 @@ body.sveevee-ltr,
 .sveevee-rtl .page-actions,
 .sveevee-rtl .search-form,
 .sveevee-rtl .admin-grid,
-.sveevee-rtl .ad-composer__row,
+.sveevee-rtl .listing-composer__row,
 .sveevee-rtl .chat-block,
 .sveevee-rtl .chat-list__item,
 .sveevee-rtl .person-head,
@@ -105,7 +105,7 @@ body.sveevee-ltr,
 .sveevee-ltr .page-actions,
 .sveevee-ltr .search-form,
 .sveevee-ltr .admin-grid,
-.sveevee-ltr .ad-composer__row,
+.sveevee-ltr .listing-composer__row,
 .sveevee-ltr .chat-block,
 .sveevee-ltr .chat-list__item,
 .sveevee-ltr .person-head,
@@ -366,6 +366,38 @@ h6 {
       padding-top: 7px;
       padding-bottom: 1px;
     }
+  }
+}
+
+.q-file.q-field--outlined {
+  .q-field__control {
+    height: 50px;
+    min-height: 50px;
+  }
+
+  .q-field__control-container {
+    display: flex;
+    align-items: center;
+    height: 50px;
+    padding-top: 0 !important;
+  }
+
+  .q-field__native {
+    display: flex;
+    align-items: center;
+    height: 50px;
+    min-height: 50px;
+    padding-top: 6px !important;
+    padding-bottom: 0 !important;
+    line-height: 1.2;
+  }
+
+  .q-field__input {
+    height: auto;
+    min-height: 0;
+    padding-top: 6px;
+    padding-bottom: 0;
+    line-height: 1.2;
   }
 }
 

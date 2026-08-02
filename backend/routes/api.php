@@ -35,11 +35,13 @@ Route::prefix('v1')->group(function () {
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::put('/profile', [ProfileController::class, 'update']);
         Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
+        Route::delete('/profile/photo', [ProfileController::class, 'destroyPhoto']);
 
         Route::get('/pages/{type}/mine', [PageController::class, 'mine']);
         Route::post('/pages/{type}', [PageController::class, 'upsert']);
         Route::delete('/pages/{page}', [PageController::class, 'destroy']);
         Route::post('/pages/{page}/products', [PageProductController::class, 'store']);
+        Route::put('/products/{product}', [PageProductController::class, 'update']);
         Route::post('/pages/{page}/events', [PageEventController::class, 'store']);
         Route::put('/pages/{page}/ratings/me', [PageRatingController::class, 'store']);
 

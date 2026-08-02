@@ -23,7 +23,9 @@ class Page extends Model
         'address',
         'palette_key',
         'logo_path',
+        'logo_original_name',
         'banner_path',
+        'banner_original_name',
         'setup',
     ];
 

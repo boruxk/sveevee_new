@@ -65,6 +65,7 @@ class DatabaseSeeder extends Seeder
                 'page_id' => null,
                 'type' => 'private_ad',
                 'text' => 'Stable kids chair, pickup in Ramot.',
+                'expires_at' => now()->addWeek(),
                 'city' => 'Jerusalem',
                 'neighborhood' => 'Ramot',
             ]

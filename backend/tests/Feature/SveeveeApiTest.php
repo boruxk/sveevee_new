@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Ad;
 use App\Models\Page;
+use App\Models\PageProduct;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -76,6 +78,8 @@ class SveeveeApiTest extends TestCase
 
     public function test_user_can_create_page_with_presence_details(): void
     {
+        Storage::fake('public');
+
         $user = User::factory()->create(['email' => 'owner@example.test']);
         Sanctum::actingAs($user);
 
@@ -113,6 +117,34 @@ class SveeveeApiTest extends TestCase
         $this->getJson('/api/v1/me')
             ->assertOk()
             ->assertJsonPath('data.business_page.name', 'Miri Studio');
+
+        $page = Page::query()->where('user_id', $user->id)->where('type', Page::TYPE_BUSINESS)->firstOrFail();
+        $page->forceFill([
+            'logo_path' => 'pages/logos/logo.png',
+            'logo_original_name' => 'logo.png',
+            'banner_path' => 'pages/banners/banner.png',
+            'banner_original_name' => 'banner.png',
+        ])->save();
+        Storage::disk('public')->put('pages/logos/logo.png', 'logo');
+        Storage::disk('public')->put('pages/banners/banner.png', 'banner');
+
+        $this->post('/api/v1/pages/business', [
+            'name' => 'Miri Studio',
+            'public_description' => 'Local design help.',
+            'contact_email' => 'hello@example.test',
+            'phone' => '+972 50 111 2222',
+            'address' => 'Herzl 10, Haifa',
+            'palette_key' => 'sea-glass',
+            'logo_remove' => '1',
+            'banner_remove' => '1',
+        ], ['Accept' => 'application/json'])->assertOk()
+            ->assertJsonPath('data.logo_url', null)
+            ->assertJsonPath('data.logo_name', null)
+            ->assertJsonPath('data.banner_url', null)
+            ->assertJsonPath('data.banner_name', null);
+
+        Storage::disk('public')->assertMissing('pages/logos/logo.png');
+        Storage::disk('public')->assertMissing('pages/banners/banner.png');
     }
 
     public function test_ads_use_owner_location_and_search_by_location(): void
@@ -152,13 +184,18 @@ class SveeveeApiTest extends TestCase
             ],
         ]);
 
-        $this->postJson('/api/v1/ads', [
+        $pageAd = $this->postJson('/api/v1/ads', [
             'title' => 'Desk lamp',
             'text' => 'Pickup from the studio.',
             'page_id' => $page->id,
         ])->assertCreated()
             ->assertJsonPath('data.city', 'Tel Aviv')
             ->assertJsonPath('data.neighborhood', 'Florentin');
+
+        $this->getJson('/api/v1/pages/business/mine')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.ads')
+            ->assertJsonPath('data.ads.0.id', $pageAd->json('data.id'));
 
         Ad::query()->create([
             'user_id' => $other->id,
@@ -190,6 +227,125 @@ class SveeveeApiTest extends TestCase
         $this->assertContains(['city' => 'Tel Aviv', 'name' => 'Ramat Aviv'], $locations->json('data.neighborhoods'));
     }
 
+    public function test_ads_expire_after_one_week_and_can_be_pruned(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-01 10:00:00'));
+
+        try {
+            $owner = User::factory()->create();
+            Sanctum::actingAs($owner);
+
+            $this->postJson('/api/v1/ads', [
+                'title' => 'One week ad',
+                'text' => 'This should expire automatically.',
+            ])->assertCreated()
+                ->assertJsonPath('data.expires_at', now()->addWeek()->toISOString());
+
+            $ad = Ad::query()->firstOrFail();
+            $this->assertTrue($ad->expires_at->equalTo(now()->addWeek()));
+
+            Carbon::setTestNow(now()->addDays(8));
+
+            $this->getJson('/api/v1/ads?scope=mine')
+                ->assertOk()
+                ->assertJsonCount(0, 'data');
+
+            $this->artisan('ads:prune-expired')
+                ->expectsOutput('Deleted 1 expired ads.')
+                ->assertExitCode(0);
+
+            $this->assertDatabaseMissing('ads', ['id' => $ad->id]);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_owner_can_update_ad(): void
+    {
+        Storage::fake('public');
+
+        $owner = User::factory()->create();
+        Sanctum::actingAs($owner);
+
+        $created = $this->post('/api/v1/ads', [
+            'title' => 'Original headline',
+            'text' => 'Original text.',
+            'image' => UploadedFile::fake()->image('ad.png'),
+        ], ['Accept' => 'application/json'])->assertCreated()
+            ->assertJsonPath('data.image_name', 'ad.png');
+
+        $adId = $created->json('data.id');
+        $oldImagePath = Ad::query()->findOrFail($adId)->image_path;
+        Storage::disk('public')->assertExists($oldImagePath);
+
+        $this->post("/api/v1/ads/{$adId}", [
+            '_method' => 'PUT',
+            'title' => 'Updated headline',
+            'text' => 'Updated text.',
+            'image_remove' => '1',
+        ], ['Accept' => 'application/json'])->assertOk()
+            ->assertJsonPath('data.title', 'Updated headline')
+            ->assertJsonPath('data.text', 'Updated text.')
+            ->assertJsonPath('data.image_url', null)
+            ->assertJsonPath('data.image_name', null);
+
+        $this->assertDatabaseHas('ads', [
+            'id' => $adId,
+            'title' => 'Updated headline',
+            'text' => 'Updated text.',
+            'image_path' => null,
+            'image_original_name' => null,
+        ]);
+        Storage::disk('public')->assertMissing($oldImagePath);
+    }
+
+    public function test_user_can_upload_profile_photo_up_to_twenty_megabytes(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->post('/api/v1/profile/photo', [
+            'photo_original_name' => 'konezki.png',
+            'photo' => UploadedFile::fake()->image('avatar.png')->size(15000),
+        ], ['Accept' => 'application/json'])->assertOk()
+            ->assertJsonPath('data.profile.photo_url', fn ($value) => is_string($value) && str_contains($value, '/storage/profiles/'))
+            ->assertJsonPath('data.profile.photo_name', 'konezki.png');
+
+        Storage::disk('public')->assertExists($user->fresh()->profile->photo_path);
+        $this->assertDatabaseHas('user_profiles', [
+            'user_id' => $user->id,
+            'photo_original_name' => 'konezki.png',
+        ]);
+    }
+
+    public function test_user_can_delete_profile_photo(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $profile = $user->profile()->updateOrCreate([], [
+            'photo_path' => 'profiles/avatar.png',
+            'photo_original_name' => 'avatar.png',
+        ]);
+        Storage::disk('public')->put($profile->photo_path, 'image');
+
+        Sanctum::actingAs($user);
+
+        $this->deleteJson('/api/v1/profile/photo')
+            ->assertOk()
+            ->assertJsonPath('data.profile.photo_url', null)
+            ->assertJsonPath('data.user.profile.photo_url', null);
+
+        Storage::disk('public')->assertMissing('profiles/avatar.png');
+        $this->assertDatabaseHas('user_profiles', [
+            'user_id' => $user->id,
+            'photo_path' => null,
+            'photo_original_name' => null,
+        ]);
+    }
+
     public function test_business_page_owner_can_add_store_product(): void
     {
         Storage::fake('public');
@@ -208,7 +364,7 @@ class SveeveeApiTest extends TestCase
 
         Sanctum::actingAs($owner);
 
-        $this->post("/api/v1/pages/{$businessPage->id}/products", [
+        $createdProduct = $this->post("/api/v1/pages/{$businessPage->id}/products", [
             'name' => 'Ceramic cup',
             'description' => 'Handmade cup from the studio.',
             'image' => UploadedFile::fake()->image('cup.jpg'),
@@ -219,10 +375,44 @@ class SveeveeApiTest extends TestCase
             ->assertJsonPath('data.price', 29.9)
             ->assertJsonPath('data.link', 'https://seller.example/products/cup');
 
+        $oldProductImagePath = PageProduct::query()->findOrFail($createdProduct->json('data.id'))->image_path;
+        Storage::disk('public')->assertExists($oldProductImagePath);
+
+        $this->post("/api/v1/products/{$createdProduct->json('data.id')}", [
+            '_method' => 'PUT',
+            'name' => 'Ceramic bowl',
+            'description' => 'Updated product description.',
+            'price' => '39.90',
+            'link' => 'https://seller.example/products/bowl',
+        ], ['Accept' => 'application/json'])->assertOk()
+            ->assertJsonPath('data.name', 'Ceramic bowl')
+            ->assertJsonPath('data.description', 'Updated product description.')
+            ->assertJsonPath('data.price', 39.9)
+            ->assertJsonPath('data.link', 'https://seller.example/products/bowl');
+
+        $this->assertDatabaseHas('page_products', [
+            'id' => $createdProduct->json('data.id'),
+            'name' => 'Ceramic bowl',
+            'description' => 'Updated product description.',
+        ]);
+
+        $this->post("/api/v1/products/{$createdProduct->json('data.id')}", [
+            '_method' => 'PUT',
+            'name' => 'Ceramic bowl',
+            'description' => 'Updated product description.',
+            'price' => '39.90',
+            'link' => 'https://seller.example/products/bowl',
+            'image_remove' => '1',
+        ], ['Accept' => 'application/json'])->assertOk()
+            ->assertJsonPath('data.image_url', null)
+            ->assertJsonPath('data.image_name', null);
+
+        Storage::disk('public')->assertMissing($oldProductImagePath);
+
         $this->getJson("/api/v1/pages/{$businessPage->id}")
             ->assertOk()
-            ->assertJsonPath('data.products.0.name', 'Ceramic cup')
-            ->assertJsonPath('data.products.0.price_label', '₪29.90');
+            ->assertJsonPath('data.products.0.name', 'Ceramic bowl')
+            ->assertJsonPath('data.products.0.price_label', '₪39.90');
 
         $this->post("/api/v1/pages/{$communityPage->id}/products", [
             'name' => 'Community cup',

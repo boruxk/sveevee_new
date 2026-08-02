@@ -9,6 +9,8 @@
 	import { deleteAd } from '@/services/api/ads'
 	import { deletePage, fetchMyPage, saveMyPage } from '@/services/api/pages'
 	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
+	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import AdCard from '@/components/AdCard.vue'
 	import AdComposer from '@/components/AdComposer.vue'
 	import EventCard from '@/components/events/EventCard.vue'
@@ -44,9 +46,13 @@
 	const productDialogOpen = ref(false)
 	const eventDialogOpen = ref(false)
 	const ratingsDialogOpen = ref(false)
+	const editingAd = ref(null)
+	const editingProduct = ref(null)
 	const page = ref(null)
 	const localLogoPreviewUrl = ref(null)
 	const localBannerPreviewUrl = ref(null)
+	const logoRemoved = ref(false)
+	const bannerRemoved = ref(false)
 	const citySelectOptions = ref([])
 	const neighborhoodSelectOptions = ref([])
 	const form = reactive({
@@ -72,6 +78,22 @@
 	const isCommunityPage = computed(() => type.value === 'community')
 	const title = computed(() => (type.value === 'business' ? t('pages.businessTitle') : t('pages.communityTitle')))
 	const selectedPalette = computed(() => findPresencePalette(form.palette_key))
+	const adDialogTitle = computed(() => (editingAd.value ? t('actions.update') : t('actions.createAd')))
+	const productDialogTitle = computed(() => (editingProduct.value ? t('actions.update') : t('actions.addProduct')))
+	const visibleAds = computed(() => (Array.isArray(page.value?.ads) ? page.value.ads.filter((ad) => ad?.id) : []))
+	const visibleProducts = computed(() => (Array.isArray(page.value?.products) ? page.value.products.filter((product) => product?.id) : []))
+	const hasStoredLogo = computed(() => Boolean(page.value?.logo_url) && !form.logo && !logoRemoved.value)
+	const hasStoredBanner = computed(() => Boolean(page.value?.banner_url) && !form.banner && !bannerRemoved.value)
+	const logoDisplayName = computed(() => imageUploadDisplayName(
+		form.logo,
+		logoRemoved.value ? '' : page.value?.logo_url,
+		logoRemoved.value ? '' : page.value?.logo_name
+	))
+	const bannerDisplayName = computed(() => imageUploadDisplayName(
+		form.banner,
+		bannerRemoved.value ? '' : page.value?.banner_url,
+		bannerRemoved.value ? '' : page.value?.banner_name
+	))
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 	const {
 		cityOptions,
@@ -101,8 +123,8 @@
 		},
 		opening_hours: form.opening_hours.map((item) => ({ ...item })),
 		palette_key: form.palette_key,
-		logo_url: localLogoPreviewUrl.value || page.value?.logo_url || null,
-		banner_url: localBannerPreviewUrl.value || page.value?.banner_url || null,
+		logo_url: logoRemoved.value ? null : localLogoPreviewUrl.value || page.value?.logo_url || null,
+		banner_url: bannerRemoved.value ? null : localBannerPreviewUrl.value || page.value?.banner_url || null,
 		rating_summary: page.value?.rating_summary || { average: 0, count: 0 }
 	}))
 
@@ -160,6 +182,8 @@
 		form.palette_key = findPresencePalette(value?.palette_key || setup.palette_key).key
 		form.logo = null
 		form.banner = null
+		logoRemoved.value = false
+		bannerRemoved.value = false
 	}
 
 	function pagePayload() {
@@ -190,7 +214,9 @@
 				}))
 			},
 			logo: form.logo,
-			banner: form.banner
+			logo_remove: logoRemoved.value,
+			banner: form.banner,
+			banner_remove: bannerRemoved.value
 		}
 	}
 
@@ -223,7 +249,7 @@
 			}
 			return true
 		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('pages.saveFailed') })
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('pages.saveFailed')) })
 			return false
 		} finally {
 			saving.value = false
@@ -231,7 +257,7 @@
 	}
 
 	async function uploadLogo() {
-		if (!form.logo) {
+		if (!form.logo && !logoRemoved.value) {
 			$q.notify({ type: 'warning', message: t('pages.logoMissing') })
 			return
 		}
@@ -247,7 +273,7 @@
 	}
 
 	async function uploadBanner() {
-		if (!form.banner) {
+		if (!form.banner && !bannerRemoved.value) {
 			$q.notify({ type: 'warning', message: t('pages.bannerMissing') })
 			return
 		}
@@ -267,7 +293,77 @@
 			await deleteAd(ad.id)
 			await load()
 		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('ads.deleteFailed') })
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('ads.deleteFailed')) })
+		}
+	}
+
+	function removeStoredLogo() {
+		form.logo = null
+		localLogoPreviewUrl.value = null
+		logoRemoved.value = true
+	}
+
+	function removeStoredBanner() {
+		form.banner = null
+		localBannerPreviewUrl.value = null
+		bannerRemoved.value = true
+	}
+
+	function openCreateAd() {
+		editingAd.value = null
+		adDialogOpen.value = true
+	}
+
+	function openEditAd(ad) {
+		editingAd.value = ad
+		adDialogOpen.value = true
+	}
+
+	function mergeSavedAd(savedAd) {
+		if (!page.value?.id || !savedAd?.id || savedAd.page_id !== page.value.id) {
+			return
+		}
+
+		const ads = Array.isArray(page.value.ads) ? page.value.ads : []
+		const existingIndex = ads.findIndex((ad) => ad.id === savedAd.id)
+		let nextAds = [savedAd, ...ads]
+
+		if (existingIndex !== -1) {
+			nextAds = ads.map((ad) => (ad.id === savedAd.id ? savedAd : ad))
+		}
+
+		page.value = {
+			...page.value,
+			ads: nextAds
+		}
+	}
+
+	function openCreateProduct() {
+		editingProduct.value = null
+		productDialogOpen.value = true
+	}
+
+	function openEditProduct(product) {
+		editingProduct.value = product
+		productDialogOpen.value = true
+	}
+
+	function mergeSavedProduct(savedProduct) {
+		if (!page.value?.id || !savedProduct?.id || savedProduct.page_id !== page.value.id) {
+			return
+		}
+
+		const products = Array.isArray(page.value.products) ? page.value.products : []
+		const existingIndex = products.findIndex((product) => product.id === savedProduct.id)
+		let nextProducts = [savedProduct, ...products]
+
+		if (existingIndex !== -1) {
+			nextProducts = products.map((product) => (product.id === savedProduct.id ? savedProduct : product))
+		}
+
+		page.value = {
+			...page.value,
+			products: nextProducts
 		}
 	}
 
@@ -302,20 +398,26 @@
 			$q.notify({ type: 'positive', message: t('pages.deleted') })
 			router.push({ name: 'me' })
 		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('pages.deleteFailed') })
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('pages.deleteFailed')) })
 		} finally {
 			deleting.value = false
 		}
 	}
 
-	async function handleAdSaved() {
+	async function handleAdSaved(savedAd) {
 		adDialogOpen.value = false
+		editingAd.value = null
+		mergeSavedAd(savedAd)
 		await load()
+		mergeSavedAd(savedAd)
 	}
 
-	async function handleProductSaved() {
+	async function handleProductSaved(savedProduct) {
 		productDialogOpen.value = false
+		editingProduct.value = null
+		mergeSavedProduct(savedProduct)
 		await load()
+		mergeSavedProduct(savedProduct)
 	}
 
 	async function handleEventSaved() {
@@ -388,6 +490,18 @@
 		}
 	})
 
+	watch(() => form.logo, (value) => {
+		if (value) {
+			logoRemoved.value = false
+		}
+	})
+
+	watch(() => form.banner, (value) => {
+		if (value) {
+			bannerRemoved.value = false
+		}
+	})
+
 	attachObjectPreview(() => form.logo, localLogoPreviewUrl)
 	attachObjectPreview(() => form.banner, localBannerPreviewUrl)
 
@@ -456,13 +570,13 @@
 						icon="add_shopping_cart"
 						:disable="!page"
 						:label="t('actions.addProduct')"
-						@click="productDialogOpen = true"
+						@click="openCreateProduct"
 					/>
 				</div>
 				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
-				<div v-else-if="!page.products?.length" class="empty-state">{{ t('products.empty') }}</div>
+				<div v-else-if="visibleProducts.length === 0" class="empty-state">{{ t('products.empty') }}</div>
 				<div v-else class="product-grid">
-					<ProductCard v-for="product in page.products" :key="product.id" :product="product" />
+					<ProductCard v-for="product in visibleProducts" :key="product.id" :product="product" editable @edit="openEditProduct" />
 				</div>
 			</section>
 
@@ -494,13 +608,19 @@
 						icon="add"
 						:disable="!page"
 						:label="t('actions.createAd')"
-						@click="adDialogOpen = true"
+						@click="openCreateAd"
 					/>
 				</div>
 				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
-				<div v-else-if="!page.ads?.length" class="empty-state">{{ t('ads.empty') }}</div>
-				<div v-else class="ad-grid">
-					<AdCard v-for="ad in page.ads" :key="ad.id" :ad="ad" editable @delete="removeAd" />
+				<div v-else-if="visibleAds.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
+				<div v-else class="listing-grid">
+					<AdCard v-for="ad in visibleAds"
+						:key="ad.id"
+						:ad="ad"
+						editable
+						@edit="openEditAd"
+						@delete="removeAd"
+					/>
 				</div>
 			</section>
 		</div>
@@ -613,7 +733,28 @@
 
 								<div class="upload-group q-mt-md">
 									<div class="upload-row">
-										<q-file v-model="form.logo" outlined clearable accept=".jpg,.jpeg,.png,.webp,image/png,image/jpeg,image/webp" :label="t('pages.logo')" />
+										<q-file v-model="form.logo"
+											outlined
+											clearable
+											:accept="IMAGE_ACCEPT"
+											:display-value="logoDisplayName"
+											:label="t('pages.logo')"
+										>
+											<template #append>
+												<q-btn
+													v-if="hasStoredLogo"
+													flat
+													round
+													dense
+													color="negative"
+													icon="delete"
+													:aria-label="t('actions.delete')"
+													@click.stop.prevent="removeStoredLogo"
+												>
+													<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
+												</q-btn>
+											</template>
+										</q-file>
 										<q-btn type="button"
 											rounded
 											outline
@@ -625,7 +766,28 @@
 									</div>
 
 									<div class="upload-row">
-										<q-file v-model="form.banner" outlined clearable accept=".jpg,.jpeg,.png,.webp,image/png,image/jpeg,image/webp" :label="t('pages.banner')" />
+										<q-file v-model="form.banner"
+											outlined
+											clearable
+											:accept="IMAGE_ACCEPT"
+											:display-value="bannerDisplayName"
+											:label="t('pages.banner')"
+										>
+											<template #append>
+												<q-btn
+													v-if="hasStoredBanner"
+													flat
+													round
+													dense
+													color="negative"
+													icon="delete"
+													:aria-label="t('actions.delete')"
+													@click.stop.prevent="removeStoredBanner"
+												>
+													<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
+												</q-btn>
+											</template>
+										</q-file>
 										<q-btn type="button"
 											rounded
 											outline
@@ -657,9 +819,10 @@
 										<q-btn rounded
 											unelevated
 											color="primary"
-											type="submit"
+											type="button"
 											:loading="saving"
 											:label="t('pages.saveSettings')"
+											@click="save"
 										/>
 									</div>
 									<div class="col text-caption text-grey-7">
@@ -676,24 +839,24 @@
 			</q-card>
 		</q-dialog>
 		<q-dialog v-model="adDialogOpen">
-			<q-card class="ad-dialog">
+			<q-card class="listing-dialog">
 				<q-card-section class="dialog-head">
-					<div class="text-h6">{{ t('actions.createAd') }}</div>
+					<div class="text-h6">{{ adDialogTitle }}</div>
 					<q-btn flat round icon="close" color="dark" v-close-popup />
 				</q-card-section>
 				<q-card-section>
-					<AdComposer :page-id="page?.id" :disabled="!page" @saved="handleAdSaved" />
+					<AdComposer :page-id="page?.id" :ad="editingAd" :disabled="!page" @saved="handleAdSaved" />
 				</q-card-section>
 			</q-card>
 		</q-dialog>
 		<q-dialog v-model="productDialogOpen">
 			<q-card class="product-dialog">
 				<q-card-section class="dialog-head">
-					<div class="text-h6">{{ t('actions.addProduct') }}</div>
+					<div class="text-h6">{{ productDialogTitle }}</div>
 					<q-btn flat round icon="close" color="dark" v-close-popup />
 				</q-card-section>
 				<q-card-section>
-					<ProductComposer v-if="page?.id" :page-id="page.id" @saved="handleProductSaved" />
+					<ProductComposer v-if="page?.id" :page-id="page.id" :product="editingProduct" @saved="handleProductSaved" />
 				</q-card-section>
 			</q-card>
 		</q-dialog>
@@ -876,11 +1039,16 @@
   align-items: center;
 }
 
-.ad-grid,
 .product-grid,
 .event-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.listing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
@@ -899,7 +1067,7 @@
   background: #f9f2eb;
 }
 
-.ad-dialog,
+.listing-dialog,
 .product-dialog,
 .event-dialog {
   width: min(680px, calc(100vw - 24px));
@@ -922,7 +1090,7 @@
 
 @media (max-width: 1100px) {
   .preview-head,
-  .ad-grid,
+  .listing-grid,
   .product-grid,
   .event-grid {
     grid-template-columns: 1fr;

@@ -5,7 +5,9 @@
 	import { useAuthStore } from '@/stores/auth'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
-	import { fetchProfile, updateProfile, uploadProfilePhoto } from '@/services/api/profile'
+	import { deleteProfilePhoto, fetchProfile, updateProfile, uploadProfilePhoto } from '@/services/api/profile'
+	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 
 	const { t } = useI18n()
 	const $q = useQuasar()
@@ -13,6 +15,7 @@
 	const supportedLanguages = ['he', 'en', 'ru', 'fr']
 	const loading = ref(false)
 	const saving = ref(false)
+	const photoDeleting = ref(false)
 	const formRef = ref(null)
 	const photo = ref(null)
 	const citySelectOptions = ref([])
@@ -40,6 +43,12 @@
 		{ label: t('languages.ru'), value: 'ru' },
 		{ label: t('languages.fr'), value: 'fr' }
 	])
+	const photoDisplayName = computed(() => imageUploadDisplayName(
+		photo.value,
+		authStore.user?.profile?.photo_url,
+		authStore.user?.profile?.photo_name
+	))
+	const hasStoredPhoto = computed(() => Boolean(authStore.user?.profile?.photo_url) && !photo.value)
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	function hydrate(profile) {
@@ -81,9 +90,24 @@
 			hydrate(authStore.user.profile)
 			$q.notify({ type: 'positive', message: t('profile.saved') })
 		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('profile.saveFailed') })
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('profile.saveFailed')) })
 		} finally {
 			saving.value = false
+		}
+	}
+
+	async function deletePhoto() {
+		photoDeleting.value = true
+		try {
+			await deleteProfilePhoto()
+			photo.value = null
+			await authStore.refreshUser()
+			hydrate(authStore.user.profile)
+			$q.notify({ type: 'positive', message: t('profile.saved') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('profile.saveFailed')) })
+		} finally {
+			photoDeleting.value = false
 		}
 	}
 
@@ -207,9 +231,26 @@
 							v-model="photo"
 							outlined
 							clearable
-							accept="image/*"
+							:accept="IMAGE_ACCEPT"
+							:display-value="photoDisplayName"
 							:label="t('profile.photo')"
-						/>
+						>
+							<template #append>
+								<q-btn
+									v-if="hasStoredPhoto"
+									flat
+									round
+									dense
+									color="negative"
+									icon="delete"
+									:loading="photoDeleting"
+									:aria-label="t('actions.delete')"
+									@click.stop.prevent="deletePhoto"
+								>
+									<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
+								</q-btn>
+							</template>
+						</q-file>
 					</div>
 					<q-btn class="form-submit"
 						color="primary"
@@ -245,4 +286,5 @@
 .form-submit {
   margin-inline-start: 0 !important;
 }
+
 </style>

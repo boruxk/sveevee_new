@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Models\Page;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
@@ -11,6 +12,8 @@ use Illuminate\Validation\Rule;
 
 class PageController extends Controller
 {
+    use HandlesUploadedImages;
+
     private const DEFAULT_OPENING_HOURS = [
         ['weekday' => 'sunday', 'is_open' => false, 'opens_at' => null, 'closes_at' => null],
         ['weekday' => 'monday', 'is_open' => true, 'opens_at' => '09:00', 'closes_at' => '17:00'],
@@ -52,8 +55,10 @@ class PageController extends Controller
             'address' => ['nullable', 'string', 'max:255'],
             'palette_key' => ['nullable', 'string', 'max:50'],
             'setup' => ['nullable'],
-            'logo' => ['nullable', 'image', 'max:4096'],
-            'banner' => ['nullable', 'image', 'max:6144'],
+            'logo' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
+            'logo_remove' => ['nullable', 'boolean'],
+            'banner' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
+            'banner_remove' => ['nullable', 'boolean'],
         ]);
 
         $setup = $this->normalizedSetup($request->input('setup'));
@@ -75,12 +80,28 @@ class PageController extends Controller
             'setup' => $setup,
         ]);
 
+        if ($request->boolean('logo_remove') || $request->hasFile('logo')) {
+            $this->deletePublicUpload($page->logo_path);
+            $page->logo_path = null;
+            $page->logo_original_name = null;
+        }
+
         if ($request->hasFile('logo')) {
-            $page->logo_path = $request->file('logo')->store('pages/logos', 'public');
+            $logo = $request->file('logo');
+            $page->logo_path = $logo->store('pages/logos', 'public');
+            $page->logo_original_name = $this->originalUploadName($request, 'logo', $logo);
+        }
+
+        if ($request->boolean('banner_remove') || $request->hasFile('banner')) {
+            $this->deletePublicUpload($page->banner_path);
+            $page->banner_path = null;
+            $page->banner_original_name = null;
         }
 
         if ($request->hasFile('banner')) {
-            $page->banner_path = $request->file('banner')->store('pages/banners', 'public');
+            $banner = $request->file('banner');
+            $page->banner_path = $banner->store('pages/banners', 'public');
+            $page->banner_original_name = $this->originalUploadName($request, 'banner', $banner);
         }
 
         $page->save();

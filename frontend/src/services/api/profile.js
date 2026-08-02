@@ -1,4 +1,5 @@
 import apiClient from '@/services/api/client'
+import { appendImageFile } from '@/utils/imageFiles'
 
 export function fetchProfile() {
 	return apiClient.get('/profile')
@@ -8,9 +9,13 @@ export function updateProfile(payload) {
 	return apiClient.put('/profile', payload)
 }
 
-export function uploadProfilePhoto(file) {
+export async function uploadProfilePhoto(file) {
 	const formData = new FormData()
-	formData.append('photo', Array.isArray(file) ? file[0] : file)
+	await appendImageFile(formData, 'photo', file)
 
 	return apiClient.post('/profile/photo', formData)
+}
+
+export function deleteProfilePhoto() {
+	return apiClient.delete('/profile/photo')
 }

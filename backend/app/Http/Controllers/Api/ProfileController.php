@@ -3,15 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Models\Ad;
 use App\Models\EmailBan;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
+    use HandlesUploadedImages;
+
     public function __construct(private readonly PayloadService $payloads)
     {
     }
@@ -72,15 +76,44 @@ class ProfileController extends Controller
     public function uploadPhoto(Request $request)
     {
         $data = $request->validate([
-            'photo' => ['required', 'image', 'max:4096'],
+            'photo' => ['required', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
         ]);
 
+        $oldProfile = $request->user()->profile()->first();
         $path = $data['photo']->store('profiles', 'public');
-        $profile = $request->user()->profile()->updateOrCreate([], ['photo_path' => $path]);
+
+        if ($oldProfile?->photo_path) {
+            Storage::disk('public')->delete($oldProfile->photo_path);
+        }
+
+        $profile = $request->user()->profile()->updateOrCreate([], [
+            'photo_path' => $path,
+            'photo_original_name' => $this->originalUploadName($request, 'photo', $data['photo']),
+        ]);
 
         return ApiResponseService::success([
             'profile' => $this->payloads->profile($profile, $request->user()),
             'user' => $this->payloads->user($request->user()->fresh(), includePrivate: true),
         ], 'Photo uploaded.');
+    }
+
+    public function destroyPhoto(Request $request)
+    {
+        $profile = $request->user()->profile()->first();
+
+        if ($profile?->photo_path) {
+            Storage::disk('public')->delete($profile->photo_path);
+            $profile->forceFill([
+                'photo_path' => null,
+                'photo_original_name' => null,
+            ])->save();
+        }
+
+        $user = $request->user()->fresh();
+
+        return ApiResponseService::success([
+            'profile' => $this->payloads->profile($user->profile, $user),
+            'user' => $this->payloads->user($user, includePrivate: true),
+        ], 'Photo deleted.');
     }
 }

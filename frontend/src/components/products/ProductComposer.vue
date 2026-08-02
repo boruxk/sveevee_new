@@ -1,14 +1,20 @@
 <script setup>
-	import { reactive, ref } from 'vue'
+	import { computed, reactive, ref, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
-	import { createProduct } from '@/services/api/products'
+	import { createProduct, updateProduct } from '@/services/api/products'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 
 	const props = defineProps({
 		pageId: {
 			type: [Number, String],
 			required: true
+		},
+		product: {
+			type: Object,
+			default: null
 		}
 	})
 
@@ -17,6 +23,7 @@
 	const $q = useQuasar()
 	const loading = ref(false)
 	const formRef = ref(null)
+	const imageRemoved = ref(false)
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 	const form = reactive({
 		name: '',
@@ -25,6 +32,28 @@
 		price: '',
 		link: ''
 	})
+	const isEditing = computed(() => Boolean(props.product?.id))
+	const actionLabel = computed(() => (isEditing.value ? t('actions.update') : t('actions.addProduct')))
+	const hasStoredImage = computed(() => Boolean(props.product?.image_url) && !form.image && !imageRemoved.value)
+	const imageDisplayName = computed(() => imageUploadDisplayName(
+		form.image,
+		imageRemoved.value ? '' : props.product?.image_url,
+		imageRemoved.value ? '' : props.product?.image_name
+	))
+
+	function hydrate(product) {
+		form.name = product?.name || ''
+		form.description = product?.description || ''
+		form.image = null
+		form.price = product?.price ?? ''
+		form.link = product?.link || ''
+		imageRemoved.value = false
+	}
+
+	function removeStoredImage() {
+		form.image = null
+		imageRemoved.value = true
+	}
 
 	async function submit() {
 		if (!(await validateRequiredForm(formRef))) {
@@ -34,20 +63,30 @@
 		loading.value = true
 
 		try {
-			const { data } = await createProduct(props.pageId, form)
-			form.name = ''
-			form.description = ''
-			form.image = null
-			form.price = ''
-			form.link = ''
-			emit('saved', data.data)
-			$q.notify({ type: 'positive', message: t('products.created') })
+			let response
+
+			if (isEditing.value) {
+				response = await updateProduct(props.product.id, { ...form, image_remove: imageRemoved.value })
+			} else {
+				response = await createProduct(props.pageId, form)
+			}
+
+			hydrate(null)
+			emit('saved', response.data.data)
+			$q.notify({ type: 'positive', message: isEditing.value ? t('actions.update') : t('products.created') })
 		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('products.saveFailed') })
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('products.saveFailed')) })
 		} finally {
 			loading.value = false
 		}
 	}
+
+	watch(() => props.product, hydrate, { immediate: true })
+	watch(() => form.image, (value) => {
+		if (value) {
+			imageRemoved.value = false
+		}
+	})
 </script>
 
 <template>
@@ -71,10 +110,26 @@
 				v-model="form.image"
 				outlined
 				clearable
-				accept="image/*"
-				:label="requiredLabel('products.image')"
-				:rules="[requiredRule]"
-			/>
+				:accept="IMAGE_ACCEPT"
+				:display-value="imageDisplayName"
+				:label="isEditing ? t('products.image') : requiredLabel('products.image')"
+				:rules="isEditing ? [] : [requiredRule]"
+			>
+				<template #append>
+					<q-btn
+						v-if="hasStoredImage"
+						flat
+						round
+						dense
+						color="negative"
+						icon="delete"
+						:aria-label="t('actions.delete')"
+						@click.stop.prevent="removeStoredImage"
+					>
+						<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
+					</q-btn>
+				</template>
+			</q-file>
 			<q-input
 				v-model="form.price"
 				outlined
@@ -100,9 +155,9 @@
 				unelevated
 				color="primary"
 				type="submit"
-				icon="add"
+				:icon="isEditing ? 'save' : 'add'"
 				:loading="loading"
-				:label="t('actions.addProduct')"
+				:label="actionLabel"
 			/>
 		</div>
 	</q-form>

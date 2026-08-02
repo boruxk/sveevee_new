@@ -14,6 +14,7 @@ class PageProduct extends Model
         'name',
         'description',
         'image_path',
+        'image_original_name',
         'price',
         'link',
     ];

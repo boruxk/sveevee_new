@@ -5,9 +5,14 @@
 		product: {
 			type: Object,
 			required: true
+		},
+		editable: {
+			type: Boolean,
+			default: false
 		}
 	})
 
+	const emit = defineEmits(['edit'])
 	const { t } = useI18n()
 </script>
 
@@ -21,16 +26,26 @@
 			</div>
 			<div class="product-card__footer">
 				<div class="product-card__price">{{ product.price_label }}</div>
-				<q-btn
-					rounded
-					unelevated
-					color="primary"
-					icon="open_in_new"
-					:href="product.link"
-					target="_blank"
-					rel="noopener noreferrer"
-					:label="t('products.open')"
-				/>
+				<div class="product-card__actions">
+					<q-btn
+						rounded
+						unelevated
+						color="primary"
+						icon="open_in_new"
+						:href="product.link"
+						target="_blank"
+						rel="noopener noreferrer"
+						:label="t('products.open')"
+					/>
+					<q-btn v-if="editable"
+						rounded
+						unelevated
+						color="secondary"
+						icon="edit"
+						:label="t('actions.edit')"
+						@click="emit('edit', product)"
+					/>
+				</div>
 			</div>
 		</div>
 	</article>
@@ -84,5 +99,12 @@
   color: #151f2d;
   font-size: 22px;
   font-weight: 800;
+}
+
+.product-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>

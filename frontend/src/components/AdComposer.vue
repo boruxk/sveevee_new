@@ -1,13 +1,19 @@
 <script setup>
-	import { reactive, ref } from 'vue'
+	import { computed, reactive, ref, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
-	import { createAd } from '@/services/api/ads'
+	import { createAd, updateAd } from '@/services/api/ads'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 
 	const props = defineProps({
 		pageId: {
 			type: [Number, String],
+			default: null
+		},
+		ad: {
+			type: Object,
 			default: null
 		},
 		disabled: {
@@ -19,14 +25,37 @@
 	const emit = defineEmits(['saved'])
 	const { t } = useI18n()
 	const $q = useQuasar()
+	const TITLE_MAX_LENGTH = 300
+	const TEXT_MAX_LENGTH = 2000
 	const loading = ref(false)
 	const formRef = ref(null)
+	const imageRemoved = ref(false)
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 	const form = reactive({
 		title: '',
 		text: '',
 		image: null
 	})
+	const isEditing = computed(() => Boolean(props.ad?.id))
+	const actionLabel = computed(() => (isEditing.value ? t('actions.update') : t('actions.createAd')))
+	const hasStoredImage = computed(() => Boolean(props.ad?.image_url) && !form.image && !imageRemoved.value)
+	const imageDisplayName = computed(() => imageUploadDisplayName(
+		form.image,
+		imageRemoved.value ? '' : props.ad?.image_url,
+		imageRemoved.value ? '' : props.ad?.image_name
+	))
+
+	function hydrate(ad) {
+		form.title = ad?.title || ''
+		form.text = ad?.text || ''
+		form.image = null
+		imageRemoved.value = false
+	}
+
+	function removeStoredImage() {
+		form.image = null
+		imageRemoved.value = true
+	}
 
 	async function submit() {
 		if (!(await validateRequiredForm(formRef))) {
@@ -36,31 +65,46 @@
 		loading.value = true
 
 		try {
-			const { data } = await createAd({
+			const payload = {
 				...form,
-				page_id: props.pageId
-			})
-			form.title = ''
-			form.text = ''
-			form.image = null
-			emit('saved', data.data)
-			$q.notify({ type: 'positive', message: t('actions.createAd') })
+				page_id: props.pageId,
+				image_remove: imageRemoved.value
+			}
+			let response
+
+			if (isEditing.value) {
+				response = await updateAd(props.ad.id, payload)
+			} else {
+				response = await createAd(payload)
+			}
+
+			hydrate(null)
+			emit('saved', response.data.data)
+			$q.notify({ type: 'positive', message: actionLabel.value })
 		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('ads.saveFailed') })
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('ads.saveFailed')) })
 		} finally {
 			loading.value = false
 		}
 	}
 
+	watch(() => props.ad, hydrate, { immediate: true })
+	watch(() => form.image, (value) => {
+		if (value) {
+			imageRemoved.value = false
+		}
+	})
 </script>
 
 <template>
-	<q-form ref="formRef" greedy class="ad-composer" @submit.prevent="submit()">
+	<q-form ref="formRef" greedy class="listing-composer" @submit.prevent="submit()">
 		<q-input
 			v-model="form.title"
 			outlined
 			:label="requiredLabel('ads.title')"
 			:disable="disabled"
+			:maxlength="TITLE_MAX_LENGTH"
+			counter
 			:rules="[requiredRule]"
 		/>
 		<q-input v-model="form.text"
@@ -69,36 +113,54 @@
 			autogrow
 			:label="requiredLabel('ads.text')"
 			:disable="disabled"
+			:maxlength="TEXT_MAX_LENGTH"
+			counter
 			:rules="[requiredRule]"
 		/>
-		<div class="ad-composer__row">
+		<div class="listing-composer__row">
 			<q-file v-model="form.image"
 				outlined
 				clearable
-				accept="image/*"
+				:accept="IMAGE_ACCEPT"
+				:display-value="imageDisplayName"
 				:label="t('ads.image')"
 				:disable="disabled"
-			/>
+			>
+				<template #append>
+					<q-btn
+						v-if="hasStoredImage"
+						flat
+						round
+						dense
+						color="negative"
+						icon="delete"
+						:aria-label="t('actions.delete')"
+						@click.stop.prevent="removeStoredImage"
+					>
+						<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
+					</q-btn>
+				</template>
+			</q-file>
 			<q-btn color="primary"
 				unelevated
 				rounded
 				type="submit"
-				icon="add"
+				:icon="isEditing ? 'save' : 'add'"
 				:loading="loading"
 				:disable="disabled"
-				:label="t('actions.createAd')"
+				:label="actionLabel"
 			/>
 		</div>
 	</q-form>
 </template>
 
 <style scoped lang="scss">
-.ad-composer {
+.listing-composer {
   display: grid;
   gap: 14px;
 }
 
-.ad-composer__row {
+.listing-composer__row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
@@ -106,7 +168,7 @@
 }
 
 @media (max-width: 700px) {
-  .ad-composer__row {
+  .listing-composer__row {
     grid-template-columns: 1fr;
   }
 }

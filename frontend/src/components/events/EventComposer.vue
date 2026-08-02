@@ -1,9 +1,11 @@
 <script setup>
-	import { reactive, ref } from 'vue'
+	import { computed, reactive, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { createEvent } from '@/services/api/events'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 
 	const props = defineProps({
 		pageId: {
@@ -26,6 +28,7 @@
 		time: '',
 		address: ''
 	})
+	const imageDisplayName = computed(() => imageUploadDisplayName(form.image))
 
 	async function submit() {
 		if (!(await validateRequiredForm(formRef))) {
@@ -45,7 +48,7 @@
 			emit('saved', data.data)
 			$q.notify({ type: 'positive', message: t('events.created') })
 		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('events.saveFailed') })
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('events.saveFailed')) })
 		} finally {
 			loading.value = false
 		}
@@ -72,7 +75,8 @@
 			v-model="form.image"
 			outlined
 			clearable
-			accept="image/*"
+			:accept="IMAGE_ACCEPT"
+			:display-value="imageDisplayName"
 			:label="requiredLabel('events.image')"
 			:rules="[requiredRule]"
 		/>

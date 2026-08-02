@@ -158,7 +158,7 @@
 			<section class="result-section">
 				<h2>{{ t('search.ads') }}</h2>
 				<div v-if="results.ads.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
-				<div v-else class="ad-grid">
+				<div v-else class="listing-grid">
 					<AdCard v-for="ad in results.ads" :key="ad.id" :ad="ad" />
 				</div>
 			</section>
@@ -196,10 +196,15 @@
   margin-top: 22px;
 }
 
-.result-grid,
-.ad-grid {
+.result-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.listing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
@@ -230,7 +235,7 @@
   .page-head,
   .search-form,
   .result-grid,
-  .ad-grid {
+  .listing-grid {
     grid-template-columns: 1fr;
   }
 }

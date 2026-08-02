@@ -80,7 +80,7 @@
 
 			<section v-if="user?.private_ads?.length" class="q-mt-lg">
 				<h2>{{ t('ads.private') }}</h2>
-				<div class="ad-grid">
+				<div class="listing-grid">
 					<AdCard v-for="ad in user.private_ads" :key="ad.id" :ad="ad" />
 				</div>
 			</section>
@@ -106,10 +106,15 @@
   padding: 28px;
 }
 
-.page-row,
-.ad-grid {
+.page-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.listing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
@@ -134,7 +139,7 @@
 @media (max-width: 760px) {
   .person-head,
   .page-row,
-  .ad-grid {
+  .listing-grid {
     grid-template-columns: 1fr;
   }
 }

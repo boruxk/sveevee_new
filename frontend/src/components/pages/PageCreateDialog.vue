@@ -6,6 +6,8 @@
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { saveMyPage } from '@/services/api/pages'
+	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 
 	const DEFAULT_OPENING_HOURS = [
 		{ weekday: 'sunday', is_open: false, opens_at: null, closes_at: null },
@@ -58,6 +60,8 @@
 		set: (value) => emit('update:modelValue', value)
 	})
 	const title = computed(() => (props.type === 'business' ? t('pages.businessTitle') : t('pages.communityTitle')))
+	const logoDisplayName = computed(() => imageUploadDisplayName(form.logo))
+	const bannerDisplayName = computed(() => imageUploadDisplayName(form.banner))
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 	const {
 		cityOptions,
@@ -134,7 +138,7 @@
 			dialogOpen.value = false
 			emit('created', data.data)
 		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('pages.saveFailed') })
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('pages.saveFailed')) })
 		} finally {
 			saving.value = false
 		}
@@ -266,17 +270,30 @@
 					</section>
 
 					<div class="upload-row">
-						<q-file v-model="form.logo" outlined clearable accept=".jpg,.jpeg,.png,.webp,image/png,image/jpeg,image/webp" :label="t('pages.logo')" />
-						<q-file v-model="form.banner" outlined clearable accept=".jpg,.jpeg,.png,.webp,image/png,image/jpeg,image/webp" :label="t('pages.banner')" />
+						<q-file v-model="form.logo"
+							outlined
+							clearable
+							:accept="IMAGE_ACCEPT"
+							:display-value="logoDisplayName"
+							:label="t('pages.logo')"
+						/>
+						<q-file v-model="form.banner"
+							outlined
+							clearable
+							:accept="IMAGE_ACCEPT"
+							:display-value="bannerDisplayName"
+							:label="t('pages.banner')"
+						/>
 					</div>
 
 					<div class="page-create-form__actions">
 						<q-btn rounded
 							unelevated
 							color="primary"
-							type="submit"
+							type="button"
 							:loading="saving"
 							:label="t('pages.saveSettings')"
+							@click="submit"
 						/>
 					</div>
 				</q-form>

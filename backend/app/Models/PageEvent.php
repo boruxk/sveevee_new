@@ -14,6 +14,7 @@ class PageEvent extends Model
         'name',
         'description',
         'image_path',
+        'image_original_name',
         'event_date',
         'event_time',
         'address',

@@ -4,7 +4,7 @@ SVEEVEE
 Backend:
 cd ./backend
 php artisan migrate:fresh --seed
-php artisan serve
+php -d upload_max_filesize=25M -d post_max_size=30M artisan serve
 
 Frontend:
 cd ./frontend

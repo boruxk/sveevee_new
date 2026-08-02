@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Models\Ad;
 use App\Models\Page;
 use App\Models\User;
@@ -13,6 +14,8 @@ use Illuminate\Validation\Rule;
 
 class AdController extends Controller
 {
+    use HandlesUploadedImages;
+
     public function __construct(private readonly PayloadService $payloads)
     {
     }
@@ -49,10 +52,10 @@ class AdController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'text' => ['required', 'string', 'max:5000'],
+            'title' => ['required', 'string', 'max:300'],
+            'text' => ['required', 'string', 'max:2000'],
             'page_id' => ['nullable', 'integer', 'exists:pages,id'],
-            'image' => ['nullable', 'image', 'max:6144'],
+            'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
         ]);
 
         $page = null;
@@ -64,14 +67,18 @@ class AdController extends Controller
 
         $location = $this->locationFor($page, $request->user());
 
+        $image = $request->file('image');
+
         $ad = Ad::query()->create([
             'user_id' => $request->user()->id,
             'page_id' => $page?->id,
             'type' => $this->typeForPage($page),
             'title' => $data['title'],
             'text' => $data['text'],
-            'image_path' => $request->hasFile('image') ? $request->file('image')->store('ads', 'public') : null,
+            'image_path' => $image ? $image->store('ads', 'public') : null,
+            'image_original_name' => $image ? $this->originalUploadName($request, 'image', $image) : null,
             'status' => 'active',
+            'expires_at' => now()->addWeek(),
             'city' => $location['city'],
             'neighborhood' => $location['neighborhood'],
         ]);
@@ -86,10 +93,11 @@ class AdController extends Controller
         }
 
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'text' => ['required', 'string', 'max:5000'],
+            'title' => ['required', 'string', 'max:300'],
+            'text' => ['required', 'string', 'max:2000'],
             'status' => ['nullable', Rule::in(['active', 'paused'])],
-            'image' => ['nullable', 'image', 'max:6144'],
+            'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
+            'image_remove' => ['nullable', 'boolean'],
         ]);
 
         $ad->loadMissing(['page', 'user.profile']);
@@ -103,8 +111,16 @@ class AdController extends Controller
             'neighborhood' => $location['neighborhood'],
         ]);
 
+        if ($request->boolean('image_remove') || $request->hasFile('image')) {
+            $this->deletePublicUpload($ad->image_path);
+            $ad->image_path = null;
+            $ad->image_original_name = null;
+        }
+
         if ($request->hasFile('image')) {
-            $ad->image_path = $request->file('image')->store('ads', 'public');
+            $image = $request->file('image');
+            $ad->image_path = $image->store('ads', 'public');
+            $ad->image_original_name = $this->originalUploadName($request, 'image', $image);
         }
 
         $ad->save();
