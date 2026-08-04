@@ -8,6 +8,7 @@
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { deleteAd } from '@/services/api/ads'
 	import { deletePage, fetchMyPage, saveMyPage } from '@/services/api/pages'
+	import { deleteProduct } from '@/services/api/products'
 	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
@@ -348,6 +349,15 @@
 		productDialogOpen.value = true
 	}
 
+	async function removeProduct(product) {
+		try {
+			await deleteProduct(product.id)
+			await load()
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('products.deleteFailed')) })
+		}
+	}
+
 	function mergeSavedProduct(savedProduct) {
 		if (!page.value?.id || !savedProduct?.id || savedProduct.page_id !== page.value.id) {
 			return
@@ -576,7 +586,13 @@
 				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
 				<div v-else-if="visibleProducts.length === 0" class="empty-state">{{ t('products.empty') }}</div>
 				<div v-else class="product-grid">
-					<ProductCard v-for="product in visibleProducts" :key="product.id" :product="product" editable @edit="openEditProduct" />
+					<ProductCard v-for="product in visibleProducts"
+						:key="product.id"
+						:product="product"
+						editable
+						@edit="openEditProduct"
+						@delete="removeProduct"
+					/>
 				</div>
 			</section>
 

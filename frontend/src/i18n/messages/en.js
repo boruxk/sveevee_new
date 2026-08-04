@@ -132,9 +132,11 @@ export default {
 		link: 'Product link',
 		linkHint: "Link to the product on the seller's website.",
 		open: 'View product',
+		buy: 'Buy product',
 		empty: 'No products yet.',
 		created: 'Product created.',
-		saveFailed: 'Product could not be saved.'
+		saveFailed: 'Product could not be saved.',
+		deleteFailed: 'Product could not be deleted.'
 	},
 	events: {
 		eventsTitle: 'Events',

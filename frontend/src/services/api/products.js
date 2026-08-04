@@ -29,3 +29,7 @@ export async function updateProduct(id, payload) {
 
 	return apiClient.post(`/products/${id}`, formData)
 }
+
+export function deleteProduct(id) {
+	return apiClient.delete(`/products/${id}`)
+}

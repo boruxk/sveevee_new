@@ -177,7 +177,6 @@
   position: relative;
   overflow: hidden;
   min-height: 320px;
-  border: 1px solid var(--presence-banner-border);
   border-radius: 36px;
   background: var(--presence-hero);
 }

@@ -132,9 +132,11 @@ export default {
 		link: 'Lien du produit',
 		linkHint: 'Lien vers le produit sur le site du vendeur.',
 		open: 'Voir le produit',
+		buy: 'Acheter le produit',
 		empty: 'Aucun produit pour le moment.',
 		created: 'Produit créé.',
-		saveFailed: 'Le produit n’a pas pu être enregistré.'
+		saveFailed: 'Le produit n’a pas pu être enregistré.',
+		deleteFailed: 'Le produit n\u2019a pas pu \u00EAtre supprim\u00E9.'
 	},
 	events: {
 		eventsTitle: '\u00C9v\u00E9nements',

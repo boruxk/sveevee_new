@@ -88,6 +88,20 @@ class PageProductController extends Controller
         return ApiResponseService::success($this->payloads->product($product->fresh()), 'Product saved.');
     }
 
+    public function destroy(Request $request, PageProduct $product)
+    {
+        $product->loadMissing('page');
+
+        if ($error = $this->guardBusinessPage($request, $product->page)) {
+            return $error;
+        }
+
+        $this->deletePublicUpload($product->image_path);
+        $product->delete();
+
+        return ApiResponseService::success(null, 'Product deleted.');
+    }
+
     private function guardBusinessPage(Request $request, Page $page)
     {
         if ($page->user_id !== $request->user()->id) {

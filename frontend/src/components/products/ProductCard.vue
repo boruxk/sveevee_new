@@ -1,4 +1,5 @@
 <script setup>
+	import { ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
 
 	defineProps({
@@ -12,8 +13,9 @@
 		}
 	})
 
-	const emit = defineEmits(['edit'])
+	const emit = defineEmits(['delete', 'edit'])
 	const { t } = useI18n()
+	const detailOpen = ref(false)
 </script>
 
 <template>
@@ -31,28 +33,70 @@
 						rounded
 						unelevated
 						color="primary"
-						icon="open_in_new"
-						:href="product.link"
-						target="_blank"
-						rel="noopener noreferrer"
+						icon="visibility"
 						:label="t('products.open')"
+						@click="detailOpen = true"
 					/>
 					<q-btn v-if="editable"
-						rounded
+						class="product-card__icon-btn"
+						round
 						unelevated
 						color="secondary"
 						icon="edit"
-						:label="t('actions.edit')"
+						:aria-label="t('actions.edit')"
 						@click="emit('edit', product)"
-					/>
+					>
+						<q-tooltip>{{ t('actions.edit') }}</q-tooltip>
+					</q-btn>
+					<q-btn v-if="editable"
+						class="product-card__icon-btn"
+						round
+						unelevated
+						color="negative"
+						icon="delete"
+						:aria-label="t('actions.delete')"
+						@click="emit('delete', product)"
+					>
+						<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
+					</q-btn>
 				</div>
 			</div>
 		</div>
 	</article>
+	<q-dialog v-model="detailOpen">
+		<q-card class="product-detail-dialog">
+			<div v-if="product.image_url" class="product-detail-dialog__image" :style="{ backgroundImage: `url(${product.image_url})` }" />
+			<q-card-section class="product-detail-dialog__body">
+				<div class="product-detail-dialog__head">
+					<div>
+						<h3>{{ product.name }}</h3>
+						<div class="product-detail-dialog__price">{{ product.price_label }}</div>
+					</div>
+					<q-btn flat round icon="close" color="dark" v-close-popup />
+				</div>
+				<p class="product-detail-dialog__description">{{ product.description }}</p>
+				<div class="product-detail-dialog__actions">
+					<q-btn
+						rounded
+						unelevated
+						color="primary"
+						icon="shopping_cart"
+						:href="product.link"
+						target="_blank"
+						rel="noopener noreferrer"
+						:label="t('products.buy')"
+					/>
+				</div>
+			</q-card-section>
+		</q-card>
+	</q-dialog>
 </template>
 
 <style scoped lang="scss">
 .product-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 450px;
   overflow: hidden;
   border: 1px solid rgba(17, 34, 45, 0.1);
   border-radius: 8px;
@@ -60,6 +104,7 @@
 }
 
 .product-card__image {
+  flex: 0 0 180px;
   min-height: 180px;
   background-position: center;
   background-size: cover;
@@ -69,7 +114,9 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+  flex: 1;
   min-height: 220px;
+  min-width: 0;
   padding: 18px;
 }
 
@@ -80,10 +127,14 @@
 }
 
 .product-card__description {
+  display: -webkit-box;
+  overflow: hidden;
   margin: 0;
   color: rgba(17, 34, 45, 0.72);
   line-height: 1.55;
   white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
 
 .product-card__footer {
@@ -106,5 +157,68 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.product-card__icon-btn {
+  aspect-ratio: 1;
+  width: 53px;
+  min-width: 53px;
+  height: 53px;
+  min-height: 53px;
+  padding: 0;
+}
+
+.product-detail-dialog {
+  overflow: hidden;
+  width: min(720px, calc(100vw - 24px));
+  max-width: 720px;
+  max-height: calc(100vh - 32px);
+  border-radius: 24px;
+  background: #fffaf6;
+}
+
+.product-detail-dialog__image {
+  min-height: 260px;
+  background-position: center;
+  background-size: cover;
+}
+
+.product-detail-dialog__body {
+  display: grid;
+  gap: 18px;
+}
+
+.product-detail-dialog__head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.product-detail-dialog__head h3 {
+  margin: 0 0 8px;
+  color: #151f2d;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.product-detail-dialog__price {
+  color: #151f2d;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.product-detail-dialog__description {
+  overflow-y: auto;
+  max-height: 34vh;
+  margin: 0;
+  color: rgba(17, 34, 45, 0.76);
+  line-height: 1.65;
+  white-space: pre-line;
+}
+
+.product-detail-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

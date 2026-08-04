@@ -414,6 +414,24 @@ class SveeveeApiTest extends TestCase
             ->assertJsonPath('data.products.0.name', 'Ceramic bowl')
             ->assertJsonPath('data.products.0.price_label', '₪39.90');
 
+        $deletedProduct = $this->post("/api/v1/pages/{$businessPage->id}/products", [
+            'name' => 'Delete me',
+            'description' => 'This product should be deleted.',
+            'image' => UploadedFile::fake()->image('delete-me.jpg'),
+            'price' => '12.00',
+            'link' => 'https://seller.example/products/delete-me',
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $deletedProductId = $deletedProduct->json('data.id');
+        $deletedProductImagePath = PageProduct::query()->findOrFail($deletedProductId)->image_path;
+        Storage::disk('public')->assertExists($deletedProductImagePath);
+
+        $this->deleteJson("/api/v1/products/{$deletedProductId}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('page_products', ['id' => $deletedProductId]);
+        Storage::disk('public')->assertMissing($deletedProductImagePath);
+
         $this->post("/api/v1/pages/{$communityPage->id}/products", [
             'name' => 'Community cup',
             'description' => 'Not allowed here.',

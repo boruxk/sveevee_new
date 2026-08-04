@@ -42,6 +42,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('/pages/{page}', [PageController::class, 'destroy']);
         Route::post('/pages/{page}/products', [PageProductController::class, 'store']);
         Route::put('/products/{product}', [PageProductController::class, 'update']);
+        Route::delete('/products/{product}', [PageProductController::class, 'destroy']);
         Route::post('/pages/{page}/events', [PageEventController::class, 'store']);
         Route::put('/pages/{page}/ratings/me', [PageRatingController::class, 'store']);
 
