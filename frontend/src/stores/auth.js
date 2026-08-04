@@ -5,6 +5,14 @@ import { setLocale } from '@/i18n'
 
 const supportedLocales = ['he', 'en', 'ru', 'fr']
 
+function normalizedRoles(user) {
+	const roleNames = Array.isArray(user?.role_names) ? user.role_names : []
+	const role = user?.role
+	const roles = role ? [...roleNames, role] : roleNames
+
+	return [...new Set(roles.map((item) => String(item || '').trim().toLowerCase()).filter(Boolean))]
+}
+
 export const useAuthStore = defineStore('auth', {
 	state: () => ({
 		token: localStorage.getItem(tokenStorageKey),
@@ -14,7 +22,8 @@ export const useAuthStore = defineStore('auth', {
 	}),
 	getters: {
 		isAuthenticated: (state) => Boolean(state.token && state.user),
-		roles: (state) => state.user?.role_names || [],
+		roles: (state) => normalizedRoles(state.user),
+		isAdmin: (state) => normalizedRoles(state.user).includes('admin'),
 		unreadMessagesCount: (state) => state.user?.unread_messages_count || 0
 	},
 	actions: {
@@ -103,7 +112,7 @@ export const useAuthStore = defineStore('auth', {
 				return this.isAuthenticated
 			}
 
-			return allowedRoles.some((role) => this.roles.includes(role))
+			return allowedRoles.some((role) => this.roles.includes(String(role || '').trim().toLowerCase()))
 		},
 		setUnreadMessagesCount(count) {
 			if (!this.user) {

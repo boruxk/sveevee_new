@@ -823,8 +823,10 @@
 										type="button"
 										class="palette-card"
 										:class="{ 'palette-card--active': palette.key === form.palette_key }"
+										:aria-pressed="palette.key === form.palette_key"
 										@click="form.palette_key = palette.key"
 									>
+										<q-icon v-if="palette.key === form.palette_key" name="check_circle" class="palette-card__check" />
 										<span class="palette-card__swatch" :style="{ background: palette.hero }" />
 										<span class="palette-card__name">{{ t(palette.nameKey) }}</span>
 									</button>
@@ -1001,10 +1003,11 @@
 }
 
 .palette-card {
+  position: relative;
   display: grid;
   gap: 10px;
   padding: 12px;
-  border: 1px solid rgba(17, 34, 45, 0.08);
+  border: 2px solid rgba(17, 34, 45, 0.08);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.85);
   cursor: pointer;
@@ -1018,8 +1021,36 @@
 .palette-card:hover,
 .palette-card--active {
   transform: translateY(-1px);
-  border-color: rgba(245, 66, 145, 0.5);
   box-shadow: 0 16px 30px rgba(17, 34, 45, 0.08);
+}
+
+.palette-card:hover {
+  border-color: rgba(245, 66, 145, 0.46);
+}
+
+.palette-card--active {
+  transform: translateY(-3px);
+  border-color: #f54291;
+  background: #fff;
+  box-shadow:
+    0 0 0 4px rgba(245, 66, 145, 0.18),
+    0 20px 42px rgba(245, 66, 145, 0.22);
+}
+
+.palette-card__check {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #fff;
+  color: #f54291;
+  font-size: 24px;
+  box-shadow: 0 8px 18px rgba(245, 66, 145, 0.28);
 }
 
 .palette-card__swatch {

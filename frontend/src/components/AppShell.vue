@@ -25,6 +25,7 @@
 	const unreadCount = computed(() => chatsStore.unreadCount || authStore.unreadMessagesCount)
 	const hasBusinessPage = computed(() => Boolean(authStore.user?.business_page))
 	const hasCommunityPage = computed(() => Boolean(authStore.user?.community_page))
+	const isAdmin = computed(() => authStore.isAdmin || authStore.canAccess(['admin']))
 	const profileAvatarUrl = computed(() => authStore.user?.profile?.photo_url || null)
 	const profileInitials = computed(() => {
 		const givenName = String(authStore.user?.given_name || '').trim()
@@ -36,9 +37,9 @@
 		{ label: t('nav.search'), name: 'search', icon: 'search', visible: true },
 		{ label: t('nav.me'), name: 'me', icon: 'forum', visible: authStore.isAuthenticated, badge: unreadCount.value },
 		{ label: t('nav.business'), name: 'business', icon: 'storefront', visible: authStore.isAuthenticated && hasBusinessPage.value },
-		{ label: t('nav.community'), name: 'community', icon: 'diversity_3', visible: authStore.isAuthenticated && hasCommunityPage.value },
-		{ label: t('nav.admin'), name: 'admin-area', icon: 'admin_panel_settings', visible: authStore.canAccess(['admin']) }
+		{ label: t('nav.community'), name: 'community', icon: 'diversity_3', visible: authStore.isAuthenticated && hasCommunityPage.value }
 	])
+	const visibleNavLinks = computed(() => navLinks.value.filter((link) => link.visible))
 
 	function isActive(name) {
 		return route.name === name
@@ -54,14 +55,33 @@
 		router.push({ name: 'profile' })
 	}
 
+	function openAdmin() {
+		router.push({ name: 'admin-area' })
+	}
+
+	async function refreshShellUser() {
+		if (authStore.token) {
+			try {
+				await authStore.refreshUser()
+			} catch {
+				authStore.clearSession()
+			}
+		}
+	}
+
 	async function loadChatBadge() {
 		if (authStore.isAuthenticated) {
 			await chatsStore.loadConversations()
 		}
 	}
 
-	onMounted(loadChatBadge)
-	watch(() => authStore.isAuthenticated, loadChatBadge)
+	async function loadShellState() {
+		await refreshShellUser()
+		await loadChatBadge()
+	}
+
+	onMounted(loadShellState)
+	watch(() => authStore.token, loadShellState)
 </script>
 
 <template>
@@ -76,7 +96,7 @@
 
 				<div class="row items-center no-wrap shell-nav">
 					<q-btn
-						v-for="link in navLinks"
+						v-for="link in visibleNavLinks"
 						:key="link.name"
 						:flat="!isActive(link.name)"
 						rounded
@@ -88,7 +108,6 @@
 						:icon="link.icon"
 						:label="link.label"
 						:to="{ name: link.name }"
-						v-show="link.visible"
 					>
 						<q-badge v-if="link.badge" color="negative" floating rounded>{{ link.badge }}</q-badge>
 					</q-btn>
@@ -133,6 +152,10 @@
 						</q-avatar>
 						<q-menu anchor="bottom end" self="top end" class="profile-menu">
 							<q-list padding style="min-width: 180px">
+								<q-item v-if="isAdmin" clickable v-close-popup @click="openAdmin">
+									<q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
+									<q-item-section>{{ t('nav.admin') }}</q-item-section>
+								</q-item>
 								<q-item clickable v-close-popup @click="openProfile">
 									<q-item-section avatar><q-icon name="badge" /></q-item-section>
 									<q-item-section>{{ t('nav.profile') }}</q-item-section>

@@ -5,7 +5,6 @@
 	import { useAuthStore } from '@/stores/auth'
 	import { fetchPage } from '@/services/api/pages'
 	import { findPresencePalette } from '@/constants/presencePalettes'
-	import AdCard from '@/components/AdCard.vue'
 	import EventCard from '@/components/events/EventCard.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
@@ -21,6 +20,7 @@
 	const reviewDialogOpen = ref(false)
 	const selectedPalette = computed(() => findPresencePalette(page.value?.palette_key))
 	const canRate = computed(() => authStore.isAuthenticated && page.value?.user_id !== authStore.user?.id)
+	const hasStoreProducts = computed(() => page.value?.type === 'business' && page.value?.products?.length > 0)
 
 	async function load() {
 		loading.value = true
@@ -57,37 +57,25 @@
 				:page="page"
 				:palette="selectedPalette"
 				:can-rate="canRate"
+				:has-after-info="hasStoreProducts"
 				@show-ratings="ratingsDialogOpen = true"
 				@rate="reviewDialogOpen = true"
-			/>
-
-			<section v-if="page.owner" class="owner-card">
-				<router-link :to="{ name: 'user-page', params: { id: page.owner.id } }">
-					{{ page.owner.display_name }}
-				</router-link>
-			</section>
-
-			<section v-if="page.type === 'business'" class="q-mt-lg">
-				<h2>{{ t('products.storeTitle') }}</h2>
-				<div v-if="!page.products?.length" class="empty-state">{{ t('products.empty') }}</div>
-				<div v-else class="product-grid">
-					<ProductCard v-for="product in page.products" :key="product.id" :product="product" />
-				</div>
-			</section>
+			>
+				<template #afterInfo>
+					<section class="preview-store">
+						<h2>{{ t('products.storeTitle') }}</h2>
+						<div class="product-grid">
+							<ProductCard v-for="product in page.products" :key="product.id" :product="product" />
+						</div>
+					</section>
+				</template>
+			</PagePreview>
 
 			<section v-if="page.type === 'community'" class="q-mt-lg">
 				<h2>{{ t('events.eventsTitle') }}</h2>
 				<div v-if="!page.events?.length" class="empty-state">{{ t('events.empty') }}</div>
 				<div v-else class="event-grid">
 					<EventCard v-for="event in page.events" :key="event.id" :event="event" />
-				</div>
-			</section>
-
-			<section class="q-mt-lg">
-				<h2>{{ t('ads.listTitle') }}</h2>
-				<div v-if="!page.ads?.length" class="empty-state">{{ t('ads.empty') }}</div>
-				<div v-else class="listing-grid">
-					<AdCard v-for="ad in page.ads" :key="ad.id" :ad="ad" />
 				</div>
 			</section>
 
@@ -126,23 +114,11 @@
   margin-top: 18px;
 }
 
-.listing-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  margin-top: 18px;
-}
-
-.owner-card {
-  margin-top: 18px;
-  padding: 16px;
-  border: 1px solid rgba(17, 34, 45, 0.1);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.76);
+.preview-store h2 {
+  margin: 0;
 }
 
 @media (max-width: 760px) {
-  .listing-grid,
   .product-grid,
   .event-grid {
     grid-template-columns: 1fr;

@@ -15,6 +15,10 @@
 		canRate: {
 			type: Boolean,
 			default: false
+		},
+		hasAfterInfo: {
+			type: Boolean,
+			default: false
 		}
 	})
 
@@ -159,6 +163,10 @@
 				</div>
 			</div>
 		</div>
+
+		<div v-if="hasAfterInfo" class="page-preview__after-info">
+			<slot name="afterInfo" />
+		</div>
 	</article>
 </template>
 
@@ -251,6 +259,13 @@
   display: grid;
   align-content: start;
   gap: 14px;
+  padding: 24px;
+  border: 1px solid var(--presence-border);
+  border-radius: 28px;
+  background: var(--presence-surface);
+}
+
+.page-preview__after-info {
   padding: 24px;
   border: 1px solid var(--presence-border);
   border-radius: 28px;
