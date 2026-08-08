@@ -278,31 +278,96 @@ export default {
 		noUsers: 'Aucun utilisateur.',
 		noPages: 'Aucune page.'
 	},
+	seo: {
+		defaultTitle: 'SVEEVEE',
+		defaultDescription: 'Annonces locales, pages entreprise, pages communaute, produits, evenements, avis et chat direct pour votre quartier.',
+		landingTitle: 'SVEEVEE - annonces locales et pages de quartier',
+		landingDescription: 'Trouvez annonces locales, pages entreprise, pages communaute, produits, evenements, avis, personnes proches et chat par ville et quartier.',
+		searchTitle: 'Recherche annonces locales, pages et personnes',
+		searchDescription: 'Recherchez utilisateurs, pages entreprise, pages communaute et annonces locales pres de vous sur SVEEVEE.',
+		loginTitle: 'Connexion',
+		loginDescription: 'Connectez-vous pour gerer votre profil, vos pages, vos annonces et vos chats SVEEVEE.',
+		registerTitle: 'Creer un compte SVEEVEE',
+		registerDescription: 'Creez un compte pour publier des annonces locales, creer des pages publiques et discuter avec les personnes proches.',
+		homeTitle: 'Fil de quartier',
+		homeDescription: 'Parcourez les annonces locales priorisees par quartier, ville et communautes proches.',
+		meTitle: 'Mes annonces',
+		meDescription: 'Gerez vos annonces et votre activite locale sur SVEEVEE.',
+		profileTitle: 'Parametres du profil',
+		profileDescription: 'Mettez a jour votre profil, votre localisation, vos langues et votre photo SVEEVEE.',
+		businessTitle: 'Parametres de page entreprise',
+		businessDescription: 'Creez et gerez votre page entreprise publique, vos annonces, boutique, avis et coordonnees.',
+		communityTitle: 'Parametres de page communaute',
+		communityDescription: 'Creez et gerez votre page communaute publique, evenements, annonces, avis et coordonnees.',
+		adminTitle: 'Admin',
+		adminDescription: 'Zone d administration SVEEVEE.',
+		userFallbackTitle: 'Profil SVEEVEE',
+		userFallbackDescription: 'Consultez un profil public SVEEVEE, ses pages et annonces locales.',
+		userDescription: 'Consultez {name} sur SVEEVEE, avec ses pages publiques et annonces locales.',
+		pageFallbackTitle: 'Page SVEEVEE',
+		pageFallbackDescription: 'Consultez une page entreprise ou communaute publique sur SVEEVEE.',
+		pageDescription: 'Consultez {name}, une page publique {type} sur SVEEVEE.'
+	},
 	landing: {
 		eyebrow: 'Annonces locales, moins de bruit',
 		title: 'SVEEVEE',
-		subtitle: 'Annonces locales, pages entreprise, pages communauté et chat direct pour votre quartier.',
+		subtitle: 'Annonces locales, pages entreprise, pages communaute, produits, evenements, avis et chat direct pour votre quartier.',
 		searchWithoutRegistration: 'Rechercher sans inscription',
 		featureKicker: 'Ce qui est inclus',
-		featureTitle: 'Tout ce qu’il faut pour trouver des utilisateurs, des entreprises et des annonces près de chez vous',
+		featureTitle: 'Tout ce qu il faut pour trouver utilisateurs, entreprises, produits, evenements et annonces pres de chez vous',
 		workflowKicker: 'Comment ça marche',
 		workflowTitle: 'Chercher, publier et commencer à discuter',
-		workflowBody: 'SVEEVEE garde une expérience locale et propre : annonces par quartier, pages publiques claires et limites de chat qui réduisent le spam.',
+		workflowBody: 'SVEEVEE garde une experience locale et propre: annonces par quartier, pages publiques, produits boutique, evenements communautaires, avis et limites de chat qui reduisent le spam.',
 		pricingKicker: 'Tarifs',
 		pricingTitle: 'Un prix simple pour tout le monde',
 		popular: 'Populaire',
 		month: 'par mois',
 		currency: '\u20AA',
+		contentKicker: 'Decouverte locale',
+		contentTitle: 'Une plateforme de quartier pour une vraie recherche locale',
+		contentBlocks: [
+			{
+				title: 'Annonces locales par ville et quartier',
+				body: 'SVEEVEE met en avant des annonces reliees a une vraie ville et, quand c est possible, a un quartier precis. Les visiteurs peuvent rechercher des annonces privees, des annonces d entreprise et des annonces de communaute avant meme de creer un compte, puis affiner les resultats par zone. La recherche reste ainsi utile pour les besoins quotidiens: service proche, recommandation locale, offre du quartier ou personne situee pres de chez soi.'
+			},
+			{
+				title: 'Pages publiques pour entreprises et communautes',
+				body: 'Les petites entreprises et les initiatives communautaires peuvent regrouper leurs informations publiques dans un endroit clair. Une page entreprise peut afficher une boutique avec produits, prix, images et liens vers le site du vendeur. Une page communaute peut afficher des evenements avec date, heure, heure de fin et adresse ouvrable sur la carte. Les deux types de pages peuvent inclure logo, banniere, coordonnees, horaires, annonces, avis et apercu public.'
+			},
+			{
+				title: 'Chercher d abord, s inscrire quand c est utile',
+				body: 'La recherche publique est ouverte avant l inscription afin que les nouveaux visiteurs puissent comprendre ce qui se passe pres de chez eux avant de creer un profil. Les resultats reunissent personnes, pages et annonces, ce qui aide a comparer les options locales depuis un seul endroit. Lorsqu une personne veut publier une annonce, creer une page, enregistrer son profil ou lancer un chat direct, l inscription transforme la recherche en identite locale.'
+			},
+			{
+				title: 'Chat direct avec moins de bruit',
+				body: 'La decouverte locale fonctionne mieux quand le contact est simple sans devenir envahissant. SVEEVEE garde le chat proche du profil et limite les premiers messages repetes, pour que les conversations commencent naturellement sans transformer la plateforme en canal de spam. Voisins, entreprises et organisateurs de communautes peuvent passer plus calmement d un resultat de recherche ou d une page publique a une vraie conversation.'
+			}
+		],
 		features: [
 			{
 				icon: 'campaign',
 				title: 'Annonces du quartier',
-				body: 'Les annonces privées, entreprise et communauté apparaissent là où les gens cherchent vraiment.'
+				body: 'Les annonces privees, entreprise et communaute apparaissent la ou les gens cherchent vraiment, avec le contexte de ville et de quartier.'
 			},
 			{
 				icon: 'storefront',
 				title: 'Pages entreprise et communauté',
-				body: 'Chaque utilisateur peut créer une page entreprise et une page communauté avec images, texte et aperçu.'
+				body: 'Chaque utilisateur peut creer une page entreprise et une page communaute avec images, coordonnees, adresse, horaires et apercu public.'
+			},
+			{
+				icon: 'inventory_2',
+				title: 'Produits boutique pour entreprises',
+				body: 'Les pages entreprise peuvent presenter des produits avec nom, description, image, prix et lien d achat sur le site du vendeur.'
+			},
+			{
+				icon: 'event',
+				title: 'Evenements communautaires',
+				body: 'Les pages communaute peuvent publier des evenements avec description, image, date, heure de debut, heure de fin optionnelle et adresse sur la carte.'
+			},
+			{
+				icon: 'star',
+				title: 'Avis sur les pages publiques',
+				body: 'Les visiteurs peuvent voir les notes et avis sur les pages publiques, et les proprietaires obtiennent un signal de confiance plus clair.'
 			},
 			{
 				icon: 'forum',
@@ -317,11 +382,15 @@ export default {
 			},
 			{
 				title: 'Publier des annonces ou des pages',
-				body: 'Une annonce privée depuis Moi, ou des annonces depuis les pages entreprise et communauté.'
+				body: 'Une annonce privee depuis Moi, ou des annonces depuis les pages entreprise et communaute avec le bon badge et le contexte public du proprietaire.'
 			},
 			{
 				title: 'Chercher et discuter',
-				body: 'La recherche trouve les noms, les pages, les titres et textes d’annonces, puis le chat direct démarre depuis le profil.'
+				body: 'La recherche trouve les noms, les pages, les titres, les textes d annonces, la ville et le quartier, puis le chat direct demarre depuis le profil.'
+			},
+			{
+				title: 'Ajouter produits, evenements et avis',
+				body: 'Les pages entreprise peuvent ajouter des produits boutique, les pages communaute peuvent ajouter des evenements, et les pages publiques peuvent recevoir des avis.'
 			}
 		],
 		plans: [
@@ -329,13 +398,13 @@ export default {
 				title: 'Privé',
 				subtitle: 'Pour les personnes qui veulent publier et parler avec leur quartier.',
 				featured: false,
-				features: ['Annonces privées', 'Page profil', 'Fil de quartier', 'Chat avec protection anti-spam']
+				features: ['Annonces privees', 'Page profil', 'Recherche par ville et quartier', 'Fil de quartier', 'Chat avec protection anti-spam']
 			},
 			{
 				title: 'Entreprise',
 				subtitle: 'Pour une petite entreprise ou une initiative communautaire qui veut une présence publique.',
 				featured: true,
-				features: ['Une page entreprise', 'Une page communauté', 'Annonces entreprise et communauté', 'Aperçu public']
+				features: ['Une page entreprise', 'Une page communaute', 'Produits boutique', 'Evenements communaute', 'Notes et avis', 'Annonces entreprise et communaute']
 			}
 		]
 	}

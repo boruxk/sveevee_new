@@ -278,31 +278,96 @@ export default {
 		noUsers: 'No users.',
 		noPages: 'No pages.'
 	},
+	seo: {
+		defaultTitle: 'SVEEVEE',
+		defaultDescription: 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.',
+		landingTitle: 'SVEEVEE - Local ads and neighborhood pages',
+		landingDescription: 'Find local ads, business pages, community pages, store products, events, ratings, nearby people, and direct chat by city and neighborhood.',
+		searchTitle: 'Search local ads, pages, and people',
+		searchDescription: 'Search users, business pages, community pages, and local ads near you on SVEEVEE.',
+		loginTitle: 'Login',
+		loginDescription: 'Log in to manage your SVEEVEE profile, pages, ads, and chats.',
+		registerTitle: 'Create a SVEEVEE account',
+		registerDescription: 'Create an account to post local ads, build public pages, and chat with people nearby.',
+		homeTitle: 'Neighborhood feed',
+		homeDescription: 'Browse local ads prioritized by your neighborhood, your city, and nearby communities.',
+		meTitle: 'My ads',
+		meDescription: 'Manage your SVEEVEE ads and local activity.',
+		profileTitle: 'Profile settings',
+		profileDescription: 'Update your SVEEVEE profile, location, languages, and photo.',
+		businessTitle: 'Business page settings',
+		businessDescription: 'Build and manage your public business page, ads, store, ratings, and contact details.',
+		communityTitle: 'Community page settings',
+		communityDescription: 'Build and manage your public community page, events, ads, ratings, and contact details.',
+		adminTitle: 'Admin',
+		adminDescription: 'SVEEVEE administration area.',
+		userFallbackTitle: 'SVEEVEE profile',
+		userFallbackDescription: 'View a public SVEEVEE profile, pages, and local ads.',
+		userDescription: 'View {name} on SVEEVEE, including public pages and local ads.',
+		pageFallbackTitle: 'SVEEVEE page',
+		pageFallbackDescription: 'View a public business or community page on SVEEVEE.',
+		pageDescription: 'View {name}, a public {type} page on SVEEVEE.'
+	},
 	landing: {
 		eyebrow: 'Local ads, less noise',
 		title: 'SVEEVEE',
-		subtitle: 'Local ads, business pages, community pages, and direct chat for your neighborhood.',
+		subtitle: 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.',
 		searchWithoutRegistration: 'Search without registration',
 		featureKicker: 'What is inside',
-		featureTitle: 'Everything people need to find users, businesses, and ads nearby',
+		featureTitle: 'Everything people need to find users, businesses, products, events, and ads nearby',
 		workflowKicker: 'How it works',
 		workflowTitle: 'Search, post, and start chatting',
-		workflowBody: 'SVEEVEE keeps the experience local and clean: neighborhood ads, clear public pages, and chat limits that reduce spam.',
+		workflowBody: 'SVEEVEE keeps the experience local and clean: neighborhood ads, clear public pages, store products, community events, ratings, and chat limits that reduce spam.',
 		pricingKicker: 'Pricing',
 		pricingTitle: 'Simple pricing for everyone',
 		popular: 'Popular',
 		month: 'per month',
 		currency: '\u20AA',
+		contentKicker: 'Local discovery',
+		contentTitle: 'A neighborhood platform built for real local search',
+		contentBlocks: [
+			{
+				title: 'Local ads by city and neighborhood',
+				body: 'SVEEVEE focuses on local ads that are connected to a real city and, when available, a specific neighborhood. People can search for private ads, business ads, and community ads without opening an account first, then narrow the results by the area that matters to them. That keeps discovery practical for daily needs: a nearby service, a useful recommendation, a local offer, or a person in the same neighborhood.'
+			},
+			{
+				title: 'Public pages for businesses and communities',
+				body: 'Small businesses and community initiatives can keep their public information in one clear place. A business page can show a store with products, prices, images, and links to the seller website. A community page can show events with date, time, end time, and a map-ready address. Both page types can include logo, banner, contact details, opening hours, ads, ratings, and public previews, giving search engines and visitors richer context than a short ad alone.'
+			},
+			{
+				title: 'Search first, register when it matters',
+				body: 'The public search is open before registration so new visitors can understand what is happening nearby before they create a profile. Results include people, pages, and ads, which helps users compare local options from one place. When someone wants to post an ad, build a page, save profile details, or start a direct chat, registration turns that search into a connected local identity.'
+			},
+			{
+				title: 'Direct chat with cleaner local conversations',
+				body: 'Local discovery is more useful when contact is easy but not noisy. SVEEVEE keeps direct chat close to the profile and limits repeated first messages, so conversations can start naturally without turning the platform into a spam channel. This gives neighbors, businesses, and community organizers a calmer way to move from a search result or public page into a real conversation.'
+			}
+		],
 		features: [
 			{
 				icon: 'campaign',
 				title: 'Neighborhood ads',
-				body: 'Private, business, and community ads appear where people are actually searching.'
+				body: 'Private, business, and community ads appear where people are actually searching, with city and neighborhood context attached to every result.'
 			},
 			{
 				icon: 'storefront',
 				title: 'Business and community pages',
-				body: 'Each user can create one business page and one community page with images, copy, and preview.'
+				body: 'Each user can create one business page and one community page with images, contact details, address, opening hours, and public preview.'
+			},
+			{
+				icon: 'inventory_2',
+				title: 'Store products for businesses',
+				body: 'Business pages can present products with a name, description, image, price, and a link to buy on the seller website.'
+			},
+			{
+				icon: 'event',
+				title: 'Community events',
+				body: 'Community pages can publish events with description, image, date, start time, optional end time, and an address that opens in Maps.'
+			},
+			{
+				icon: 'star',
+				title: 'Ratings on public pages',
+				body: 'Visitors can see ratings and reviews on public pages, while page owners get a clearer public signal for trust and reputation.'
 			},
 			{
 				icon: 'forum',
@@ -317,11 +382,15 @@ export default {
 			},
 			{
 				title: 'Post ads or pages',
-				body: 'A private ad from Me, or ads from the business and community pages.'
+				body: 'A private ad from Me, or ads from business and community pages with the right badge and public owner context.'
 			},
 			{
 				title: 'Search and chat',
-				body: 'Search finds names, pages, ad headlines, and ad text, then direct chat starts from the profile.'
+				body: 'Search finds names, pages, ad headlines, ad text, city, and neighborhood, then direct chat starts from the profile.'
+			},
+			{
+				title: 'Add products, events, and ratings',
+				body: 'Business pages can add store products, community pages can add events, and public pages can collect ratings.'
 			}
 		],
 		plans: [
@@ -329,13 +398,13 @@ export default {
 				title: 'Private',
 				subtitle: 'For people who want to post and talk with the neighborhood.',
 				featured: false,
-				features: ['Private ads', 'Profile page', 'Neighborhood feed', 'Spam-protected chat']
+				features: ['Private ads', 'Profile page', 'City and neighborhood search', 'Neighborhood feed', 'Spam-protected chat']
 			},
 			{
 				title: 'Business',
 				subtitle: 'For a small business or community initiative that needs a public presence.',
 				featured: true,
-				features: ['One business page', 'One community page', 'Business and community ads', 'Public preview']
+				features: ['One business page', 'One community page', 'Store products', 'Community events', 'Ratings and reviews', 'Business and community ads']
 			}
 		]
 	}

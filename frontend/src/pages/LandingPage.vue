@@ -17,6 +17,7 @@
 	}
 
 	const featureCards = computed(() => listMessage('landing.features'))
+	const contentBlocks = computed(() => listMessage('landing.contentBlocks'))
 	const steps = computed(() => listMessage('landing.steps'))
 	const plans = computed(() => listMessage('landing.plans'))
 	const featureTitleParts = computed(() => {
@@ -63,11 +64,11 @@
 	}
 
 	function featureIcon(item, index) {
-		return ['home', 'storefront', 'chat_bubble'][index] ?? item.icon
+		return ['campaign', 'storefront', 'inventory_2', 'event', 'star', 'chat_bubble'][index] ?? item.icon
 	}
 
 	function stepIcon(index) {
-		return ['person', 'edit', 'search'][index] ?? 'check'
+		return ['person', 'edit', 'search', 'verified'][index] ?? 'check'
 	}
 </script>
 
@@ -125,6 +126,20 @@
 					<span class="feature-card__icon">
 						<q-icon :name="featureIcon(item, index)" size="42px" />
 					</span>
+					<h3>{{ item.title }}</h3>
+					<p>{{ item.body }}</p>
+				</article>
+			</div>
+		</section>
+
+		<section class="landing-section content-section">
+			<div class="content-section__head">
+				<div class="section-kicker">{{ t('landing.contentKicker') }}</div>
+				<h2>{{ t('landing.contentTitle') }}</h2>
+			</div>
+
+			<div class="content-grid">
+				<article v-for="item in contentBlocks" :key="item.title" class="content-block">
 					<h3>{{ item.title }}</h3>
 					<p>{{ item.body }}</p>
 				</article>
@@ -420,6 +435,21 @@
   box-shadow: 0 14px 26px rgba(245, 66, 145, 0.26);
 }
 
+.feature-card--4 .feature-card__icon {
+  background: linear-gradient(145deg, #28c7b7 0%, #0e8f93 100%);
+  box-shadow: 0 14px 26px rgba(14, 143, 147, 0.22);
+}
+
+.feature-card--5 .feature-card__icon {
+  background: linear-gradient(145deg, #ffc44d 0%, #f07f17 100%);
+  box-shadow: 0 14px 26px rgba(240, 127, 23, 0.22);
+}
+
+.feature-card--6 .feature-card__icon {
+  background: linear-gradient(145deg, #6f8cff 0%, #4f38d6 100%);
+  box-shadow: 0 14px 26px rgba(79, 56, 214, 0.22);
+}
+
 .feature-card h3,
 .step-item h3 {
   margin: 24px 0 10px;
@@ -445,6 +475,51 @@
 .feature-card p {
   max-width: 320px;
   font-size: 15px;
+}
+
+.content-section {
+  padding-top: 70px;
+  padding-bottom: 62px;
+}
+
+.content-section__head {
+  display: grid;
+  gap: 10px;
+  max-width: 790px;
+  margin-bottom: 28px;
+}
+
+.content-section h2 {
+  max-width: 820px;
+  color: #24145d;
+  font-size: clamp(34px, 4vw, 48px);
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 42px;
+}
+
+.content-block {
+  padding: 0 0 26px;
+  border-bottom: 1px solid rgba(123, 63, 242, 0.14);
+}
+
+.content-block h3 {
+  margin: 0 0 12px;
+  color: #192443;
+  font-size: 24px;
+  font-weight: 850;
+  line-height: 1.24;
+}
+
+.content-block p {
+  max-width: 560px;
+  margin: 0;
+  color: rgba(21, 31, 59, 0.72);
+  font-size: 17px;
+  line-height: 1.76;
 }
 
 .workflow-section {
@@ -571,6 +646,16 @@
 .step-item--3 .step-item__icon {
   color: #f54291;
   background: linear-gradient(180deg, #fff0f8 0%, #ffffff 100%);
+}
+
+.step-item--4 .step-item__number {
+  background: linear-gradient(145deg, #28c7b7 0%, #0e8f93 100%);
+  box-shadow: 0 10px 22px rgba(14, 143, 147, 0.22);
+}
+
+.step-item--4 .step-item__icon {
+  color: #0e8f93;
+  background: linear-gradient(180deg, #e8fbf8 0%, #ffffff 100%);
 }
 
 .pricing-head {
@@ -811,6 +896,7 @@
 @media (max-width: 980px) {
   .landing-hero__inner,
   .workflow-section,
+  .content-grid,
   .feature-grid,
   .pricing-grid {
     grid-template-columns: 1fr;

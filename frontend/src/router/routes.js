@@ -7,12 +7,12 @@ export default [
 		path: '/',
 		component: PublicLayout,
 		children: [
-			{ path: '', name: 'landing', component: () => import('@/pages/LandingPage.vue') },
-			{ path: 'login', name: 'login', component: () => import('@/pages/LoginPage.vue') },
-			{ path: 'register', name: 'register', component: () => import('@/pages/RegisterPage.vue') },
-			{ path: 'search', name: 'search', component: () => import('@/pages/SearchPage.vue') },
-			{ path: 'users/:id', name: 'user-page', component: () => import('@/pages/UserPage.vue') },
-			{ path: 'pages/:id', name: 'page-detail', component: () => import('@/pages/PageDetailPage.vue') }
+			{ path: '', name: 'landing', component: () => import('@/pages/LandingPage.vue'), meta: { seo: { titleKey: 'seo.landingTitle', descriptionKey: 'seo.landingDescription' } } },
+			{ path: 'login', name: 'login', component: () => import('@/pages/LoginPage.vue'), meta: { seo: { titleKey: 'seo.loginTitle', descriptionKey: 'seo.loginDescription', robots: 'noindex,nofollow' } } },
+			{ path: 'register', name: 'register', component: () => import('@/pages/RegisterPage.vue'), meta: { seo: { titleKey: 'seo.registerTitle', descriptionKey: 'seo.registerDescription', robots: 'noindex,follow' } } },
+			{ path: 'search', name: 'search', component: () => import('@/pages/SearchPage.vue'), meta: { seo: { titleKey: 'seo.searchTitle', descriptionKey: 'seo.searchDescription' } } },
+			{ path: 'users/:id', name: 'user-page', component: () => import('@/pages/UserPage.vue'), meta: { seo: { titleKey: 'seo.userFallbackTitle', descriptionKey: 'seo.userFallbackDescription' } } },
+			{ path: 'pages/:id', name: 'page-detail', component: () => import('@/pages/PageDetailPage.vue'), meta: { seo: { titleKey: 'seo.pageFallbackTitle', descriptionKey: 'seo.pageFallbackDescription' } } }
 		]
 	},
 	{
@@ -20,11 +20,11 @@ export default [
 		component: UserLayout,
 		meta: { requiresAuth: true },
 		children: [
-			{ path: 'home', name: 'home', component: () => import('@/pages/HomePage.vue') },
-			{ path: 'me', name: 'me', component: () => import('@/pages/MyPlacePage.vue') },
-			{ path: 'profile', name: 'profile', component: () => import('@/pages/ProfilePage.vue') },
-			{ path: 'business', name: 'business', component: () => import('@/pages/PageSetupPage.vue'), meta: { pageType: 'business' } },
-			{ path: 'community', name: 'community', component: () => import('@/pages/PageSetupPage.vue'), meta: { pageType: 'community' } }
+			{ path: 'home', name: 'home', component: () => import('@/pages/HomePage.vue'), meta: { seo: { titleKey: 'seo.homeTitle', descriptionKey: 'seo.homeDescription' } } },
+			{ path: 'me', name: 'me', component: () => import('@/pages/MyPlacePage.vue'), meta: { seo: { titleKey: 'seo.meTitle', descriptionKey: 'seo.meDescription' } } },
+			{ path: 'profile', name: 'profile', component: () => import('@/pages/ProfilePage.vue'), meta: { seo: { titleKey: 'seo.profileTitle', descriptionKey: 'seo.profileDescription' } } },
+			{ path: 'business', name: 'business', component: () => import('@/pages/PageSetupPage.vue'), meta: { pageType: 'business', seo: { titleKey: 'seo.businessTitle', descriptionKey: 'seo.businessDescription' } } },
+			{ path: 'community', name: 'community', component: () => import('@/pages/PageSetupPage.vue'), meta: { pageType: 'community', seo: { titleKey: 'seo.communityTitle', descriptionKey: 'seo.communityDescription' } } }
 		]
 	},
 	{
@@ -32,7 +32,7 @@ export default [
 		component: AdminLayout,
 		meta: { requiresAuth: true, roles: ['admin'] },
 		children: [
-			{ path: 'admin', name: 'admin-area', component: () => import('@/pages/AdminAreaPage.vue') }
+			{ path: 'admin', name: 'admin-area', component: () => import('@/pages/AdminAreaPage.vue'), meta: { seo: { titleKey: 'seo.adminTitle', descriptionKey: 'seo.adminDescription', robots: 'noindex,nofollow' } } }
 		]
 	}
 ]

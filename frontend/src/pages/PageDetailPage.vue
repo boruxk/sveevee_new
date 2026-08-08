@@ -5,6 +5,7 @@
 	import { useAuthStore } from '@/stores/auth'
 	import { fetchPage } from '@/services/api/pages'
 	import { findPresencePalette } from '@/constants/presencePalettes'
+	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
 	import EventCard from '@/components/events/EventCard.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
@@ -23,6 +24,58 @@
 	const hasStoreProducts = computed(() => page.value?.type === 'business' && page.value?.products?.length > 0)
 	const hasCommunityEvents = computed(() => page.value?.type === 'community' && page.value?.events?.length > 0)
 	const hasPreviewContent = computed(() => hasStoreProducts.value || hasCommunityEvents.value)
+	const pageTypeLabel = computed(() => t(`pages.kinds.${page.value?.type || 'business'}`))
+	const pageAddress = computed(() => page.value?.address_details || {})
+	const seoDescription = computed(() => {
+		if (!page.value) {
+			return t('seo.pageFallbackDescription')
+		}
+
+		return truncateText(
+			cleanText(page.value.public_description) ||
+				t('seo.pageDescription', { name: page.value.name, type: pageTypeLabel.value })
+		)
+	})
+	const seoImage = computed(() => page.value?.banner_url || page.value?.logo_url)
+	const structuredAddress = computed(() => {
+		const address = pageAddress.value
+
+		if (!address.city && !address.street) {
+			return undefined
+		}
+
+		return {
+			'@type': 'PostalAddress',
+			streetAddress: [address.street, address.number].filter(Boolean).join(' ') || undefined,
+			addressLocality: address.city || undefined,
+			addressRegion: address.neighborhood || undefined
+		}
+	})
+
+	useSeo(computed(() => ({
+		title: page.value?.name || t('seo.pageFallbackTitle'),
+		description: seoDescription.value,
+		image: seoImage.value,
+		canonical: route.path,
+		type: 'website',
+		robots: page.value ? 'index,follow' : 'noindex,follow',
+		jsonLd: page.value ? {
+			'@context': 'https://schema.org',
+			'@type': page.value.type === 'business' ? 'LocalBusiness' : 'Organization',
+			name: page.value.name,
+			description: seoDescription.value,
+			url: absoluteUrl(route.path),
+			image: seoImage.value || undefined,
+			telephone: page.value.contact?.tel || page.value.phone || undefined,
+			email: page.value.contact?.email || page.value.contact_email || undefined,
+			address: structuredAddress.value,
+			aggregateRating: page.value.rating_summary?.count > 0 ? {
+				'@type': 'AggregateRating',
+				ratingValue: page.value.rating_summary.average,
+				ratingCount: page.value.rating_summary.count
+			} : undefined
+		} : null
+	})))
 
 	async function load() {
 		loading.value = true

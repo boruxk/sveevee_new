@@ -1,16 +1,24 @@
 <script setup>
 	import { onMounted, reactive, ref, toRef, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
+	import { useRoute, useRouter } from 'vue-router'
 	import { searchEverything } from '@/services/api/search'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import AdCard from '@/components/AdCard.vue'
 
+	function queryValue(value) {
+		return Array.isArray(value) ? value[0] || '' : value || ''
+	}
+
 	const { t } = useI18n()
+	const route = useRoute()
+	const router = useRouter()
 	const loading = ref(false)
-	const q = ref('')
+	const q = ref(queryValue(route.query.q))
+	const initialCity = queryValue(route.query.city)
 	const filters = reactive({
-		city: '',
-		neighborhood: ''
+		city: initialCity,
+		neighborhood: initialCity ? queryValue(route.query.neighborhood) : ''
 	})
 	const results = reactive({ users: [], pages: [], ads: [] })
 	const citySelectOptions = ref([])
@@ -24,13 +32,19 @@
 	} = useLocationOptions(toRef(filters, 'city'))
 
 	async function submit() {
+		const params = {
+			q: q.value.trim(),
+			city: filters.city,
+			neighborhood: filters.city ? filters.neighborhood : ''
+		}
+
 		loading.value = true
 		try {
-			const { data } = await searchEverything({
-				q: q.value,
-				city: filters.city,
-				neighborhood: filters.neighborhood
+			await router.replace({
+				name: 'search',
+				query: Object.fromEntries(Object.entries(params).filter(([, value]) => value))
 			})
+			const { data } = await searchEverything(params)
 			results.users = data.data?.users || []
 			results.pages = data.data?.pages || []
 			results.ads = data.data?.ads || []
@@ -74,6 +88,9 @@
 		await loadLocationOptions()
 		citySelectOptions.value = cityOptions.value
 		neighborhoodSelectOptions.value = neighborhoodOptions.value
+		if (q.value || filters.city || filters.neighborhood) {
+			await submit()
+		}
 	})
 </script>
 

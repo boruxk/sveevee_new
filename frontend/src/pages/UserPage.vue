@@ -5,6 +5,7 @@
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
 	import { fetchUser } from '@/services/api/users'
+	import { absoluteUrl, truncateText, useSeo } from '@/composables/useSeo'
 	import AdCard from '@/components/AdCard.vue'
 	import ChatBlock from '@/components/ChatBlock.vue'
 
@@ -17,9 +18,38 @@
 	const chatOpen = ref(false)
 
 	const pages = computed(() => [user.value?.business_page, user.value?.community_page].filter(Boolean))
+	const profileLocation = computed(() => [user.value?.profile?.neighborhood, user.value?.profile?.city].filter(Boolean).join(', '))
+	const seoDescription = computed(() => {
+		if (!user.value) {
+			return t('seo.userFallbackDescription')
+		}
+
+		return truncateText([t('seo.userDescription', { name: user.value.display_name }), profileLocation.value].filter(Boolean).join(' '))
+	})
 	const existingConversation = computed(() =>
 		chatsStore.conversations.find((conversation) => String(conversation.other_user?.id) === String(route.params.id) && conversation.latest_message)
 	)
+
+	useSeo(computed(() => ({
+		title: user.value?.display_name || t('seo.userFallbackTitle'),
+		description: seoDescription.value,
+		image: user.value?.profile?.photo_url,
+		canonical: route.path,
+		type: 'profile',
+		robots: user.value ? 'index,follow' : 'noindex,follow',
+		jsonLd: user.value ? {
+			'@context': 'https://schema.org',
+			'@type': 'Person',
+			name: user.value.display_name,
+			url: absoluteUrl(route.path),
+			image: user.value.profile?.photo_url || undefined,
+			address: user.value.profile?.city ? {
+				'@type': 'PostalAddress',
+				addressLocality: user.value.profile.city,
+				addressRegion: user.value.profile.neighborhood || undefined
+			} : undefined
+		} : null
+	})))
 
 	async function load() {
 		loading.value = true
