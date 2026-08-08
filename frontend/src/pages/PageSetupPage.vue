@@ -7,6 +7,7 @@
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { deleteAd } from '@/services/api/ads'
+	import { deleteEvent } from '@/services/api/events'
 	import { deletePage, fetchMyPage, saveMyPage } from '@/services/api/pages'
 	import { deleteProduct } from '@/services/api/products'
 	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
@@ -49,6 +50,7 @@
 	const ratingsDialogOpen = ref(false)
 	const editingAd = ref(null)
 	const editingProduct = ref(null)
+	const editingEvent = ref(null)
 	const page = ref(null)
 	const localLogoPreviewUrl = ref(null)
 	const localBannerPreviewUrl = ref(null)
@@ -81,8 +83,10 @@
 	const selectedPalette = computed(() => findPresencePalette(form.palette_key))
 	const adDialogTitle = computed(() => (editingAd.value ? t('actions.update') : t('actions.createAd')))
 	const productDialogTitle = computed(() => (editingProduct.value ? t('actions.update') : t('actions.addProduct')))
+	const eventDialogTitle = computed(() => (editingEvent.value ? t('actions.update') : t('actions.addEvent')))
 	const visibleAds = computed(() => (Array.isArray(page.value?.ads) ? page.value.ads.filter((ad) => ad?.id) : []))
 	const visibleProducts = computed(() => (Array.isArray(page.value?.products) ? page.value.products.filter((product) => product?.id) : []))
+	const visibleEvents = computed(() => (Array.isArray(page.value?.events) ? page.value.events.filter((event) => event?.id) : []))
 	const hasStoredLogo = computed(() => Boolean(page.value?.logo_url) && !form.logo && !logoRemoved.value)
 	const hasStoredBanner = computed(() => Boolean(page.value?.banner_url) && !form.banner && !bannerRemoved.value)
 	const logoDisplayName = computed(() => imageUploadDisplayName(
@@ -358,6 +362,25 @@
 		}
 	}
 
+	function openCreateEvent() {
+		editingEvent.value = null
+		eventDialogOpen.value = true
+	}
+
+	function openEditEvent(event) {
+		editingEvent.value = event
+		eventDialogOpen.value = true
+	}
+
+	async function removeEvent(event) {
+		try {
+			await deleteEvent(event.id)
+			await load()
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('events.deleteFailed')) })
+		}
+	}
+
 	function mergeSavedProduct(savedProduct) {
 		if (!page.value?.id || !savedProduct?.id || savedProduct.page_id !== page.value.id) {
 			return
@@ -374,6 +397,25 @@
 		page.value = {
 			...page.value,
 			products: nextProducts
+		}
+	}
+
+	function mergeSavedEvent(savedEvent) {
+		if (!page.value?.id || !savedEvent?.id || savedEvent.page_id !== page.value.id) {
+			return
+		}
+
+		const events = Array.isArray(page.value.events) ? page.value.events : []
+		const existingIndex = events.findIndex((event) => event.id === savedEvent.id)
+		let nextEvents = [savedEvent, ...events]
+
+		if (existingIndex !== -1) {
+			nextEvents = events.map((event) => (event.id === savedEvent.id ? savedEvent : event))
+		}
+
+		page.value = {
+			...page.value,
+			events: nextEvents
 		}
 	}
 
@@ -430,9 +472,12 @@
 		mergeSavedProduct(savedProduct)
 	}
 
-	async function handleEventSaved() {
+	async function handleEventSaved(savedEvent) {
 		eventDialogOpen.value = false
+		editingEvent.value = null
+		mergeSavedEvent(savedEvent)
 		await load()
+		mergeSavedEvent(savedEvent)
 	}
 
 	function dayLabel(weekday) {
@@ -605,13 +650,19 @@
 						icon="event"
 						:disable="!page"
 						:label="t('actions.addEvent')"
-						@click="eventDialogOpen = true"
+						@click="openCreateEvent"
 					/>
 				</div>
 				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
-				<div v-else-if="!page.events?.length" class="empty-state">{{ t('events.empty') }}</div>
+				<div v-else-if="visibleEvents.length === 0" class="empty-state">{{ t('events.empty') }}</div>
 				<div v-else class="event-grid">
-					<EventCard v-for="event in page.events" :key="event.id" :event="event" />
+					<EventCard v-for="event in visibleEvents"
+						:key="event.id"
+						:event="event"
+						editable
+						@edit="openEditEvent"
+						@delete="removeEvent"
+					/>
 				</div>
 			</section>
 
@@ -725,8 +776,7 @@
 												input-debounce="0"
 												new-value-mode="add-unique"
 												:options="neighborhoodSelectOptions"
-												:label="requiredLabel('auth.neighborhood')"
-												:rules="[requiredRule]"
+												:label="t('auth.neighborhood')"
 												:disable="!form.address.city"
 												@filter="filterNeighborhoodOptions"
 												@new-value="addOption"
@@ -881,11 +931,11 @@
 		<q-dialog v-model="eventDialogOpen">
 			<q-card class="event-dialog">
 				<q-card-section class="dialog-head">
-					<div class="text-h6">{{ t('actions.addEvent') }}</div>
+					<div class="text-h6">{{ eventDialogTitle }}</div>
 					<q-btn flat round icon="close" color="dark" v-close-popup />
 				</q-card-section>
 				<q-card-section>
-					<EventComposer v-if="page?.id" :page-id="page.id" @saved="handleEventSaved" />
+					<EventComposer v-if="page?.id" :page-id="page.id" :event="editingEvent" @saved="handleEventSaved" />
 				</q-card-section>
 			</q-card>
 		</q-dialog>

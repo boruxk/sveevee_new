@@ -20,7 +20,8 @@ export default {
 	},
 	validation: {
 		required: 'This field is required.',
-		requiredFields: 'Please fill in the required fields.'
+		requiredFields: 'Please fill in the required fields.',
+		time24: 'Use 24h time, for example 17:30.'
 	},
 	palettes: {
 		sunset: 'Sunset',
@@ -145,10 +146,14 @@ export default {
 		image: 'Image',
 		date: 'Date',
 		time: 'Time',
+		endTime: 'End time',
 		address: 'Address',
+		addressHint: 'Enter a precise address so it can be opened on the map.',
+		open: 'View event',
 		empty: 'No events yet.',
 		created: 'Event created.',
-		saveFailed: 'Event could not be saved.'
+		saveFailed: 'Event could not be saved.',
+		deleteFailed: 'Event could not be deleted.'
 	},
 	chat: {
 		title: 'Chat',

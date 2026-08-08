@@ -240,6 +240,7 @@
 .listing-card__text {
   margin: 0;
   color: rgba(17, 34, 45, 0.72);
+  font-size: 18px;
   line-height: 1.58;
   white-space: pre-line;
 }
@@ -249,7 +250,7 @@
   gap: 4px;
   align-items: center;
   color: rgba(17, 34, 45, 0.56);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .listing-card__footer {

@@ -17,6 +17,7 @@ class PageEvent extends Model
         'image_original_name',
         'event_date',
         'event_time',
+        'event_end_time',
         'address',
     ];
 

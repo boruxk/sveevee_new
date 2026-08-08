@@ -1,15 +1,27 @@
 <script setup>
-	import { computed } from 'vue'
+	import { computed, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
 
 	const props = defineProps({
 		event: {
 			type: Object,
 			required: true
+		},
+		editable: {
+			type: Boolean,
+			default: false
 		}
 	})
 
-	const { locale } = useI18n()
+	const emit = defineEmits(['delete', 'edit'])
+	const { locale, t } = useI18n()
+	const detailOpen = ref(false)
+	const intlLocale = computed(() => ({
+		he: 'he-IL',
+		en: 'en-US',
+		ru: 'ru-RU',
+		fr: 'fr-FR'
+	}[locale.value] || locale.value))
 	const formattedDate = computed(() => {
 		if (!props.event.date) {
 			return ''
@@ -21,38 +33,163 @@
 			return props.event.date
 		}
 
-		return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(date)
+		return new Intl.DateTimeFormat(intlLocale.value, { dateStyle: 'medium' }).format(date)
 	})
+
+	function parseTime(value) {
+		const match = String(value || '').match(/^(\d{1,2}):(\d{2})/)
+
+		if (!match) {
+			return null
+		}
+
+		return new Date(1970, 0, 1, Number(match[1]), Number(match[2]))
+	}
+
+	function formatTime(value) {
+		const date = parseTime(value)
+
+		if (!date) {
+			return value || ''
+		}
+
+		return new Intl.DateTimeFormat(intlLocale.value, {
+			hour: 'numeric',
+			minute: '2-digit',
+			hour12: false
+		}).format(date)
+	}
+
+	const formattedTime = computed(() => {
+		const startDate = parseTime(props.event.time)
+		const endDate = parseTime(props.event.end_time)
+
+		if (startDate && endDate) {
+			const formatter = new Intl.DateTimeFormat(intlLocale.value, {
+				hour: 'numeric',
+				minute: '2-digit',
+				hour12: false
+			})
+
+			if (typeof formatter.formatRange === 'function') {
+				return formatter.formatRange(startDate, endDate)
+			}
+		}
+
+		const start = startDate ? formatTime(props.event.time) : props.event.time
+		const end = endDate ? formatTime(props.event.end_time) : props.event.end_time
+
+		return [start, end].filter(Boolean).join(' - ')
+	})
+	const formattedDateTime = computed(() => [formattedDate.value, formattedTime.value].filter(Boolean).join(' · '))
+	const mapsUrl = computed(() => {
+		const address = String(props.event.address || '').trim()
+
+		if (!address) {
+			return ''
+		}
+
+		return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+	})
+	const eventMeta = computed(() => [
+		{ icon: 'event', value: formattedDateTime.value },
+		{ icon: 'place', value: props.event.address, href: mapsUrl.value }
+	].filter((item) => item.value))
 </script>
 
 <template>
 	<article class="event-card">
 		<div v-if="event.image_url" class="event-card__image" :style="{ backgroundImage: `url(${event.image_url})` }" />
 		<div class="event-card__body">
-			<div>
+			<div class="event-card__copy">
 				<h3 class="event-card__title">{{ event.name }}</h3>
 				<p class="event-card__description">{{ event.description }}</p>
 			</div>
-			<div class="event-card__meta">
-				<div class="event-card__meta-row">
-					<q-icon name="event" size="20px" />
-					<span>{{ formattedDate }}</span>
+			<div class="event-card__footer">
+				<div class="event-card__meta">
+					<div v-for="item in eventMeta" :key="item.icon" class="event-card__meta-row">
+						<q-icon :name="item.icon" size="20px" />
+						<a v-if="item.href"
+							class="event-card__meta-link"
+							:href="item.href"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							{{ item.value }}
+						</a>
+						<span v-else>{{ item.value }}</span>
+					</div>
 				</div>
-				<div class="event-card__meta-row">
-					<q-icon name="schedule" size="20px" />
-					<span>{{ event.time }}</span>
-				</div>
-				<div class="event-card__meta-row">
-					<q-icon name="place" size="20px" />
-					<span>{{ event.address }}</span>
+				<div class="event-card__actions">
+					<q-btn
+						rounded
+						unelevated
+						color="primary"
+						icon="visibility"
+						:label="t('events.open')"
+						@click="detailOpen = true"
+					/>
+					<q-btn v-if="editable"
+						class="event-card__icon-btn"
+						round
+						unelevated
+						color="secondary"
+						icon="edit"
+						:aria-label="t('actions.edit')"
+						@click="emit('edit', event)"
+					>
+						<q-tooltip>{{ t('actions.edit') }}</q-tooltip>
+					</q-btn>
+					<q-btn v-if="editable"
+						class="event-card__icon-btn"
+						round
+						unelevated
+						color="negative"
+						icon="delete"
+						:aria-label="t('actions.delete')"
+						@click="emit('delete', event)"
+					>
+						<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
+					</q-btn>
 				</div>
 			</div>
 		</div>
 	</article>
+	<q-dialog v-model="detailOpen">
+		<q-card class="event-detail-dialog">
+			<div v-if="event.image_url" class="event-detail-dialog__image" :style="{ backgroundImage: `url(${event.image_url})` }" />
+			<q-card-section class="event-detail-dialog__body">
+				<div class="event-detail-dialog__head">
+					<div>
+						<h3>{{ event.name }}</h3>
+						<div class="event-detail-dialog__meta">
+							<div v-for="item in eventMeta" :key="item.icon" class="event-detail-dialog__meta-row">
+								<q-icon :name="item.icon" size="20px" />
+								<a v-if="item.href"
+									class="event-detail-dialog__meta-link"
+									:href="item.href"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									{{ item.value }}
+								</a>
+								<span v-else>{{ item.value }}</span>
+							</div>
+						</div>
+					</div>
+					<q-btn flat round icon="close" color="dark" v-close-popup />
+				</div>
+				<p class="event-detail-dialog__description">{{ event.description }}</p>
+			</q-card-section>
+		</q-card>
+	</q-dialog>
 </template>
 
 <style scoped lang="scss">
 .event-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 450px;
   overflow: hidden;
   border: 1px solid rgba(17, 34, 45, 0.1);
   border-radius: 8px;
@@ -60,6 +197,7 @@
 }
 
 .event-card__image {
+  flex: 0 0 180px;
   min-height: 180px;
   background-position: center;
   background-size: cover;
@@ -69,8 +207,16 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  min-height: 230px;
+  flex: 1;
+  min-height: 220px;
+  min-width: 0;
+  overflow: hidden;
   padding: 18px;
+}
+
+.event-card__copy {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .event-card__title {
@@ -80,16 +226,25 @@
 }
 
 .event-card__description {
+  display: -webkit-box;
+  overflow: hidden;
   margin: 0;
   color: rgba(17, 34, 45, 0.72);
   line-height: 1.55;
   white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.event-card__footer {
+  display: grid;
+  gap: 14px;
+  margin-top: auto;
 }
 
 .event-card__meta {
   display: grid;
   gap: 8px;
-  margin-top: auto;
   color: rgba(17, 34, 45, 0.72);
   font-weight: 650;
 }
@@ -98,5 +253,99 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  min-width: 0;
+}
+
+.event-card__meta-row span,
+.event-card__meta-link {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-card__meta-link,
+.event-detail-dialog__meta-link {
+  color: #5f35f5;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.event-card__meta-link:hover,
+.event-detail-dialog__meta-link:hover {
+  color: #f54291;
+}
+
+.event-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.event-card__icon-btn {
+  aspect-ratio: 1;
+  width: 53px;
+  min-width: 53px;
+  height: 53px;
+  min-height: 53px;
+  padding: 0;
+}
+
+.event-detail-dialog {
+  overflow: hidden;
+  width: min(720px, calc(100vw - 24px));
+  max-width: 720px;
+  max-height: calc(100vh - 32px);
+  border-radius: 24px;
+  background: #fffaf6;
+}
+
+.event-detail-dialog__image {
+  min-height: 260px;
+  background-position: center;
+  background-size: cover;
+}
+
+.event-detail-dialog__body {
+  display: grid;
+  gap: 18px;
+}
+
+.event-detail-dialog__head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.event-detail-dialog__head h3 {
+  margin: 0 0 12px;
+  color: #151f2d;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.event-detail-dialog__meta {
+  display: grid;
+  gap: 8px;
+  color: rgba(17, 34, 45, 0.72);
+  font-weight: 650;
+}
+
+.event-detail-dialog__meta-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.event-detail-dialog__description {
+  overflow-y: auto;
+  max-height: 34vh;
+  margin: 0;
+  color: rgba(17, 34, 45, 0.76);
+  line-height: 1.65;
+  white-space: pre-line;
 }
 </style>

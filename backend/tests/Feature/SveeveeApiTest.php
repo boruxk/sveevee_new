@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Ad;
 use App\Models\Page;
+use App\Models\PageEvent;
 use App\Models\PageProduct;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -225,6 +226,87 @@ class SveeveeApiTest extends TestCase
 
         $this->assertContains('Tel Aviv', $locations->json('data.cities'));
         $this->assertContains(['city' => 'Tel Aviv', 'name' => 'Ramat Aviv'], $locations->json('data.neighborhoods'));
+    }
+
+    public function test_home_feed_prioritizes_neighborhood_city_then_other_ads_and_paginates(): void
+    {
+        $viewer = User::factory()->create();
+        $viewer->profile()->update([
+            'city' => 'Jerusalem',
+            'neighborhood' => 'Ramot',
+        ]);
+
+        $poster = User::factory()->create();
+
+        $sameNeighborhoodAd = Ad::query()->create([
+            'user_id' => $poster->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Ramot class',
+            'text' => 'In the neighborhood.',
+            'status' => 'active',
+            'city' => 'Jerusalem',
+            'neighborhood' => 'Ramot',
+        ]);
+
+        $sameCityOtherNeighborhoodAd = Ad::query()->create([
+            'user_id' => $poster->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Gilo class',
+            'text' => 'In another neighborhood.',
+            'status' => 'active',
+            'city' => 'Jerusalem',
+            'neighborhood' => 'Gilo',
+        ]);
+
+        $citywideAd = Ad::query()->create([
+            'user_id' => $poster->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Jerusalem class',
+            'text' => 'Open to the city.',
+            'status' => 'active',
+            'city' => 'Jerusalem',
+            'neighborhood' => null,
+        ]);
+
+        Ad::query()->create([
+            'user_id' => $poster->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Tel Aviv class',
+            'text' => 'In another city.',
+            'status' => 'active',
+            'city' => 'Tel Aviv',
+            'neighborhood' => null,
+        ]);
+
+        collect(range(1, 21))->each(fn (int $index) => Ad::query()->create([
+            'user_id' => $poster->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => "Other city {$index}",
+            'text' => 'More ads for pagination.',
+            'status' => 'active',
+            'city' => 'Haifa',
+            'neighborhood' => null,
+        ]));
+
+        Sanctum::actingAs($viewer);
+
+        $response = $this->getJson('/api/v1/home-feed')
+            ->assertOk();
+
+        $ids = collect($response->json('data.items'))->pluck('id')->all();
+
+        $this->assertCount(20, $response->json('data.items'));
+        $this->assertSame(20, $response->json('data.pagination.per_page'));
+        $this->assertSame(25, $response->json('data.pagination.total'));
+        $this->assertSame(2, $response->json('data.pagination.last_page'));
+        $this->assertSame($sameNeighborhoodAd->id, $response->json('data.items.0.id'));
+        $this->assertContains($sameCityOtherNeighborhoodAd->id, array_slice($ids, 1, 2));
+        $this->assertContains($citywideAd->id, $ids);
+
+        $this->getJson('/api/v1/home-feed?page=2')
+            ->assertOk()
+            ->assertJsonCount(5, 'data.items')
+            ->assertJsonPath('data.pagination.current_page', 2);
     }
 
     public function test_ads_expire_after_one_week_and_can_be_pruned(): void
@@ -459,23 +541,87 @@ class SveeveeApiTest extends TestCase
 
         Sanctum::actingAs($owner);
 
-        $this->post("/api/v1/pages/{$communityPage->id}/events", [
+        $createdEvent = $this->post("/api/v1/pages/{$communityPage->id}/events", [
             'name' => 'Friday Picnic',
             'description' => 'Bring snacks and meet the neighbors.',
             'image' => UploadedFile::fake()->image('picnic.jpg'),
             'date' => '2026-08-14',
             'time' => '17:30',
+            'end_time' => '19:00',
             'address' => 'Gan HaEm, Haifa',
         ], ['Accept' => 'application/json'])->assertCreated()
             ->assertJsonPath('data.name', 'Friday Picnic')
             ->assertJsonPath('data.date', '2026-08-14')
             ->assertJsonPath('data.time', '17:30')
+            ->assertJsonPath('data.end_time', '19:00')
             ->assertJsonPath('data.address', 'Gan HaEm, Haifa');
+
+        $oldEventImagePath = PageEvent::query()->findOrFail($createdEvent->json('data.id'))->image_path;
+        Storage::disk('public')->assertExists($oldEventImagePath);
+
+        $this->post("/api/v1/events/{$createdEvent->json('data.id')}", [
+            '_method' => 'PUT',
+            'name' => 'Friday Picnic Updated',
+            'description' => 'Updated event details.',
+            'date' => '2026-08-15',
+            'time' => '18:45',
+            'end_time' => '20:15',
+            'address' => 'Gan HaEm, Haifa',
+        ], ['Accept' => 'application/json'])->assertOk()
+            ->assertJsonPath('data.name', 'Friday Picnic Updated')
+            ->assertJsonPath('data.description', 'Updated event details.')
+            ->assertJsonPath('data.date', '2026-08-15')
+            ->assertJsonPath('data.time', '18:45')
+            ->assertJsonPath('data.end_time', '20:15');
+
+        $this->assertDatabaseHas('page_events', [
+            'id' => $createdEvent->json('data.id'),
+            'name' => 'Friday Picnic Updated',
+            'description' => 'Updated event details.',
+            'event_time' => '18:45',
+            'event_end_time' => '20:15',
+        ]);
+
+        $this->post("/api/v1/events/{$createdEvent->json('data.id')}", [
+            '_method' => 'PUT',
+            'name' => 'Friday Picnic Updated',
+            'description' => 'Updated event details.',
+            'date' => '2026-08-15',
+            'time' => '18:45',
+            'end_time' => '',
+            'address' => 'Gan HaEm, Haifa',
+            'image_remove' => '1',
+        ], ['Accept' => 'application/json'])->assertOk()
+            ->assertJsonPath('data.image_url', null)
+            ->assertJsonPath('data.image_name', null)
+            ->assertJsonPath('data.end_time', null);
+
+        Storage::disk('public')->assertMissing($oldEventImagePath);
 
         $this->getJson("/api/v1/pages/{$communityPage->id}")
             ->assertOk()
-            ->assertJsonPath('data.events.0.name', 'Friday Picnic')
-            ->assertJsonPath('data.events.0.time', '17:30');
+            ->assertJsonPath('data.events.0.name', 'Friday Picnic Updated')
+            ->assertJsonPath('data.events.0.time', '18:45')
+            ->assertJsonPath('data.events.0.end_time', null);
+
+        $deletedEvent = $this->post("/api/v1/pages/{$communityPage->id}/events", [
+            'name' => 'Delete event',
+            'description' => 'This event should be deleted.',
+            'image' => UploadedFile::fake()->image('delete-event.jpg'),
+            'date' => '2026-08-16',
+            'time' => '19:15',
+            'address' => 'Gan HaEm, Haifa',
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $deletedEventId = $deletedEvent->json('data.id');
+        $deletedEventImagePath = PageEvent::query()->findOrFail($deletedEventId)->image_path;
+        Storage::disk('public')->assertExists($deletedEventImagePath);
+
+        $this->deleteJson("/api/v1/events/{$deletedEventId}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('page_events', ['id' => $deletedEventId]);
+        Storage::disk('public')->assertMissing($deletedEventImagePath);
 
         $this->post("/api/v1/pages/{$businessPage->id}/events", [
             'name' => 'Business Event',

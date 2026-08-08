@@ -138,7 +138,8 @@ class PayloadService
             'image_url' => $event->image_url,
             'image_name' => $event->image_original_name,
             'date' => $event->event_date?->format('Y-m-d'),
-            'time' => $event->event_time,
+            'time' => $this->eventTime($event->event_time),
+            'end_time' => $this->eventTime($event->event_end_time),
             'address' => $event->address,
             'created_at' => $event->created_at?->toISOString(),
             'updated_at' => $event->updated_at?->toISOString(),
@@ -286,6 +287,19 @@ class PayloadService
         }
 
         return $ad->user?->profile?->{$field};
+    }
+
+    private function eventTime(?string $time): ?string
+    {
+        if (! $time) {
+            return null;
+        }
+
+        if (preg_match('/^(\d{1,2}):(\d{2})/', $time, $matches)) {
+            return str_pad($matches[1], 2, '0', STR_PAD_LEFT).':'.$matches[2];
+        }
+
+        return $time;
     }
 
     private function normalizedOpeningHours(mixed $openingHours): array

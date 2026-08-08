@@ -21,6 +21,8 @@
 	const selectedPalette = computed(() => findPresencePalette(page.value?.palette_key))
 	const canRate = computed(() => authStore.isAuthenticated && page.value?.user_id !== authStore.user?.id)
 	const hasStoreProducts = computed(() => page.value?.type === 'business' && page.value?.products?.length > 0)
+	const hasCommunityEvents = computed(() => page.value?.type === 'community' && page.value?.events?.length > 0)
+	const hasPreviewContent = computed(() => hasStoreProducts.value || hasCommunityEvents.value)
 
 	async function load() {
 		loading.value = true
@@ -57,27 +59,25 @@
 				:page="page"
 				:palette="selectedPalette"
 				:can-rate="canRate"
-				:has-after-info="hasStoreProducts"
+				:has-after-info="hasPreviewContent"
 				@show-ratings="ratingsDialogOpen = true"
 				@rate="reviewDialogOpen = true"
 			>
 				<template #afterInfo>
-					<section class="preview-store">
+					<section v-if="hasStoreProducts" class="preview-section">
 						<h2>{{ t('products.storeTitle') }}</h2>
 						<div class="product-grid">
 							<ProductCard v-for="product in page.products" :key="product.id" :product="product" />
 						</div>
 					</section>
+					<section v-else-if="hasCommunityEvents" class="preview-section">
+						<h2>{{ t('events.eventsTitle') }}</h2>
+						<div class="event-grid">
+							<EventCard v-for="event in page.events" :key="event.id" :event="event" />
+						</div>
+					</section>
 				</template>
 			</PagePreview>
-
-			<section v-if="page.type === 'community'" class="q-mt-lg">
-				<h2>{{ t('events.eventsTitle') }}</h2>
-				<div v-if="!page.events?.length" class="empty-state">{{ t('events.empty') }}</div>
-				<div v-else class="event-grid">
-					<EventCard v-for="event in page.events" :key="event.id" :event="event" />
-				</div>
-			</section>
 
 			<PageRatingsDialog
 				v-model="ratingsDialogOpen"
@@ -114,7 +114,7 @@
   margin-top: 18px;
 }
 
-.preview-store h2 {
+.preview-section h2 {
   margin: 0;
 }
 

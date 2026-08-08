@@ -17,16 +17,49 @@ class HomeFeedController extends Controller
     public function index(Request $request)
     {
         $profile = $request->user()->profile;
+        $city = $this->nullableString($profile?->city);
+        $neighborhood = $this->nullableString($profile?->neighborhood);
+        $perPage = 20;
+        $priorityCases = '';
+        $priorityBindings = [];
+
+        if ($city && $neighborhood) {
+            $priorityCases .= 'when city = ? and neighborhood = ? then 0 ';
+            $priorityBindings[] = $city;
+            $priorityBindings[] = $neighborhood;
+        }
+
+        if ($city) {
+            $priorityCases .= 'when city = ? then 1 ';
+            $priorityBindings[] = $city;
+        }
+
+        $prioritySql = $priorityCases ? "case {$priorityCases}else 2 end" : '0';
 
         $ads = Ad::query()
             ->with(['user.profile', 'page'])
             ->active()
             ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
-            ->inLocation($profile?->city, $profile?->neighborhood)
+            ->orderByRaw($prioritySql, $priorityBindings)
             ->latest()
-            ->limit(60)
-            ->get();
+            ->orderByDesc('id')
+            ->paginate($perPage);
 
-        return ApiResponseService::success($ads->map(fn (Ad $ad) => $this->payloads->ad($ad))->values());
+        return ApiResponseService::success([
+            'items' => $ads->getCollection()->map(fn (Ad $ad) => $this->payloads->ad($ad))->values(),
+            'pagination' => [
+                'current_page' => $ads->currentPage(),
+                'last_page' => $ads->lastPage(),
+                'per_page' => $ads->perPage(),
+                'total' => $ads->total(),
+            ],
+        ]);
+    }
+
+    private function nullableString(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 }

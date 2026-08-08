@@ -20,7 +20,8 @@ export default {
 	},
 	validation: {
 		required: 'Ce champ est obligatoire.',
-		requiredFields: 'Veuillez remplir les champs obligatoires.'
+		requiredFields: 'Veuillez remplir les champs obligatoires.',
+		time24: 'Utilisez le format 24 h, par exemple 17:30.'
 	},
 	palettes: {
 		sunset: 'Coucher de soleil',
@@ -145,10 +146,14 @@ export default {
 		image: 'Image',
 		date: 'Date',
 		time: 'Heure',
+		endTime: 'Heure de fin',
 		address: 'Adresse',
+		addressHint: 'Entrez une adresse pr\u00E9cise pour pouvoir l\u2019ouvrir sur la carte.',
+		open: 'Voir l\u2019\u00E9v\u00E9nement',
 		empty: 'Aucun \u00E9v\u00E9nement pour le moment.',
 		created: '\u00C9v\u00E9nement cr\u00E9\u00E9.',
-		saveFailed: 'L\u2019\u00E9v\u00E9nement n\u2019a pas pu \u00EAtre enregistr\u00E9.'
+		saveFailed: 'L\u2019\u00E9v\u00E9nement n\u2019a pas pu \u00EAtre enregistr\u00E9.',
+		deleteFailed: 'L\u2019\u00E9v\u00E9nement n\u2019a pas pu \u00EAtre supprim\u00E9.'
 	},
 	chat: {
 		title: 'Chat',
