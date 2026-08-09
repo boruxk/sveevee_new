@@ -40,7 +40,7 @@ class PageEventController extends Controller
             'page_id' => $page->id,
             'name' => $data['name'],
             'description' => $data['description'],
-            'image_path' => $image->store('events', 'public'),
+            'image_path' => $this->storePublicWebp($image, 'events', 'image'),
             'image_original_name' => $this->originalUploadName($request, 'image', $image),
             'event_date' => $data['date'],
             'event_time' => $data['time'],
@@ -87,7 +87,7 @@ class PageEventController extends Controller
 
         if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $event->image_path = $image->store('events', 'public');
+            $event->image_path = $this->storePublicWebp($image, 'events', 'image');
             $event->image_original_name = $this->originalUploadName($request, 'image', $image);
         }
 

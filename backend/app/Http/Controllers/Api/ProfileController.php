@@ -9,7 +9,6 @@ use App\Models\EmailBan;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
@@ -80,11 +79,8 @@ class ProfileController extends Controller
         ]);
 
         $oldProfile = $request->user()->profile()->first();
-        $path = $data['photo']->store('profiles', 'public');
-
-        if ($oldProfile?->photo_path) {
-            Storage::disk('public')->delete($oldProfile->photo_path);
-        }
+        $path = $this->storePublicWebp($data['photo'], 'profiles', 'photo');
+        $this->deletePublicUpload($oldProfile?->photo_path);
 
         $profile = $request->user()->profile()->updateOrCreate([], [
             'photo_path' => $path,
@@ -102,7 +98,7 @@ class ProfileController extends Controller
         $profile = $request->user()->profile()->first();
 
         if ($profile?->photo_path) {
-            Storage::disk('public')->delete($profile->photo_path);
+            $this->deletePublicUpload($profile->photo_path);
             $profile->forceFill([
                 'photo_path' => null,
                 'photo_original_name' => null,

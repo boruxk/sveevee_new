@@ -88,7 +88,7 @@ class PageController extends Controller
 
         if ($request->hasFile('logo')) {
             $logo = $request->file('logo');
-            $page->logo_path = $logo->store('pages/logos', 'public');
+            $page->logo_path = $this->storePublicWebp($logo, 'pages/logos', 'logo');
             $page->logo_original_name = $this->originalUploadName($request, 'logo', $logo);
         }
 
@@ -100,7 +100,7 @@ class PageController extends Controller
 
         if ($request->hasFile('banner')) {
             $banner = $request->file('banner');
-            $page->banner_path = $banner->store('pages/banners', 'public');
+            $page->banner_path = $this->storePublicWebp($banner, 'pages/banners', 'banner');
             $page->banner_original_name = $this->originalUploadName($request, 'banner', $banner);
         }
 

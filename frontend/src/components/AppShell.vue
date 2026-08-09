@@ -94,7 +94,7 @@
 
 				<q-space />
 
-				<div class="row items-center no-wrap shell-nav">
+				<div class="row items-center no-wrap shell-nav shell-nav--desktop">
 					<q-btn
 						v-for="link in visibleNavLinks"
 						:key="link.name"
@@ -170,6 +170,78 @@
 
 					<LocaleSwitcher class="shell-locale-switcher" />
 				</div>
+
+				<div class="mobile-shell-actions">
+					<LocaleSwitcher class="shell-locale-switcher" />
+					<q-btn
+						flat
+						round
+						color="dark"
+						icon="menu"
+						class="mobile-menu-trigger"
+						:aria-label="t('nav.menu')"
+					>
+						<q-menu anchor="bottom end" self="top end" class="mobile-menu">
+							<q-list padding class="mobile-menu__list">
+								<q-item
+									v-for="link in visibleNavLinks"
+									:key="link.name"
+									clickable
+									v-close-popup
+									:active="isActive(link.name)"
+									active-class="mobile-menu__item--active"
+									:to="{ name: link.name }"
+								>
+									<q-item-section avatar>
+										<q-icon :name="link.icon" />
+									</q-item-section>
+									<q-item-section>{{ link.label }}</q-item-section>
+									<q-item-section v-if="link.badge" side>
+										<q-badge color="negative" rounded>{{ link.badge }}</q-badge>
+									</q-item-section>
+								</q-item>
+
+								<q-separator spaced />
+
+								<q-item
+									v-if="!authStore.isAuthenticated"
+									clickable
+									v-close-popup
+									:active="isActive('login')"
+									active-class="mobile-menu__item--active"
+									:to="{ name: 'login' }"
+								>
+									<q-item-section avatar><q-icon name="login" /></q-item-section>
+									<q-item-section>{{ t('nav.login') }}</q-item-section>
+								</q-item>
+								<q-item
+									v-if="!authStore.isAuthenticated"
+									clickable
+									v-close-popup
+									:active="isActive('register')"
+									active-class="mobile-menu__item--active"
+									:to="{ name: 'register' }"
+								>
+									<q-item-section avatar><q-icon name="person_add" /></q-item-section>
+									<q-item-section>{{ t('nav.register') }}</q-item-section>
+								</q-item>
+
+								<q-item v-if="authStore.isAuthenticated && isAdmin" clickable v-close-popup @click="openAdmin">
+									<q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
+									<q-item-section>{{ t('nav.admin') }}</q-item-section>
+								</q-item>
+								<q-item v-if="authStore.isAuthenticated" clickable v-close-popup @click="openProfile">
+									<q-item-section avatar><q-icon name="badge" /></q-item-section>
+									<q-item-section>{{ t('nav.profile') }}</q-item-section>
+								</q-item>
+								<q-item v-if="authStore.isAuthenticated" clickable v-close-popup @click="signOut">
+									<q-item-section avatar><q-icon name="logout" /></q-item-section>
+									<q-item-section>{{ t('nav.logout') }}</q-item-section>
+								</q-item>
+							</q-list>
+						</q-menu>
+					</q-btn>
+				</div>
 			</q-toolbar>
 		</q-header>
 
@@ -189,6 +261,9 @@
 }
 
 .shell-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   max-width: 1280px;
   margin: 0 auto;
   width: 100%;
@@ -197,6 +272,7 @@
 
 .brand-lockup {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
 }
 
@@ -208,7 +284,16 @@
 }
 
 .shell-nav {
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
   gap: 10px;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.shell-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .shell-link {
@@ -227,9 +312,42 @@
 }
 
 .profile-menu-trigger {
+  flex: 0 0 auto;
   padding: 0;
   min-width: 52px;
   min-height: 52px;
+}
+
+.shell-locale-switcher {
+  flex: 0 0 auto;
+}
+
+.mobile-shell-actions {
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-menu-trigger {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12px 26px rgba(40, 22, 93, 0.12);
+}
+
+.mobile-menu {
+  width: min(320px, calc(100vw - 20px));
+}
+
+.mobile-menu__list {
+  display: grid;
+  gap: 2px;
+}
+
+.mobile-menu__item--active {
+  background: rgba(123, 63, 242, 0.12);
+  color: var(--soz-primary-deep);
 }
 
 .profile-menu-trigger :deep(.q-avatar__content img) {
@@ -266,6 +384,47 @@
 
   .shell-link :deep(.q-btn__content .block) {
     display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .shell-toolbar {
+    gap: 8px;
+    padding: 10px 8px;
+  }
+
+  .brand-logo {
+    height: 30px;
+    max-width: 116px;
+    object-fit: contain;
+  }
+
+  .shell-nav {
+    gap: 6px;
+  }
+
+  .shell-nav--desktop {
+    display: none;
+  }
+
+  .mobile-shell-actions {
+    display: flex;
+  }
+
+  .shell-link {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 0 12px !important;
+  }
+
+  .profile-menu-trigger {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .profile-menu-trigger :deep(.q-avatar) {
+    width: 44px !important;
+    height: 44px !important;
   }
 }
 </style>

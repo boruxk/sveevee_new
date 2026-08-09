@@ -38,7 +38,7 @@ class PageProductController extends Controller
             'page_id' => $page->id,
             'name' => $data['name'],
             'description' => $data['description'],
-            'image_path' => $image->store('products', 'public'),
+            'image_path' => $this->storePublicWebp($image, 'products', 'image'),
             'image_original_name' => $this->originalUploadName($request, 'image', $image),
             'price' => $data['price'],
             'link' => $data['link'],
@@ -79,7 +79,7 @@ class PageProductController extends Controller
 
         if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $product->image_path = $image->store('products', 'public');
+            $product->image_path = $this->storePublicWebp($image, 'products', 'image');
             $product->image_original_name = $this->originalUploadName($request, 'image', $image);
         }
 

@@ -214,6 +214,12 @@
   min-width: 0;
 }
 
+.chat-list__copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chat-list__copy small {
   overflow: hidden;
   color: rgba(17, 34, 45, 0.58);
@@ -297,12 +303,38 @@
 @media (max-width: 760px) {
   .chat-block {
     grid-template-columns: 1fr;
+    height: min(560px, calc(100dvh - 180px));
+    min-height: 420px;
   }
 
   .chat-list {
     max-height: 150px;
     border-inline-end: 0;
     border-bottom: 1px solid rgba(17, 34, 45, 0.1);
+  }
+}
+
+@media (max-width: 520px) {
+  .chat-block {
+    height: 520px;
+  }
+
+  .chat-list {
+    max-height: 132px;
+  }
+
+  .chat-main__head,
+  .chat-messages {
+    padding: 12px;
+  }
+
+  .chat-message__bubble {
+    max-width: 88%;
+  }
+
+  .chat-compose {
+    gap: 8px;
+    padding: 10px;
   }
 }
 </style>

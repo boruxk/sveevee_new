@@ -284,5 +284,25 @@
   .panel {
     padding: 20px;
   }
+
+  .page-actions,
+  .page-actions .q-btn,
+  .panel-head .q-btn {
+    width: 100%;
+  }
+
+  .page-actions,
+  .panel-head {
+    align-items: stretch;
+  }
+
+  .listing-dialog {
+    width: calc(100vw - 20px);
+    border-radius: 20px;
+  }
+
+  .dialog-head {
+    align-items: flex-start;
+  }
 }
 </style>

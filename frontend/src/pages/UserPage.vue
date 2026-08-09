@@ -166,11 +166,41 @@
   margin: 0 0 8px;
 }
 
+@media (max-width: 900px) {
+  .person-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .person-head .q-btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
 @media (max-width: 760px) {
+  .user-page {
+    padding-inline: 10px;
+  }
+
   .person-head,
   .page-row,
   .listing-grid {
     grid-template-columns: 1fr;
+  }
+
+  .person-head,
+  .public-page-card,
+  .chat-panel {
+    padding: 20px;
+  }
+
+  .person-head .q-btn {
+    width: 100%;
+  }
+
+  .public-page-card p,
+  .person-head p {
+    overflow-wrap: anywhere;
   }
 }
 </style>

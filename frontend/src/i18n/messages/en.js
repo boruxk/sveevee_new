@@ -10,7 +10,8 @@ export default {
 		login: 'Login',
 		register: 'Register',
 		profile: 'Profile',
-		logout: 'Logout'
+		logout: 'Logout',
+		menu: 'Menu'
 	},
 	languages: {
 		he: 'Hebrew',
@@ -275,6 +276,7 @@ export default {
 		users: 'Users',
 		pages: 'Pages',
 		ads: 'Ads',
+		empty: 'No results.',
 		noUsers: 'No users.',
 		noPages: 'No pages.'
 	},

@@ -1,6 +1,7 @@
 export default {
 	brand: 'SVEEVEE',
 	nav: {
+		menu: 'Menu',
 		home: 'Accueil',
 		search: 'Recherche',
 		me: 'Moi',
@@ -275,6 +276,7 @@ export default {
 		users: 'Utilisateurs',
 		pages: 'Pages',
 		ads: 'Annonces',
+		empty: 'Aucun resultat.',
 		noUsers: 'Aucun utilisateur.',
 		noPages: 'Aucune page.'
 	},

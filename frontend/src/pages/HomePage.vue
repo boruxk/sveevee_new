@@ -116,8 +116,17 @@
     padding-inline: 10px;
   }
 
+  .page-head {
+    padding: 20px;
+  }
+
   .listing-grid {
     grid-template-columns: 1fr;
+  }
+
+  .pagination-row :deep(.q-pagination) {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }
 </style>

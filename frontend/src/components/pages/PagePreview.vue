@@ -233,12 +233,14 @@
 
 .page-preview__copy {
   max-width: 760px;
+  min-width: 0;
 }
 
 .page-preview__title {
   margin: 0;
   font-size: clamp(2.2rem, 4vw, 3.6rem);
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .page-preview__description {
@@ -259,6 +261,7 @@
   display: grid;
   align-content: start;
   gap: 14px;
+  min-width: 0;
   padding: 24px;
   border: 1px solid var(--presence-border);
   border-radius: 28px;
@@ -266,6 +269,7 @@
 }
 
 .page-preview__after-info {
+  min-width: 0;
   padding: 24px;
   border: 1px solid var(--presence-border);
   border-radius: 28px;
@@ -281,6 +285,7 @@
 }
 
 .page-preview__detail-card {
+  min-width: 0;
   padding: 20px;
   border: 1px solid var(--presence-border);
   border-radius: 24px;
@@ -299,6 +304,11 @@
   grid-template-columns: 120px 1fr;
   gap: 12px;
   color: var(--presence-ink);
+}
+
+.page-preview__detail-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .page-preview__detail-label {
@@ -343,11 +353,53 @@
   .page-preview__intro {
     align-items: flex-start;
   }
+
+  .page-preview__hero,
+  .page-preview__intro {
+    min-height: 280px;
+  }
 }
 
 @media (max-width: 640px) {
+  .page-preview {
+    gap: 16px;
+    padding: 14px;
+    border-radius: 24px;
+  }
+
+  .page-preview__hero {
+    min-height: 260px;
+    border-radius: 24px;
+  }
+
   .page-preview__intro {
-    padding: 24px;
+    gap: 16px;
+    min-height: 260px;
+    padding: 20px;
+  }
+
+  .page-preview__logo {
+    width: 72px !important;
+    height: 72px !important;
+    border-radius: 20px;
+    font-size: 30px;
+  }
+
+  .page-preview__title {
+    font-size: clamp(1.75rem, 9vw, 2.4rem);
+    line-height: 1.08;
+  }
+
+  .page-preview__description {
+    font-size: 0.98rem;
+    line-height: 1.58;
+  }
+
+  .page-preview__column,
+  .page-preview__after-info,
+  .page-preview__detail-card {
+    padding: 16px;
+    border-radius: 20px;
   }
 
   .page-preview__rating-row,
@@ -357,6 +409,10 @@
 
   .page-preview__rating-actions {
     justify-content: flex-start;
+  }
+
+  .page-preview__rating-actions .q-btn {
+    width: 100%;
   }
 }
 </style>

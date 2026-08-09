@@ -186,5 +186,13 @@
   .product-composer__row {
     grid-template-columns: 1fr;
   }
+
+  .product-composer__actions {
+    justify-content: stretch;
+  }
+
+  .product-composer__actions .q-btn {
+    width: 100%;
+  }
 }
 </style>

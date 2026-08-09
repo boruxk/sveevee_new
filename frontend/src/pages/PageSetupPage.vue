@@ -1187,10 +1187,13 @@
 
 @media (max-width: 1100px) {
   .preview-head,
-  .listing-grid,
+  .listing-grid {
+    grid-template-columns: 1fr;
+  }
+
   .product-grid,
   .event-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .palette-grid {
@@ -1202,6 +1205,13 @@
   .palette-grid,
   .hours-row,
   .upload-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .product-grid,
+  .event-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -1219,6 +1229,50 @@
   .panel-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .preview-head {
+    grid-template-columns: 1fr;
+  }
+
+  .page-toolbar-actions,
+  .page-toolbar-actions .q-btn,
+  .panel-head .q-btn {
+    width: 100%;
+  }
+
+  .page-toolbar-actions {
+    justify-content: stretch;
+  }
+
+  .panel-head {
+    align-items: stretch;
+  }
+
+  .setup-dialog,
+  .listing-dialog,
+  .product-dialog,
+  .event-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 20px;
+  }
+
+  .setup-dialog__body {
+    padding-inline: 14px;
+  }
+
+  .dialog-head {
+    align-items: flex-start;
+  }
+
+  .presence-segment {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .palette-card {
+    padding: 10px;
   }
 }
 </style>

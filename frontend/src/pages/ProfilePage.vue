@@ -286,4 +286,24 @@
   margin-inline-start: 0 !important;
 }
 
+@media (max-width: 700px) {
+  .profile-page {
+    padding-inline: 10px;
+  }
+
+  .page-head,
+  .profile-panel {
+    padding: 20px;
+  }
+
+  .profile-panel :deep(.q-form) {
+    padding-top: 10px !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .form-submit {
+    width: 100%;
+  }
+}
 </style>

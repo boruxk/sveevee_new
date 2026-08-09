@@ -147,4 +147,19 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+
+@media (max-width: 640px) {
+  .review-dialog {
+    width: calc(100vw - 20px);
+    border-radius: 20px;
+  }
+
+  .review-dialog__head {
+    align-items: flex-start;
+  }
+
+  .review-form .q-btn {
+    width: 100%;
+  }
+}
 </style>

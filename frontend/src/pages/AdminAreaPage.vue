@@ -186,10 +186,12 @@
 
 .user-row span {
   display: grid;
+  min-width: 0;
 }
 
 .user-row small {
   color: rgba(17, 34, 45, 0.56);
+  overflow-wrap: anywhere;
 }
 
 .page-links {
@@ -208,6 +210,31 @@
 @media (max-width: 900px) {
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .admin-page {
+    padding-inline: 10px;
+  }
+
+  .page-head,
+  .user-list,
+  .detail-panel {
+    padding: 20px;
+  }
+
+  .user-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .detail-panel p {
+    overflow-wrap: anywhere;
+  }
+
+  .detail-panel .q-btn {
+    width: 100%;
   }
 }
 </style>

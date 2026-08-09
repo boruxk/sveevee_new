@@ -1,6 +1,7 @@
 <script setup>
-	import { ref } from 'vue'
+	import { computed, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
+	import { useQuasar } from 'quasar'
 
 	defineProps({
 		product: {
@@ -15,7 +16,9 @@
 
 	const emit = defineEmits(['delete', 'edit'])
 	const { t } = useI18n()
+	const $q = useQuasar()
 	const detailOpen = ref(false)
+	const compactActionButtons = computed(() => $q.screen.width <= 700)
 </script>
 
 <template>
@@ -30,11 +33,14 @@
 				<div class="product-card__price">{{ product.price_label }}</div>
 				<div class="product-card__actions">
 					<q-btn
-						rounded
+						class="product-card__view-btn"
+						:round="compactActionButtons"
+						:rounded="!compactActionButtons"
 						unelevated
 						color="primary"
 						icon="visibility"
-						:label="t('products.open')"
+						:aria-label="t('products.open')"
+						:label="compactActionButtons ? undefined : t('products.open')"
 						@click="detailOpen = true"
 					/>
 					<q-btn v-if="editable"
@@ -220,5 +226,62 @@
 .product-detail-dialog__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+@media (max-width: 700px) {
+  .product-card {
+    max-height: none;
+  }
+
+  .product-card__image {
+    flex-basis: 160px;
+    min-height: 160px;
+  }
+
+  .product-card__body {
+    min-height: auto;
+    padding: 16px;
+  }
+
+  .product-card__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .product-card__actions {
+    justify-content: flex-start;
+  }
+
+  .product-card__view-btn {
+    aspect-ratio: 1;
+    width: 53px;
+    min-width: 53px;
+    height: 53px;
+    min-height: 53px;
+    padding: 0;
+  }
+
+  .product-detail-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 20px;
+  }
+
+  .product-detail-dialog__image {
+    min-height: 190px;
+  }
+
+  .product-detail-dialog__body {
+    padding: 18px;
+  }
+
+  .product-detail-dialog__head h3 {
+    font-size: 24px;
+    overflow-wrap: anywhere;
+  }
+
+  .product-detail-dialog__actions .q-btn {
+    width: 100%;
+  }
 }
 </style>

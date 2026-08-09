@@ -897,7 +897,6 @@
   .landing-hero__inner,
   .workflow-section,
   .content-grid,
-  .feature-grid,
   .pricing-grid {
     grid-template-columns: 1fr;
   }
@@ -907,7 +906,8 @@
   }
 
   .feature-grid {
-    max-width: 520px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 780px;
   }
 
   .workflow-section {
@@ -928,6 +928,22 @@
     width: min(100%, 330px);
   }
 
+  .landing-hero p {
+    filter:
+      drop-shadow(0 0 14px #ffffff)
+      drop-shadow(0 0 34px #ffffff)
+      drop-shadow(0 0 62px rgba(255, 255, 255, 0.98));
+    text-shadow:
+      0 1px 0 #ffffff,
+      0 2px 0 #ffffff,
+      0 0 4px #ffffff,
+      0 0 10px #ffffff,
+      0 8px 20px #ffffff,
+      0 16px 38px #ffffff,
+      0 28px 68px rgba(255, 255, 255, 0.98),
+      0 0 96px rgba(255, 255, 255, 0.98);
+  }
+
   .landing-section {
     padding: 38px 16px 0;
   }
@@ -938,6 +954,11 @@
 
   .landing-section--features h2 {
     font-size: 32px;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+    max-width: 520px;
   }
 
   .feature-card,
@@ -992,15 +1013,19 @@
 
   .pricing-card__art,
   .pricing-card--business .pricing-card__art {
-    justify-self: center;
-    width: min(72%, 230px);
-    max-height: 220px;
-    margin: -6px 0 0;
+    display: none;
   }
 
   .pricing-card__top {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
+  .landing-hero__actions {
+    align-items: stretch;
+  }
+
+  .landing-hero__actions .q-btn {
+    width: 100%;
+  }
 }
 </style>

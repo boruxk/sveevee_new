@@ -171,10 +171,23 @@
   margin: 0;
 }
 
+@media (max-width: 1100px) {
+  .product-grid,
+  .event-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 760px) {
   .product-grid,
   .event-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .detail-page {
+    padding-inline: 10px;
   }
 }
 </style>

@@ -359,11 +359,26 @@
 
 @media (max-width: 700px) {
   .page-create-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
     border-radius: 22px;
+  }
+
+  .page-create-dialog__body {
+    padding-inline: 14px;
+  }
+
+  .presence-segment {
+    padding: 14px;
+    border-radius: 16px;
   }
 
   .upload-row {
     grid-template-columns: 1fr;
+  }
+
+  .page-create-form__actions .q-btn {
+    width: min(260px, 100%);
   }
 }
 </style>

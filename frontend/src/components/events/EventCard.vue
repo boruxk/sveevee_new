@@ -1,6 +1,7 @@
 <script setup>
 	import { computed, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
+	import { useQuasar } from 'quasar'
 
 	const props = defineProps({
 		event: {
@@ -15,7 +16,9 @@
 
 	const emit = defineEmits(['delete', 'edit'])
 	const { locale, t } = useI18n()
+	const $q = useQuasar()
 	const detailOpen = ref(false)
+	const compactActionButtons = computed(() => $q.screen.width <= 700)
 	const intlLocale = computed(() => ({
 		he: 'he-IL',
 		en: 'en-US',
@@ -122,11 +125,14 @@
 				</div>
 				<div class="event-card__actions">
 					<q-btn
-						rounded
+						class="event-card__view-btn"
+						:round="compactActionButtons"
+						:rounded="!compactActionButtons"
 						unelevated
 						color="primary"
 						icon="visibility"
-						:label="t('events.open')"
+						:aria-label="t('events.open')"
+						:label="compactActionButtons ? undefined : t('events.open')"
 						@click="detailOpen = true"
 					/>
 					<q-btn v-if="editable"
@@ -340,6 +346,12 @@
   min-width: 0;
 }
 
+.event-detail-dialog__meta-row span,
+.event-detail-dialog__meta-link {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .event-detail-dialog__description {
   overflow-y: auto;
   max-height: 34vh;
@@ -347,5 +359,59 @@
   color: rgba(17, 34, 45, 0.76);
   line-height: 1.65;
   white-space: pre-line;
+}
+
+@media (max-width: 700px) {
+  .event-card {
+    max-height: none;
+  }
+
+  .event-card__image {
+    flex-basis: 160px;
+    min-height: 160px;
+  }
+
+  .event-card__body {
+    min-height: auto;
+    padding: 16px;
+  }
+
+  .event-card__meta-row span,
+  .event-card__meta-link {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .event-card__actions {
+    justify-content: flex-start;
+  }
+
+  .event-card__view-btn {
+    aspect-ratio: 1;
+    width: 53px;
+    min-width: 53px;
+    height: 53px;
+    min-height: 53px;
+    padding: 0;
+  }
+
+  .event-detail-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 20px;
+  }
+
+  .event-detail-dialog__image {
+    min-height: 190px;
+  }
+
+  .event-detail-dialog__body {
+    padding: 18px;
+  }
+
+  .event-detail-dialog__head h3 {
+    font-size: 24px;
+    overflow-wrap: anywhere;
+  }
 }
 </style>

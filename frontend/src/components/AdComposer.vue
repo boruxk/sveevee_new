@@ -171,5 +171,9 @@
   .listing-composer__row {
     grid-template-columns: 1fr;
   }
+
+  .listing-composer__row .q-btn {
+    width: 100%;
+  }
 }
 </style>

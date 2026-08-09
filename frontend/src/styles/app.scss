@@ -15,6 +15,12 @@
   --soz-soft-white: rgba(250, 248, 252, 0.9);
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
 body,
 #app {
@@ -34,6 +40,17 @@ body {
     radial-gradient(circle at top right, rgba(123, 63, 242, 0.12), transparent 28%),
     radial-gradient(circle at 92% 58%, rgba(245, 66, 145, 0.08), transparent 24%),
     linear-gradient(180deg, #ffffff 0%, #fff8fb 46%, #f7f1ff 100%);
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+.q-page {
+  overflow-x: clip;
 }
 
 body.sveevee-rtl,
@@ -434,4 +451,76 @@ h6 {
 .q-chip.bg-primary,
 .q-chip.bg-secondary {
   box-shadow: 0 8px 18px rgba(123, 63, 242, 0.16);
+}
+
+@media (max-width: 700px) {
+  .soz-section-card {
+    border-radius: 22px;
+  }
+
+  .soz-page-title {
+    font-size: clamp(2rem, 10vw, 2.8rem);
+    line-height: 1.5 !important;
+    letter-spacing: 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    line-height: 1.5 !important;
+  }
+
+  .q-dialog__inner {
+    padding: 10px;
+  }
+
+  .q-page .q-form,
+  .q-dialog .q-form,
+  .q-page .q-field,
+  .q-dialog .q-field,
+  .q-page .q-field__inner,
+  .q-dialog .q-field__inner,
+  .q-page .q-field__control,
+  .q-dialog .q-field__control {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .q-page .q-gutter-sm,
+  .q-page .q-gutter-md,
+  .q-dialog .q-gutter-sm,
+  .q-dialog .q-gutter-md,
+  .q-page .row[class*="q-col-gutter-"],
+  .q-dialog .row[class*="q-col-gutter-"] {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    max-width: 100%;
+  }
+
+  .q-page .q-gutter-sm > *,
+  .q-page .q-gutter-md > *,
+  .q-dialog .q-gutter-sm > *,
+  .q-dialog .q-gutter-md > *,
+  .q-page .row[class*="q-col-gutter-"] > *,
+  .q-dialog .row[class*="q-col-gutter-"] > * {
+    min-width: 0;
+    max-width: 100%;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .q-btn:not(.q-btn--round):not(.q-btn--fab) {
+    min-height: 48px;
+    padding: 0 16px;
+  }
+
+  .q-menu {
+    max-width: calc(100vw - 16px);
+  }
 }

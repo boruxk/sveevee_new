@@ -1,6 +1,7 @@
 export default {
 	brand: 'SVEEVEE',
 	nav: {
+		menu: '\u05EA\u05E4\u05E8\u05D9\u05D8',
 		home: 'בית',
 		search: 'חיפוש',
 		me: 'אני',
@@ -275,6 +276,7 @@ export default {
 		users: 'משתמשים',
 		pages: 'עמודים',
 		ads: 'מודעות',
+		empty: 'אין תוצאות.',
 		noUsers: 'אין משתמשים.',
 		noPages: 'אין עמודים.'
 	},

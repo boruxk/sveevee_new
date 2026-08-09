@@ -157,4 +157,29 @@
   color: rgba(17, 34, 45, 0.58);
   text-align: center;
 }
+
+@media (max-width: 640px) {
+  .ratings-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 20px;
+  }
+
+  .ratings-dialog__head {
+    align-items: flex-start;
+  }
+
+  .ratings-dialog__body {
+    max-height: calc(100dvh - 150px);
+  }
+
+  .rating-item__head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .rating-item__comment {
+    overflow-wrap: anywhere;
+  }
+}
 </style>

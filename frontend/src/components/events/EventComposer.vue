@@ -216,5 +216,13 @@
   .event-composer__row {
     grid-template-columns: 1fr;
   }
+
+  .event-composer__actions {
+    justify-content: stretch;
+  }
+
+  .event-composer__actions .q-btn {
+    width: 100%;
+  }
 }
 </style>

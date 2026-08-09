@@ -1,5 +1,5 @@
 <script setup>
-	import { onMounted, reactive, ref, toRef, watch } from 'vue'
+	import { computed, onMounted, reactive, ref, toRef, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute, useRouter } from 'vue-router'
 	import { searchEverything } from '@/services/api/search'
@@ -21,6 +21,11 @@
 		neighborhood: initialCity ? queryValue(route.query.neighborhood) : ''
 	})
 	const results = reactive({ users: [], pages: [], ads: [] })
+	const combinedResults = computed(() => [
+		...results.users.map((user) => ({ id: `user-${user.id}`, kind: 'user', value: user })),
+		...results.pages.map((page) => ({ id: `page-${page.id}`, kind: 'page', value: page })),
+		...results.ads.map((ad) => ({ id: `ad-${ad.id}`, kind: 'ad', value: ad }))
+	])
 	const citySelectOptions = ref([])
 	const neighborhoodSelectOptions = ref([])
 	const {
@@ -142,41 +147,30 @@
 			</section>
 
 			<section class="result-section">
-				<h2>{{ t('search.users') }}</h2>
-				<div v-if="results.users.length === 0" class="empty-state">{{ t('search.noUsers') }}</div>
-				<div v-else class="result-grid">
-					<router-link v-for="user in results.users" :key="user.id" :to="{ name: 'user-page', params: { id: user.id } }" class="result-card">
-						<q-avatar size="54px" color="primary" text-color="white">
-							<img v-if="user.profile?.photo_url" :src="user.profile.photo_url" alt="" />
-							<span v-else>{{ user.display_name.slice(0, 1) }}</span>
-						</q-avatar>
-						<div>
-							<strong>{{ user.display_name }}</strong>
-							<p>{{ user.profile?.neighborhood || user.profile?.city || '-' }}</p>
-						</div>
-					</router-link>
-				</div>
-			</section>
+				<div v-if="combinedResults.length === 0" class="empty-state">{{ t('search.empty') }}</div>
+				<div v-else class="result-list">
+					<template v-for="item in combinedResults" :key="item.id">
+						<router-link v-if="item.kind === 'user'" :to="{ name: 'user-page', params: { id: item.value.id } }" class="result-card">
+							<q-avatar size="54px" color="primary" text-color="white">
+								<img v-if="item.value.profile?.photo_url" :src="item.value.profile.photo_url" alt="" />
+								<span v-else>{{ item.value.display_name.slice(0, 1) }}</span>
+							</q-avatar>
+							<div>
+								<strong>{{ item.value.display_name }}</strong>
+								<p>{{ item.value.profile?.neighborhood || item.value.profile?.city || '-' }}</p>
+							</div>
+						</router-link>
 
-			<section class="result-section">
-				<h2>{{ t('search.pages') }}</h2>
-				<div v-if="results.pages.length === 0" class="empty-state">{{ t('search.noPages') }}</div>
-				<div v-else class="result-grid">
-					<router-link v-for="page in results.pages" :key="page.id" :to="{ name: 'page-detail', params: { id: page.id } }" class="result-card">
-						<q-icon :name="page.type === 'business' ? 'storefront' : 'diversity_3'" size="32px" color="primary" />
-						<div>
-							<strong>{{ page.name }}</strong>
-							<p>{{ page.public_description || '-' }}</p>
-						</div>
-					</router-link>
-				</div>
-			</section>
+						<router-link v-else-if="item.kind === 'page'" :to="{ name: 'page-detail', params: { id: item.value.id } }" class="result-card">
+							<q-icon :name="item.value.type === 'business' ? 'storefront' : 'diversity_3'" size="32px" color="primary" />
+							<div>
+								<strong>{{ item.value.name }}</strong>
+								<p>{{ item.value.public_description || '-' }}</p>
+							</div>
+						</router-link>
 
-			<section class="result-section">
-				<h2>{{ t('search.ads') }}</h2>
-				<div v-if="results.ads.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
-				<div v-else class="listing-grid">
-					<AdCard v-for="ad in results.ads" :key="ad.id" :ad="ad" />
+						<AdCard v-else :ad="item.value" />
+					</template>
 				</div>
 			</section>
 		</div>
@@ -213,13 +207,7 @@
   margin-top: 22px;
 }
 
-.result-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.listing-grid {
+.result-list {
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
@@ -234,6 +222,17 @@
   border: 1px solid rgba(17, 34, 45, 0.1);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.76);
+}
+
+.result-card > div {
+  min-width: 0;
+}
+
+.result-card strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .result-card p {
@@ -251,9 +250,53 @@
 @media (max-width: 900px) {
   .page-head,
   .search-form,
-  .result-grid,
-  .listing-grid {
+  .result-list {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .search-page {
+    padding-inline: 10px;
+  }
+
+  .page-head {
+    overflow: hidden;
+    padding: 20px;
+  }
+
+  .search-form {
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .search-form > * {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .search-form :deep(.q-field),
+  .search-form :deep(.q-field__inner),
+  .search-form :deep(.q-field__control) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .search-form .q-btn {
+    width: 100%;
+  }
+
+  .result-card {
+    padding: 16px;
+  }
+
+  .result-card p {
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 }
 </style>

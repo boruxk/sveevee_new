@@ -101,8 +101,8 @@
 				<div class="auth-panel__inner">
 					<h1 class="soz-page-title">{{ t('auth.registerTitle') }}</h1>
 					<p class="q-pb-md">{{ t('auth.simpleLogin') }}</p>
-					<q-form ref="formRef" greedy class="column q-gutter-md q-pl-md" @submit.prevent="submit()">
-						<div class="row q-col-gutter-md q-pb-md">
+					<q-form ref="formRef" greedy class="register-form" @submit.prevent="submit()">
+						<div class="register-form__row">
 							<q-input class="col-12 col-md-4"
 								v-model="form.email"
 								outlined
@@ -123,7 +123,7 @@
 								:rules="[requiredRule]"
 							/>
 						</div>
-						<div class="row q-col-gutter-md q-pb-md">
+						<div class="register-form__row">
 							<q-input class="col-12 col-md-6"
 								v-model="form.password"
 								outlined
@@ -139,7 +139,7 @@
 								:rules="[requiredRule]"
 							/>
 						</div>
-						<div class="row q-col-gutter-md q-pb-md">
+						<div class="register-form__row">
 							<q-input class="col-12 col-md-4" v-model="form.phone" outlined :label="t('auth.phone')" />
 							<q-select class="col-12 col-md-4"
 								v-model="form.city"
@@ -172,7 +172,7 @@
 								@new-value="addOption"
 							/>
 						</div>
-						<div class="row q-col-gutter-md q-pb-md">
+						<div class="register-form__row">
 							<q-select class="col-12"
 								v-model="form.languages"
 								outlined
@@ -223,8 +223,80 @@
   margin: 0 auto;
 }
 
+.register-form {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.register-form__row {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.register-form__row > :deep(.col-12) {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.register-form__row > :deep(.col-md-4) {
+  grid-column: span 4;
+}
+
+.register-form__row > :deep(.col-md-6) {
+  grid-column: span 6;
+}
+
 .form-submit {
   width: min(220px, 100%);
   margin: 0 auto !important;
+}
+
+@media (max-width: 700px) {
+  .auth-page {
+    padding-inline: 10px;
+  }
+
+  .auth-panel {
+    padding: 20px;
+  }
+
+  .auth-shell,
+  .auth-panel,
+  .auth-panel__inner,
+  .register-form {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .auth-panel {
+    overflow: hidden;
+  }
+
+  .register-form__row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    row-gap: 12px;
+  }
+
+  .register-form__row > * {
+    grid-column: 1 / -1 !important;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .auth-panel__inner :deep(.q-field),
+  .auth-panel__inner :deep(.q-field__inner),
+  .auth-panel__inner :deep(.q-field__control) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
 }
 </style>

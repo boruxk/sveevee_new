@@ -88,4 +88,22 @@
   width: min(520px, 100%);
   margin: 0 auto;
 }
+
+@media (max-width: 700px) {
+  .auth-page {
+    padding-inline: 10px;
+  }
+
+  .auth-panel {
+    padding: 20px;
+  }
+
+  .auth-panel__inner p {
+    line-height: 1.6;
+  }
+
+  .auth-panel__inner .q-btn {
+    width: 100%;
+  }
+}
 </style>

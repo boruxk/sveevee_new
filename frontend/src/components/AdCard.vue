@@ -1,6 +1,7 @@
 <script setup>
 	import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
+	import { useQuasar } from 'quasar'
 
 	const props = defineProps({
 		ad: {
@@ -15,11 +16,13 @@
 
 	const emit = defineEmits(['delete', 'edit'])
 	const { t } = useI18n()
+	const $q = useQuasar()
 	const textWrapRef = ref(null)
 	const textRef = ref(null)
 	const isExpanded = ref(false)
 	const hasOverflow = ref(false)
 	let resizeObserver = null
+	const compactActionButtons = computed(() => $q.screen.width <= 700)
 
 	const typeLabel = computed(() => ({
 		private_ad: t('ads.private'),
@@ -119,19 +122,25 @@
 				/>
 				<div v-if="editable" class="listing-card__actions">
 					<q-btn
-						rounded
+						class="listing-card__icon-btn"
+						:round="compactActionButtons"
+						:rounded="!compactActionButtons"
 						unelevated
 						color="secondary"
 						icon="edit"
-						:label="t('actions.edit')"
+						:aria-label="t('actions.edit')"
+						:label="compactActionButtons ? undefined : t('actions.edit')"
 						@click="emit('edit', ad)"
 					/>
 					<q-btn
-						rounded
+						class="listing-card__icon-btn"
+						:round="compactActionButtons"
+						:rounded="!compactActionButtons"
 						unelevated
 						color="negative"
 						icon="delete"
-						:label="t('actions.delete')"
+						:aria-label="t('actions.delete')"
+						:label="compactActionButtons ? undefined : t('actions.delete')"
 						@click="emit('delete', ad)"
 					/>
 				</div>
@@ -296,8 +305,40 @@
     grid-row: 2;
   }
 
+  .listing-card__body {
+    padding: 18px;
+  }
+
   .listing-card__title {
     font-size: 24px;
+  }
+
+  .listing-card__footer,
+  .listing-card__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .listing-card__actions {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
+
+  .listing-card__footer > .q-btn,
+  .listing-card__actions .q-btn:not(.listing-card__icon-btn) {
+    width: 100%;
+  }
+
+  .listing-card__icon-btn {
+    aspect-ratio: 1;
+    width: 53px;
+    min-width: 53px;
+    height: 53px;
+    min-height: 53px;
+    padding: 0;
   }
 }
 </style>
