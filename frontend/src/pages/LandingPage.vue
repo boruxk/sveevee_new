@@ -2,11 +2,11 @@
 	import { computed } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useAppStore } from '@/stores/app'
-	import heroSrc from '@/assets/hero-main.png'
-	import pricingBusinessSrc from '@/assets/pricing-business.png'
-	import pricingPrivateSrc from '@/assets/pricing-private.png'
-	import logoSrc from '@/assets/sveevee-logo.png'
-	import workflowHouseSrc from '@/assets/workflow-house.png'
+	import heroSrc from '@/assets/hero-main.webp'
+	import pricingBusinessSrc from '@/assets/pricing-business.webp'
+	import pricingPrivateSrc from '@/assets/pricing-private.webp'
+	import logoSrc from '@/assets/sveevee-logo.webp'
+	import workflowHouseSrc from '@/assets/workflow-house.webp'
 
 	const { t, tm, locale } = useI18n()
 	const appStore = useAppStore()

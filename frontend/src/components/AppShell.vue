@@ -5,7 +5,7 @@
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
 	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
-	import logoSrc from '@/assets/sveevee-logo.png'
+	import logoSrc from '@/assets/sveevee-logo.webp'
 
 	const props = defineProps({
 		tone: {

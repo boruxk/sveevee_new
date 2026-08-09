@@ -2,7 +2,7 @@
 	import { computed } from 'vue'
 	import { useRoute } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
-	import heroSeoImage from '@/assets/hero-main.png'
+	import heroSeoImage from '@/assets/hero-main.webp'
 	import { absoluteUrl, SITE_NAME, useSeo } from '@/composables/useSeo'
 
 	const route = useRoute()
