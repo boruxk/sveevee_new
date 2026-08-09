@@ -20,6 +20,7 @@ class Ad extends Model
         'type',
         'title',
         'text',
+        'category',
         'image_path',
         'image_original_name',
         'status',

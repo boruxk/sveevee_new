@@ -184,6 +184,7 @@ class PayloadService
             'type' => $ad->type,
             'title' => $ad->title,
             'text' => $ad->text,
+            'category' => $ad->category,
             'image_url' => $ad->image_url,
             'image_name' => $ad->image_original_name,
             'status' => $ad->status,

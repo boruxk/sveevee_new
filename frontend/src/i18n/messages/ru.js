@@ -110,6 +110,7 @@ export default {
 	ads: {
 		title: 'Заголовок',
 		text: 'Текст',
+		category: 'Категория',
 		image: 'Изображение',
 		private: 'Частное объявление',
 		business: 'Объявление бизнеса',
@@ -124,6 +125,166 @@ export default {
 		saveFailed: 'Не удалось сохранить объявление.',
 		deleteFailed: 'Не удалось удалить объявление.',
 		listTitle: 'Объявления'
+	},
+	adCategories: {
+		groups: {
+			real_estate: 'Недвижимость',
+			jobs: 'Работа',
+			home_professionals: 'Дом и специалисты',
+			food_catering: 'Еда и кейтеринг',
+			fashion: 'Мода',
+			beauty_personal_care: 'Красота и уход',
+			health_wellness: 'Здоровье и благополучие',
+			kids_family: 'Дети и семья',
+			education_courses: 'Образование и курсы',
+			events_entertainment: 'События и развлечения',
+			shopping_retail: 'Покупки и розница',
+			electronics_appliances: 'Электроника и техника',
+			travel_transportation: 'Путешествия и транспорт',
+			legal_finance_business: 'Юридическое, финансы и бизнес',
+			community_religious: 'Община и религия'
+		},
+		items: {
+			real_estate: {
+				for_sale: 'Продажа',
+				for_rent: 'Аренда',
+				commercial: 'Коммерческая недвижимость',
+				real_estate_agents: 'Агенты по недвижимости',
+				storage: 'Складское хранение',
+				vacation_short_term_rental: 'Отпускная и краткосрочная аренда'
+			},
+			jobs: {
+				job_offers: 'Вакансии',
+				job_seekers: 'Ищу работу',
+				office_administration: 'Офис и администрация',
+				sales: 'Продажи',
+				education: 'Образование',
+				childcare: 'Присмотр за детьми',
+				cleaning: 'Уборка',
+				caregiving: 'Уход',
+				part_time: 'Частичная занятость'
+			},
+			home_professionals: {
+				renovation: 'Ремонт',
+				handyman: 'Мастер на час',
+				electrician: 'Электрик',
+				plumbing: 'Сантехника',
+				air_conditioning: 'Кондиционеры',
+				painting: 'Покраска',
+				locksmith: 'Слесарь',
+				windows_shutters: 'Окна и жалюзи',
+				carpentry: 'Столярные работы',
+				pergolas: 'Перголы',
+				cleaning: 'Уборка',
+				gardening: 'Садоводство',
+				pest_control: 'Дезинсекция',
+				moving: 'Переезды'
+			},
+			food_catering: {
+				restaurants: 'Рестораны',
+				catering: 'Кейтеринг',
+				bakery: 'Пекарня',
+				pizza_fast_food: 'Пицца и фастфуд',
+				meat_butcher: 'Мясо и мясная лавка',
+				fish: 'Рыба',
+				grocery: 'Продуктовый магазин',
+				food_for_events: 'Еда для мероприятий'
+			},
+			fashion: {
+				mens_fashion: 'Мужская мода',
+				womens_fashion: 'Женская мода',
+				childrens_fashion: 'Детская мода',
+				suits_shirts: 'Костюмы и рубашки',
+				dresses: 'Платья',
+				bridal_wedding_dresses: 'Свадебные платья',
+				wigs_head_coverings: 'Парики и головные уборы'
+			},
+			beauty_personal_care: {
+				hairdresser: 'Парикмахер',
+				hair_treatments: 'Уход за волосами',
+				cosmetics: 'Косметика',
+				skin_care: 'Уход за кожей',
+				nails: 'Ногти',
+				makeup: 'Макияж',
+				hair_removal: 'Эпиляция'
+			},
+			health_wellness: {
+				therapy: 'Терапия',
+				alternative_medicine: 'Альтернативная медицина',
+				massage: 'Массаж',
+				orthopedics_orthotics: 'Ортопедия / ортезы',
+				opticians: 'Оптики',
+				memory_senior_services: 'Память и услуги для пожилых',
+				personal_care: 'Персональный уход'
+			},
+			kids_family: {
+				daycare: 'Детский сад',
+				babysitting: 'Няня',
+				childrens_activities: 'Детские занятия',
+				toys_games: 'Игрушки и игры',
+				inflatables: 'Батуты',
+				camps: 'Лагеря',
+				parenting_family_services: 'Семейные услуги'
+			},
+			education_courses: {
+				schools: 'Школы',
+				private_lessons: 'Частные уроки',
+				tutoring: 'Репетиторство',
+				courses_workshops: 'Курсы и мастер-классы',
+				driving_lessons: 'Уроки вождения',
+				religious_studies: 'Религиозное обучение',
+				professional_training: 'Профессиональное обучение'
+			},
+			events_entertainment: {
+				event_photography: 'Фотосъемка мероприятий',
+				video: 'Видео',
+				music_dj: 'Музыка / DJ',
+				event_equipment: 'Оборудование для мероприятий',
+				attractions: 'Аттракционы',
+				games: 'Игры',
+				event_venues: 'Площадки для мероприятий',
+				party_rentals: 'Аренда для вечеринок'
+			},
+			shopping_retail: {
+				household_goods: 'Товары для дома',
+				furniture: 'Мебель',
+				kitchen: 'Кухня',
+				school_supplies: 'Школьные принадлежности',
+				gifts: 'Подарки',
+				general_retail: 'Розничная торговля',
+				sales_special_offers: 'Акции и спецпредложения'
+			},
+			electronics_appliances: {
+				home_appliances: 'Бытовая техника',
+				mobile_phones: 'Мобильные телефоны',
+				computers: 'Компьютеры',
+				computer_repair: 'Ремонт компьютеров',
+				electrical_products: 'Электротовары',
+				small_appliances: 'Мелкая техника'
+			},
+			travel_transportation: {
+				trips_tours: 'Поездки и туры',
+				bus_services: 'Автобусные услуги',
+				private_transportation: 'Частные перевозки',
+				group_transportation: 'Групповые перевозки',
+				travel_services: 'Туристические услуги'
+			},
+			legal_finance_business: {
+				lawyers: 'Юристы',
+				accounting: 'Бухгалтерия',
+				insurance: 'Страхование',
+				financial_services: 'Финансовые услуги',
+				business_consulting: 'Бизнес-консалтинг',
+				marketing_office_services: 'Маркетинг / офисные услуги'
+			},
+			community_religious: {
+				shiurim_torah_classes: 'Шиурим / уроки Торы',
+				community_events: 'Общественные события',
+				charities: 'Благотворительность',
+				synagogues_institutions: 'Синагоги / учреждения',
+				religious_services: 'Религиозные услуги'
+			}
+		}
 	},
 	products: {
 		storeTitle: 'Магазин',

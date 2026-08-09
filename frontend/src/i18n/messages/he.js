@@ -110,6 +110,7 @@ export default {
 	ads: {
 		title: 'כותרת',
 		text: 'טקסט',
+		category: 'קטגוריה',
 		image: 'תמונה',
 		private: 'מודעה פרטית',
 		business: 'מודעת עסק',
@@ -124,6 +125,166 @@ export default {
 		saveFailed: 'לא ניתן לשמור את המודעה.',
 		deleteFailed: 'לא ניתן למחוק את המודעה.',
 		listTitle: 'מודעות'
+	},
+	adCategories: {
+		groups: {
+			real_estate: 'נדל״ן',
+			jobs: 'עבודה',
+			home_professionals: 'בית ואנשי מקצוע',
+			food_catering: 'אוכל וקייטרינג',
+			fashion: 'אופנה',
+			beauty_personal_care: 'יופי וטיפוח',
+			health_wellness: 'בריאות ורווחה',
+			kids_family: 'ילדים ומשפחה',
+			education_courses: 'חינוך וקורסים',
+			events_entertainment: 'אירועים ובידור',
+			shopping_retail: 'קניות וקמעונאות',
+			electronics_appliances: 'אלקטרוניקה ומכשירי חשמל',
+			travel_transportation: 'טיולים ותחבורה',
+			legal_finance_business: 'משפט, פיננסים ועסקים',
+			community_religious: 'קהילה ודת'
+		},
+		items: {
+			real_estate: {
+				for_sale: 'למכירה',
+				for_rent: 'להשכרה',
+				commercial: 'מסחרי',
+				real_estate_agents: 'מתווכי נדל״ן',
+				storage: 'אחסון',
+				vacation_short_term_rental: 'נופש והשכרה לטווח קצר'
+			},
+			jobs: {
+				job_offers: 'הצעות עבודה',
+				job_seekers: 'מחפשי עבודה',
+				office_administration: 'משרד ואדמיניסטרציה',
+				sales: 'מכירות',
+				education: 'חינוך',
+				childcare: 'טיפול בילדים',
+				cleaning: 'ניקיון',
+				caregiving: 'סיעוד',
+				part_time: 'משרה חלקית'
+			},
+			home_professionals: {
+				renovation: 'שיפוצים',
+				handyman: 'הנדימן',
+				electrician: 'חשמלאי',
+				plumbing: 'אינסטלציה',
+				air_conditioning: 'מיזוג אוויר',
+				painting: 'צביעה',
+				locksmith: 'מנעולן',
+				windows_shutters: 'חלונות ותריסים',
+				carpentry: 'נגרות',
+				pergolas: 'פרגולות',
+				cleaning: 'ניקיון',
+				gardening: 'גינון',
+				pest_control: 'הדברה',
+				moving: 'הובלות'
+			},
+			food_catering: {
+				restaurants: 'מסעדות',
+				catering: 'קייטרינג',
+				bakery: 'מאפייה',
+				pizza_fast_food: 'פיצה ומזון מהיר',
+				meat_butcher: 'בשר וקצבייה',
+				fish: 'דגים',
+				grocery: 'מכולת',
+				food_for_events: 'אוכל לאירועים'
+			},
+			fashion: {
+				mens_fashion: 'אופנת גברים',
+				womens_fashion: 'אופנת נשים',
+				childrens_fashion: 'אופנת ילדים',
+				suits_shirts: 'חליפות וחולצות',
+				dresses: 'שמלות',
+				bridal_wedding_dresses: 'שמלות כלה',
+				wigs_head_coverings: 'פאות וכיסויי ראש'
+			},
+			beauty_personal_care: {
+				hairdresser: 'ספר/ית',
+				hair_treatments: 'טיפולי שיער',
+				cosmetics: 'קוסמטיקה',
+				skin_care: 'טיפוח עור',
+				nails: 'ציפורניים',
+				makeup: 'איפור',
+				hair_removal: 'הסרת שיער'
+			},
+			health_wellness: {
+				therapy: 'טיפול',
+				alternative_medicine: 'רפואה משלימה',
+				massage: 'עיסוי',
+				orthopedics_orthotics: 'אורתופדיה / מדרסים',
+				opticians: 'אופטיקאים',
+				memory_senior_services: 'שירותי זיכרון וקשישים',
+				personal_care: 'טיפול אישי'
+			},
+			kids_family: {
+				daycare: 'מעון יום',
+				babysitting: 'בייביסיטר',
+				childrens_activities: 'פעילויות לילדים',
+				toys_games: 'צעצועים ומשחקים',
+				inflatables: 'מתנפחים',
+				camps: 'קייטנות',
+				parenting_family_services: 'שירותי הורות ומשפחה'
+			},
+			education_courses: {
+				schools: 'בתי ספר',
+				private_lessons: 'שיעורים פרטיים',
+				tutoring: 'תגבור',
+				courses_workshops: 'קורסים וסדנאות',
+				driving_lessons: 'שיעורי נהיגה',
+				religious_studies: 'לימודי קודש',
+				professional_training: 'הכשרה מקצועית'
+			},
+			events_entertainment: {
+				event_photography: 'צילום אירועים',
+				video: 'וידאו',
+				music_dj: 'מוזיקה / די-ג׳יי',
+				event_equipment: 'ציוד לאירועים',
+				attractions: 'אטרקציות',
+				games: 'משחקים',
+				event_venues: 'אולמות ומקומות לאירועים',
+				party_rentals: 'השכרת ציוד למסיבות'
+			},
+			shopping_retail: {
+				household_goods: 'מוצרים לבית',
+				furniture: 'רהיטים',
+				kitchen: 'מטבח',
+				school_supplies: 'ציוד לבית ספר',
+				gifts: 'מתנות',
+				general_retail: 'קמעונאות כללית',
+				sales_special_offers: 'מבצעים והנחות'
+			},
+			electronics_appliances: {
+				home_appliances: 'מוצרי חשמל לבית',
+				mobile_phones: 'טלפונים ניידים',
+				computers: 'מחשבים',
+				computer_repair: 'תיקון מחשבים',
+				electrical_products: 'מוצרי חשמל',
+				small_appliances: 'מכשירים קטנים'
+			},
+			travel_transportation: {
+				trips_tours: 'טיולים וסיורים',
+				bus_services: 'שירותי אוטובוס',
+				private_transportation: 'הסעות פרטיות',
+				group_transportation: 'הסעות קבוצתיות',
+				travel_services: 'שירותי נסיעות'
+			},
+			legal_finance_business: {
+				lawyers: 'עורכי דין',
+				accounting: 'הנהלת חשבונות',
+				insurance: 'ביטוח',
+				financial_services: 'שירותים פיננסיים',
+				business_consulting: 'ייעוץ עסקי',
+				marketing_office_services: 'שיווק / שירותי משרד'
+			},
+			community_religious: {
+				shiurim_torah_classes: 'שיעורים / שיעורי תורה',
+				community_events: 'אירועים קהילתיים',
+				charities: 'צדקה',
+				synagogues_institutions: 'בתי כנסת / מוסדות',
+				religious_services: 'שירותי דת'
+			}
+		}
 	},
 	products: {
 		storeTitle: '\u05D7\u05E0\u05D5\u05EA',

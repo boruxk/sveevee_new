@@ -110,6 +110,7 @@ export default {
 	ads: {
 		title: 'Headline',
 		text: 'Text',
+		category: 'Category',
 		image: 'Image',
 		private: 'Private ad',
 		business: 'Business ad',
@@ -124,6 +125,166 @@ export default {
 		saveFailed: 'Ad could not be saved.',
 		deleteFailed: 'Ad could not be deleted.',
 		listTitle: 'Ads'
+	},
+	adCategories: {
+		groups: {
+			real_estate: 'Real Estate',
+			jobs: 'Jobs',
+			home_professionals: 'Home & Professionals',
+			food_catering: 'Food & Catering',
+			fashion: 'Fashion',
+			beauty_personal_care: 'Beauty & Personal Care',
+			health_wellness: 'Health & Wellness',
+			kids_family: 'Kids & Family',
+			education_courses: 'Education & Courses',
+			events_entertainment: 'Events & Entertainment',
+			shopping_retail: 'Shopping & Retail',
+			electronics_appliances: 'Electronics & Appliances',
+			travel_transportation: 'Travel & Transportation',
+			legal_finance_business: 'Legal, Finance & Business',
+			community_religious: 'Community & Religious'
+		},
+		items: {
+			real_estate: {
+				for_sale: 'For Sale',
+				for_rent: 'For Rent',
+				commercial: 'Commercial',
+				real_estate_agents: 'Real Estate Agents',
+				storage: 'Storage',
+				vacation_short_term_rental: 'Vacation & Short-Term Rental'
+			},
+			jobs: {
+				job_offers: 'Job Offers',
+				job_seekers: 'Job Seekers',
+				office_administration: 'Office & Administration',
+				sales: 'Sales',
+				education: 'Education',
+				childcare: 'Childcare',
+				cleaning: 'Cleaning',
+				caregiving: 'Caregiving',
+				part_time: 'Part-Time'
+			},
+			home_professionals: {
+				renovation: 'Renovation',
+				handyman: 'Handyman',
+				electrician: 'Electrician',
+				plumbing: 'Plumbing',
+				air_conditioning: 'Air Conditioning',
+				painting: 'Painting',
+				locksmith: 'Locksmith',
+				windows_shutters: 'Windows & Shutters',
+				carpentry: 'Carpentry',
+				pergolas: 'Pergolas',
+				cleaning: 'Cleaning',
+				gardening: 'Gardening',
+				pest_control: 'Pest Control',
+				moving: 'Moving'
+			},
+			food_catering: {
+				restaurants: 'Restaurants',
+				catering: 'Catering',
+				bakery: 'Bakery',
+				pizza_fast_food: 'Pizza & Fast Food',
+				meat_butcher: 'Meat & Butcher',
+				fish: 'Fish',
+				grocery: 'Grocery',
+				food_for_events: 'Food for Events'
+			},
+			fashion: {
+				mens_fashion: "Men's Fashion",
+				womens_fashion: "Women's Fashion",
+				childrens_fashion: "Children's Fashion",
+				suits_shirts: 'Suits & Shirts',
+				dresses: 'Dresses',
+				bridal_wedding_dresses: 'Bridal / Wedding Dresses',
+				wigs_head_coverings: 'Wigs & Head Coverings'
+			},
+			beauty_personal_care: {
+				hairdresser: 'Hairdresser',
+				hair_treatments: 'Hair Treatments',
+				cosmetics: 'Cosmetics',
+				skin_care: 'Skin Care',
+				nails: 'Nails',
+				makeup: 'Makeup',
+				hair_removal: 'Hair Removal'
+			},
+			health_wellness: {
+				therapy: 'Therapy',
+				alternative_medicine: 'Alternative Medicine',
+				massage: 'Massage',
+				orthopedics_orthotics: 'Orthopedics / Orthotics',
+				opticians: 'Opticians',
+				memory_senior_services: 'Memory & Senior Services',
+				personal_care: 'Personal Care'
+			},
+			kids_family: {
+				daycare: 'Daycare',
+				babysitting: 'Babysitting',
+				childrens_activities: "Children's Activities",
+				toys_games: 'Toys & Games',
+				inflatables: 'Inflatables',
+				camps: 'Camps',
+				parenting_family_services: 'Parenting / Family Services'
+			},
+			education_courses: {
+				schools: 'Schools',
+				private_lessons: 'Private Lessons',
+				tutoring: 'Tutoring',
+				courses_workshops: 'Courses & Workshops',
+				driving_lessons: 'Driving Lessons',
+				religious_studies: 'Religious Studies',
+				professional_training: 'Professional Training'
+			},
+			events_entertainment: {
+				event_photography: 'Event Photography',
+				video: 'Video',
+				music_dj: 'Music / DJ',
+				event_equipment: 'Event Equipment',
+				attractions: 'Attractions',
+				games: 'Games',
+				event_venues: 'Event Venues',
+				party_rentals: 'Party Rentals'
+			},
+			shopping_retail: {
+				household_goods: 'Household Goods',
+				furniture: 'Furniture',
+				kitchen: 'Kitchen',
+				school_supplies: 'School Supplies',
+				gifts: 'Gifts',
+				general_retail: 'General Retail',
+				sales_special_offers: 'Sales & Special Offers'
+			},
+			electronics_appliances: {
+				home_appliances: 'Home Appliances',
+				mobile_phones: 'Mobile Phones',
+				computers: 'Computers',
+				computer_repair: 'Computer Repair',
+				electrical_products: 'Electrical Products',
+				small_appliances: 'Small Appliances'
+			},
+			travel_transportation: {
+				trips_tours: 'Trips & Tours',
+				bus_services: 'Bus Services',
+				private_transportation: 'Private Transportation',
+				group_transportation: 'Group Transportation',
+				travel_services: 'Travel Services'
+			},
+			legal_finance_business: {
+				lawyers: 'Lawyers',
+				accounting: 'Accounting',
+				insurance: 'Insurance',
+				financial_services: 'Financial Services',
+				business_consulting: 'Business Consulting',
+				marketing_office_services: 'Marketing / Office Services'
+			},
+			community_religious: {
+				shiurim_torah_classes: 'Shiurim / Torah Classes',
+				community_events: 'Community Events',
+				charities: 'Charities',
+				synagogues_institutions: 'Synagogues / Institutions',
+				religious_services: 'Religious Services'
+			}
+		}
 	},
 	products: {
 		storeTitle: 'Store',

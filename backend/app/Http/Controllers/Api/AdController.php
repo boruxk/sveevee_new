@@ -9,6 +9,7 @@ use App\Models\Page;
 use App\Models\User;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Support\AdCategories;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -54,6 +55,7 @@ class AdController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:300'],
             'text' => ['required', 'string', 'max:2000'],
+            'category' => ['nullable', 'string', Rule::in(AdCategories::KEYS)],
             'page_id' => ['nullable', 'integer', 'exists:pages,id'],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
         ]);
@@ -75,6 +77,7 @@ class AdController extends Controller
             'type' => $this->typeForPage($page),
             'title' => $data['title'],
             'text' => $data['text'],
+            'category' => $data['category'] ?? null,
             'image_path' => $image ? $this->storePublicWebp($image, 'ads', 'image') : null,
             'image_original_name' => $image ? $this->originalUploadName($request, 'image', $image) : null,
             'status' => 'active',
@@ -95,6 +98,7 @@ class AdController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:300'],
             'text' => ['required', 'string', 'max:2000'],
+            'category' => ['nullable', 'string', Rule::in(AdCategories::KEYS)],
             'status' => ['nullable', Rule::in(['active', 'paused'])],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'image_remove' => ['nullable', 'boolean'],
@@ -106,6 +110,7 @@ class AdController extends Controller
         $ad->fill([
             'title' => $data['title'],
             'text' => $data['text'],
+            'category' => array_key_exists('category', $data) ? $data['category'] : $ad->category,
             'status' => $data['status'] ?? $ad->status,
             'city' => $location['city'],
             'neighborhood' => $location['neighborhood'],

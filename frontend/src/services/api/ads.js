@@ -5,6 +5,7 @@ async function toAdFormData(payload) {
 	const formData = new FormData()
 	formData.append('title', payload.title || '')
 	formData.append('text', payload.text || '')
+	formData.append('category', payload.category || '')
 
 	if (payload.page_id) {
 		formData.append('page_id', payload.page_id)

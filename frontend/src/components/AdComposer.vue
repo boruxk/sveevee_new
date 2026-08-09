@@ -6,6 +6,7 @@
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
+	import { buildAdCategorySelectOptions } from '@/constants/adCategories'
 
 	const props = defineProps({
 		pageId: {
@@ -23,7 +24,7 @@
 	})
 
 	const emit = defineEmits(['saved'])
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const $q = useQuasar()
 	const TITLE_MAX_LENGTH = 300
 	const TEXT_MAX_LENGTH = 2000
@@ -34,10 +35,16 @@
 	const form = reactive({
 		title: '',
 		text: '',
+		category: '',
 		image: null
 	})
 	const isEditing = computed(() => Boolean(props.ad?.id))
 	const actionLabel = computed(() => (isEditing.value ? t('actions.update') : t('actions.createAd')))
+	const categoryOptions = computed(() => {
+		const currentLocale = locale.value
+
+		return buildAdCategorySelectOptions((key) => t(key, { currentLocale }))
+	})
 	const hasStoredImage = computed(() => Boolean(props.ad?.image_url) && !form.image && !imageRemoved.value)
 	const imageDisplayName = computed(() => imageUploadDisplayName(
 		form.image,
@@ -48,6 +55,7 @@
 	function hydrate(ad) {
 		form.title = ad?.title || ''
 		form.text = ad?.text || ''
+		form.category = ad?.category || ''
 		form.image = null
 		imageRemoved.value = false
 	}
@@ -117,6 +125,33 @@
 			counter
 			:rules="[requiredRule]"
 		/>
+		<q-select
+			v-model="form.category"
+			outlined
+			clearable
+			emit-value
+			map-options
+			options-dense
+			popup-content-class="ad-category-select-menu"
+			popup-content-style="max-height: min(72vh, 520px); overflow-y: auto;"
+			:virtual-scroll-item-size="46"
+			:virtual-scroll-slice-size="36"
+			:options="categoryOptions"
+			option-disable="disable"
+			:label="t('ads.category')"
+			:disable="disabled"
+		>
+			<template #option="scope">
+				<q-item v-bind="scope.itemProps" :class="{ 'ad-category-option--group': scope.opt.group }">
+					<q-item-section avatar>
+						<span class="ad-category-option__dot" :style="{ backgroundColor: scope.opt.color }" />
+					</q-item-section>
+					<q-item-section>
+						<q-item-label>{{ scope.opt.label }}</q-item-label>
+					</q-item-section>
+				</q-item>
+			</template>
+		</q-select>
 		<div class="listing-composer__row">
 			<q-file v-model="form.image"
 				outlined
@@ -165,6 +200,28 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
+}
+
+.ad-category-option--group {
+  min-height: 44px;
+  color: rgba(17, 34, 45, 0.9);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.ad-category-option__dot {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.ad-category-option--group .ad-category-option__dot {
+  width: 15px;
+  height: 15px;
+  box-shadow: 0 6px 14px rgba(17, 34, 45, 0.18);
 }
 
 @media (max-width: 700px) {

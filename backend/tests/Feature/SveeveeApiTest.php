@@ -167,7 +167,9 @@ class SveeveeApiTest extends TestCase
         $this->postJson('/api/v1/ads', [
             'title' => 'Desk lamp',
             'text' => 'Pickup today.',
+            'category' => 'real_estate.for_sale',
         ])->assertCreated()
+            ->assertJsonPath('data.category', 'real_estate.for_sale')
             ->assertJsonPath('data.city', 'Jerusalem')
             ->assertJsonPath('data.neighborhood', 'Ramot');
 
@@ -188,8 +190,10 @@ class SveeveeApiTest extends TestCase
         $pageAd = $this->postJson('/api/v1/ads', [
             'title' => 'Desk lamp',
             'text' => 'Pickup from the studio.',
+            'category' => 'jobs.job_offers',
             'page_id' => $page->id,
         ])->assertCreated()
+            ->assertJsonPath('data.category', 'jobs.job_offers')
             ->assertJsonPath('data.city', 'Tel Aviv')
             ->assertJsonPath('data.neighborhood', 'Florentin');
 
@@ -352,8 +356,10 @@ class SveeveeApiTest extends TestCase
         $created = $this->post('/api/v1/ads', [
             'title' => 'Original headline',
             'text' => 'Original text.',
+            'category' => 'shopping_retail.gifts',
             'image' => UploadedFile::fake()->image('ad.png'),
         ], ['Accept' => 'application/json'])->assertCreated()
+            ->assertJsonPath('data.category', 'shopping_retail.gifts')
             ->assertJsonPath('data.image_name', 'ad.png');
 
         $adId = $created->json('data.id');
@@ -364,10 +370,12 @@ class SveeveeApiTest extends TestCase
             '_method' => 'PUT',
             'title' => 'Updated headline',
             'text' => 'Updated text.',
+            'category' => 'electronics_appliances.computers',
             'image_remove' => '1',
         ], ['Accept' => 'application/json'])->assertOk()
             ->assertJsonPath('data.title', 'Updated headline')
             ->assertJsonPath('data.text', 'Updated text.')
+            ->assertJsonPath('data.category', 'electronics_appliances.computers')
             ->assertJsonPath('data.image_url', null)
             ->assertJsonPath('data.image_name', null);
 
@@ -375,6 +383,7 @@ class SveeveeApiTest extends TestCase
             'id' => $adId,
             'title' => 'Updated headline',
             'text' => 'Updated text.',
+            'category' => 'electronics_appliances.computers',
             'image_path' => null,
             'image_original_name' => null,
         ]);

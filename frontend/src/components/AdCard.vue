@@ -2,6 +2,7 @@
 	import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
+	import { localizedAdCategoryMeta } from '@/constants/adCategories'
 
 	const props = defineProps({
 		ad: {
@@ -15,7 +16,7 @@
 	})
 
 	const emit = defineEmits(['delete', 'edit'])
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const $q = useQuasar()
 	const textWrapRef = ref(null)
 	const textRef = ref(null)
@@ -39,13 +40,23 @@
 	const typeColor = computed(() => ({
 		private_ad: 'primary',
 		business_ad: 'secondary',
-		community_ad: 'positive'
+		community_ad: 'secondary'
 	}[props.ad.type] || 'dark'))
 
 	const imageStyle = computed(() => (props.ad.image_url ? { backgroundImage: `url("${props.ad.image_url}")` } : null))
 	const locationLabel = computed(() => [props.ad.neighborhood, props.ad.city].filter(Boolean).join(', '))
 	const ownerName = computed(() => props.ad.page?.name || props.ad.user?.display_name || '')
 	const badgeLabel = computed(() => [badgeTypeLabel.value, ownerName.value].filter(Boolean).join(': '))
+	const categoryMeta = computed(() => {
+		const currentLocale = locale.value
+
+		return localizedAdCategoryMeta(props.ad.category, (key) => t(key, { currentLocale }))
+	})
+	const cardStyle = computed(() => (categoryMeta.value ? {
+		'--ad-category-color': categoryMeta.value.color,
+		'--ad-category-soft': categoryMeta.value.soft,
+		'--ad-category-x': locale.value === 'he' ? '0%' : '100%'
+	} : null))
 
 	function measureOverflow() {
 		if (isExpanded.value || !textWrapRef.value || !textRef.value) {
@@ -87,12 +98,25 @@
 </script>
 
 <template>
-	<article class="listing-card" :class="{ 'listing-card--with-image': imageStyle, 'listing-card--expanded': isExpanded }">
+	<article
+		class="listing-card"
+		:class="{ 'listing-card--with-image': imageStyle, 'listing-card--expanded': isExpanded, 'listing-card--with-category': categoryMeta }"
+		:style="cardStyle"
+	>
 		<div v-if="imageStyle" class="listing-card__image" :style="imageStyle" />
 		<div class="listing-card__body">
 			<div class="listing-card__head">
 				<q-chip dense :color="typeColor" text-color="white" class="listing-card__badge">
 					{{ badgeLabel }}
+				</q-chip>
+				<q-chip
+					v-if="categoryMeta"
+					dense
+					text-color="white"
+					class="listing-card__badge listing-card__category-badge"
+					:style="{ backgroundColor: categoryMeta.color }"
+				>
+					{{ categoryMeta.label }}
 				</q-chip>
 			</div>
 			<h3 class="listing-card__title">{{ ad.title }}</h3>
@@ -151,6 +175,8 @@
 
 <style scoped lang="scss">
 .listing-card {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: 1fr;
   height: 350px;
@@ -171,6 +197,8 @@
 }
 
 .listing-card__image {
+  position: relative;
+  z-index: 1;
   min-height: 170px;
   background-size: cover;
   background-position: center;
@@ -183,11 +211,39 @@
 }
 
 .listing-card__body {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
   padding: 22px;
+}
+
+.listing-card__body::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 52% 72% at var(--ad-category-x, 100%) 100%, var(--ad-category-soft, transparent) 0%, rgba(255, 255, 255, 0) 76%),
+    radial-gradient(ellipse 38% 54% at var(--ad-category-x, 100%) 100%, var(--ad-category-soft, transparent) 0%, rgba(255, 255, 255, 0) 68%);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+}
+
+.listing-card--with-category .listing-card__body::after {
+  opacity: 1;
+}
+
+.listing-card__head,
+.listing-card__title,
+.listing-card__location,
+.listing-card__text-wrap,
+.listing-card__footer {
+  position: relative;
+  z-index: 1;
 }
 
 .listing-card--with-image .listing-card__body {
@@ -205,17 +261,29 @@
 
 .listing-card__head {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: flex-start;
 }
 
 .listing-card__badge {
   max-width: 100%;
+  min-height: 30px;
+  margin: 0;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .listing-card__badge :deep(.q-chip__content) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.listing-card__category-badge {
+  box-shadow: 0 10px 22px rgba(17, 34, 45, 0.13);
 }
 
 .listing-card__title {
@@ -235,15 +303,9 @@
   overflow: hidden;
 }
 
-.listing-card__text-wrap--overflow::after {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 46px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.96));
-  content: "";
-  pointer-events: none;
+.listing-card:not(.listing-card--expanded) .listing-card__text-wrap--overflow {
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 46px), rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 46px), rgba(0, 0, 0, 0) 100%);
 }
 
 .listing-card__text {

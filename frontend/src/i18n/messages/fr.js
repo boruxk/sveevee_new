@@ -110,6 +110,7 @@ export default {
 	ads: {
 		title: 'Titre',
 		text: 'Texte',
+		category: 'Catégorie',
 		image: 'Image',
 		private: 'Annonce privée',
 		business: 'Annonce entreprise',
@@ -124,6 +125,166 @@ export default {
 		saveFailed: 'L’annonce n’a pas pu être enregistrée.',
 		deleteFailed: 'L’annonce n’a pas pu être supprimée.',
 		listTitle: 'Annonces'
+	},
+	adCategories: {
+		groups: {
+			real_estate: 'Immobilier',
+			jobs: 'Emploi',
+			home_professionals: 'Maison et professionnels',
+			food_catering: 'Alimentation et traiteur',
+			fashion: 'Mode',
+			beauty_personal_care: 'Beauté et soins',
+			health_wellness: 'Santé et bien-être',
+			kids_family: 'Enfants et famille',
+			education_courses: 'Éducation et cours',
+			events_entertainment: 'Événements et divertissement',
+			shopping_retail: 'Shopping et commerce',
+			electronics_appliances: 'Électronique et électroménager',
+			travel_transportation: 'Voyage et transport',
+			legal_finance_business: 'Juridique, finance et business',
+			community_religious: 'Communauté et religieux'
+		},
+		items: {
+			real_estate: {
+				for_sale: 'À vendre',
+				for_rent: 'À louer',
+				commercial: 'Commercial',
+				real_estate_agents: 'Agents immobiliers',
+				storage: 'Stockage',
+				vacation_short_term_rental: 'Location vacances et courte durée'
+			},
+			jobs: {
+				job_offers: 'Offres d’emploi',
+				job_seekers: 'Demandes d’emploi',
+				office_administration: 'Bureau et administration',
+				sales: 'Ventes',
+				education: 'Éducation',
+				childcare: 'Garde d’enfants',
+				cleaning: 'Nettoyage',
+				caregiving: 'Aide à la personne',
+				part_time: 'Temps partiel'
+			},
+			home_professionals: {
+				renovation: 'Rénovation',
+				handyman: 'Homme à tout faire',
+				electrician: 'Électricien',
+				plumbing: 'Plomberie',
+				air_conditioning: 'Climatisation',
+				painting: 'Peinture',
+				locksmith: 'Serrurier',
+				windows_shutters: 'Fenêtres et volets',
+				carpentry: 'Menuiserie',
+				pergolas: 'Pergolas',
+				cleaning: 'Nettoyage',
+				gardening: 'Jardinage',
+				pest_control: 'Désinsectisation',
+				moving: 'Déménagement'
+			},
+			food_catering: {
+				restaurants: 'Restaurants',
+				catering: 'Traiteur',
+				bakery: 'Boulangerie',
+				pizza_fast_food: 'Pizza et restauration rapide',
+				meat_butcher: 'Viande et boucherie',
+				fish: 'Poisson',
+				grocery: 'Épicerie',
+				food_for_events: 'Nourriture pour événements'
+			},
+			fashion: {
+				mens_fashion: 'Mode homme',
+				womens_fashion: 'Mode femme',
+				childrens_fashion: 'Mode enfant',
+				suits_shirts: 'Costumes et chemises',
+				dresses: 'Robes',
+				bridal_wedding_dresses: 'Robes de mariée',
+				wigs_head_coverings: 'Perruques et couvre-chefs'
+			},
+			beauty_personal_care: {
+				hairdresser: 'Coiffeur',
+				hair_treatments: 'Soins capillaires',
+				cosmetics: 'Cosmétiques',
+				skin_care: 'Soins de la peau',
+				nails: 'Ongles',
+				makeup: 'Maquillage',
+				hair_removal: 'Épilation'
+			},
+			health_wellness: {
+				therapy: 'Thérapie',
+				alternative_medicine: 'Médecine alternative',
+				massage: 'Massage',
+				orthopedics_orthotics: 'Orthopédie / orthèses',
+				opticians: 'Opticiens',
+				memory_senior_services: 'Mémoire et services seniors',
+				personal_care: 'Soins personnels'
+			},
+			kids_family: {
+				daycare: 'Crèche',
+				babysitting: 'Baby-sitting',
+				childrens_activities: 'Activités pour enfants',
+				toys_games: 'Jouets et jeux',
+				inflatables: 'Structures gonflables',
+				camps: 'Camps',
+				parenting_family_services: 'Services parentaux / familiaux'
+			},
+			education_courses: {
+				schools: 'Écoles',
+				private_lessons: 'Cours particuliers',
+				tutoring: 'Soutien scolaire',
+				courses_workshops: 'Cours et ateliers',
+				driving_lessons: 'Leçons de conduite',
+				religious_studies: 'Études religieuses',
+				professional_training: 'Formation professionnelle'
+			},
+			events_entertainment: {
+				event_photography: 'Photographie d’événement',
+				video: 'Vidéo',
+				music_dj: 'Musique / DJ',
+				event_equipment: 'Équipement d’événement',
+				attractions: 'Attractions',
+				games: 'Jeux',
+				event_venues: 'Lieux d’événement',
+				party_rentals: 'Location de matériel de fête'
+			},
+			shopping_retail: {
+				household_goods: 'Articles ménagers',
+				furniture: 'Meubles',
+				kitchen: 'Cuisine',
+				school_supplies: 'Fournitures scolaires',
+				gifts: 'Cadeaux',
+				general_retail: 'Commerce général',
+				sales_special_offers: 'Promotions et offres spéciales'
+			},
+			electronics_appliances: {
+				home_appliances: 'Électroménager',
+				mobile_phones: 'Téléphones mobiles',
+				computers: 'Ordinateurs',
+				computer_repair: 'Réparation d’ordinateurs',
+				electrical_products: 'Produits électriques',
+				small_appliances: 'Petits appareils'
+			},
+			travel_transportation: {
+				trips_tours: 'Voyages et circuits',
+				bus_services: 'Services de bus',
+				private_transportation: 'Transport privé',
+				group_transportation: 'Transport de groupe',
+				travel_services: 'Services de voyage'
+			},
+			legal_finance_business: {
+				lawyers: 'Avocats',
+				accounting: 'Comptabilité',
+				insurance: 'Assurance',
+				financial_services: 'Services financiers',
+				business_consulting: 'Conseil aux entreprises',
+				marketing_office_services: 'Marketing / services de bureau'
+			},
+			community_religious: {
+				shiurim_torah_classes: 'Cours de Torah / shiourim',
+				community_events: 'Événements communautaires',
+				charities: 'Associations caritatives',
+				synagogues_institutions: 'Synagogues / institutions',
+				religious_services: 'Services religieux'
+			}
+		}
 	},
 	products: {
 		storeTitle: 'Boutique',
