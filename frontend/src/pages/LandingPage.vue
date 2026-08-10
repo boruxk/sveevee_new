@@ -1027,5 +1027,22 @@
   .landing-hero__actions .q-btn {
     width: 100%;
   }
+
+  .landing-page--rtl .landing-hero__inner {
+    padding-top: 18px;
+  }
+
+  .landing-page--rtl .landing-kicker-chip {
+    margin-bottom: 12px;
+  }
+
+  .landing-page--rtl .landing-hero p {
+    margin-bottom: 42px;
+  }
+
+  .landing-page--rtl .landing-hero__visual {
+    top: 47%;
+    width: 84%;
+  }
 }
 </style>
