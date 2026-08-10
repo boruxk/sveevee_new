@@ -3,6 +3,7 @@
 	import { useI18n } from 'vue-i18n'
 	import { useAppStore } from '@/stores/app'
 	import heroSrc from '@/assets/hero-main.webp'
+	import mobileHeroSrc from '@/assets/hero-mobile.webp'
 	import pricingBusinessSrc from '@/assets/pricing-business.webp'
 	import pricingPrivateSrc from '@/assets/pricing-private.webp'
 	import logoSrc from '@/assets/sveevee-logo.webp'
@@ -84,7 +85,14 @@
 					<h1 class="landing-hero__title">
 						<img class="landing-hero__wordmark" :src="logoSrc" :alt="t('landing.title')" />
 					</h1>
-					<p>{{ t('landing.subtitle') }}</p>
+					<p class="landing-hero__subtitle">
+						<span class="landing-hero__subtitle-shape" aria-hidden="true"></span>
+						{{ t('landing.subtitle') }}
+					</p>
+
+					<div class="landing-hero__mobile-visual">
+						<img :src="mobileHeroSrc" alt="" loading="eager" fetchpriority="high" />
+					</div>
 
 					<div class="landing-hero__actions">
 						<q-btn color="primary"
@@ -280,6 +288,10 @@
   line-height: 1.65;
 }
 
+.landing-hero__subtitle-shape {
+  display: none;
+}
+
 .landing-hero__actions {
   display: flex;
   flex-wrap: wrap;
@@ -322,6 +334,16 @@
 
 .landing-page--rtl .landing-hero__visual img {
   transform: scaleX(-1);
+}
+
+.landing-hero__mobile-visual {
+  display: none;
+}
+
+.landing-hero__mobile-visual img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .landing-section {
@@ -921,14 +943,32 @@
 
 @media (max-width: 640px) {
   .landing-hero__inner {
-    padding: 34px 16px 42px;
+    --landing-mobile-gutter: clamp(24px, 7vw, 30px);
+
+    min-height: auto;
+    padding: 24px 0 30px;
+    overflow: hidden;
+  }
+
+  .landing-hero__copy {
+    max-width: none;
   }
 
   .landing-hero h1 {
-    width: min(100%, 330px);
+    width: auto;
+    max-width: 390px;
+    margin-inline: var(--landing-mobile-gutter);
+  }
+
+  .landing-kicker-chip {
+    margin: 0 var(--landing-mobile-gutter) 18px;
   }
 
   .landing-hero p {
+    max-width: calc(100% - (var(--landing-mobile-gutter) * 2));
+    margin: 24px var(--landing-mobile-gutter) 0;
+    font-size: 17px;
+    line-height: 1.68;
     filter:
       drop-shadow(0 0 14px #ffffff)
       drop-shadow(0 0 34px #ffffff)
@@ -942,6 +982,41 @@
       0 16px 38px #ffffff,
       0 28px 68px rgba(255, 255, 255, 0.98),
       0 0 96px rgba(255, 255, 255, 0.98);
+  }
+
+  .landing-hero__subtitle {
+    overflow: hidden;
+  }
+
+  .landing-hero__subtitle-shape {
+    display: block;
+    float: right;
+    width: min(38%, 150px);
+    height: 136px;
+    margin-top: 74px;
+    margin-left: 12px;
+    shape-margin: 8px;
+    shape-outside: polygon(100% 0, 100% 100%, 8% 100%, 38% 72%, 68% 42%, 88% 16%);
+  }
+
+  .landing-hero__visual {
+    display: none;
+  }
+
+  .landing-hero__mobile-visual {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    max-width: 520px;
+    margin: -186px 0 0;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .landing-page--rtl .landing-hero__mobile-visual {
+    margin-right: 0;
+    margin-left: 0;
   }
 
   .landing-section {
@@ -1022,27 +1097,27 @@
 
   .landing-hero__actions {
     align-items: stretch;
+    position: relative;
+    z-index: 2;
+    gap: 14px;
+    margin: -20px var(--landing-mobile-gutter) 0;
+    padding: 0;
   }
 
   .landing-hero__actions .q-btn {
     width: 100%;
+    min-width: 0;
+    min-height: 58px;
+    font-size: 14px;
   }
 
-  .landing-page--rtl .landing-hero__inner {
-    padding-top: 18px;
+  .landing-hero__actions .q-btn :deep(.q-btn__content) {
+    min-width: 0;
   }
 
-  .landing-page--rtl .landing-kicker-chip {
-    margin-bottom: 12px;
-  }
-
-  .landing-page--rtl .landing-hero p {
-    margin-bottom: 42px;
-  }
-
-  .landing-page--rtl .landing-hero__visual {
-    top: 47%;
-    width: 84%;
+  .landing-hero__actions .q-btn :deep(.block) {
+    min-width: 0;
+    white-space: normal;
   }
 }
 </style>
