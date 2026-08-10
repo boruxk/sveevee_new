@@ -169,7 +169,7 @@ class ChatController extends Controller
             return [
                 'can_send' => false,
                 'reason' => 'pending_reply',
-                'message' => 'אפשר לשלוח הודעה נוספת רק אחרי שהמשתמש השני ענה להודעה הראשונה.',
+                'message' => 'You can write again after this person replies to your first message.',
             ];
         }
 
@@ -177,7 +177,7 @@ class ChatController extends Controller
             return [
                 'can_send' => false,
                 'reason' => 'daily_limit',
-                'message' => 'אפשר לפנות עד 10 משתמשים חדשים ביום.',
+                'message' => 'You can contact only 10 new users per day.',
             ];
         }
 

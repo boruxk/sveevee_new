@@ -16,7 +16,7 @@
 		}
 	})
 
-	const { t } = useI18n()
+	const { locale, t } = useI18n()
 	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const chatsStore = useChatsStore()
@@ -28,7 +28,7 @@
 	const messages = computed(() => chatsStore.activeMessages)
 	const composerState = computed(() => chatsStore.composerState)
 	const composerBlocked = computed(() => !composerState.value.can_send)
-	const composerMessage = computed(() => composerState.value.message || t('chat.placeholder'))
+	const composerMessage = computed(() => localizedChatLimit(composerState.value.reason, composerState.value.message) || t('chat.placeholder'))
 	const composerModel = computed({
 		get: () => (composerBlocked.value ? composerMessage.value : draft.value),
 		set: (value) => {
@@ -41,6 +41,41 @@
 		'chat-composer--blocked': composerBlocked.value,
 		'chat-composer--danger': composerState.value.reason === 'daily_limit'
 	}))
+
+	const chatLimitMessageKeys = {
+		pending_reply: 'chat.pendingReply',
+		daily_limit: 'chat.dailyLimit'
+	}
+	const intlLocale = computed(() => ({
+		he: 'he-IL',
+		en: 'en-US',
+		ru: 'ru-RU',
+		fr: 'fr-FR'
+	}[locale.value] || locale.value))
+
+	function localizedChatLimit(reason, fallback = null) {
+		const key = chatLimitMessageKeys[reason]
+
+		return key ? t(key) : fallback
+	}
+
+	function formatMessageTime(value) {
+		if (!value) {
+			return ''
+		}
+
+		const date = new Date(value)
+
+		if (Number.isNaN(date.getTime())) {
+			return ''
+		}
+
+		return new Intl.DateTimeFormat(intlLocale.value, {
+			hour: 'numeric',
+			minute: '2-digit',
+			hour12: false
+		}).format(date)
+	}
 
 	function isOwn(message) {
 		return message.sender_id === authStore.user?.id
@@ -83,7 +118,8 @@
 			draft.value = ''
 			await scrollToBottom()
 		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('chat.sendFailed') })
+			const reason = error.response?.data?.errors?.reason
+			$q.notify({ type: 'negative', message: localizedChatLimit(reason, error.response?.data?.message) || t('chat.sendFailed') })
 		}
 	}
 
@@ -133,7 +169,7 @@
 					>
 						<div class="chat-message__bubble">
 							{{ message.body }}
-							<span>{{ message.created_at ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '' }}</span>
+							<span>{{ formatMessageTime(message.created_at) }}</span>
 						</div>
 					</div>
 				</template>
@@ -147,7 +183,7 @@
 					autogrow
 					:readonly="composerBlocked"
 					:disable="!active || chatsStore.sending"
-					:class="composerClass"
+					:class="['chat-composer', composerClass]"
 					:placeholder="t('chat.placeholder')"
 					@keydown.enter.exact.prevent="send"
 				/>
@@ -230,7 +266,9 @@
 .chat-main {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .chat-main__head {
@@ -242,6 +280,7 @@
   display: grid;
   align-content: start;
   gap: 10px;
+  min-height: 0;
   overflow-y: auto;
   padding: 16px;
 }
@@ -287,8 +326,29 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: end;
+  min-height: 0;
   padding: 12px;
   border-top: 1px solid rgba(17, 34, 45, 0.1);
+}
+
+.chat-composer {
+  min-width: 0;
+}
+
+.chat-compose .chat-composer :deep(.q-field__control) {
+  min-height: 54px;
+  border-radius: 18px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.chat-compose .chat-composer :deep(.q-field__native) {
+  min-height: 52px;
+  max-height: 96px;
+  padding-top: 13px;
+  padding-bottom: 13px;
+  overflow-y: auto;
+  resize: none;
 }
 
 .chat-composer--blocked :deep(textarea) {

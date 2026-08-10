@@ -38,12 +38,15 @@ class SveeveeApiTest extends TestCase
 
         $this->postJson("/api/v1/chats/users/{$recipient->id}/messages", [
             'body' => 'Hallo',
-        ])->assertCreated();
+        ])->assertCreated()
+            ->assertJsonPath('data.composer_state.reason', 'pending_reply')
+            ->assertJsonPath('data.composer_state.message', 'You can write again after this person replies to your first message.');
 
         $this->postJson("/api/v1/chats/users/{$recipient->id}/messages", [
             'body' => 'Noch eine Nachricht',
         ])->assertStatus(409)
-            ->assertJsonPath('errors.reason', 'pending_reply');
+            ->assertJsonPath('errors.reason', 'pending_reply')
+            ->assertJsonPath('message', 'You can write again after this person replies to your first message.');
 
         Sanctum::actingAs($recipient);
 
@@ -74,7 +77,8 @@ class SveeveeApiTest extends TestCase
         $this->postJson("/api/v1/chats/users/{$recipients->last()->id}/messages", [
             'body' => 'Hallo Nummer 11',
         ])->assertStatus(429)
-            ->assertJsonPath('errors.reason', 'daily_limit');
+            ->assertJsonPath('errors.reason', 'daily_limit')
+            ->assertJsonPath('message', 'You can contact only 10 new users per day.');
     }
 
     public function test_user_can_create_page_with_presence_details(): void

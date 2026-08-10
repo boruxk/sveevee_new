@@ -39,3 +39,62 @@ php artisan serve
 Logins:
 user@sveevee.local / password
 admin@sveevee.local / password
+
+
+
+Stärkste Business-Pro-Funktionen
+Featured Ads / Boosted Ads
+Business kann Ads für Stadt/Nachbarschaft/Kategorie oben platzieren. Das ist wahrscheinlich die klarste kostenpflichtige Funktion, weil der Wert sofort verständlich ist: mehr Sichtbarkeit.
+
+Business Analytics
+Dashboard mit Views, Suchbegriffen, Klicks auf Telefon/E-Mail/WhatsApp, Produktklicks, Chat-Anfragen, Maps-Klicks, Ad-Impressions. Google Business Profile macht genau solche Performance-Metriken sichtbar: Views, Searches, Calls, Website Clicks, Messages, Bookings usw. Quelle: https://support.google.com/business/answer/9918094
+
+Call-to-Action Button
+Pro-Business kann einen prominenten Button setzen: “Jetzt anrufen”, “WhatsApp”, “Termin buchen”, “Angebot anfragen”, “Website besuchen”. Yelp verkauft CTA als Page-Upgrade, weil es Besucher schneller in Kunden verwandelt. Quelle: https://business.yelp.com/products/upgrades/
+
+Angebote / Coupons / Aktionen
+Business kann zeitlich begrenzte Angebote posten: “10% diese Woche”, “Free delivery”, “Sommer Sale”. Sehr wertvoll für Stores, Restaurants, Beauty, Services.
+
+Mehr Produkte im Store
+Free: z.B. 3 Produkte.
+Pro: unbegrenzt oder 50/100 Produkte, Produktkategorien, “Featured product”, Sale-Badge, Produkt-Link-Tracking.
+
+Portfolio / Galerie / Vorher-Nachher
+Besonders wichtig für Handwerker, Beauty, Catering, Events, Immobilien, Renovierung. Yelp bietet Portfolio/Slideshow als bezahlte Profilaufwertung an. Quelle: https://business.yelp.com/resources/articles/a-guide-to-yelp-page-upgrades/
+
+Quote Requests / Anfrage-Formulare
+Statt nur Chat: Kunde füllt strukturiert aus, was er braucht. Beispiel: Datum, Budget, Adresse, Service-Typ, Fotos. Yelp nutzt “Request a Quote” stark für Service-Businesses. Quelle: https://business.yelp.com/services/
+
+Booking / Termine
+Pro-Business kann Termine oder Verfügbarkeit anbieten. Sehr attraktiv für Beauty, Therapie, Kurse, Beratung, Handwerker. Square/Google zeigen, wie wertvoll direktes Buchen aus Search/Maps ist. Quelle: https://squareup.com/help/us/en/article/6567-reserve-with-google
+
+Trust Badge / Verified Business
+Verifiziertes Business-Badge nach Prüfung von Telefon/E-Mail/Adresse/License. Für Nutzer wertvoll, für Businesses zahlungsbereit, weil Vertrauen mehr Leads bringt.
+
+Chat Pro
+   Schnellantworten, automatische Begrüßung, Öffnungszeiten-Antwort, Anfrage-Vorlagen, Labels wie “new lead”, “quoted”, “won”. Meta verkauft Click-to-Message als Lead-/Conversation-Kanal. Quelle: https://www.facebook.com/business/ads/click-to-message-ads
+
+Gute Pro-Erweiterungen
+Top Placement in Search nach Kategorie, Stadt, Nachbarschaft.
+No competitor ads on page: Auf der eigenen Business Page keine fremden Ads anzeigen. Yelp verkauft das als Upgrade.
+SEO Boost: eigene SEO-Landing-URL, bessere Meta-Texte, strukturierte Daten, mehr indexierbarer Content.
+Review Tools: Antwort auf Reviews hervorheben, Review-Reminder-Link, beste Reviews oben zeigen.
+Team Access: mehrere Mitarbeiter können Produkte, Chat, Ads verwalten.
+Multi-location: mehrere Filialen/Adressen für größere Businesses.
+Lead Export: CSV oder später CRM/Webhook.
+Meine Empfehlung für Free vs Pro
+Free sollte bleiben:
+Business Page
+Kontakt/Adresse/Öffnungszeiten
+Logo/Banner
+wenige Produkte
+normale Ads
+Ratings
+Chat basic
+Business Pro sollte verkaufen:
+mehr Sichtbarkeit
+mehr Leads
+bessere Conversion
+weniger Verwaltungsarbeit
+mehr Vertrauen
+Als erstes würde ich bauen: Featured Ads + Analytics + CTA + mehr Store-Produkte + Quote Requests. Das ist am schnellsten verständlich und monetarisierbar.

@@ -109,7 +109,7 @@
 						:label="link.label"
 						:to="{ name: link.name }"
 					>
-						<q-badge v-if="link.badge" color="negative" floating rounded>{{ link.badge }}</q-badge>
+						<q-badge v-if="link.badge" floating rounded class="chat-unread-badge shell-link__badge">{{ link.badge }}</q-badge>
 					</q-btn>
 
 					<q-btn
@@ -197,7 +197,7 @@
 									</q-item-section>
 									<q-item-section>{{ link.label }}</q-item-section>
 									<q-item-section v-if="link.badge" side>
-										<q-badge color="negative" rounded>{{ link.badge }}</q-badge>
+										<q-badge rounded class="chat-unread-badge">{{ link.badge }}</q-badge>
 									</q-item-section>
 								</q-item>
 
@@ -298,9 +298,24 @@
 
 .shell-link {
   color: rgba(21, 31, 59, 0.75);
+  overflow: visible;
   transition:
     transform 0.16s ease,
     box-shadow 0.16s ease;
+}
+
+.shell-link__badge {
+  top: 3px;
+  inset-inline-end: 3px;
+  right: auto;
+}
+
+.chat-unread-badge {
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  background: var(--soz-action-gradient) !important;
+  color: #fff !important;
+  font-weight: 800;
+  box-shadow: 0 8px 16px rgba(245, 66, 145, 0.24);
 }
 
 .shell-link--active {
