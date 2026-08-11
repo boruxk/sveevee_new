@@ -431,12 +431,23 @@ h6 {
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(123, 63, 242, 0.14);
   box-shadow: 0 18px 38px rgba(40, 22, 93, 0.12);
-  overflow: hidden;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .q-menu .q-list,
 .q-menu .q-virtual-scroll__content {
   border-radius: 20px;
+}
+
+.q-menu .q-virtual-scroll,
+.q-select__dropdown-content,
+.q-select__dialog .q-virtual-scroll {
+  max-height: min(72vh, 520px);
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .q-menu .q-item {

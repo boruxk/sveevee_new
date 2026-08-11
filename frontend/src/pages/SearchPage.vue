@@ -33,7 +33,8 @@
 		neighborhoodOptions,
 		loadLocationOptions,
 		addOption,
-		filterOptions
+		filterOptions,
+		hasOptionValue
 	} = useLocationOptions(toRef(filters, 'city'))
 
 	async function submit() {
@@ -84,7 +85,7 @@
 			return
 		}
 
-		if (filters.neighborhood && !neighborhoodOptions.value.includes(filters.neighborhood)) {
+		if (filters.neighborhood && !hasOptionValue(neighborhoodOptions.value, filters.neighborhood)) {
 			filters.neighborhood = ''
 		}
 	})
@@ -111,6 +112,8 @@
 					<q-select v-model="filters.city"
 						outlined
 						clearable
+						emit-value
+						map-options
 						use-input
 						hide-selected
 						fill-input
@@ -124,6 +127,8 @@
 					<q-select v-model="filters.neighborhood"
 						outlined
 						clearable
+						emit-value
+						map-options
 						use-input
 						hide-selected
 						fill-input

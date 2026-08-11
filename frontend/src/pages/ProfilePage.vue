@@ -35,7 +35,8 @@
 		loadLocationOptions,
 		rememberLocation,
 		addOption,
-		filterOptions
+		filterOptions,
+		hasOptionValue
 	} = useLocationOptions(toRef(form, 'city'))
 	const languageOptions = computed(() => [
 		{ label: t('languages.he'), value: 'he' },
@@ -137,7 +138,7 @@
 			return
 		}
 
-		if (form.neighborhood && !neighborhoodOptions.value.includes(form.neighborhood)) {
+		if (form.neighborhood && !hasOptionValue(neighborhoodOptions.value, form.neighborhood)) {
 			form.neighborhood = ''
 		}
 	})
@@ -188,6 +189,8 @@
 							v-model="form.city"
 							outlined
 							clearable
+							emit-value
+							map-options
 							use-input
 							hide-selected
 							fill-input
@@ -203,6 +206,8 @@
 							v-model="form.neighborhood"
 							outlined
 							clearable
+							emit-value
+							map-options
 							use-input
 							hide-selected
 							fill-input

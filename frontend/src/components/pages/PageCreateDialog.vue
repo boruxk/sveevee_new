@@ -69,7 +69,8 @@
 		loadLocationOptions,
 		rememberLocation,
 		addOption,
-		filterOptions
+		filterOptions,
+		hasOptionValue
 	} = useLocationOptions(toRef(form.address, 'city'))
 
 	function addressLine(address) {
@@ -181,7 +182,7 @@
 			return
 		}
 
-		if (form.address.neighborhood && !neighborhoodOptions.value.includes(form.address.neighborhood)) {
+		if (form.address.neighborhood && !hasOptionValue(neighborhoodOptions.value, form.address.neighborhood)) {
 			form.address.neighborhood = ''
 		}
 	})
@@ -237,6 +238,8 @@
 								<q-select v-model="form.address.city"
 									outlined
 									clearable
+									emit-value
+									map-options
 									use-input
 									hide-selected
 									fill-input
@@ -253,6 +256,8 @@
 								<q-select v-model="form.address.neighborhood"
 									outlined
 									clearable
+									emit-value
+									map-options
 									use-input
 									hide-selected
 									fill-input
