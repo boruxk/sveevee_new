@@ -11,6 +11,10 @@
 		editable: {
 			type: Boolean,
 			default: false
+		},
+		palette: {
+			type: Object,
+			default: null
 		}
 	})
 
@@ -98,10 +102,24 @@
 		{ icon: 'event', value: formattedDateTime.value },
 		{ icon: 'place', value: props.event.address, href: mapsUrl.value }
 	].filter((item) => item.value))
+	const themeStyle = computed(() => {
+		if (!props.palette) {
+			return null
+		}
+
+		return {
+			'--presence-accent': props.palette.accent,
+			'--presence-surface': props.palette.surface,
+			'--presence-card': props.palette.card || 'rgba(255, 255, 255, 0.82)',
+			'--presence-border': props.palette.border || 'rgba(17, 34, 45, 0.1)',
+			'--presence-ink': props.palette.ink || '#151f2d',
+			'--presence-muted': props.palette.muted || 'rgba(17, 34, 45, 0.72)'
+		}
+	})
 </script>
 
 <template>
-	<article class="event-card">
+	<article class="event-card" :style="themeStyle">
 		<div v-if="event.image_url" class="event-card__image" :style="{ backgroundImage: `url(${event.image_url})` }" />
 		<div class="event-card__body">
 			<div class="event-card__copy">
@@ -162,7 +180,7 @@
 		</div>
 	</article>
 	<q-dialog v-model="detailOpen">
-		<q-card class="event-detail-dialog">
+		<q-card class="event-detail-dialog" :style="themeStyle">
 			<div v-if="event.image_url" class="event-detail-dialog__image" :style="{ backgroundImage: `url(${event.image_url})` }" />
 			<q-card-section class="event-detail-dialog__body">
 				<div class="event-detail-dialog__head">
@@ -183,7 +201,7 @@
 							</div>
 						</div>
 					</div>
-					<q-btn flat round icon="close" color="dark" v-close-popup />
+					<q-btn flat round icon="close" class="event-detail-dialog__close" v-close-popup />
 				</div>
 				<p class="event-detail-dialog__description">{{ event.description }}</p>
 			</q-card-section>
@@ -197,9 +215,10 @@
   flex-direction: column;
   max-height: 450px;
   overflow: hidden;
-  border: 1px solid rgba(17, 34, 45, 0.1);
+  border: 1px solid var(--presence-border, rgba(17, 34, 45, 0.1));
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--presence-card, rgba(255, 255, 255, 0.78));
+  color: var(--presence-ink, #151f2d);
 }
 
 .event-card__image {
@@ -235,7 +254,7 @@
   display: -webkit-box;
   overflow: hidden;
   margin: 0;
-  color: rgba(17, 34, 45, 0.72);
+  color: var(--presence-muted, rgba(17, 34, 45, 0.72));
   line-height: 1.55;
   white-space: pre-line;
   -webkit-box-orient: vertical;
@@ -251,7 +270,7 @@
 .event-card__meta {
   display: grid;
   gap: 8px;
-  color: rgba(17, 34, 45, 0.72);
+  color: var(--presence-muted, rgba(17, 34, 45, 0.72));
   font-weight: 650;
 }
 
@@ -272,14 +291,14 @@
 
 .event-card__meta-link,
 .event-detail-dialog__meta-link {
-  color: #5f35f5;
+  color: var(--presence-accent, #5f35f5);
   font-weight: 800;
   text-decoration: none;
 }
 
 .event-card__meta-link:hover,
 .event-detail-dialog__meta-link:hover {
-  color: #f54291;
+  color: color-mix(in srgb, var(--presence-accent, #f54291) 72%, var(--presence-ink, #151f2d));
 }
 
 .event-card__actions {
@@ -303,8 +322,13 @@
   width: min(720px, calc(100vw - 24px));
   max-width: 720px;
   max-height: calc(100vh - 32px);
+  border: 1px solid color-mix(in srgb, var(--presence-accent, #f97316) 28%, var(--presence-border, rgba(17, 34, 45, 0.1)));
   border-radius: 24px;
-  background: #fffaf6;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--presence-accent, #f97316) 16%, transparent), transparent 42%),
+    color-mix(in srgb, var(--presence-surface, #fffaf6) 88%, var(--presence-accent, #f97316) 12%);
+  color: var(--presence-ink, #151f2d);
+  box-shadow: 0 24px 58px color-mix(in srgb, var(--presence-accent, #f97316) 18%, transparent);
 }
 
 .event-detail-dialog__image {
@@ -327,7 +351,7 @@
 
 .event-detail-dialog__head h3 {
   margin: 0 0 12px;
-  color: #151f2d;
+  color: var(--presence-ink, #151f2d);
   font-size: 28px;
   line-height: 1.2;
 }
@@ -335,7 +359,7 @@
 .event-detail-dialog__meta {
   display: grid;
   gap: 8px;
-  color: rgba(17, 34, 45, 0.72);
+  color: var(--presence-muted, rgba(17, 34, 45, 0.72));
   font-weight: 650;
 }
 
@@ -356,9 +380,13 @@
   overflow-y: auto;
   max-height: 34vh;
   margin: 0;
-  color: rgba(17, 34, 45, 0.76);
+  color: var(--presence-muted, rgba(17, 34, 45, 0.76));
   line-height: 1.65;
   white-space: pre-line;
+}
+
+.event-detail-dialog__close {
+  color: var(--presence-ink, #151f2d) !important;
 }
 
 @media (max-width: 700px) {

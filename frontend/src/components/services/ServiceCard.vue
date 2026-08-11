@@ -11,6 +11,10 @@
 		editable: {
 			type: Boolean,
 			default: false
+		},
+		palette: {
+			type: Object,
+			default: null
 		}
 	})
 
@@ -20,10 +24,24 @@
 	const detailOpen = ref(false)
 	const compactActionButtons = computed(() => $q.screen.width <= 700)
 	const serviceLink = computed(() => String(props.service.link || '').trim())
+	const themeStyle = computed(() => {
+		if (!props.palette) {
+			return null
+		}
+
+		return {
+			'--presence-accent': props.palette.accent,
+			'--presence-surface': props.palette.surface,
+			'--presence-card': props.palette.card || 'rgba(255, 255, 255, 0.82)',
+			'--presence-border': props.palette.border || 'rgba(17, 34, 45, 0.1)',
+			'--presence-ink': props.palette.ink || '#151f2d',
+			'--presence-muted': props.palette.muted || 'rgba(17, 34, 45, 0.72)'
+		}
+	})
 </script>
 
 <template>
-	<article class="service-card">
+	<article class="service-card" :style="themeStyle">
 		<div v-if="service.image_url" class="service-card__image" :style="{ backgroundImage: `url(${service.image_url})` }" />
 		<div class="service-card__body">
 			<div class="service-card__copy">
@@ -68,12 +86,12 @@
 		</div>
 	</article>
 	<q-dialog v-model="detailOpen">
-		<q-card class="service-detail-dialog">
+		<q-card class="service-detail-dialog" :style="themeStyle">
 			<div v-if="service.image_url" class="service-detail-dialog__image" :style="{ backgroundImage: `url(${service.image_url})` }" />
 			<q-card-section class="service-detail-dialog__body">
 				<div class="service-detail-dialog__head">
 					<h3>{{ service.name }}</h3>
-					<q-btn flat round icon="close" color="dark" v-close-popup />
+					<q-btn flat round icon="close" class="service-detail-dialog__close" v-close-popup />
 				</div>
 				<p class="service-detail-dialog__description">{{ service.description }}</p>
 				<div v-if="serviceLink" class="service-detail-dialog__actions">
@@ -99,9 +117,10 @@
   grid-template-columns: minmax(220px, 32%) minmax(0, 1fr);
   min-width: 0;
   overflow: hidden;
-  border: 1px solid rgba(17, 34, 45, 0.1);
+  border: 1px solid var(--presence-border, rgba(17, 34, 45, 0.1));
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--presence-card, rgba(255, 255, 255, 0.78));
+  color: var(--presence-ink, #151f2d);
 }
 
 .service-card__image {
@@ -123,7 +142,7 @@
 
 .service-card__title {
   margin: 0 0 8px;
-  color: #151f2d;
+  color: var(--presence-ink, #151f2d);
   font-size: 23px;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -133,7 +152,7 @@
   display: -webkit-box;
   overflow: hidden;
   margin: 0;
-  color: rgba(17, 34, 45, 0.72);
+  color: var(--presence-muted, rgba(17, 34, 45, 0.72));
   line-height: 1.6;
   white-space: pre-line;
   -webkit-box-orient: vertical;
@@ -162,8 +181,13 @@
   width: min(760px, calc(100vw - 24px));
   max-width: 760px;
   max-height: calc(100vh - 32px);
+  border: 1px solid color-mix(in srgb, var(--presence-accent, #f97316) 28%, var(--presence-border, rgba(17, 34, 45, 0.1)));
   border-radius: 24px;
-  background: #fffaf6;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--presence-accent, #f97316) 16%, transparent), transparent 42%),
+    color-mix(in srgb, var(--presence-surface, #fffaf6) 88%, var(--presence-accent, #f97316) 12%);
+  color: var(--presence-ink, #151f2d);
+  box-shadow: 0 24px 58px color-mix(in srgb, var(--presence-accent, #f97316) 18%, transparent);
 }
 
 .service-detail-dialog__image {
@@ -186,7 +210,7 @@
 
 .service-detail-dialog__head h3 {
   margin: 0;
-  color: #151f2d;
+  color: var(--presence-ink, #151f2d);
   font-size: 28px;
   line-height: 1.2;
   overflow-wrap: anywhere;
@@ -196,7 +220,7 @@
   overflow-y: auto;
   max-height: 34vh;
   margin: 0;
-  color: rgba(17, 34, 45, 0.76);
+  color: var(--presence-muted, rgba(17, 34, 45, 0.76));
   line-height: 1.65;
   white-space: pre-line;
 }
@@ -204,6 +228,15 @@
 .service-detail-dialog__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.service-detail-dialog__close {
+  color: var(--presence-ink, #151f2d) !important;
+}
+
+.service-detail-dialog__actions .q-btn.bg-primary {
+  background: var(--presence-accent, var(--soz-action-gradient)) !important;
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--presence-accent, #f97316) 22%, transparent) !important;
 }
 
 @media (max-width: 760px) {

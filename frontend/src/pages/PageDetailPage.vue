@@ -136,19 +136,31 @@
 					<section v-if="hasStoreProducts" class="preview-section">
 						<h2>{{ t('products.storeTitle') }}</h2>
 						<div class="product-grid">
-							<ProductCard v-for="product in page.products" :key="product.id" :product="product" />
+							<ProductCard v-for="product in page.products"
+								:key="product.id"
+								:product="product"
+								:palette="selectedPalette"
+							/>
 						</div>
 					</section>
 					<section v-if="hasBusinessServices" class="preview-section">
 						<h2>{{ t('businessServices.title') }}</h2>
 						<div class="service-list">
-							<ServiceCard v-for="service in visibleServices" :key="service.id" :service="service" />
+							<ServiceCard v-for="service in visibleServices"
+								:key="service.id"
+								:service="service"
+								:palette="selectedPalette"
+							/>
 						</div>
 					</section>
 					<section v-if="hasCommunityEvents" class="preview-section">
 						<h2>{{ t('events.eventsTitle') }}</h2>
 						<div class="event-grid">
-							<EventCard v-for="event in page.events" :key="event.id" :event="event" />
+							<EventCard v-for="event in page.events"
+								:key="event.id"
+								:event="event"
+								:palette="selectedPalette"
+							/>
 						</div>
 					</section>
 				</template>

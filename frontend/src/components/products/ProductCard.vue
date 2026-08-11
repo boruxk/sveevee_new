@@ -3,7 +3,7 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 
-	defineProps({
+	const props = defineProps({
 		product: {
 			type: Object,
 			required: true
@@ -11,6 +11,10 @@
 		editable: {
 			type: Boolean,
 			default: false
+		},
+		palette: {
+			type: Object,
+			default: null
 		}
 	})
 
@@ -19,10 +23,24 @@
 	const $q = useQuasar()
 	const detailOpen = ref(false)
 	const compactActionButtons = computed(() => $q.screen.width <= 700)
+	const themeStyle = computed(() => {
+		if (!props.palette) {
+			return null
+		}
+
+		return {
+			'--presence-accent': props.palette.accent,
+			'--presence-surface': props.palette.surface,
+			'--presence-card': props.palette.card || 'rgba(255, 255, 255, 0.82)',
+			'--presence-border': props.palette.border || 'rgba(17, 34, 45, 0.1)',
+			'--presence-ink': props.palette.ink || '#151f2d',
+			'--presence-muted': props.palette.muted || 'rgba(17, 34, 45, 0.72)'
+		}
+	})
 </script>
 
 <template>
-	<article class="product-card">
+	<article class="product-card" :style="themeStyle">
 		<div v-if="product.image_url" class="product-card__image" :style="{ backgroundImage: `url(${product.image_url})` }" />
 		<div class="product-card__body">
 			<div>
@@ -70,7 +88,7 @@
 		</div>
 	</article>
 	<q-dialog v-model="detailOpen">
-		<q-card class="product-detail-dialog">
+		<q-card class="product-detail-dialog" :style="themeStyle">
 			<div v-if="product.image_url" class="product-detail-dialog__image" :style="{ backgroundImage: `url(${product.image_url})` }" />
 			<q-card-section class="product-detail-dialog__body">
 				<div class="product-detail-dialog__head">
@@ -78,7 +96,7 @@
 						<h3>{{ product.name }}</h3>
 						<div class="product-detail-dialog__price">{{ product.price_label }}</div>
 					</div>
-					<q-btn flat round icon="close" color="dark" v-close-popup />
+					<q-btn flat round icon="close" class="product-detail-dialog__close" v-close-popup />
 				</div>
 				<p class="product-detail-dialog__description">{{ product.description }}</p>
 				<div class="product-detail-dialog__actions">
@@ -104,9 +122,10 @@
   flex-direction: column;
   max-height: 450px;
   overflow: hidden;
-  border: 1px solid rgba(17, 34, 45, 0.1);
+  border: 1px solid var(--presence-border, rgba(17, 34, 45, 0.1));
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--presence-card, rgba(255, 255, 255, 0.78));
+  color: var(--presence-ink, #151f2d);
 }
 
 .product-card__image {
@@ -136,7 +155,7 @@
   display: -webkit-box;
   overflow: hidden;
   margin: 0;
-  color: rgba(17, 34, 45, 0.72);
+  color: var(--presence-muted, rgba(17, 34, 45, 0.72));
   line-height: 1.55;
   white-space: pre-line;
   -webkit-box-orient: vertical;
@@ -153,7 +172,7 @@
 }
 
 .product-card__price {
-  color: #151f2d;
+  color: var(--presence-ink, #151f2d);
   font-size: 22px;
   font-weight: 800;
 }
@@ -179,8 +198,13 @@
   width: min(720px, calc(100vw - 24px));
   max-width: 720px;
   max-height: calc(100vh - 32px);
+  border: 1px solid color-mix(in srgb, var(--presence-accent, #f97316) 28%, var(--presence-border, rgba(17, 34, 45, 0.1)));
   border-radius: 24px;
-  background: #fffaf6;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--presence-accent, #f97316) 16%, transparent), transparent 42%),
+    color-mix(in srgb, var(--presence-surface, #fffaf6) 88%, var(--presence-accent, #f97316) 12%);
+  color: var(--presence-ink, #151f2d);
+  box-shadow: 0 24px 58px color-mix(in srgb, var(--presence-accent, #f97316) 18%, transparent);
 }
 
 .product-detail-dialog__image {
@@ -203,13 +227,13 @@
 
 .product-detail-dialog__head h3 {
   margin: 0 0 8px;
-  color: #151f2d;
+  color: var(--presence-ink, #151f2d);
   font-size: 28px;
   line-height: 1.2;
 }
 
 .product-detail-dialog__price {
-  color: #151f2d;
+  color: var(--presence-ink, #151f2d);
   font-size: 24px;
   font-weight: 800;
 }
@@ -218,7 +242,7 @@
   overflow-y: auto;
   max-height: 34vh;
   margin: 0;
-  color: rgba(17, 34, 45, 0.76);
+  color: var(--presence-muted, rgba(17, 34, 45, 0.76));
   line-height: 1.65;
   white-space: pre-line;
 }
@@ -226,6 +250,15 @@
 .product-detail-dialog__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.product-detail-dialog__close {
+  color: var(--presence-ink, #151f2d) !important;
+}
+
+.product-detail-dialog__actions .q-btn.bg-primary {
+  background: var(--presence-accent, var(--soz-action-gradient)) !important;
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--presence-accent, #f97316) 22%, transparent) !important;
 }
 
 @media (max-width: 700px) {
