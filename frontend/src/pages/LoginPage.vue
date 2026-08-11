@@ -12,7 +12,7 @@
 	const router = useRouter()
 	const authStore = useAuthStore()
 	const formRef = ref(null)
-	const form = reactive({ email: 'user@sveevee.local', password: 'password' })
+	const form = reactive({ email: '', password: '' })
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	async function submit() {

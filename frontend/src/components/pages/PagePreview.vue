@@ -100,72 +100,74 @@
 			</div>
 		</div>
 
-		<div class="page-preview__body">
-			<div class="page-preview__column">
-				<div class="page-preview__detail-card">
-					<div class="page-preview__section-title">{{ t('pages.sections.contact') }}</div>
-					<div v-if="previewContact.length > 0" class="page-preview__detail-list">
-						<div v-for="item in previewContact" :key="item.label" class="page-preview__detail-row">
-							<span class="page-preview__detail-label">{{ item.label }}</span>
-							<span>{{ item.value }}</span>
+		<div class="page-preview__body" :class="{ 'page-preview__body--with-content': hasAfterInfo }">
+			<div v-if="hasAfterInfo" class="page-preview__content">
+				<slot name="afterInfo" />
+			</div>
+
+			<div class="page-preview__info">
+				<div class="page-preview__column">
+					<div class="page-preview__detail-card">
+						<div class="page-preview__section-title">{{ t('pages.sections.contact') }}</div>
+						<div v-if="previewContact.length > 0" class="page-preview__detail-list">
+							<div v-for="item in previewContact" :key="item.label" class="page-preview__detail-row">
+								<span class="page-preview__detail-label">{{ item.label }}</span>
+								<span>{{ item.value }}</span>
+							</div>
+						</div>
+						<div v-else class="text-body2 page-preview__empty">{{ t('pages.noContact') }}</div>
+					</div>
+
+					<div class="page-preview__detail-card">
+						<div class="page-preview__section-title">{{ t('pages.sections.address') }}</div>
+						<div class="text-body2" :class="{ 'page-preview__empty': !previewAddress }">
+							{{ previewAddress || t('pages.noAddress') }}
 						</div>
 					</div>
-					<div v-else class="text-body2 page-preview__empty">{{ t('pages.noContact') }}</div>
-				</div>
 
-				<div class="page-preview__detail-card">
-					<div class="page-preview__section-title">{{ t('pages.sections.address') }}</div>
-					<div class="text-body2" :class="{ 'page-preview__empty': !previewAddress }">
-						{{ previewAddress || t('pages.noAddress') }}
+					<div class="page-preview__detail-card">
+						<div class="page-preview__section-title">{{ t('ratings.title') }}</div>
+						<div class="page-preview__rating-row">
+							<div class="page-preview__rating-score">
+								<RatingStars readonly :value="ratingAverage" />
+								<div class="text-body2 page-preview__empty">{{ ratingText }}</div>
+							</div>
+							<div class="page-preview__rating-actions">
+								<q-btn rounded
+									unelevated
+									color="primary"
+									class="page-preview__ratings-btn"
+									icon="reviews"
+									:disable="!page?.id"
+									:label="t('ratings.allRatings')"
+									@click="emit('show-ratings')"
+								/>
+								<q-btn v-if="canRate"
+									rounded
+									unelevated
+									color="primary"
+									icon="star"
+									:label="t('ratings.rate')"
+									@click="emit('rate')"
+								/>
+							</div>
+						</div>
 					</div>
 				</div>
 
-				<div class="page-preview__detail-card">
-					<div class="page-preview__section-title">{{ t('ratings.title') }}</div>
-					<div class="page-preview__rating-row">
-						<div class="page-preview__rating-score">
-							<RatingStars readonly :value="ratingAverage" />
-							<div class="text-body2 page-preview__empty">{{ ratingText }}</div>
+				<div class="page-preview__column">
+					<div class="page-preview__detail-card">
+						<div class="page-preview__section-title">{{ t('pages.sections.openingHours') }}</div>
+						<div v-if="previewOpeningHours.length > 0" class="page-preview__hours-list">
+							<div v-for="item in previewOpeningHours" :key="item.weekday" class="page-preview__detail-row">
+								<span class="page-preview__detail-label">{{ t(`pages.weekdays.${item.weekday}`) }}</span>
+								<span>{{ item.is_open ? `${item.opens_at} - ${item.closes_at}` : t('pages.closed') }}</span>
+							</div>
 						</div>
-						<div class="page-preview__rating-actions">
-							<q-btn rounded
-								unelevated
-								color="primary"
-								class="page-preview__ratings-btn"
-								icon="reviews"
-								:disable="!page?.id"
-								:label="t('ratings.allRatings')"
-								@click="emit('show-ratings')"
-							/>
-							<q-btn v-if="canRate"
-								rounded
-								unelevated
-								color="primary"
-								icon="star"
-								:label="t('ratings.rate')"
-								@click="emit('rate')"
-							/>
-						</div>
+						<div v-else class="text-body2 page-preview__empty">{{ t('pages.noOpeningHours') }}</div>
 					</div>
 				</div>
 			</div>
-
-			<div class="page-preview__column">
-				<div class="page-preview__detail-card">
-					<div class="page-preview__section-title">{{ t('pages.sections.openingHours') }}</div>
-					<div v-if="previewOpeningHours.length > 0" class="page-preview__hours-list">
-						<div v-for="item in previewOpeningHours" :key="item.weekday" class="page-preview__detail-row">
-							<span class="page-preview__detail-label">{{ t(`pages.weekdays.${item.weekday}`) }}</span>
-							<span>{{ item.is_open ? `${item.opens_at} - ${item.closes_at}` : t('pages.closed') }}</span>
-						</div>
-					</div>
-					<div v-else class="text-body2 page-preview__empty">{{ t('pages.noOpeningHours') }}</div>
-				</div>
-			</div>
-		</div>
-
-		<div v-if="hasAfterInfo" class="page-preview__after-info">
-			<slot name="afterInfo" />
 		</div>
 	</article>
 </template>
@@ -257,23 +259,48 @@
   gap: 18px;
 }
 
+.page-preview__info {
+  display: contents;
+}
+
+.page-preview__content {
+  min-width: 0;
+  order: 1;
+}
+
+.page-preview__body--with-content {
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  align-items: start;
+}
+
+.page-preview__body--with-content .page-preview__info {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  order: 2;
+}
+
+.page-preview__body--with-content .page-preview__content {
+  order: 1;
+}
+
 .page-preview__column {
   display: grid;
   align-content: start;
   gap: 14px;
   min-width: 0;
-  padding: 24px;
-  border: 1px solid var(--presence-border);
-  border-radius: 28px;
-  background: var(--presence-surface);
 }
 
-.page-preview__after-info {
-  min-width: 0;
-  padding: 24px;
-  border: 1px solid var(--presence-border);
-  border-radius: 28px;
-  background: var(--presence-surface);
+:global([dir="rtl"]) .page-preview__body--with-content .page-preview__info {
+  order: 1;
+}
+
+:global([dir="rtl"]) .page-preview__body--with-content {
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr);
+}
+
+:global([dir="rtl"]) .page-preview__body--with-content .page-preview__content {
+  order: 2;
 }
 
 .page-preview__section-title {
@@ -350,6 +377,14 @@
     grid-template-columns: 1fr;
   }
 
+  .page-preview__body--with-content .page-preview__content {
+    order: 1;
+  }
+
+  .page-preview__body--with-content .page-preview__info {
+    order: 2;
+  }
+
   .page-preview__intro {
     align-items: flex-start;
   }
@@ -395,8 +430,6 @@
     line-height: 1.58;
   }
 
-  .page-preview__column,
-  .page-preview__after-info,
   .page-preview__detail-card {
     padding: 16px;
     border-radius: 20px;

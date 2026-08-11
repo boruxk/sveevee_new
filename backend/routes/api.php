@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\PageEventController;
 use App\Http\Controllers\Api\PageProductController;
 use App\Http\Controllers\Api\PageRatingController;
+use App\Http\Controllers\Api\PageServiceController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PublicUserController;
 use App\Http\Controllers\Api\SearchController;
@@ -43,6 +44,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/pages/{page}/products', [PageProductController::class, 'store']);
         Route::put('/products/{product}', [PageProductController::class, 'update']);
         Route::delete('/products/{product}', [PageProductController::class, 'destroy']);
+        Route::post('/pages/{page}/services', [PageServiceController::class, 'store']);
+        Route::put('/services/{service}', [PageServiceController::class, 'update']);
+        Route::delete('/services/{service}', [PageServiceController::class, 'destroy']);
         Route::post('/pages/{page}/events', [PageEventController::class, 'store']);
         Route::put('/events/{event}', [PageEventController::class, 'update']);
         Route::delete('/events/{event}', [PageEventController::class, 'destroy']);

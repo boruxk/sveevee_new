@@ -287,7 +287,7 @@ export default {
 		}
 	},
 	products: {
-		storeTitle: 'Store',
+		storeTitle: 'Products',
 		name: 'Name',
 		description: 'Description',
 		image: 'Image',
@@ -300,6 +300,30 @@ export default {
 		created: 'Product created.',
 		saveFailed: 'Product could not be saved.',
 		deleteFailed: 'Product could not be deleted.'
+	},
+	businessFeatures: {
+		store: 'Store',
+		services: 'Services',
+		events: 'Events',
+		toggleStore: 'Enable or disable Store',
+		toggleServices: 'Enable or disable Services',
+		toggleEvents: 'Enable or disable Events'
+	},
+	businessServices: {
+		title: 'Services',
+		helper: 'Describe the services or offers customers can request from this business.',
+		addService: 'Add service',
+		name: 'Service name',
+		description: 'Service description',
+		image: 'Service image',
+		link: 'Service link',
+		linkHint: 'Optional link to more information, booking, or contact.',
+		open: 'View service',
+		visit: 'Open link',
+		empty: 'No services yet.',
+		created: 'Service created.',
+		saveFailed: 'Service could not be saved.',
+		deleteFailed: 'Service could not be deleted.'
 	},
 	events: {
 		eventsTitle: 'Events',

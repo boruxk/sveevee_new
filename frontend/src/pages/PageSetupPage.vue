@@ -10,6 +10,7 @@
 	import { deleteEvent } from '@/services/api/events'
 	import { deletePage, fetchMyPage, saveMyPage } from '@/services/api/pages'
 	import { deleteProduct } from '@/services/api/products'
+	import { deleteService } from '@/services/api/services'
 	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
@@ -19,6 +20,8 @@
 	import EventComposer from '@/components/events/EventComposer.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
 	import ProductComposer from '@/components/products/ProductComposer.vue'
+	import ServiceCard from '@/components/services/ServiceCard.vue'
+	import ServiceComposer from '@/components/services/ServiceComposer.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
 	import PageRatingsDialog from '@/components/ratings/PageRatingsDialog.vue'
 
@@ -46,10 +49,12 @@
 	const setupDialogOpen = ref(false)
 	const adDialogOpen = ref(false)
 	const productDialogOpen = ref(false)
+	const serviceDialogOpen = ref(false)
 	const eventDialogOpen = ref(false)
 	const ratingsDialogOpen = ref(false)
 	const editingAd = ref(null)
 	const editingProduct = ref(null)
+	const editingService = ref(null)
 	const editingEvent = ref(null)
 	const page = ref(null)
 	const localLogoPreviewUrl = ref(null)
@@ -71,6 +76,11 @@
 			neighborhood: ''
 		},
 		opening_hours: [],
+		features: {
+			store: false,
+			services: false,
+			events: false
+		},
 		palette_key: presencePalettes[0].key,
 		logo: null,
 		banner: null
@@ -83,10 +93,26 @@
 	const selectedPalette = computed(() => findPresencePalette(form.palette_key))
 	const adDialogTitle = computed(() => (editingAd.value ? t('actions.update') : t('actions.createAd')))
 	const productDialogTitle = computed(() => (editingProduct.value ? t('actions.update') : t('actions.addProduct')))
+	const serviceDialogTitle = computed(() => (editingService.value ? t('actions.update') : t('businessServices.addService')))
 	const eventDialogTitle = computed(() => (editingEvent.value ? t('actions.update') : t('actions.addEvent')))
 	const visibleAds = computed(() => (Array.isArray(page.value?.ads) ? page.value.ads.filter((ad) => ad?.id) : []))
 	const visibleProducts = computed(() => (Array.isArray(page.value?.products) ? page.value.products.filter((product) => product?.id) : []))
+	const visibleServices = computed(() => (Array.isArray(page.value?.services) ? page.value.services.filter((service) => service?.id) : []))
 	const visibleEvents = computed(() => (Array.isArray(page.value?.events) ? page.value.events.filter((event) => event?.id) : []))
+	const isStoreEnabled = computed(() => Boolean(form.features.store))
+	const isServicesEnabled = computed(() => Boolean(form.features.services))
+	const isEventsEnabled = computed(() => Boolean(form.features.events))
+	const pageFeatureKeys = computed(() => {
+		if (isBusinessPage.value) {
+			return ['store', 'services']
+		}
+
+		if (isCommunityPage.value) {
+			return ['events']
+		}
+
+		return []
+	})
 	const hasStoredLogo = computed(() => Boolean(page.value?.logo_url) && !form.logo && !logoRemoved.value)
 	const hasStoredBanner = computed(() => Boolean(page.value?.banner_url) && !form.banner && !bannerRemoved.value)
 	const logoDisplayName = computed(() => imageUploadDisplayName(
@@ -127,11 +153,56 @@
 			neighborhood: form.address.neighborhood
 		},
 		opening_hours: form.opening_hours.map((item) => ({ ...item })),
+		features: {
+			store: form.features.store,
+			services: form.features.services,
+			events: form.features.events
+		},
 		palette_key: form.palette_key,
 		logo_url: logoRemoved.value ? null : localLogoPreviewUrl.value || page.value?.logo_url || null,
 		banner_url: bannerRemoved.value ? null : localBannerPreviewUrl.value || page.value?.banner_url || null,
 		rating_summary: page.value?.rating_summary || { average: 0, count: 0 }
 	}))
+	const previewContentPlaceholders = computed(() => {
+		if (isBusinessPage.value) {
+			return [
+				isStoreEnabled.value ? {
+					key: 'store',
+					icon: 'inventory_2',
+					label: t('products.storeTitle'),
+					targetId: 'page-products-section',
+					cardCount: 2
+				} : null,
+				isServicesEnabled.value ? {
+					key: 'services',
+					icon: 'design_services',
+					label: t('businessServices.title'),
+					targetId: 'page-services-section',
+					cardCount: 1
+				} : null
+			].filter(Boolean)
+		}
+
+		if (isCommunityPage.value && isEventsEnabled.value) {
+			return [{
+				key: 'events',
+				icon: 'event',
+				label: t('events.eventsTitle'),
+				targetId: 'page-events-section',
+				cardCount: 1
+			}]
+		}
+
+		return []
+	})
+	const hasPreviewPlaceholders = computed(() => previewContentPlaceholders.value.length > 0)
+
+	function scrollToSetupBlock(targetId) {
+		document.getElementById(targetId)?.scrollIntoView({
+			behavior: 'smooth',
+			block: 'start'
+		})
+	}
 
 	function normalizedOpeningHours(value) {
 		const byWeekday = new Map((Array.isArray(value) ? value : []).map((item) => [item.weekday, item]))
@@ -168,6 +239,13 @@
 		return text
 	}
 
+	function featureFlag(value, key, fallback) {
+		const features = value?.features || value?.setup?.features || {}
+		const flag = features[key] ?? fallback
+
+		return flag === true || flag === 'true' || flag === 1 || flag === '1'
+	}
+
 	function hydrate(value) {
 		const setup = value?.setup || {}
 		const contact = value?.contact || setup.contact || {}
@@ -184,6 +262,9 @@
 		form.address.city = address.city || ''
 		form.address.neighborhood = address.neighborhood || ''
 		form.opening_hours = normalizedOpeningHours(value?.opening_hours || setup.opening_hours)
+		form.features.store = featureFlag(value, 'store', false)
+		form.features.services = featureFlag(value, 'services', false)
+		form.features.events = featureFlag(value, 'events', false)
 		form.palette_key = findPresencePalette(value?.palette_key || setup.palette_key).key
 		form.logo = null
 		form.banner = null
@@ -216,7 +297,12 @@
 					is_open: item.is_open,
 					opens_at: item.is_open ? item.opens_at || null : null,
 					closes_at: item.is_open ? item.closes_at || null : null
-				}))
+				})),
+				features: {
+					store: form.features.store,
+					services: form.features.services,
+					events: form.features.events
+				}
 			},
 			logo: form.logo,
 			logo_remove: logoRemoved.value,
@@ -258,6 +344,23 @@
 			return false
 		} finally {
 			saving.value = false
+		}
+	}
+
+	async function togglePageFeature(key) {
+		if (!pageFeatureKeys.value.includes(key) || saving.value) {
+			return
+		}
+
+		const previousValue = Boolean(form.features[key])
+		form.features[key] = !previousValue
+
+		if (!page.value) {
+			return
+		}
+
+		if (!(await save({ notify: false, validate: false }))) {
+			form.features[key] = previousValue
 		}
 	}
 
@@ -353,12 +456,31 @@
 		productDialogOpen.value = true
 	}
 
+	function openCreateService() {
+		editingService.value = null
+		serviceDialogOpen.value = true
+	}
+
+	function openEditService(service) {
+		editingService.value = service
+		serviceDialogOpen.value = true
+	}
+
 	async function removeProduct(product) {
 		try {
 			await deleteProduct(product.id)
 			await load()
 		} catch (error) {
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('products.deleteFailed')) })
+		}
+	}
+
+	async function removeService(service) {
+		try {
+			await deleteService(service.id)
+			await load()
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('businessServices.deleteFailed')) })
 		}
 	}
 
@@ -397,6 +519,25 @@
 		page.value = {
 			...page.value,
 			products: nextProducts
+		}
+	}
+
+	function mergeSavedService(savedService) {
+		if (!page.value?.id || !savedService?.id || savedService.page_id !== page.value.id) {
+			return
+		}
+
+		const services = Array.isArray(page.value.services) ? page.value.services : []
+		const existingIndex = services.findIndex((service) => service.id === savedService.id)
+		let nextServices = [savedService, ...services]
+
+		if (existingIndex !== -1) {
+			nextServices = services.map((service) => (service.id === savedService.id ? savedService : service))
+		}
+
+		page.value = {
+			...page.value,
+			services: nextServices
 		}
 	}
 
@@ -470,6 +611,14 @@
 		mergeSavedProduct(savedProduct)
 		await load()
 		mergeSavedProduct(savedProduct)
+	}
+
+	async function handleServiceSaved(savedService) {
+		serviceDialogOpen.value = false
+		editingService.value = null
+		mergeSavedService(savedService)
+		await load()
+		mergeSavedService(savedService)
 	}
 
 	async function handleEventSaved(savedEvent) {
@@ -605,6 +754,51 @@
 					</div>
 				</div>
 
+				<div v-if="isBusinessPage || isCommunityPage" class="feature-toggle-row">
+					<button
+						v-if="isBusinessPage"
+						type="button"
+						class="feature-toggle"
+						:class="{ 'feature-toggle--active': isStoreEnabled }"
+						:aria-label="t('businessFeatures.toggleStore')"
+						:aria-pressed="isStoreEnabled"
+						:title="t('businessFeatures.toggleStore')"
+						:disabled="saving"
+						@click="togglePageFeature('store')"
+					>
+						<span class="feature-toggle__dot" aria-hidden="true" />
+						<span>{{ t('businessFeatures.store') }}</span>
+					</button>
+					<button
+						v-if="isBusinessPage"
+						type="button"
+						class="feature-toggle"
+						:class="{ 'feature-toggle--active': isServicesEnabled }"
+						:aria-label="t('businessFeatures.toggleServices')"
+						:aria-pressed="isServicesEnabled"
+						:title="t('businessFeatures.toggleServices')"
+						:disabled="saving"
+						@click="togglePageFeature('services')"
+					>
+						<span class="feature-toggle__dot" aria-hidden="true" />
+						<span>{{ t('businessFeatures.services') }}</span>
+					</button>
+					<button
+						v-if="isCommunityPage"
+						type="button"
+						class="feature-toggle"
+						:class="{ 'feature-toggle--active': isEventsEnabled }"
+						:aria-label="t('businessFeatures.toggleEvents')"
+						:aria-pressed="isEventsEnabled"
+						:title="t('businessFeatures.toggleEvents')"
+						:disabled="saving"
+						@click="togglePageFeature('events')"
+					>
+						<span class="feature-toggle__dot" aria-hidden="true" />
+						<span>{{ t('businessFeatures.events') }}</span>
+					</button>
+				</div>
+
 				<div v-if="loading" class="row justify-center q-pa-lg">
 					<q-spinner color="primary" />
 				</div>
@@ -612,11 +806,42 @@
 					class="q-mt-lg"
 					:page="previewPage"
 					:palette="selectedPalette"
+					:has-after-info="hasPreviewPlaceholders"
 					@show-ratings="ratingsDialogOpen = true"
-				/>
+				>
+					<template #afterInfo>
+						<div class="preview-placeholder-list">
+							<div v-for="placeholder in previewContentPlaceholders"
+								:key="placeholder.key"
+								class="preview-placeholder-segment"
+							>
+								<a
+									class="preview-placeholder-heading"
+									:href="`#${placeholder.targetId}`"
+									@click.prevent="scrollToSetupBlock(placeholder.targetId)"
+								>
+									<q-icon :name="placeholder.icon" />
+									<span>{{ placeholder.label }}</span>
+									<q-icon name="south" class="preview-placeholder-heading__arrow" />
+								</a>
+								<div class="preview-placeholder-card-grid" :class="{ 'preview-placeholder-card-grid--two': placeholder.cardCount === 2 }">
+									<div v-for="index in placeholder.cardCount"
+										:key="`${placeholder.key}-${index}`"
+										class="preview-placeholder-card"
+									>
+										<span class="preview-placeholder-card__media" />
+										<span class="preview-placeholder-card__line preview-placeholder-card__line--strong" />
+										<span class="preview-placeholder-card__line" />
+										<span class="preview-placeholder-card__line preview-placeholder-card__line--short" />
+									</div>
+								</div>
+							</div>
+						</div>
+					</template>
+				</PagePreview>
 			</section>
 
-			<section v-if="isBusinessPage" class="soz-section-card panel q-mt-lg">
+			<section v-if="isBusinessPage && isStoreEnabled" id="page-products-section" class="soz-section-card panel q-mt-lg">
 				<div class="panel-head">
 					<h2>{{ t('products.storeTitle') }}</h2>
 					<q-btn rounded
@@ -641,7 +866,35 @@
 				</div>
 			</section>
 
-			<section v-if="isCommunityPage" class="soz-section-card panel q-mt-lg">
+			<section v-if="isBusinessPage && isServicesEnabled" id="page-services-section" class="soz-section-card panel q-mt-lg">
+				<div class="panel-head">
+					<div>
+						<h2>{{ t('businessServices.title') }}</h2>
+						<p>{{ t('businessServices.helper') }}</p>
+					</div>
+					<q-btn rounded
+						unelevated
+						color="primary"
+						icon="design_services"
+						:disable="!page"
+						:label="t('businessServices.addService')"
+						@click="openCreateService"
+					/>
+				</div>
+				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
+				<div v-else-if="visibleServices.length === 0" class="empty-state">{{ t('businessServices.empty') }}</div>
+				<div v-else class="service-list">
+					<ServiceCard v-for="service in visibleServices"
+						:key="service.id"
+						:service="service"
+						editable
+						@edit="openEditService"
+						@delete="removeService"
+					/>
+				</div>
+			</section>
+
+			<section v-if="isCommunityPage && isEventsEnabled" id="page-events-section" class="soz-section-card panel q-mt-lg">
 				<div class="panel-head">
 					<h2>{{ t('events.eventsTitle') }}</h2>
 					<q-btn rounded
@@ -928,6 +1181,17 @@
 				</q-card-section>
 			</q-card>
 		</q-dialog>
+		<q-dialog v-model="serviceDialogOpen">
+			<q-card class="service-dialog">
+				<q-card-section class="dialog-head">
+					<div class="text-h6">{{ serviceDialogTitle }}</div>
+					<q-btn flat round icon="close" color="dark" v-close-popup />
+				</q-card-section>
+				<q-card-section>
+					<ServiceComposer v-if="page?.id" :page-id="page.id" :service="editingService" @saved="handleServiceSaved" />
+				</q-card-section>
+			</q-card>
+		</q-dialog>
 		<q-dialog v-model="eventDialogOpen">
 			<q-card class="event-dialog">
 				<q-card-section class="dialog-head">
@@ -975,7 +1239,8 @@
 }
 
 .page-head p,
-.preview-head p {
+.preview-head p,
+.panel-head p {
   max-width: 720px;
   margin: 8px 0 0;
   color: rgba(17, 34, 45, 0.66);
@@ -1007,6 +1272,155 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.feature-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.feature-toggle {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 46px;
+  padding: 8px 18px 8px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: #e8ebf0;
+  color: rgba(17, 34, 45, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(17, 34, 45, 0.06);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  transition:
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.feature-toggle:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.feature-toggle:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.feature-toggle--active {
+  background: var(--soz-action-gradient);
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(245, 66, 145, 0.22);
+}
+
+.feature-toggle__dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #aeb5c1;
+  box-shadow: inset 0 0 0 1px rgba(17, 34, 45, 0.08);
+}
+
+.feature-toggle--active .feature-toggle__dot {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 14px rgba(17, 34, 45, 0.14);
+}
+
+.preview-placeholder-list {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.preview-placeholder-segment {
+  display: grid;
+  gap: 16px;
+  min-height: 270px;
+  padding: 20px;
+  border: 1px dashed rgba(245, 66, 145, 0.45);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.preview-placeholder-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: 100%;
+  color: #151f2d;
+  font-size: 1rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.preview-placeholder-heading > .q-icon:first-child {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--soz-action-gradient);
+  color: #fff;
+  font-size: 24px;
+  box-shadow: 0 12px 24px rgba(245, 66, 145, 0.22);
+}
+
+.preview-placeholder-heading__arrow {
+  color: rgba(17, 34, 45, 0.48);
+  font-size: 20px;
+}
+
+.preview-placeholder-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.preview-placeholder-card-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.preview-placeholder-card {
+  display: grid;
+  gap: 12px;
+  min-height: 178px;
+  padding: 14px;
+  border: 1px solid rgba(17, 34, 45, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 14px 28px rgba(17, 34, 45, 0.06);
+}
+
+.preview-placeholder-card__media,
+.preview-placeholder-card__line {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 124, 44, 0.18), rgba(245, 66, 145, 0.16), rgba(129, 69, 255, 0.16));
+}
+
+.preview-placeholder-card__media {
+  height: 86px;
+  border-radius: 12px;
+}
+
+.preview-placeholder-card__line {
+  width: 100%;
+  height: 10px;
+}
+
+.preview-placeholder-card__line--strong {
+  width: 72%;
+  height: 14px;
+}
+
+.preview-placeholder-card__line--short {
+  width: 48%;
 }
 
 .page-delete-btn.q-btn.bg-negative {
@@ -1136,10 +1550,16 @@
   align-items: center;
 }
 
-.product-grid,
-.event-grid {
+.product-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.event-grid,
+.service-list {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
@@ -1166,6 +1586,7 @@
 
 .listing-dialog,
 .product-dialog,
+.service-dialog,
 .event-dialog {
   width: min(680px, calc(100vw - 24px));
   max-width: 680px;
@@ -1191,8 +1612,7 @@
     grid-template-columns: 1fr;
   }
 
-  .product-grid,
-  .event-grid {
+  .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1211,7 +1631,7 @@
 
 @media (max-width: 760px) {
   .product-grid,
-  .event-grid {
+  .preview-placeholder-card-grid--two {
     grid-template-columns: 1fr;
   }
 }
@@ -1237,7 +1657,8 @@
 
   .page-toolbar-actions,
   .page-toolbar-actions .q-btn,
-  .panel-head .q-btn {
+  .panel-head .q-btn,
+  .feature-toggle {
     width: 100%;
   }
 
@@ -1252,6 +1673,7 @@
   .setup-dialog,
   .listing-dialog,
   .product-dialog,
+  .service-dialog,
   .event-dialog {
     width: calc(100vw - 20px);
     max-height: calc(100dvh - 20px);

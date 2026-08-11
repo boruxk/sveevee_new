@@ -35,7 +35,7 @@ class PageController extends Controller
         $page = Page::query()
             ->where('user_id', $request->user()->id)
             ->where('type', $type)
-            ->with(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'events'])
+            ->with(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'services', 'events'])
             ->withCount('ratings')
             ->withAvg('ratings', 'rating')
             ->first();
@@ -110,7 +110,7 @@ class PageController extends Controller
             'neighborhood' => $addressDetails['neighborhood'] ?? null,
         ]);
 
-        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'events'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
+        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'services', 'events'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
     }
 
     public function show(Page $page)
@@ -119,7 +119,7 @@ class PageController extends Controller
             return ApiResponseService::error('Resource not found.', status: 404);
         }
 
-        $page->load(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'events'])
+        $page->load(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'services', 'events'])
             ->loadCount('ratings')
             ->loadAvg('ratings', 'rating');
 
@@ -159,6 +159,8 @@ class PageController extends Controller
 
         $contact = is_array($decoded['contact'] ?? null) ? $decoded['contact'] : [];
         $address = is_array($decoded['address'] ?? null) ? $decoded['address'] : [];
+        $features = is_array($decoded['features'] ?? null) ? $decoded['features'] : [];
+        $services = is_array($decoded['services'] ?? null) ? $decoded['services'] : [];
 
         return array_merge($decoded, [
             'contact' => [
@@ -173,7 +175,29 @@ class PageController extends Controller
                 'neighborhood' => $this->nullableString($address['neighborhood'] ?? null),
             ],
             'opening_hours' => $this->normalizedOpeningHours($decoded['opening_hours'] ?? []),
+            'features' => [
+                'store' => $this->booleanValue($features['store'] ?? null, false),
+                'services' => $this->booleanValue($features['services'] ?? null, false),
+                'events' => $this->booleanValue($features['events'] ?? null, false),
+            ],
+            'services' => [
+                'title' => $this->nullableString($services['title'] ?? null),
+                'description' => $this->nullableString($services['description'] ?? null),
+            ],
         ]);
+    }
+
+    private function booleanValue(mixed $value, bool $default): bool
+    {
+        if ($value === null) {
+            return $default;
+        }
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return in_array(strtolower((string) $value), ['1', 'true', 'yes', 'on'], true);
     }
 
     private function normalizedOpeningHours(mixed $openingHours): array

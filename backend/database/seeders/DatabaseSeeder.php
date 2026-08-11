@@ -6,7 +6,6 @@ use App\Models\Ad;
 use App\Models\Page;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -21,7 +20,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'SVEEVEE Admin',
                 'given_name' => 'SVEEVEE',
                 'family_name' => 'Admin',
-                'password' => Hash::make('password'),
+                'password' => 'password',
                 'locale' => 'he',
                 'role' => 'admin',
             ]
@@ -33,7 +32,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Miriam Neighbor',
                 'given_name' => 'Miriam',
                 'family_name' => 'Neighbor',
-                'password' => Hash::make('password'),
+                'password' => 'password',
                 'locale' => 'he',
                 'role' => 'user',
             ]

@@ -8,6 +8,7 @@ use App\Models\Page;
 use App\Models\PageEvent;
 use App\Models\PageProduct;
 use App\Models\PageRating;
+use App\Models\PageService;
 use App\Models\User;
 use App\Models\UserProfile;
 
@@ -72,7 +73,7 @@ class PayloadService
         $setup = $page->setup ?? [];
         $contact = $this->pageContact($page, $setup);
         $addressDetails = $this->pageAddress($setup);
-        $page->loadMissing(['products', 'events']);
+        $page->loadMissing(['products', 'services', 'events']);
 
         $payload = [
             'id' => $page->id,
@@ -86,6 +87,7 @@ class PayloadService
             'contact' => $contact,
             'address_details' => $addressDetails,
             'opening_hours' => $this->normalizedOpeningHours($setup['opening_hours'] ?? []),
+            'features' => $this->pageFeatures($setup),
             'palette_key' => $page->palette_key,
             'logo_url' => $page->logo_url,
             'logo_name' => $page->logo_original_name,
@@ -93,6 +95,7 @@ class PayloadService
             'banner_name' => $page->banner_original_name,
             'rating_summary' => $this->pageRatingSummary($page),
             'products' => $page->products->map(fn (PageProduct $product) => $this->product($product))->values()->all(),
+            'services' => $page->services->map(fn (PageService $service) => $this->service($service))->values()->all(),
             'events' => $page->events->map(fn (PageEvent $event) => $this->event($event))->values()->all(),
             'setup' => $setup,
             'owner' => $page->relationLoaded('user') ? $this->user($page->user) : null,
@@ -143,6 +146,21 @@ class PayloadService
             'address' => $event->address,
             'created_at' => $event->created_at?->toISOString(),
             'updated_at' => $event->updated_at?->toISOString(),
+        ];
+    }
+
+    public function service(PageService $service): array
+    {
+        return [
+            'id' => $service->id,
+            'page_id' => $service->page_id,
+            'name' => $service->name,
+            'description' => $service->description,
+            'image_url' => $service->image_url,
+            'image_name' => $service->image_original_name,
+            'link' => $service->link,
+            'created_at' => $service->created_at?->toISOString(),
+            'updated_at' => $service->updated_at?->toISOString(),
         ];
     }
 
@@ -273,6 +291,30 @@ class PayloadService
             'city' => $address['city'] ?? null,
             'neighborhood' => $address['neighborhood'] ?? null,
         ];
+    }
+
+    private function pageFeatures(array $setup): array
+    {
+        $features = is_array($setup['features'] ?? null) ? $setup['features'] : [];
+
+        return [
+            'store' => $this->booleanValue($features['store'] ?? null, false),
+            'services' => $this->booleanValue($features['services'] ?? null, false),
+            'events' => $this->booleanValue($features['events'] ?? null, false),
+        ];
+    }
+
+    private function booleanValue(mixed $value, bool $default): bool
+    {
+        if ($value === null) {
+            return $default;
+        }
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return in_array(strtolower((string) $value), ['1', 'true', 'yes', 'on'], true);
     }
 
     private function adLocationValue(Ad $ad, string $field): ?string

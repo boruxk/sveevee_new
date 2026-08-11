@@ -287,7 +287,7 @@ export default {
 		}
 	},
 	products: {
-		storeTitle: 'Boutique',
+		storeTitle: 'Produits',
 		name: 'Nom',
 		description: 'Description',
 		image: 'Image',
@@ -300,6 +300,30 @@ export default {
 		created: 'Produit créé.',
 		saveFailed: 'Le produit n’a pas pu être enregistré.',
 		deleteFailed: 'Le produit n\u2019a pas pu \u00EAtre supprim\u00E9.'
+	},
+	businessFeatures: {
+		store: 'Boutique',
+		services: 'Services',
+		events: '\u00C9v\u00E9nements',
+		toggleStore: 'Activer ou désactiver la boutique',
+		toggleServices: 'Activer ou désactiver les services',
+		toggleEvents: 'Activer ou d\u00E9sactiver les \u00E9v\u00E9nements'
+	},
+	businessServices: {
+		title: 'Services',
+		helper: 'Décrivez les services ou offres que les clients peuvent demander à cette entreprise.',
+		addService: 'Ajouter un service',
+		name: 'Nom du service',
+		description: 'Description du service',
+		image: 'Image du service',
+		link: 'Lien du service',
+		linkHint: 'Lien optionnel vers plus d’informations, une réservation ou un contact.',
+		open: 'Voir le service',
+		visit: 'Ouvrir le lien',
+		empty: 'Aucun service pour le moment.',
+		created: 'Service créé.',
+		saveFailed: 'Le service n’a pas pu être enregistré.',
+		deleteFailed: 'Le service n’a pas pu être supprimé.'
 	},
 	events: {
 		eventsTitle: '\u00C9v\u00E9nements',

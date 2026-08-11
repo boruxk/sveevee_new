@@ -6,6 +6,7 @@ use App\Models\Ad;
 use App\Models\Page;
 use App\Models\PageEvent;
 use App\Models\PageProduct;
+use App\Models\PageService;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -27,6 +28,20 @@ class SveeveeApiTest extends TestCase
         $this->assertDatabaseMissing('pages', ['type' => 'business']);
         $this->assertDatabaseMissing('pages', ['type' => 'community']);
         $this->assertDatabaseHas('ads', ['type' => 'private_ad', 'title' => 'Kids chair to give away']);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'user@sveevee.local',
+            'password' => 'password',
+        ])->assertOk()
+            ->assertJsonPath('data.user.email', 'user@sveevee.local')
+            ->assertJsonPath('data.user.role', 'user');
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'admin@sveevee.local',
+            'password' => 'password',
+        ])->assertOk()
+            ->assertJsonPath('data.user.email', 'admin@sveevee.local')
+            ->assertJsonPath('data.user.role', 'admin');
     }
 
     public function test_chat_requires_reply_before_second_message_to_same_user(): void
@@ -88,7 +103,7 @@ class SveeveeApiTest extends TestCase
         $user = User::factory()->create(['email' => 'owner@example.test']);
         Sanctum::actingAs($user);
 
-        $this->postJson('/api/v1/pages/business', [
+        $createdPage = $this->postJson('/api/v1/pages/business', [
             'name' => 'Miri Studio',
             'public_description' => 'Local design help.',
             'contact_email' => 'hello@example.test',
@@ -110,14 +125,31 @@ class SveeveeApiTest extends TestCase
                 'opening_hours' => [
                     ['weekday' => 'monday', 'is_open' => true, 'opens_at' => '08:30', 'closes_at' => '16:00'],
                 ],
+                'features' => [
+                    'store' => false,
+                    'services' => true,
+                ],
             ],
-        ])->assertOk()
+        ]);
+
+        $createdPage->assertOk()
             ->assertJsonPath('data.palette_key', 'sea-glass')
             ->assertJsonPath('data.contact.whatsapp', '+972 50 111 2222')
             ->assertJsonPath('data.address_details.street', 'Herzl')
             ->assertJsonPath('data.address_details.neighborhood', 'Hadar')
             ->assertJsonPath('data.opening_hours.1.weekday', 'monday')
-            ->assertJsonPath('data.opening_hours.1.opens_at', '08:30');
+            ->assertJsonPath('data.opening_hours.1.opens_at', '08:30')
+            ->assertJsonPath('data.features.store', false)
+            ->assertJsonPath('data.features.services', true)
+            ->assertJsonPath('data.features.events', false)
+            ->assertJsonCount(0, 'data.services');
+
+        $this->getJson('/api/v1/pages/'.$createdPage->json('data.id'))
+            ->assertOk()
+            ->assertJsonPath('data.features.store', false)
+            ->assertJsonPath('data.features.services', true)
+            ->assertJsonPath('data.features.events', false)
+            ->assertJsonCount(0, 'data.services');
 
         $this->getJson('/api/v1/me')
             ->assertOk()
@@ -536,6 +568,87 @@ class SveeveeApiTest extends TestCase
         ], ['Accept' => 'application/json'])->assertStatus(422);
     }
 
+    public function test_business_page_owner_can_add_service(): void
+    {
+        Storage::fake('public');
+
+        $owner = User::factory()->create();
+        $businessPage = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Miri Studio',
+            'setup' => [
+                'features' => [
+                    'services' => true,
+                ],
+            ],
+        ]);
+        $communityPage = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_COMMUNITY,
+            'name' => 'Miri Community',
+        ]);
+
+        Sanctum::actingAs($owner);
+
+        $createdService = $this->post("/api/v1/pages/{$businessPage->id}/services", [
+            'name' => 'Electrical repairs',
+            'description' => 'Fuse boxes, sockets, lighting, and urgent visits.',
+            'image' => UploadedFile::fake()->image('electrician.jpg'),
+            'link' => 'https://seller.example/services/electrician',
+        ], ['Accept' => 'application/json'])->assertCreated()
+            ->assertJsonPath('data.name', 'Electrical repairs')
+            ->assertJsonPath('data.description', 'Fuse boxes, sockets, lighting, and urgent visits.')
+            ->assertJsonPath('data.link', 'https://seller.example/services/electrician');
+
+        $oldServiceImagePath = PageService::query()->findOrFail($createdService->json('data.id'))->image_path;
+        Storage::disk('public')->assertExists($oldServiceImagePath);
+
+        $this->post("/api/v1/services/{$createdService->json('data.id')}", [
+            '_method' => 'PUT',
+            'name' => 'Home electrical work',
+            'description' => 'Repairs, installations, and safety checks.',
+            'link' => '',
+        ], ['Accept' => 'application/json'])->assertOk()
+            ->assertJsonPath('data.name', 'Home electrical work')
+            ->assertJsonPath('data.description', 'Repairs, installations, and safety checks.')
+            ->assertJsonPath('data.link', null);
+
+        $this->assertDatabaseHas('page_services', [
+            'id' => $createdService->json('data.id'),
+            'name' => 'Home electrical work',
+            'description' => 'Repairs, installations, and safety checks.',
+            'link' => null,
+        ]);
+
+        $this->getJson("/api/v1/pages/{$businessPage->id}")
+            ->assertOk()
+            ->assertJsonPath('data.features.services', true)
+            ->assertJsonPath('data.services.0.name', 'Home electrical work');
+
+        $deletedService = $this->post("/api/v1/pages/{$businessPage->id}/services", [
+            'name' => 'Delete me',
+            'description' => 'This service should be deleted.',
+            'image' => UploadedFile::fake()->image('delete-service.jpg'),
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $deletedServiceId = $deletedService->json('data.id');
+        $deletedServiceImagePath = PageService::query()->findOrFail($deletedServiceId)->image_path;
+        Storage::disk('public')->assertExists($deletedServiceImagePath);
+
+        $this->deleteJson("/api/v1/services/{$deletedServiceId}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('page_services', ['id' => $deletedServiceId]);
+        Storage::disk('public')->assertMissing($deletedServiceImagePath);
+
+        $this->post("/api/v1/pages/{$communityPage->id}/services", [
+            'name' => 'Community service',
+            'description' => 'Not allowed here.',
+            'image' => UploadedFile::fake()->image('community-service.jpg'),
+        ], ['Accept' => 'application/json'])->assertStatus(422);
+    }
+
     public function test_community_page_owner_can_add_event(): void
     {
         Storage::fake('public');
@@ -545,6 +658,11 @@ class SveeveeApiTest extends TestCase
             'user_id' => $owner->id,
             'type' => Page::TYPE_COMMUNITY,
             'name' => 'Miri Community',
+            'setup' => [
+                'features' => [
+                    'events' => true,
+                ],
+            ],
         ]);
         $businessPage = Page::query()->create([
             'user_id' => $owner->id,
@@ -613,6 +731,7 @@ class SveeveeApiTest extends TestCase
 
         $this->getJson("/api/v1/pages/{$communityPage->id}")
             ->assertOk()
+            ->assertJsonPath('data.features.events', true)
             ->assertJsonPath('data.events.0.name', 'Friday Picnic Updated')
             ->assertJsonPath('data.events.0.time', '18:45')
             ->assertJsonPath('data.events.0.end_time', null);

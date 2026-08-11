@@ -1,0 +1,258 @@
+<script setup>
+	import { computed, ref } from 'vue'
+	import { useI18n } from 'vue-i18n'
+	import { useQuasar } from 'quasar'
+
+	const props = defineProps({
+		service: {
+			type: Object,
+			required: true
+		},
+		editable: {
+			type: Boolean,
+			default: false
+		}
+	})
+
+	const emit = defineEmits(['delete', 'edit'])
+	const { t } = useI18n()
+	const $q = useQuasar()
+	const detailOpen = ref(false)
+	const compactActionButtons = computed(() => $q.screen.width <= 700)
+	const serviceLink = computed(() => String(props.service.link || '').trim())
+</script>
+
+<template>
+	<article class="service-card">
+		<div v-if="service.image_url" class="service-card__image" :style="{ backgroundImage: `url(${service.image_url})` }" />
+		<div class="service-card__body">
+			<div class="service-card__copy">
+				<h3 class="service-card__title">{{ service.name }}</h3>
+				<p class="service-card__description">{{ service.description }}</p>
+			</div>
+			<div class="service-card__actions">
+				<q-btn
+					class="service-card__view-btn"
+					:round="compactActionButtons"
+					:rounded="!compactActionButtons"
+					unelevated
+					color="primary"
+					icon="visibility"
+					:aria-label="t('businessServices.open')"
+					:label="compactActionButtons ? undefined : t('businessServices.open')"
+					@click="detailOpen = true"
+				/>
+				<q-btn v-if="editable"
+					class="service-card__icon-btn"
+					round
+					unelevated
+					color="secondary"
+					icon="edit"
+					:aria-label="t('actions.edit')"
+					@click="emit('edit', service)"
+				>
+					<q-tooltip>{{ t('actions.edit') }}</q-tooltip>
+				</q-btn>
+				<q-btn v-if="editable"
+					class="service-card__icon-btn"
+					round
+					unelevated
+					color="negative"
+					icon="delete"
+					:aria-label="t('actions.delete')"
+					@click="emit('delete', service)"
+				>
+					<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
+				</q-btn>
+			</div>
+		</div>
+	</article>
+	<q-dialog v-model="detailOpen">
+		<q-card class="service-detail-dialog">
+			<div v-if="service.image_url" class="service-detail-dialog__image" :style="{ backgroundImage: `url(${service.image_url})` }" />
+			<q-card-section class="service-detail-dialog__body">
+				<div class="service-detail-dialog__head">
+					<h3>{{ service.name }}</h3>
+					<q-btn flat round icon="close" color="dark" v-close-popup />
+				</div>
+				<p class="service-detail-dialog__description">{{ service.description }}</p>
+				<div v-if="serviceLink" class="service-detail-dialog__actions">
+					<q-btn
+						rounded
+						unelevated
+						color="primary"
+						icon="open_in_new"
+						:href="serviceLink"
+						target="_blank"
+						rel="noopener noreferrer"
+						:label="t('businessServices.visit')"
+					/>
+				</div>
+			</q-card-section>
+		</q-card>
+	</q-dialog>
+</template>
+
+<style scoped lang="scss">
+.service-card {
+  display: grid;
+  grid-template-columns: minmax(220px, 32%) minmax(0, 1fr);
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(17, 34, 45, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.service-card__image {
+  min-height: 230px;
+  background-position: center;
+  background-size: cover;
+}
+
+.service-card__body {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: 20px;
+}
+
+.service-card__copy {
+  min-width: 0;
+}
+
+.service-card__title {
+  margin: 0 0 8px;
+  color: #151f2d;
+  font-size: 23px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.service-card__description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: rgba(17, 34, 45, 0.72);
+  line-height: 1.6;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+.service-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  align-self: end;
+}
+
+.service-card__icon-btn {
+  aspect-ratio: 1;
+  width: 53px;
+  min-width: 53px;
+  height: 53px;
+  min-height: 53px;
+  padding: 0;
+}
+
+.service-detail-dialog {
+  overflow: hidden;
+  width: min(760px, calc(100vw - 24px));
+  max-width: 760px;
+  max-height: calc(100vh - 32px);
+  border-radius: 24px;
+  background: #fffaf6;
+}
+
+.service-detail-dialog__image {
+  min-height: 280px;
+  background-position: center;
+  background-size: cover;
+}
+
+.service-detail-dialog__body {
+  display: grid;
+  gap: 18px;
+}
+
+.service-detail-dialog__head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.service-detail-dialog__head h3 {
+  margin: 0;
+  color: #151f2d;
+  font-size: 28px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.service-detail-dialog__description {
+  overflow-y: auto;
+  max-height: 34vh;
+  margin: 0;
+  color: rgba(17, 34, 45, 0.76);
+  line-height: 1.65;
+  white-space: pre-line;
+}
+
+.service-detail-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  .service-card {
+    grid-template-columns: 1fr;
+  }
+
+  .service-card__image {
+    min-height: 180px;
+  }
+
+  .service-card__body {
+    padding: 16px;
+  }
+
+  .service-card__actions {
+    justify-content: flex-start;
+  }
+
+  .service-card__view-btn,
+  .service-card__icon-btn {
+    aspect-ratio: 1;
+    width: 53px;
+    min-width: 53px;
+    height: 53px;
+    min-height: 53px;
+    padding: 0;
+  }
+
+  .service-detail-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 20px;
+  }
+
+  .service-detail-dialog__image {
+    min-height: 190px;
+  }
+
+  .service-detail-dialog__body {
+    padding: 18px;
+  }
+
+  .service-detail-dialog__head h3 {
+    font-size: 24px;
+  }
+
+  .service-detail-dialog__actions .q-btn {
+    width: 100%;
+  }
+}
+</style>
