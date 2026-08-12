@@ -26,6 +26,8 @@ Route::prefix('v1')->middleware('recaptcha')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth-login');
+        Route::get('/google/redirect', [AuthController::class, 'redirectToGoogle'])->middleware('throttle:auth-login');
+        Route::get('/google/callback', [AuthController::class, 'handleGoogleCallback'])->middleware('throttle:auth-login');
         Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-login');
         Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-login');
         Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);

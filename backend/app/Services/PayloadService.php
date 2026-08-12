@@ -44,6 +44,9 @@ class PayloadService
         if ($includePrivate) {
             $payload['email'] = $user->email;
             $payload['locale'] = $user->locale;
+            $payload['has_password'] = filled($user->password);
+            $payload['profile_complete'] = $this->profileComplete($user);
+            $payload['missing_profile_fields'] = $this->missingProfileFields($user);
             $payload['banned_at'] = $user->banned_at?->toISOString();
             $payload['unread_messages_count'] = $this->unreadMessageCount($user);
         }
@@ -269,6 +272,28 @@ class PayloadService
         $page = $user->pages->firstWhere('type', $type);
 
         return $page ? $this->page($page) : null;
+    }
+
+    private function profileComplete(User $user): bool
+    {
+        return $this->missingProfileFields($user) === [];
+    }
+
+    private function missingProfileFields(User $user): array
+    {
+        $profile = $user->profile;
+        $fields = [
+            'email' => $user->email,
+            'given_name' => $user->given_name,
+            'family_name' => $user->family_name,
+            'city' => $profile?->city,
+        ];
+
+        return collect($fields)
+            ->filter(fn ($value) => ! filled($value))
+            ->keys()
+            ->values()
+            ->all();
     }
 
     private function pageContact(Page $page, array $setup): array

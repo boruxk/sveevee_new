@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Ad;
+use App\Models\EmailBan;
 use App\Models\Page;
 use App\Models\PageEvent;
 use App\Models\PageProduct;
@@ -19,6 +20,9 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\AbstractProvider;
+use Laravel\Socialite\Two\User as SocialiteUser;
 use Tests\TestCase;
 
 class SveeveeApiTest extends TestCase
@@ -30,6 +34,25 @@ class SveeveeApiTest extends TestCase
         config()->set('recaptcha.enabled', true);
         config()->set('recaptcha.secret_key', 'test-secret');
         config()->set('recaptcha.min_score', 0.5);
+    }
+
+    private function fakeGoogleCallback(array $attributes): void
+    {
+        $provider = \Mockery::mock(AbstractProvider::class);
+        $provider->shouldReceive('stateless')->andReturnSelf();
+        $provider->shouldReceive('user')->andReturn(SocialiteUser::fake($attributes));
+
+        Socialite::shouldReceive('driver')
+            ->with('google')
+            ->andReturn($provider);
+    }
+
+    private function tokenFromGoogleRedirect($response): string
+    {
+        $fragment = parse_url((string) $response->headers->get('Location'), PHP_URL_FRAGMENT) ?: '';
+        parse_str($fragment, $data);
+
+        return (string) ($data['token'] ?? '');
     }
 
     public function test_recaptcha_blocks_mutating_requests_without_token_when_enabled(): void
@@ -79,6 +102,123 @@ class SveeveeApiTest extends TestCase
 
         Http::assertSent(fn ($request) => $request['secret'] === 'test-secret'
             && $request['response'] === 'valid-token');
+    }
+
+    public function test_google_callback_creates_user_and_marks_missing_city(): void
+    {
+        config()->set('app.frontend_url', 'https://app.example.test');
+
+        $this->fakeGoogleCallback([
+            'id' => 'google-ada',
+            'email' => 'Ada@Example.TEST',
+            'name' => 'Ada Lovelace',
+            'given_name' => 'Ada',
+            'family_name' => 'Lovelace',
+        ]);
+
+        $response = $this->get('/api/v1/auth/google/callback');
+
+        $response->assertRedirect();
+        $this->assertStringStartsWith(
+            'https://app.example.test/auth/google/callback#token=',
+            (string) $response->headers->get('Location')
+        );
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'ada@example.test',
+            'google_id' => 'google-ada',
+            'given_name' => 'Ada',
+            'family_name' => 'Lovelace',
+            'locale' => 'he',
+            'role' => 'user',
+        ]);
+        $this->assertNull(User::query()->where('email', 'ada@example.test')->value('password'));
+        $this->assertNotNull(User::query()->where('email', 'ada@example.test')->value('email_verified_at'));
+
+        $this->withToken($this->tokenFromGoogleRedirect($response))
+            ->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('data.has_password', false)
+            ->assertJsonPath('data.profile_complete', false)
+            ->assertJsonPath('data.missing_profile_fields', ['city']);
+    }
+
+    public function test_google_callback_links_existing_email_and_fills_missing_names(): void
+    {
+        config()->set('app.frontend_url', 'https://app.example.test');
+
+        $user = User::factory()->create([
+            'email' => 'link@example.test',
+            'given_name' => null,
+            'family_name' => null,
+            'name' => 'Link Account',
+        ]);
+        $user->profile()->update(['city' => 'Tel Aviv']);
+
+        $this->fakeGoogleCallback([
+            'id' => 'google-link',
+            'email' => 'link@example.test',
+            'name' => 'Mira Cohen',
+            'given_name' => 'Mira',
+            'family_name' => 'Cohen',
+        ]);
+
+        $response = $this->get('/api/v1/auth/google/callback');
+        $response->assertRedirect();
+
+        $this->assertSame(1, User::query()->where('email', 'link@example.test')->count());
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'google_id' => 'google-link',
+            'given_name' => 'Mira',
+            'family_name' => 'Cohen',
+        ]);
+
+        $this->withToken($this->tokenFromGoogleRedirect($response))
+            ->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('data.has_password', true)
+            ->assertJsonPath('data.profile_complete', true)
+            ->assertJsonPath('data.missing_profile_fields', []);
+    }
+
+    public function test_google_callback_marks_missing_required_names(): void
+    {
+        $this->fakeGoogleCallback([
+            'id' => 'google-missing',
+            'email' => 'missing@example.test',
+            'name' => null,
+            'given_name' => null,
+            'family_name' => null,
+        ]);
+
+        $response = $this->get('/api/v1/auth/google/callback');
+
+        $this->withToken($this->tokenFromGoogleRedirect($response))
+            ->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('data.profile_complete', false)
+            ->assertJsonPath('data.missing_profile_fields', ['given_name', 'family_name', 'city']);
+    }
+
+    public function test_google_callback_blocks_banned_email(): void
+    {
+        config()->set('app.frontend_url', 'https://app.example.test');
+        EmailBan::query()->create([
+            'email' => 'banned@example.test',
+            'banned_at' => now(),
+        ]);
+
+        $this->fakeGoogleCallback([
+            'id' => 'google-banned',
+            'email' => 'banned@example.test',
+            'name' => 'Banned User',
+        ]);
+
+        $this->get('/api/v1/auth/google/callback')
+            ->assertRedirect('https://app.example.test/auth/google/callback?error=email_banned');
+
+        $this->assertDatabaseMissing('users', ['email' => 'banned@example.test']);
     }
 
     public function test_database_seeder_creates_admin_user_and_private_ad_without_prefilled_pages(): void

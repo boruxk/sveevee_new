@@ -11,8 +11,12 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Laravel\Socialite\Contracts\User as SocialiteUser;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\AbstractProvider;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -84,6 +88,82 @@ class AuthController extends Controller
         return $this->authenticated($user, 'Logged in.');
     }
 
+    public function redirectToGoogle()
+    {
+        return $this->googleProvider()
+            ->scopes(['openid', 'profile', 'email'])
+            ->stateless()
+            ->redirect();
+    }
+
+    public function handleGoogleCallback()
+    {
+        try {
+            $googleUser = $this->googleProvider()->stateless()->user();
+        } catch (Throwable) {
+            return redirect()->away($this->frontendGoogleCallbackUrl(['error' => 'google_login_failed']));
+        }
+
+        $googleId = trim((string) $googleUser->getId());
+        $email = strtolower(trim((string) $googleUser->getEmail()));
+
+        if ($googleId === '' || $email === '') {
+            return redirect()->away($this->frontendGoogleCallbackUrl(['error' => 'google_missing_email']));
+        }
+
+        if (EmailBan::query()->where('email', $email)->exists()) {
+            return redirect()->away($this->frontendGoogleCallbackUrl(['error' => 'email_banned']));
+        }
+
+        $user = User::query()->where('google_id', $googleId)->first()
+            ?: User::query()->where('email', $email)->first();
+
+        if ($user?->banned_at) {
+            return redirect()->away($this->frontendGoogleCallbackUrl(['error' => 'account_banned']));
+        }
+
+        $names = $this->googleNames($googleUser, $email);
+
+        if ($user) {
+            $updates = [
+                'google_id' => $googleId,
+                'email_verified_at' => $user->email_verified_at ?: now(),
+            ];
+
+            if (! filled($user->given_name) && filled($names['given_name'])) {
+                $updates['given_name'] = $names['given_name'];
+            }
+
+            if (! filled($user->family_name) && filled($names['family_name'])) {
+                $updates['family_name'] = $names['family_name'];
+            }
+
+            if (! filled($user->name) && filled($names['name'])) {
+                $updates['name'] = $names['name'];
+            }
+
+            $user->forceFill($updates)->save();
+        } else {
+            $user = User::query()->create([
+                'name' => $names['name'],
+                'given_name' => $names['given_name'],
+                'family_name' => $names['family_name'],
+                'email' => $email,
+                'email_verified_at' => now(),
+                'google_id' => $googleId,
+                'password' => null,
+                'locale' => 'he',
+                'role' => 'user',
+            ]);
+        }
+
+        $user->profile()->firstOrCreate([]);
+
+        return redirect()->away($this->frontendGoogleCallbackUrl(fragment: [
+            'token' => $this->createAuthToken($user),
+        ]));
+    }
+
     public function forgotPassword(Request $request)
     {
         $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
@@ -141,11 +221,69 @@ class AuthController extends Controller
 
     private function authenticated(User $user, string $message, int $status = 200)
     {
-        $token = $user->createToken('sveevee-api')->plainTextToken;
-
         return ApiResponseService::success([
-            'token' => $token,
+            'token' => $this->createAuthToken($user),
             'user' => $this->payloads->user($user->fresh(), includePrivate: true),
         ], $message, $status);
+    }
+
+    private function createAuthToken(User $user): string
+    {
+        return $user->createToken('sveevee-api')->plainTextToken;
+    }
+
+    private function googleProvider(): AbstractProvider
+    {
+        /** @var AbstractProvider $provider */
+        $provider = Socialite::driver('google');
+
+        return $provider;
+    }
+
+    private function googleNames(SocialiteUser $googleUser, string $email): array
+    {
+        $raw = is_array($googleUser->user ?? null) ? $googleUser->user : [];
+        $givenName = trim((string) ($raw['given_name'] ?? ''));
+        $familyName = trim((string) ($raw['family_name'] ?? ''));
+        $fullName = trim((string) ($googleUser->getName() ?: ''));
+
+        if ((! filled($givenName) || ! filled($familyName)) && filled($fullName)) {
+            $parts = preg_split('/\s+/', $fullName, 2);
+
+            if (! filled($givenName)) {
+                $givenName = trim((string) ($parts[0] ?? ''));
+            }
+
+            if (! filled($familyName)) {
+                $familyName = trim((string) ($parts[1] ?? ''));
+            }
+        }
+
+        $displayName = trim($givenName.' '.$familyName);
+
+        if (! filled($displayName)) {
+            $displayName = $fullName ?: Str::before($email, '@');
+        }
+
+        return [
+            'given_name' => filled($givenName) ? $givenName : null,
+            'family_name' => filled($familyName) ? $familyName : null,
+            'name' => $displayName,
+        ];
+    }
+
+    private function frontendGoogleCallbackUrl(array $query = [], array $fragment = []): string
+    {
+        $url = rtrim((string) config('app.frontend_url'), '/').'/auth/google/callback';
+
+        if ($query !== []) {
+            $url .= '?'.http_build_query($query);
+        }
+
+        if ($fragment !== []) {
+            $url .= '#'.http_build_query($fragment);
+        }
+
+        return $url;
     }
 }

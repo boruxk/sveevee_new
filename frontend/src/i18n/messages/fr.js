@@ -109,7 +109,13 @@ export default {
 		resetPasswordBody: 'Entrez l’e-mail de votre compte et choisissez un nouveau mot de passe.',
 		resetPassword: 'Réinitialiser',
 		passwordResetSaved: 'Le mot de passe a été réinitialisé.',
-		resetFailed: 'Le lien est invalide ou expiré.'
+		resetFailed: 'Le lien est invalide ou expiré.',
+		continueWithGoogle: 'Continuer avec Google',
+		googleLoginFailed: 'La connexion Google a échoué.',
+		googleMissingEmail: 'Google n’a pas renvoyé l’e-mail du compte.',
+		emailBanned: 'Cette adresse e-mail est bloquée.',
+		accountBanned: 'Ce compte est bloqué.',
+		or: 'ou'
 	},
 	ads: {
 		title: 'Titre',
@@ -437,9 +443,12 @@ export default {
 		saveFailed: 'Le profil n’a pas pu être enregistré.',
 		passwordTitle: 'Changer le mot de passe',
 		passwordBody: 'Changez votre mot de passe ici. Nous enverrons une confirmation à votre adresse e-mail.',
+		googlePasswordBody: 'Ce compte n’a pas encore de mot de passe. Pour en ajouter un, envoyez-vous un lien de réinitialisation.',
 		changePassword: 'Changer le mot de passe',
 		passwordSaved: 'Mot de passe changé. Une confirmation a été envoyée par e-mail.',
-		passwordSaveFailed: 'Le mot de passe n’a pas pu être changé.'
+		passwordSaveFailed: 'Le mot de passe n’a pas pu être changé.',
+		completeTitle: 'Complétez votre profil',
+		completeBody: 'Avant de continuer, remplissez les champs obligatoires du profil.'
 	},
 	admin: {
 		users: 'Utilisateurs',

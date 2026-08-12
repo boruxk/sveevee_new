@@ -1,5 +1,6 @@
 <script setup>
 	import { computed, onMounted, reactive, ref, toRef, watch } from 'vue'
+	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
@@ -14,6 +15,8 @@
 
 	const { t, locale } = useI18n()
 	const $q = useQuasar()
+	const route = useRoute()
+	const router = useRouter()
 	const authStore = useAuthStore()
 	const appStore = useAppStore()
 	const loading = ref(false)
@@ -63,6 +66,7 @@
 		{ label: `${flag(0x1f1eb, 0x1f1f7)} ${t('languages.fr')}`, title: t('languages.fr'), value: 'fr', flag: flag(0x1f1eb, 0x1f1f7) }
 	])
 	const userTypeOptions = computed(() => buildUserTypeSelectOptions(locale.value))
+	const hasPassword = computed(() => authStore.user?.has_password !== false)
 	const selectedUserTypeOption = computed(() => (
 		userTypeOptions.value.find((option) => option.value === form.user_type) || null
 	))
@@ -106,6 +110,10 @@
 			await authStore.refreshUser()
 			hydrate(authStore.user.profile)
 			$q.notify({ type: 'positive', message: t('profile.saved') })
+
+			if (route.query.complete === '1' && authStore.user?.profile_complete) {
+				router.push({ name: 'home' })
+			}
 		} catch (error) {
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('profile.saveFailed')) })
 		} finally {
@@ -196,6 +204,13 @@
 			</section>
 
 			<section class="soz-section-card profile-panel q-mt-lg">
+				<div v-if="route.query.complete === '1'" class="profile-completion-banner">
+					<q-icon name="task_alt" size="24px" />
+					<div>
+						<h2>{{ t('profile.completeTitle') }}</h2>
+						<p>{{ t('profile.completeBody') }}</p>
+					</div>
+				</div>
 				<q-form v-if="!loading" ref="formRef" greedy class="column q-gutter-md q-pl-md q-pt-lg" @submit.prevent="save()">
 					<div class="row q-col-gutter-md q-pb-md">
 						<q-input class="col-12 col-md-4"
@@ -350,6 +365,7 @@
 				<div v-if="!loading" class="profile-password-gap" />
 				<q-form v-if="!loading"
 					ref="passwordFormRef"
+					v-show="hasPassword"
 					greedy
 					class="profile-password-form column q-gutter-md q-pl-md"
 					@submit.prevent="savePassword()"
@@ -388,7 +404,21 @@
 						:label="t('profile.changePassword')"
 					/>
 				</q-form>
-				<q-spinner v-else color="primary" />
+				<div v-if="!loading && !hasPassword" class="profile-password-form column q-gutter-md q-pl-md">
+					<div class="profile-password-intro">
+						<h2>{{ t('profile.passwordTitle') }}</h2>
+						<p>{{ t('profile.googlePasswordBody') }}</p>
+					</div>
+					<q-btn class="form-submit"
+						color="primary"
+						unelevated
+						rounded
+						icon="lock_reset"
+						:to="{ name: 'forgot-password' }"
+						:label="t('auth.forgotPassword')"
+					/>
+				</div>
+				<q-spinner v-if="loading" color="primary" />
 			</section>
 		</div>
 	</q-page>
@@ -415,6 +445,32 @@
 
 .form-submit {
   margin-inline-start: 0 !important;
+}
+
+.profile-completion-banner {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  color: #402050;
+  background:
+    radial-gradient(circle at top left, rgba(255, 116, 38, 0.15), transparent 42%),
+    linear-gradient(135deg, rgba(255, 116, 38, 0.14), rgba(245, 66, 145, 0.13));
+  box-shadow: 0 18px 36px rgba(245, 66, 145, 0.12);
+}
+
+.profile-completion-banner h2 {
+  margin: 0 0 6px;
+  font-size: 1.18rem;
+  line-height: 1.25;
+}
+
+.profile-completion-banner p {
+  margin: 0;
+  color: rgba(17, 34, 45, 0.7);
+  line-height: 1.5;
 }
 
 .profile-password-gap {

@@ -109,7 +109,13 @@ export default {
 		resetPasswordBody: 'Введите e-mail аккаунта и выберите новый пароль.',
 		resetPassword: 'Сбросить пароль',
 		passwordResetSaved: 'Пароль сброшен.',
-		resetFailed: 'Ссылка недействительна или устарела.'
+		resetFailed: 'Ссылка недействительна или устарела.',
+		continueWithGoogle: 'Продолжить с Google',
+		googleLoginFailed: 'Не удалось войти через Google.',
+		googleMissingEmail: 'Google не вернул e-mail аккаунта.',
+		emailBanned: 'Этот e-mail заблокирован.',
+		accountBanned: 'Этот аккаунт заблокирован.',
+		or: 'или'
 	},
 	ads: {
 		title: 'Заголовок',
@@ -437,9 +443,12 @@ export default {
 		saveFailed: 'Не удалось сохранить профиль.',
 		passwordTitle: 'Изменить пароль',
 		passwordBody: 'Здесь можно изменить пароль. Мы отправим подтверждение на e-mail аккаунта.',
+		googlePasswordBody: 'У этого аккаунта пока нет пароля. Чтобы добавить пароль, отправьте себе ссылку для сброса.',
 		changePassword: 'Изменить пароль',
 		passwordSaved: 'Пароль изменен. Мы отправили подтверждение по e-mail.',
-		passwordSaveFailed: 'Не удалось изменить пароль.'
+		passwordSaveFailed: 'Не удалось изменить пароль.',
+		completeTitle: 'Заполните профиль',
+		completeBody: 'Перед продолжением заполните обязательные поля профиля.'
 	},
 	admin: {
 		users: 'Пользователи',

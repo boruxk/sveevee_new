@@ -23,6 +23,7 @@ export const useAuthStore = defineStore('auth', {
 	}),
 	getters: {
 		isAuthenticated: (state) => Boolean(state.token && state.user),
+		needsProfileCompletion: (state) => Boolean(state.token && state.user && state.user.profile_complete === false),
 		roles: (state) => normalizedRoles(state.user),
 		isAdmin: (state) => normalizedRoles(state.user).includes('admin'),
 		unreadMessagesCount: (state) => state.user?.unread_messages_count || 0
@@ -64,6 +65,24 @@ export const useAuthStore = defineStore('auth', {
 				const { data } = await register(payload)
 				this.persistSession(data.data)
 				return data
+			} finally {
+				this.loading = false
+			}
+		},
+		async loginWithToken(token) {
+			this.loading = true
+
+			try {
+				this.token = token
+				this.user = null
+				this.initialized = true
+				localStorage.setItem(tokenStorageKey, token)
+				await this.refreshUser()
+
+				return this.user
+			} catch (error) {
+				this.clearSession()
+				throw error
 			} finally {
 				this.loading = false
 			}

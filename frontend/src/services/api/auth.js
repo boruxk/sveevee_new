@@ -1,5 +1,7 @@
 import apiClient from '@/services/api/client'
 
+const apiBaseUrl = () => (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
+
 export function register(payload) {
 	return apiClient.post('/auth/register', payload)
 }
@@ -22,4 +24,8 @@ export function logout() {
 
 export function fetchMe() {
 	return apiClient.get('/me')
+}
+
+export function googleAuthRedirectUrl() {
+	return `${apiBaseUrl()}/auth/google/redirect`
 }

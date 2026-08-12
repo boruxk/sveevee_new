@@ -109,7 +109,13 @@ export default {
 		resetPasswordBody: 'Enter the email for your account and choose a new password.',
 		resetPassword: 'Reset password',
 		passwordResetSaved: 'Password has been reset.',
-		resetFailed: 'The reset link is invalid or has expired.'
+		resetFailed: 'The reset link is invalid or has expired.',
+		continueWithGoogle: 'Continue with Google',
+		googleLoginFailed: 'Google login failed.',
+		googleMissingEmail: 'Google did not return an account email.',
+		emailBanned: 'This email address is banned.',
+		accountBanned: 'This account is banned.',
+		or: 'or'
 	},
 	ads: {
 		title: 'Headline',
@@ -437,9 +443,12 @@ export default {
 		saveFailed: 'Profile could not be saved.',
 		passwordTitle: 'Change password',
 		passwordBody: 'Change your password here. We will send a confirmation email to your account address.',
+		googlePasswordBody: 'This account does not have a password yet. To add one, send yourself a password reset link.',
 		changePassword: 'Change password',
 		passwordSaved: 'Password changed. We sent you a confirmation email.',
-		passwordSaveFailed: 'Password could not be changed.'
+		passwordSaveFailed: 'Password could not be changed.',
+		completeTitle: 'Complete your profile',
+		completeBody: 'Before you continue, fill in the required profile fields.'
 	},
 	admin: {
 		users: 'Users',

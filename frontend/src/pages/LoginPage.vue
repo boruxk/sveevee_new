@@ -5,6 +5,7 @@
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import GoogleAuthButton from '@/components/GoogleAuthButton.vue'
 	import PasswordInput from '@/components/PasswordInput.vue'
 
 	const { t } = useI18n()
@@ -36,6 +37,8 @@
 			<section class="soz-section-card auth-panel">
 				<div class="auth-panel__inner">
 					<h1 class="soz-page-title">{{ t('auth.loginTitle') }}</h1>
+					<GoogleAuthButton class="auth-google" />
+					<div class="auth-divider">{{ t('auth.or') }}</div>
 					<q-form ref="formRef" greedy class="column q-gutter-md" @submit.prevent="submit()">
 						<q-input
 							v-model="form.email"
@@ -94,6 +97,30 @@
 
 .auth-panel__inner h1 {
   margin-bottom: 24px;
+}
+
+.auth-google {
+  margin-bottom: 20px;
+}
+
+.auth-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 14px;
+  align-items: center;
+  margin: 0 0 24px;
+  color: rgba(17, 34, 45, 0.5);
+  font-size: 1.08rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  display: block;
+  height: 1px;
+  background: rgba(17, 34, 45, 0.14);
+  content: "";
 }
 
 .forgot-link {

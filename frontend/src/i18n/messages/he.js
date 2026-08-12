@@ -109,7 +109,13 @@ export default {
 		resetPasswordBody: 'הזינו את אימייל החשבון ובחרו סיסמה חדשה.',
 		resetPassword: 'איפוס סיסמה',
 		passwordResetSaved: 'הסיסמה אופסה.',
-		resetFailed: 'קישור האיפוס אינו תקין או שפג תוקפו.'
+		resetFailed: 'קישור האיפוס אינו תקין או שפג תוקפו.',
+		continueWithGoogle: 'המשך עם Google',
+		googleLoginFailed: 'הכניסה עם Google נכשלה.',
+		googleMissingEmail: 'Google לא החזיר אימייל לחשבון.',
+		emailBanned: 'כתובת האימייל חסומה.',
+		accountBanned: 'החשבון חסום.',
+		or: 'או'
 	},
 	ads: {
 		title: 'כותרת',
@@ -437,9 +443,12 @@ export default {
 		saveFailed: 'לא ניתן לשמור את הפרופיל.',
 		passwordTitle: 'שינוי סיסמה',
 		passwordBody: 'כאן אפשר לשנות את הסיסמה. נשלח אישור לאימייל של החשבון.',
+		googlePasswordBody: 'לחשבון הזה אין סיסמה עדיין. כדי להוסיף סיסמה, שלח לעצמך קישור לאיפוס סיסמה.',
 		changePassword: 'שינוי סיסמה',
 		passwordSaved: 'הסיסמה שונתה. שלחנו אישור באימייל.',
-		passwordSaveFailed: 'לא ניתן לשנות את הסיסמה.'
+		passwordSaveFailed: 'לא ניתן לשנות את הסיסמה.',
+		completeTitle: 'השלמת פרופיל',
+		completeBody: 'לפני שתמשיך, מלא את שדות החובה בפרופיל.'
 	},
 	admin: {
 		users: 'משתמשים',
