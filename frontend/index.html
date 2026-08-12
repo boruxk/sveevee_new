@@ -2,23 +2,85 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood." />
+    <meta name="description" content="sveevee is a local discovery app for ads, business pages, community pages, products, services, events, ratings, and direct chat by city and neighborhood." />
     <meta name="robots" content="index,follow" />
-    <meta name="application-name" content="SVEEVEE" />
+    <meta name="application-name" content="sveevee" />
     <meta name="theme-color" content="#6f42ff" />
-    <meta property="og:site_name" content="SVEEVEE" />
-    <meta property="og:title" content="SVEEVEE - Local ads and neighborhood pages" />
-    <meta property="og:description" content="Find local ads, business pages, community pages, store products, events, ratings, nearby people, and direct chat by city and neighborhood." />
+    <meta property="og:site_name" content="sveevee" />
+    <meta property="og:title" content="sveevee - Local discovery app for ads, pages, products, events, ratings, and chat" />
+    <meta property="og:description" content="Find local ads, business pages, community pages, products, services, events, ratings, nearby people, and direct chat by city and neighborhood." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary" />
-    <title>SVEEVEE - Local ads and neighborhood pages</title>
+    <title>sveevee - Local discovery app for ads, pages, products, events, ratings, and chat</title>
+    <style>
+      .homepage-purpose-fallback {
+        min-height: 100vh;
+        padding: 48px 20px;
+        color: #151f3b;
+        background: #fff8fb;
+        font-family: "Plus Jakarta Sans", Arial, sans-serif;
+      }
+
+      .homepage-purpose-fallback__inner {
+        max-width: 960px;
+        margin: 0 auto;
+      }
+
+      .homepage-purpose-fallback__brand {
+        margin: 0 0 14px;
+        color: #7b3ff2;
+        font-size: 16px;
+        font-weight: 800;
+        text-transform: lowercase;
+      }
+
+      .homepage-purpose-fallback h1 {
+        max-width: 840px;
+        margin: 0;
+        font-size: clamp(34px, 6vw, 64px);
+        line-height: 1.05;
+      }
+
+      .homepage-purpose-fallback p,
+      .homepage-purpose-fallback li {
+        color: rgba(21, 31, 59, 0.76);
+        font-size: 17px;
+        line-height: 1.7;
+      }
+
+      .homepage-purpose-fallback a {
+        color: #7b3ff2;
+        font-weight: 800;
+      }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "sveevee",
+        "url": "https://sveevee.co.il/",
+        "applicationCategory": "LifestyleApplication",
+        "description": "sveevee is a local discovery app for ads, business pages, community pages, products, services, events, ratings, and direct chat by city and neighborhood.",
+        "privacyPolicy": "https://sveevee.co.il/privacy"
+      }
+    </script>
   </head>
   <body>
+    <main id="homepage-purpose-fallback" class="homepage-purpose-fallback">
+      <div class="homepage-purpose-fallback__inner">
+        <p class="homepage-purpose-fallback__brand">sveevee</p>
+        <h1>sveevee helps people find local ads, business pages, community pages, products, services, events, ratings, and direct chat near them.</h1>
+        <p>Visitors can search by city and neighborhood without registration. Registered users can create a profile, post local ads, build business and community pages, add store products and services, publish events, rate public pages, and start direct chats with other users.</p>
+        <p>Google Sign-In is optional. It is used only to create or access a sveevee account with the user's Google email and basic profile information.</p>
+        <p><a href="/privacy">Privacy Policy</a></p>
+      </div>
+    </main>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>

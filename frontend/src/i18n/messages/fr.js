@@ -469,46 +469,46 @@ export default {
 		empty: 'Aucun resultat.'
 	},
 	seo: {
-		defaultTitle: 'SVEEVEE',
+		defaultTitle: 'sveevee',
 		defaultDescription: 'Annonces locales, pages entreprise, pages communaute, produits, evenements, avis et chat direct pour votre quartier.',
-		landingTitle: 'SVEEVEE - annonces locales et pages de quartier',
-		landingDescription: 'Trouvez annonces locales, pages entreprise, pages communaute, produits, evenements, avis, personnes proches et chat par ville et quartier.',
+		landingTitle: 'sveevee - application locale pour annonces, pages, produits, evenements, avis et chat',
+		landingDescription: 'sveevee aide a trouver annonces locales, pages entreprise, pages communaute, produits, services, evenements, avis, personnes proches et chat par ville et quartier.',
 		searchTitle: 'Recherche annonces locales, pages et personnes',
-		searchDescription: 'Recherchez utilisateurs, pages entreprise, pages communaute et annonces locales pres de vous sur SVEEVEE.',
+		searchDescription: 'Recherchez utilisateurs, pages entreprise, pages communaute et annonces locales pres de vous sur sveevee.',
 		loginTitle: 'Connexion',
-		loginDescription: 'Connectez-vous pour gerer votre profil, vos pages, vos annonces et vos chats SVEEVEE.',
+		loginDescription: 'Connectez-vous pour gerer votre profil, vos pages, vos annonces et vos chats sveevee.',
 		forgotPasswordTitle: 'Réinitialiser le mot de passe',
-		forgotPasswordDescription: 'Demandez un lien de réinitialisation SVEEVEE par e-mail.',
+		forgotPasswordDescription: 'Demandez un lien de réinitialisation sveevee par e-mail.',
 		resetPasswordTitle: 'Choisir un nouveau mot de passe',
-		resetPasswordDescription: 'Utilisez votre lien SVEEVEE pour choisir un nouveau mot de passe.',
-		registerTitle: 'Creer un compte SVEEVEE',
+		resetPasswordDescription: 'Utilisez votre lien sveevee pour choisir un nouveau mot de passe.',
+		registerTitle: 'Creer un compte sveevee',
 		registerDescription: 'Creez un compte pour publier des annonces locales, creer des pages publiques et discuter avec les personnes proches.',
 		privacyTitle: 'Politique de confidentialite',
-		privacyDescription: 'Lisez comment SVEEVEE collecte, utilise, conserve et partage les donnees personnelles, y compris les donnees de connexion Google.',
+		privacyDescription: 'Lisez comment sveevee collecte, utilise, conserve et partage les donnees personnelles, y compris les donnees de connexion Google.',
 		homeTitle: 'Fil de quartier',
 		homeDescription: 'Parcourez les annonces locales priorisees par quartier, ville et communautes proches.',
 		meTitle: 'Mes annonces',
-		meDescription: 'Gerez vos annonces et votre activite locale sur SVEEVEE.',
+		meDescription: 'Gerez vos annonces et votre activite locale sur sveevee.',
 		profileTitle: 'Parametres du profil',
-		profileDescription: 'Mettez a jour votre profil, votre localisation, vos langues et votre photo SVEEVEE.',
+		profileDescription: 'Mettez a jour votre profil, votre localisation, vos langues et votre photo sveevee.',
 		businessTitle: 'Parametres de page entreprise',
 		businessDescription: 'Creez et gerez votre page entreprise publique, vos annonces, boutique, avis et coordonnees.',
 		communityTitle: 'Parametres de page communaute',
 		communityDescription: 'Creez et gerez votre page communaute publique, evenements, annonces, avis et coordonnees.',
 		adminTitle: 'Admin',
-		adminDescription: 'Zone d administration SVEEVEE.',
-		userFallbackTitle: 'Profil SVEEVEE',
-		userFallbackDescription: 'Consultez un profil public SVEEVEE, ses pages et annonces locales.',
-		userDescription: 'Consultez {name} sur SVEEVEE, avec ses pages publiques et annonces locales.',
-		pageFallbackTitle: 'Page SVEEVEE',
-		pageFallbackDescription: 'Consultez une page entreprise ou communaute publique sur SVEEVEE.',
-		pageDescription: 'Consultez {name}, une page publique {type} sur SVEEVEE.'
+		adminDescription: 'Zone d administration sveevee.',
+		userFallbackTitle: 'Profil sveevee',
+		userFallbackDescription: 'Consultez un profil public sveevee, ses pages et annonces locales.',
+		userDescription: 'Consultez {name} sur sveevee, avec ses pages publiques et annonces locales.',
+		pageFallbackTitle: 'Page sveevee',
+		pageFallbackDescription: 'Consultez une page entreprise ou communaute publique sur sveevee.',
+		pageDescription: 'Consultez {name}, une page publique {type} sur sveevee.'
 	},
 	landing: {
 		eyebrow: 'Annonces locales, moins de bruit',
-		title: 'SVEEVEE',
-		purposeKicker: 'A propos de SVEEVEE',
-		purposeTitle: 'SVEEVEE est une application de decouverte locale pour annonces, pages entreprise, pages communaute, produits, evenements, avis et chat direct.',
+		title: 'sveevee',
+		purposeKicker: 'A propos de sveevee',
+		purposeTitle: 'sveevee est une application de decouverte locale pour annonces, pages entreprise, pages communaute, produits, evenements, avis et chat direct.',
 		purposeBody: 'Les visiteurs peuvent chercher par ville et quartier sans inscription. Un compte permet de publier des annonces, gerer un profil public, creer des pages entreprise et communaute, ajouter des produits ou services, publier des evenements, noter des pages publiques et commencer des conversations. La connexion Google est facultative et utilise seulement votre e-mail Google et les informations de profil de base pour creer ou ouvrir votre compte.',
 		purposePrivacyLink: 'Politique de confidentialite',
 		subtitle: 'Annonces locales, pages entreprise, pages communaute, produits, evenements, avis et chat direct pour votre quartier.',
@@ -517,7 +517,7 @@ export default {
 		featureTitle: 'Tout ce qu il faut pour trouver utilisateurs, entreprises, produits, evenements et annonces pres de chez vous',
 		workflowKicker: 'Comment ça marche',
 		workflowTitle: 'Chercher, publier et commencer à discuter',
-		workflowBody: 'SVEEVEE garde une experience locale et propre: annonces par quartier, pages publiques, produits boutique, evenements communautaires, avis et limites de chat qui reduisent le spam.',
+		workflowBody: 'sveevee garde une experience locale et propre: annonces par quartier, pages publiques, produits boutique, evenements communautaires, avis et limites de chat qui reduisent le spam.',
 		pricingKicker: 'Tarifs',
 		pricingTitle: 'Un prix simple pour tout le monde',
 		month: 'par mois',
@@ -527,7 +527,7 @@ export default {
 		contentBlocks: [
 			{
 				title: 'Annonces locales par ville et quartier',
-				body: 'SVEEVEE met en avant des annonces reliees a une vraie ville et, quand c est possible, a un quartier precis. Les visiteurs peuvent rechercher des annonces privees, des annonces d entreprise et des annonces de communaute avant meme de creer un compte, puis affiner les resultats par zone. La recherche reste ainsi utile pour les besoins quotidiens: service proche, recommandation locale, offre du quartier ou personne situee pres de chez soi.'
+				body: 'sveevee met en avant des annonces reliees a une vraie ville et, quand c est possible, a un quartier precis. Les visiteurs peuvent rechercher des annonces privees, des annonces d entreprise et des annonces de communaute avant meme de creer un compte, puis affiner les resultats par zone. La recherche reste ainsi utile pour les besoins quotidiens: service proche, recommandation locale, offre du quartier ou personne situee pres de chez soi.'
 			},
 			{
 				title: 'Pages publiques pour entreprises et communautes',
@@ -539,7 +539,7 @@ export default {
 			},
 			{
 				title: 'Chat direct avec moins de bruit',
-				body: 'La decouverte locale fonctionne mieux quand le contact est simple sans devenir envahissant. SVEEVEE garde le chat proche du profil et limite les premiers messages repetes, pour que les conversations commencent naturellement sans transformer la plateforme en canal de spam. Voisins, entreprises et organisateurs de communautes peuvent passer plus calmement d un resultat de recherche ou d une page publique a une vraie conversation.'
+				body: 'La decouverte locale fonctionne mieux quand le contact est simple sans devenir envahissant. sveevee garde le chat proche du profil et limite les premiers messages repetes, pour que les conversations commencent naturellement sans transformer la plateforme en canal de spam. Voisins, entreprises et organisateurs de communautes peuvent passer plus calmement d un resultat de recherche ou d une page publique a une vraie conversation.'
 			}
 		],
 		features: [

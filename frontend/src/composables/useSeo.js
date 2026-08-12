@@ -1,6 +1,6 @@
 import { unref, watchEffect } from 'vue'
 
-const SITE_NAME = 'SVEEVEE'
+const SITE_NAME = 'sveevee'
 const DEFAULT_DESCRIPTION = 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.'
 
 function cleanText(value) {

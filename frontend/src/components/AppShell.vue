@@ -93,7 +93,7 @@
 		<q-header class="bg-transparent text-dark shell-header">
 			<q-toolbar class="shell-toolbar">
 				<router-link :to="{ name: homeRouteName }" class="brand-lockup">
-					<img :src="logoSrc" alt="SVEEVEE" class="brand-logo" />
+					<img :src="logoSrc" alt="sveevee" class="brand-logo" />
 				</router-link>
 
 				<q-space />
@@ -264,7 +264,7 @@
 
 		<footer class="shell-footer">
 			<div class="shell-footer__inner">
-				<div class="shell-footer__brand">© {{ currentYear }} SVEEVEE</div>
+				<div class="shell-footer__brand">© {{ currentYear }} sveevee</div>
 				<nav class="shell-footer__nav" :aria-label="t('footer.label')">
 					<router-link :to="{ name: 'privacy' }">{{ t('footer.privacy') }}</router-link>
 				</nav>

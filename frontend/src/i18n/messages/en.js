@@ -469,46 +469,46 @@ export default {
 		empty: 'No results.'
 	},
 	seo: {
-		defaultTitle: 'SVEEVEE',
+		defaultTitle: 'sveevee',
 		defaultDescription: 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.',
-		landingTitle: 'SVEEVEE - Local ads and neighborhood pages',
-		landingDescription: 'Find local ads, business pages, community pages, store products, events, ratings, nearby people, and direct chat by city and neighborhood.',
+		landingTitle: 'sveevee - Local discovery app for ads, pages, products, events, ratings, and chat',
+		landingDescription: 'sveevee helps people find local ads, business pages, community pages, products, services, events, ratings, nearby people, and direct chat by city and neighborhood.',
 		searchTitle: 'Search local ads, pages, and people',
-		searchDescription: 'Search users, business pages, community pages, and local ads near you on SVEEVEE.',
+		searchDescription: 'Search users, business pages, community pages, and local ads near you on sveevee.',
 		loginTitle: 'Login',
-		loginDescription: 'Log in to manage your SVEEVEE profile, pages, ads, and chats.',
+		loginDescription: 'Log in to manage your sveevee profile, pages, ads, and chats.',
 		forgotPasswordTitle: 'Reset password',
-		forgotPasswordDescription: 'Request a SVEEVEE password reset link by email.',
+		forgotPasswordDescription: 'Request a sveevee password reset link by email.',
 		resetPasswordTitle: 'Choose a new password',
-		resetPasswordDescription: 'Use your SVEEVEE reset link to choose a new password.',
-		registerTitle: 'Create a SVEEVEE account',
+		resetPasswordDescription: 'Use your sveevee reset link to choose a new password.',
+		registerTitle: 'Create a sveevee account',
 		registerDescription: 'Create an account to post local ads, build public pages, and chat with people nearby.',
 		privacyTitle: 'Privacy Policy',
-		privacyDescription: 'Read how SVEEVEE collects, uses, stores, and shares personal data, including Google sign-in data.',
+		privacyDescription: 'Read how sveevee collects, uses, stores, and shares personal data, including Google sign-in data.',
 		homeTitle: 'Neighborhood feed',
 		homeDescription: 'Browse local ads prioritized by your neighborhood, your city, and nearby communities.',
 		meTitle: 'My ads',
-		meDescription: 'Manage your SVEEVEE ads and local activity.',
+		meDescription: 'Manage your sveevee ads and local activity.',
 		profileTitle: 'Profile settings',
-		profileDescription: 'Update your SVEEVEE profile, location, languages, and photo.',
+		profileDescription: 'Update your sveevee profile, location, languages, and photo.',
 		businessTitle: 'Business page settings',
 		businessDescription: 'Build and manage your public business page, ads, store, ratings, and contact details.',
 		communityTitle: 'Community page settings',
 		communityDescription: 'Build and manage your public community page, events, ads, ratings, and contact details.',
 		adminTitle: 'Admin',
-		adminDescription: 'SVEEVEE administration area.',
-		userFallbackTitle: 'SVEEVEE profile',
-		userFallbackDescription: 'View a public SVEEVEE profile, pages, and local ads.',
-		userDescription: 'View {name} on SVEEVEE, including public pages and local ads.',
-		pageFallbackTitle: 'SVEEVEE page',
-		pageFallbackDescription: 'View a public business or community page on SVEEVEE.',
-		pageDescription: 'View {name}, a public {type} page on SVEEVEE.'
+		adminDescription: 'sveevee administration area.',
+		userFallbackTitle: 'sveevee profile',
+		userFallbackDescription: 'View a public sveevee profile, pages, and local ads.',
+		userDescription: 'View {name} on sveevee, including public pages and local ads.',
+		pageFallbackTitle: 'sveevee page',
+		pageFallbackDescription: 'View a public business or community page on sveevee.',
+		pageDescription: 'View {name}, a public {type} page on sveevee.'
 	},
 	landing: {
 		eyebrow: 'Local ads, less noise',
-		title: 'SVEEVEE',
-		purposeKicker: 'About SVEEVEE',
-		purposeTitle: 'SVEEVEE is a local discovery app for ads, business pages, community pages, products, events, ratings, and direct chat.',
+		title: 'sveevee',
+		purposeKicker: 'About sveevee',
+		purposeTitle: 'sveevee is a local discovery app for ads, business pages, community pages, products, events, ratings, and direct chat.',
 		purposeBody: 'Visitors can search by city and neighborhood without registration. Creating an account lets people post ads, manage a public profile, build business and community pages, add products or services, publish events, rate public pages, and start conversations. Google sign-in is optional and uses only your Google email and basic profile details to create or access your account.',
 		purposePrivacyLink: 'Privacy Policy',
 		subtitle: 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.',
@@ -517,7 +517,7 @@ export default {
 		featureTitle: 'Everything people need to find users, businesses, products, events, and ads nearby',
 		workflowKicker: 'How it works',
 		workflowTitle: 'Search, post, and start chatting',
-		workflowBody: 'SVEEVEE keeps the experience local and clean: neighborhood ads, clear public pages, store products, community events, ratings, and chat limits that reduce spam.',
+		workflowBody: 'sveevee keeps the experience local and clean: neighborhood ads, clear public pages, store products, community events, ratings, and chat limits that reduce spam.',
 		pricingKicker: 'Pricing',
 		pricingTitle: 'Simple pricing for everyone',
 		month: 'per month',
@@ -527,7 +527,7 @@ export default {
 		contentBlocks: [
 			{
 				title: 'Local ads by city and neighborhood',
-				body: 'SVEEVEE focuses on local ads that are connected to a real city and, when available, a specific neighborhood. People can search for private ads, business ads, and community ads without opening an account first, then narrow the results by the area that matters to them. That keeps discovery practical for daily needs: a nearby service, a useful recommendation, a local offer, or a person in the same neighborhood.'
+				body: 'sveevee focuses on local ads that are connected to a real city and, when available, a specific neighborhood. People can search for private ads, business ads, and community ads without opening an account first, then narrow the results by the area that matters to them. That keeps discovery practical for daily needs: a nearby service, a useful recommendation, a local offer, or a person in the same neighborhood.'
 			},
 			{
 				title: 'Public pages for businesses and communities',
@@ -539,7 +539,7 @@ export default {
 			},
 			{
 				title: 'Direct chat with cleaner local conversations',
-				body: 'Local discovery is more useful when contact is easy but not noisy. SVEEVEE keeps direct chat close to the profile and limits repeated first messages, so conversations can start naturally without turning the platform into a spam channel. This gives neighbors, businesses, and community organizers a calmer way to move from a search result or public page into a real conversation.'
+				body: 'Local discovery is more useful when contact is easy but not noisy. sveevee keeps direct chat close to the profile and limits repeated first messages, so conversations can start naturally without turning the platform into a spam channel. This gives neighbors, businesses, and community organizers a calmer way to move from a search result or public page into a real conversation.'
 			}
 		],
 		features: [

@@ -38,3 +38,4 @@ const appStore = useAppStore(pinia)
 appStore.syncDocument(i18n.global.locale.value)
 
 app.mount('#app')
+document.getElementById('homepage-purpose-fallback')?.remove()

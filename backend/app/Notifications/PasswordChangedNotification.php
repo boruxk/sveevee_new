@@ -18,9 +18,9 @@ class PasswordChangedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Your SVEEVEE password was changed')
+            ->subject('Your sveevee password was changed')
             ->greeting('Hello '.$notifiable->display_name.',')
-            ->line('Your SVEEVEE password was changed successfully.')
+            ->line('Your sveevee password was changed successfully.')
             ->line('If this was not you, please reset your password immediately.');
     }
 }

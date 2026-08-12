@@ -17,8 +17,8 @@ class DatabaseSeeder extends Seeder
         $admin = User::query()->updateOrCreate(
             ['email' => 'admin@sveevee.local'],
             [
-                'name' => 'SVEEVEE Admin',
-                'given_name' => 'SVEEVEE',
+                'name' => 'sveevee Admin',
+                'given_name' => 'sveevee',
                 'family_name' => 'Admin',
                 'password' => 'password',
                 'locale' => 'he',
