@@ -34,7 +34,7 @@
 }
 
 .privacy-shell {
-  max-width: 980px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 

@@ -507,6 +507,10 @@ export default {
 	landing: {
 		eyebrow: 'Local ads, less noise',
 		title: 'SVEEVEE',
+		purposeKicker: 'About SVEEVEE',
+		purposeTitle: 'SVEEVEE is a local discovery app for ads, business pages, community pages, products, events, ratings, and direct chat.',
+		purposeBody: 'Visitors can search by city and neighborhood without registration. Creating an account lets people post ads, manage a public profile, build business and community pages, add products or services, publish events, rate public pages, and start conversations. Google sign-in is optional and uses only your Google email and basic profile details to create or access your account.',
+		purposePrivacyLink: 'Privacy Policy',
 		subtitle: 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.',
 		searchWithoutRegistration: 'Search without registration',
 		featureKicker: 'What is inside',
