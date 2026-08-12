@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
@@ -23,6 +24,62 @@ use Tests\TestCase;
 class SveeveeApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function enableRecaptcha(): void
+    {
+        config()->set('recaptcha.enabled', true);
+        config()->set('recaptcha.secret_key', 'test-secret');
+        config()->set('recaptcha.min_score', 0.5);
+    }
+
+    public function test_recaptcha_blocks_mutating_requests_without_token_when_enabled(): void
+    {
+        $this->enableRecaptcha();
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'missing-token@example.test',
+            'password' => 'password',
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.recaptcha.0', 'Missing reCAPTCHA token.');
+    }
+
+    public function test_recaptcha_blocks_search_requests_without_token_when_enabled(): void
+    {
+        $this->enableRecaptcha();
+
+        $this->getJson('/api/v1/search?q=lamp')
+            ->assertStatus(422)
+            ->assertJsonPath('errors.recaptcha.0', 'Missing reCAPTCHA token.');
+    }
+
+    public function test_recaptcha_allows_verified_mutating_requests(): void
+    {
+        $this->enableRecaptcha();
+
+        $user = User::factory()->create([
+            'email' => 'recaptcha@example.test',
+            'password' => 'password',
+        ]);
+
+        Http::fake([
+            'https://www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => true,
+                'score' => 0.9,
+                'action' => 'post_auth/login',
+            ]),
+        ]);
+
+        $this->withHeaders([
+            'X-Recaptcha-Action' => 'post_auth/login',
+            'X-Recaptcha-Token' => 'valid-token',
+        ])->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ])->assertOk();
+
+        Http::assertSent(fn ($request) => $request['secret'] === 'test-secret'
+            && $request['response'] === 'valid-token');
+    }
 
     public function test_database_seeder_creates_admin_user_and_private_ad_without_prefilled_pages(): void
     {

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\VerifyRecaptcha;
 use App\Services\ApiResponseService;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
             'admin' => EnsureUserIsAdmin::class,
+            'recaptcha' => VerifyRecaptcha::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -16,7 +16,7 @@ use App\Http\Controllers\Api\PublicUserController;
 use App\Http\Controllers\Api\SearchController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v1')->group(function () {
+Route::prefix('v1')->middleware('recaptcha')->group(function () {
     Route::get('/search', [SearchController::class, 'index']);
     Route::get('/locations', [LocationController::class, 'index']);
     Route::get('/users/{user}', [PublicUserController::class, 'show']);
