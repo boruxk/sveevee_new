@@ -48,8 +48,7 @@
 			<div v-if="loading" class="row justify-center q-pa-xl">
 				<q-spinner color="primary" size="40px" />
 			</div>
-			<div v-else-if="ads.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
-			<div v-else>
+			<div v-else-if="ads.length > 0">
 				<div class="listing-grid">
 					<AdCard v-for="ad in ads" :key="ad.id" :ad="ad" />
 				</div>
@@ -94,13 +93,6 @@
   grid-template-columns: 1fr;
   gap: 16px;
   margin-top: 18px;
-}
-
-.empty-state {
-  margin-top: 18px;
-  padding: 24px;
-  border: 1px dashed rgba(17, 34, 45, 0.16);
-  border-radius: 8px;
 }
 
 .pagination-row {

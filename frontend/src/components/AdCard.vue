@@ -182,7 +182,7 @@
   height: 350px;
   overflow: hidden;
   border: 1px solid rgba(17, 34, 45, 0.1);
-  border-radius: 8px;
+  border-radius: 24px;
   background: rgba(255, 255, 255, 0.76);
 }
 
