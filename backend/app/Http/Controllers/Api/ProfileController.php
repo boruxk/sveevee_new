@@ -39,8 +39,7 @@ class ProfileController extends Controller
             'phone' => ['nullable', 'string', 'max:40'],
             'city' => ['nullable', 'string', 'max:120'],
             'neighborhood' => ['nullable', 'string', 'max:120'],
-            'languages' => ['nullable', 'array'],
-            'languages.*' => ['string', Rule::in(['he', 'en', 'ru', 'fr'])],
+            'locale' => ['nullable', 'string', Rule::in(['he', 'en', 'ru', 'fr'])],
         ]);
 
         if (EmailBan::query()->where('email', $data['email'])->exists()) {
@@ -52,14 +51,13 @@ class ProfileController extends Controller
             'given_name' => $data['given_name'],
             'family_name' => $data['family_name'],
             'name' => trim($data['given_name'].' '.$data['family_name']),
-            'locale' => $data['languages'][0] ?? $user->locale,
+            'locale' => $data['locale'] ?? $user->locale,
         ])->save();
 
         $profile = $user->profile()->updateOrCreate([], [
             'phone' => $data['phone'] ?? null,
             'city' => $data['city'] ?? null,
             'neighborhood' => $data['neighborhood'] ?? null,
-            'languages' => $data['languages'] ?? [$user->locale],
         ]);
         $user->ads()
             ->whereNull('page_id')
@@ -70,6 +68,22 @@ class ProfileController extends Controller
             ]);
 
         return ApiResponseService::success($this->payloads->profile($profile, $user->fresh()), 'Profile saved.');
+    }
+
+    public function updateLocale(Request $request)
+    {
+        $data = $request->validate([
+            'locale' => ['required', 'string', Rule::in(['he', 'en', 'ru', 'fr'])],
+        ]);
+
+        $user = $request->user();
+        $user->forceFill(['locale' => $data['locale']])->save();
+        $user = $user->fresh();
+
+        return ApiResponseService::success([
+            'profile' => $this->payloads->profile($user->profile, $user),
+            'user' => $this->payloads->user($user, includePrivate: true),
+        ], 'Profile saved.');
     }
 
     public function uploadPhoto(Request $request)

@@ -447,6 +447,23 @@ class SveeveeApiTest extends TestCase
         ]);
     }
 
+    public function test_user_can_update_profile_locale(): void
+    {
+        $user = User::factory()->create(['locale' => 'he']);
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/v1/profile/locale', [
+            'locale' => 'en',
+        ])->assertOk()
+            ->assertJsonPath('data.user.locale', 'en')
+            ->assertJsonPath('data.profile.locale', 'en');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'locale' => 'en',
+        ]);
+    }
+
     public function test_user_can_delete_profile_photo(): void
     {
         Storage::fake('public');

@@ -42,14 +42,12 @@ class DatabaseSeeder extends Seeder
             'phone' => '+972 50 000 0000',
             'city' => 'Jerusalem',
             'neighborhood' => 'Ramot',
-            'languages' => ['he', 'en'],
         ]);
 
         $user->profile()->updateOrCreate([], [
             'phone' => '+972 50 123 4567',
             'city' => 'Jerusalem',
             'neighborhood' => 'Ramot',
-            'languages' => ['he', 'en'],
         ]);
 
         Ad::query()

@@ -79,7 +79,7 @@ body.sveevee-ltr,
 }
 
 .sveevee-rtl .shell-toolbar > .brand-lockup {
-  order: 3;
+  order: 1;
 }
 
 .sveevee-rtl .shell-toolbar > .q-space {
@@ -87,13 +87,19 @@ body.sveevee-ltr,
 }
 
 .sveevee-rtl .shell-toolbar > .shell-nav {
-  order: 1;
+  order: 3;
+  direction: rtl;
+}
+
+.sveevee-rtl .shell-toolbar > .mobile-shell-actions {
+  order: 3;
   direction: rtl;
 }
 
 .sveevee-ltr .shell-toolbar > .brand-lockup,
 .sveevee-ltr .shell-toolbar > .q-space,
-.sveevee-ltr .shell-toolbar > .shell-nav {
+.sveevee-ltr .shell-toolbar > .shell-nav,
+.sveevee-ltr .shell-toolbar > .mobile-shell-actions {
   order: initial;
 }
 

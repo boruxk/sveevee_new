@@ -4,7 +4,6 @@
 	import { useI18n } from 'vue-i18n'
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
-	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 	import logoSrc from '@/assets/sveevee-logo.webp'
 
 	const props = defineProps({
@@ -167,12 +166,9 @@
 							</q-list>
 						</q-menu>
 					</q-btn>
-
-					<LocaleSwitcher class="shell-locale-switcher" />
 				</div>
 
 				<div class="mobile-shell-actions">
-					<LocaleSwitcher class="shell-locale-switcher" />
 					<q-btn
 						flat
 						round
@@ -331,10 +327,6 @@
   padding: 0;
   min-width: 52px;
   min-height: 52px;
-}
-
-.shell-locale-switcher {
-  flex: 0 0 auto;
 }
 
 .mobile-shell-actions {

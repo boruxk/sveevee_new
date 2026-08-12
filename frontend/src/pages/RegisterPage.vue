@@ -1,9 +1,10 @@
 <script setup>
-	import { computed, onMounted, reactive, ref, toRef, watch } from 'vue'
+	import { onMounted, reactive, ref, toRef, watch } from 'vue'
 	import { useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
+	import { useAppStore } from '@/stores/app'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 
@@ -11,6 +12,7 @@
 	const $q = useQuasar()
 	const router = useRouter()
 	const authStore = useAuthStore()
+	const appStore = useAppStore()
 	const formRef = ref(null)
 	const citySelectOptions = ref([])
 	const neighborhoodSelectOptions = ref([])
@@ -22,9 +24,7 @@
 		family_name: '',
 		phone: '',
 		city: '',
-		neighborhood: '',
-		languages: ['he'],
-		locale: 'he'
+		neighborhood: ''
 	})
 	const {
 		cityOptions,
@@ -35,12 +35,6 @@
 		filterOptions,
 		hasOptionValue
 	} = useLocationOptions(toRef(form, 'city'))
-	const languageOptions = computed(() => [
-		{ label: t('languages.he'), value: 'he' },
-		{ label: t('languages.en'), value: 'en' },
-		{ label: t('languages.ru'), value: 'ru' },
-		{ label: t('languages.fr'), value: 'fr' }
-	])
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	async function submit() {
@@ -49,7 +43,7 @@
 		}
 
 		try {
-			await authStore.register(form)
+			await authStore.register({ ...form, locale: appStore.locale })
 			rememberLocation(form.city, form.neighborhood)
 			router.push({ name: 'home' })
 		} catch (error) {
@@ -175,18 +169,6 @@
 								:disable="!form.city"
 								@filter="filterNeighborhoodOptions"
 								@new-value="addOption"
-							/>
-						</div>
-						<div class="register-form__row">
-							<q-select class="col-12"
-								v-model="form.languages"
-								outlined
-								multiple
-								emit-value
-								map-options
-								:options="languageOptions"
-								:label="requiredLabel('profile.languages')"
-								:rules="[requiredRule]"
 							/>
 						</div>
 						<q-btn class="form-submit"

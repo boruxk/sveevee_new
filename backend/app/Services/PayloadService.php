@@ -60,7 +60,7 @@ class PayloadService
             'phone' => $profile?->phone,
             'city' => $profile?->city,
             'neighborhood' => $profile?->neighborhood,
-            'languages' => array_values(array_filter($profile?->languages ?? [])),
+            'locale' => $user?->locale,
         ];
     }
 

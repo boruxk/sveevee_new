@@ -15,7 +15,6 @@ return new class extends Migration
             $table->string('phone')->nullable();
             $table->string('city')->nullable()->index();
             $table->string('neighborhood')->nullable()->index();
-            $table->json('languages')->nullable();
             $table->timestamps();
         });
 

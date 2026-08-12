@@ -16,15 +16,7 @@ class UserProfile extends Model
         'phone',
         'city',
         'neighborhood',
-        'languages',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'languages' => 'array',
-        ];
-    }
 
     public function user(): BelongsTo
     {

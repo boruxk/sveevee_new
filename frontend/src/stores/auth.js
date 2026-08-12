@@ -99,10 +99,10 @@ export const useAuthStore = defineStore('auth', {
 			this.user = null
 			this.initialized = true
 			localStorage.removeItem(tokenStorageKey)
+			setLocale('he')
 		},
 		syncLocaleFromUser() {
-			const savedLocale = localStorage.getItem('sveevee-locale')
-			const preferredLocale = savedLocale || this.user?.locale || this.user?.profile?.languages?.[0]
+			const preferredLocale = this.user?.locale
 			const locale = supportedLocales.includes(preferredLocale) ? preferredLocale : 'he'
 
 			setLocale(locale)

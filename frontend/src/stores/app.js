@@ -2,11 +2,10 @@ import { defineStore } from 'pinia'
 
 const rtlLocales = ['he']
 const supportedLocales = ['he', 'en', 'ru', 'fr']
-const savedLocale = localStorage.getItem('sveevee-locale')
 
 export const useAppStore = defineStore('app', {
 	state: () => ({
-		locale: supportedLocales.includes(savedLocale) ? savedLocale : 'he'
+		locale: 'he'
 	}),
 	getters: {
 		isRtl: (state) => rtlLocales.includes(state.locale)
@@ -15,7 +14,6 @@ export const useAppStore = defineStore('app', {
 		setLocale(locale) {
 			const nextLocale = supportedLocales.includes(locale) ? locale : 'he'
 			this.locale = nextLocale
-			localStorage.setItem('sveevee-locale', nextLocale)
 		},
 		syncDocument(locale = this.locale) {
 			const nextLocale = supportedLocales.includes(locale) ? locale : 'he'

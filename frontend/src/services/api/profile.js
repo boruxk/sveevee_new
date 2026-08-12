@@ -9,6 +9,10 @@ export function updateProfile(payload) {
 	return apiClient.put('/profile', payload)
 }
 
+export function updateProfileLocale(locale) {
+	return apiClient.put('/profile/locale', { locale })
+}
+
 export async function uploadProfilePhoto(file) {
 	const formData = new FormData()
 	await appendImageFile(formData, 'photo', file)

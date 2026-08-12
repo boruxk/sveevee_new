@@ -17,8 +17,7 @@ const quasarLocales = {
 	ru: quasarRu,
 	fr: quasarFr
 }
-const savedLocale = localStorage.getItem('sveevee-locale')
-const initialLocale = supportedLocales.includes(savedLocale) ? savedLocale : 'he'
+const initialLocale = 'he'
 
 const i18n = createI18n({
 	legacy: false,

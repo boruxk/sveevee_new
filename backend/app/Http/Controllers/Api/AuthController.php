@@ -29,8 +29,6 @@ class AuthController extends Controller
             'phone' => ['nullable', 'string', 'max:40'],
             'city' => ['nullable', 'string', 'max:120'],
             'neighborhood' => ['nullable', 'string', 'max:120'],
-            'languages' => ['nullable', 'array'],
-            'languages.*' => ['string', Rule::in(['he', 'en', 'ru', 'fr'])],
             'locale' => ['nullable', 'string', Rule::in(['he', 'en', 'ru', 'fr'])],
         ]);
 
@@ -52,7 +50,6 @@ class AuthController extends Controller
             'phone' => $data['phone'] ?? null,
             'city' => $data['city'] ?? null,
             'neighborhood' => $data['neighborhood'] ?? null,
-            'languages' => $data['languages'] ?? [$data['locale'] ?? 'he'],
         ]);
 
         return $this->authenticated($user, 'Account created.', 201);

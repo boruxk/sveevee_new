@@ -3,16 +3,18 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
+	import { useAppStore } from '@/stores/app'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { deleteProfilePhoto, fetchProfile, updateProfile, uploadProfilePhoto } from '@/services/api/profile'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
+	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 
 	const { t } = useI18n()
 	const $q = useQuasar()
 	const authStore = useAuthStore()
-	const supportedLanguages = ['he', 'en', 'ru', 'fr']
+	const appStore = useAppStore()
 	const loading = ref(false)
 	const saving = ref(false)
 	const photoDeleting = ref(false)
@@ -27,7 +29,7 @@
 		phone: '',
 		city: '',
 		neighborhood: '',
-		languages: ['he']
+		locale: 'he'
 	})
 	const {
 		cityOptions,
@@ -38,12 +40,6 @@
 		filterOptions,
 		hasOptionValue
 	} = useLocationOptions(toRef(form, 'city'))
-	const languageOptions = computed(() => [
-		{ label: t('languages.he'), value: 'he' },
-		{ label: t('languages.en'), value: 'en' },
-		{ label: t('languages.ru'), value: 'ru' },
-		{ label: t('languages.fr'), value: 'fr' }
-	])
 	const photoDisplayName = computed(() => imageUploadDisplayName(
 		photo.value,
 		authStore.user?.profile?.photo_url,
@@ -59,8 +55,7 @@
 		form.phone = profile?.phone || ''
 		form.city = profile?.city || ''
 		form.neighborhood = profile?.neighborhood || ''
-		const languages = profile?.languages?.filter((item) => supportedLanguages.includes(item)) || []
-		form.languages = languages.length ? [...languages] : ['he']
+		form.locale = profile?.locale || authStore.user?.locale || appStore.locale
 	}
 
 	async function load() {
@@ -221,16 +216,10 @@
 						/>
 					</div>
 					<div class="row q-col-gutter-md q-pb-md">
-						<q-select class="col-12 col-md-6"
-							v-model="form.languages"
-							outlined
-							multiple
-							emit-value
-							map-options
-							:options="languageOptions"
-							:label="requiredLabel('profile.languages')"
-							:rules="[requiredRule]"
-						/>
+						<div class="col-12 col-md-6 profile-language-field">
+							<div class="profile-language-field__label">{{ t('profile.languages') }}</div>
+							<LocaleSwitcher persist class="profile-locale-switcher" @update:model-value="form.locale = $event" />
+						</div>
 						<q-file class="col-12 col-md-6"
 							v-model="photo"
 							outlined
@@ -291,6 +280,24 @@
   margin-inline-start: 0 !important;
 }
 
+.profile-language-field {
+  display: grid;
+  align-content: center;
+  min-height: 50px;
+  gap: 6px;
+}
+
+.profile-language-field__label {
+  color: var(--soz-primary-deep);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.profile-locale-switcher {
+  width: min(160px, 100%);
+}
+
 @media (max-width: 700px) {
   .profile-page {
     padding-inline: 10px;
@@ -308,6 +315,10 @@
   }
 
   .form-submit {
+    width: 100%;
+  }
+
+  .profile-locale-switcher {
     width: 100%;
   }
 }
