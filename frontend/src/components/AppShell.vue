@@ -46,9 +46,12 @@
 	}
 
 	async function signOut() {
-		await authStore.logout()
-		chatsStore.clearActive()
-		router.push({ name: 'landing' })
+		try {
+			await authStore.logout()
+		} finally {
+			chatsStore.clearActive()
+			router.replace({ name: 'landing' })
+		}
 	}
 
 	function openProfile() {

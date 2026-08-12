@@ -1,8 +1,29 @@
 const SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LdMPoItAAAAACyCtOSQcSYtSvjzBCHBbnz1ftDe'
+const ENV_ENABLED = import.meta.env.VITE_RECAPTCHA_ENABLED
 
 let scriptPromise = null
 
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined'
+
+const isLocalHost = () => {
+	if (!isBrowser) {
+		return false
+	}
+
+	return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+}
+
+const shouldRunRecaptcha = () => {
+	if (ENV_ENABLED === 'true') {
+		return true
+	}
+
+	if (ENV_ENABLED === 'false') {
+		return false
+	}
+
+	return import.meta.env.PROD && !isLocalHost()
+}
 
 const waitForReady = () => {
 	return new Promise((resolve) => {
@@ -45,7 +66,7 @@ const loadScript = () => {
 	return scriptPromise
 }
 
-export const recaptchaEnabled = () => Boolean(SITE_KEY && isBrowser)
+export const recaptchaEnabled = () => Boolean(SITE_KEY && isBrowser && shouldRunRecaptcha())
 
 export const recaptchaActionFromRequest = (config) => {
 	const method = (config.method || 'get').toLowerCase()
