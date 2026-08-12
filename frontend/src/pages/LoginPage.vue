@@ -36,7 +36,6 @@
 			<section class="soz-section-card auth-panel">
 				<div class="auth-panel__inner">
 					<h1 class="soz-page-title">{{ t('auth.loginTitle') }}</h1>
-					<p>{{ t('auth.simpleLogin') }}</p>
 					<q-form ref="formRef" greedy class="column q-gutter-md" @submit.prevent="submit()">
 						<q-input
 							v-model="form.email"
@@ -93,6 +92,10 @@
   margin: 0 auto;
 }
 
+.auth-panel__inner h1 {
+  margin-bottom: 24px;
+}
+
 .forgot-link {
   color: var(--soz-primary-deep);
   font-weight: 600;
@@ -106,10 +109,6 @@
 
   .auth-panel {
     padding: 20px;
-  }
-
-  .auth-panel__inner p {
-    line-height: 1.6;
   }
 
   .auth-panel__inner .q-btn {

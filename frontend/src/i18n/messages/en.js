@@ -1,5 +1,4 @@
 export default {
-	brand: 'SVEEVEE',
 	nav: {
 		home: 'Home',
 		search: 'Search',
@@ -25,9 +24,6 @@ export default {
 		time24: 'Use 24h time, for example 17:30.'
 	},
 	palettes: {
-		sunset: 'Sunset',
-		olive: 'Olive',
-		ink: 'Ink',
 		amberDawn: 'Amber Dawn',
 		oliveMist: 'Olive Mist',
 		seaGlass: 'Sea Glass',
@@ -82,10 +78,7 @@ export default {
 		update: 'Update',
 		edit: 'Edit',
 		delete: 'Delete',
-		preview: 'Preview',
-		upload: 'Upload',
 		search: 'Search',
-		learnMore: 'Learn more',
 		readMore: 'Read more',
 		readLess: 'Show less',
 		ban: 'Ban',
@@ -102,10 +95,8 @@ export default {
 		phone: 'Phone',
 		city: 'City',
 		neighborhood: 'Neighborhood',
-		language: 'Language',
 		loginTitle: 'Login',
 		registerTitle: 'Create account',
-		simpleLogin: 'Simple email login. No Google login, no email verification, no ReCaptcha.',
 		loginFailed: 'Login failed.',
 		registerFailed: 'Registration failed.',
 		forgotPassword: 'Forgot password?',
@@ -324,7 +315,6 @@ export default {
 	},
 	businessServices: {
 		title: 'Services',
-		helper: 'Describe the services or offers customers can request from this business.',
 		addService: 'Add service',
 		name: 'Service name',
 		description: 'Service description',
@@ -367,16 +357,11 @@ export default {
 		businessTitle: 'Business page',
 		communityTitle: 'Community page',
 		setup: 'Page setup',
-		setupSubtitle: 'Design the public page people see before they contact you.',
-		helper: 'Choose a palette, add public information, set opening hours, and preview the page live.',
-		saveHint: 'Logo and banner save together with the page settings.',
 		name: 'Public title',
 		description: 'Public description',
-		contactEmail: 'Contact email',
 		email: 'E-mail',
 		tel: 'Tel',
 		whatsapp: 'WhatsApp',
-		address: 'Address',
 		street: 'Street',
 		number: 'Number',
 		city: 'City',
@@ -388,10 +373,7 @@ export default {
 		uploadLogo: 'Upload logo',
 		uploadBanner: 'Upload banner',
 		saveSettings: 'Save page settings',
-		previewDescription: 'Public description',
 		previewDialogTitle: 'How others see your page',
-		previewSection: 'Public impression',
-		publicCardTitle: 'First impression',
 		saved: 'Page saved.',
 		saveFailed: 'Page could not be saved.',
 		deleted: 'Page deleted.',
@@ -416,10 +398,6 @@ export default {
 			contact: 'Contact',
 			address: 'Address',
 			openingHours: 'Opening hours'
-		},
-		publicCardBody: {
-			business: 'People see your business identity, ads, and contact details in one place.',
-			community: 'People see your community identity, ads, and contact details in one place.'
 		},
 		previewFallbacks: {
 			business: 'Show your business identity, availability, and contact options in one consistent page.',
@@ -452,7 +430,6 @@ export default {
 	},
 	profile: {
 		title: 'Profile',
-		subtitle: 'Only the profile fields.',
 		photo: 'Photo',
 		languages: 'Languages',
 		userType: 'User type',
@@ -465,7 +442,6 @@ export default {
 		passwordSaveFailed: 'Password could not be changed.'
 	},
 	admin: {
-		title: 'Admin',
 		users: 'Users',
 		banned: 'Banned',
 		active: 'Active',
@@ -477,12 +453,7 @@ export default {
 	search: {
 		title: 'Search',
 		placeholder: 'Search business, community, ad, or user',
-		users: 'Users',
-		pages: 'Pages',
-		ads: 'Ads',
-		empty: 'No results.',
-		noUsers: 'No users.',
-		noPages: 'No pages.'
+		empty: 'No results.'
 	},
 	seo: {
 		defaultTitle: 'SVEEVEE',
@@ -530,7 +501,6 @@ export default {
 		workflowBody: 'SVEEVEE keeps the experience local and clean: neighborhood ads, clear public pages, store products, community events, ratings, and chat limits that reduce spam.',
 		pricingKicker: 'Pricing',
 		pricingTitle: 'Simple pricing for everyone',
-		popular: 'Popular',
 		month: 'per month',
 		currency: '\u20AA',
 		contentKicker: 'Local discovery',

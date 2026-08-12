@@ -216,6 +216,8 @@
 
 .panel h2 {
   margin: 0;
+  font-size: clamp(1.42rem, 1.75vw, 1.88rem);
+  line-height: 1.18;
 }
 
 .panel--chat h2 {

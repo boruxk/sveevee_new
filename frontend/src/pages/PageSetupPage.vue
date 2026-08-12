@@ -723,7 +723,6 @@
 			<section class="soz-section-card page-head">
 				<div>
 					<h1 class="soz-page-title">{{ title }}</h1>
-					<p>{{ t('pages.setupSubtitle') }}</p>
 				</div>
 			</section>
 
@@ -731,7 +730,6 @@
 				<div class="preview-head">
 					<div>
 						<h2>{{ t('pages.previewDialogTitle') }}</h2>
-						<p>{{ t('pages.helper') }}</p>
 					</div>
 					<div class="page-toolbar-actions">
 						<q-btn rounded
@@ -869,10 +867,7 @@
 
 			<section v-if="isBusinessPage && isServicesEnabled" id="page-services-section" class="soz-section-card panel q-mt-lg">
 				<div class="panel-head">
-					<div>
-						<h2>{{ t('businessServices.title') }}</h2>
-						<p>{{ t('businessServices.helper') }}</p>
-					</div>
+					<h2>{{ t('businessServices.title') }}</h2>
 					<q-btn rounded
 						unelevated
 						color="primary"
@@ -951,7 +946,6 @@
 				<q-card-section class="dialog-head">
 					<div>
 						<div class="text-h6">{{ t('pages.setup') }}</div>
-						<div class="text-body2 text-grey-7">{{ t('pages.helper') }}</div>
 					</div>
 					<q-btn flat round icon="close" color="dark" v-close-popup />
 				</q-card-section>
@@ -1151,9 +1145,6 @@
 											@click="save"
 										/>
 									</div>
-									<div class="col text-caption text-grey-7">
-										{{ t('pages.saveHint') }}
-									</div>
 								</div>
 							</q-form>
 							<div v-else class="row justify-center q-pa-lg">
@@ -1243,20 +1234,16 @@
   margin: 0;
 }
 
-.page-head p,
-.preview-head p,
-.panel-head p {
-  max-width: 720px;
-  margin: 8px 0 0;
-  color: rgba(17, 34, 45, 0.66);
-  line-height: 1.6;
-}
-
 .preview-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 18px;
   align-items: start;
+}
+
+.preview-head h2 {
+  font-size: clamp(1.42rem, 1.75vw, 1.88rem);
+  line-height: 1.18;
 }
 
 .panel-head {
@@ -1265,6 +1252,11 @@
   justify-content: space-between;
   gap: 14px;
   margin-bottom: 18px;
+}
+
+.panel-head h2 {
+  font-size: clamp(1.42rem, 1.75vw, 1.88rem);
+  line-height: 1.18;
 }
 
 .page-setup-btn.q-btn.bg-primary {

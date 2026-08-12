@@ -96,7 +96,6 @@
 			<section class="soz-section-card auth-panel">
 				<div class="auth-panel__inner">
 					<h1 class="soz-page-title">{{ t('auth.registerTitle') }}</h1>
-					<p class="q-pb-md">{{ t('auth.simpleLogin') }}</p>
 					<q-form ref="formRef" greedy class="register-form" @submit.prevent="submit()">
 						<div class="register-form__row">
 							<q-input class="col-12 col-md-4"
@@ -208,6 +207,10 @@
 .auth-panel__inner {
   width: min(1040px, 100%);
   margin: 0 auto;
+}
+
+.auth-panel__inner h1 {
+  margin-bottom: 24px;
 }
 
 .register-form {

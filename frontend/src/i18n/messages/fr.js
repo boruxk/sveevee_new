@@ -1,5 +1,4 @@
 export default {
-	brand: 'SVEEVEE',
 	nav: {
 		menu: 'Menu',
 		home: 'Accueil',
@@ -25,9 +24,6 @@ export default {
 		time24: 'Utilisez le format 24 h, par exemple 17:30.'
 	},
 	palettes: {
-		sunset: 'Coucher de soleil',
-		olive: 'Olive',
-		ink: 'Encre',
 		amberDawn: 'Aube ambrée',
 		oliveMist: 'Brume olive',
 		seaGlass: 'Verre de mer',
@@ -82,10 +78,7 @@ export default {
 		update: 'Mettre à jour',
 		edit: 'Modifier',
 		delete: 'Supprimer',
-		preview: 'Aperçu',
-		upload: 'Importer',
 		search: 'Rechercher',
-		learnMore: 'En savoir plus',
 		readMore: 'Lire la suite',
 		readLess: 'Réduire',
 		ban: 'Bannir',
@@ -102,10 +95,8 @@ export default {
 		phone: 'Téléphone',
 		city: 'Ville',
 		neighborhood: 'Quartier',
-		language: 'Langue',
 		loginTitle: 'Connexion',
 		registerTitle: 'Créer un compte',
-		simpleLogin: 'Connexion simple par e-mail. Pas de connexion Google, pas de confirmation d’e-mail, pas de ReCaptcha.',
 		loginFailed: 'La connexion a échoué.',
 		registerFailed: 'L’inscription a échoué.',
 		forgotPassword: 'Mot de passe oublié ?',
@@ -324,7 +315,6 @@ export default {
 	},
 	businessServices: {
 		title: 'Services',
-		helper: 'Décrivez les services ou offres que les clients peuvent demander à cette entreprise.',
 		addService: 'Ajouter un service',
 		name: 'Nom du service',
 		description: 'Description du service',
@@ -367,16 +357,11 @@ export default {
 		businessTitle: 'Page entreprise',
 		communityTitle: 'Page communauté',
 		setup: 'Configuration de la page',
-		setupSubtitle: 'Concevez la page publique que les gens voient avant de vous contacter.',
-		helper: 'Choisissez une palette, ajoutez les informations publiques, réglez les horaires et prévisualisez la page en direct.',
-		saveHint: 'Le logo et la bannière sont enregistrés avec les paramètres de la page.',
 		name: 'Titre public',
 		description: 'Description publique',
-		contactEmail: 'E-mail de contact',
 		email: 'E-mail',
 		tel: 'Téléphone',
 		whatsapp: 'WhatsApp',
-		address: 'Adresse',
 		street: 'Rue',
 		number: 'Numéro',
 		city: 'Ville',
@@ -388,10 +373,7 @@ export default {
 		uploadLogo: 'Importer le logo',
 		uploadBanner: 'Importer la bannière',
 		saveSettings: 'Enregistrer les paramètres',
-		previewDescription: 'Description publique',
 		previewDialogTitle: 'Comment les autres voient votre page',
-		previewSection: 'Impression publique',
-		publicCardTitle: 'Première impression',
 		saved: 'Page enregistrée.',
 		saveFailed: 'La page n’a pas pu être enregistrée.',
 		deleted: 'Page supprim\u00E9e.',
@@ -416,10 +398,6 @@ export default {
 			contact: 'Contact',
 			address: 'Adresse',
 			openingHours: 'Horaires'
-		},
-		publicCardBody: {
-			business: 'Les gens voient votre identité d’entreprise, vos annonces et vos coordonnées au même endroit.',
-			community: 'Les gens voient l’identité de votre communauté, vos annonces et vos coordonnées au même endroit.'
 		},
 		previewFallbacks: {
 			business: 'Montrez votre identité d’entreprise, vos disponibilités et vos contacts sur une page cohérente.',
@@ -452,7 +430,6 @@ export default {
 	},
 	profile: {
 		title: 'Profil',
-		subtitle: 'Uniquement les champs du profil utilisateur.',
 		photo: 'Photo',
 		languages: 'Langues',
 		userType: 'Type de profil',
@@ -465,7 +442,6 @@ export default {
 		passwordSaveFailed: 'Le mot de passe n’a pas pu être changé.'
 	},
 	admin: {
-		title: 'Admin',
 		users: 'Utilisateurs',
 		banned: 'Banni',
 		active: 'Actif',
@@ -477,12 +453,7 @@ export default {
 	search: {
 		title: 'Recherche',
 		placeholder: 'Rechercher une entreprise, une communauté, une annonce ou un utilisateur',
-		users: 'Utilisateurs',
-		pages: 'Pages',
-		ads: 'Annonces',
-		empty: 'Aucun resultat.',
-		noUsers: 'Aucun utilisateur.',
-		noPages: 'Aucune page.'
+		empty: 'Aucun resultat.'
 	},
 	seo: {
 		defaultTitle: 'SVEEVEE',
@@ -530,7 +501,6 @@ export default {
 		workflowBody: 'SVEEVEE garde une experience locale et propre: annonces par quartier, pages publiques, produits boutique, evenements communautaires, avis et limites de chat qui reduisent le spam.',
 		pricingKicker: 'Tarifs',
 		pricingTitle: 'Un prix simple pour tout le monde',
-		popular: 'Populaire',
 		month: 'par mois',
 		currency: '\u20AA',
 		contentKicker: 'Decouverte locale',

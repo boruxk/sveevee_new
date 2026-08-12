@@ -1,5 +1,4 @@
 export default {
-	brand: 'SVEEVEE',
 	nav: {
 		menu: 'Меню',
 		home: 'Главная',
@@ -25,9 +24,6 @@ export default {
 		time24: '\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 24-\u0447\u0430\u0441\u043E\u0432\u043E\u0439 \u0444\u043E\u0440\u043C\u0430\u0442, \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 17:30.'
 	},
 	palettes: {
-		sunset: 'Закат',
-		olive: 'Олива',
-		ink: 'Чернила',
 		amberDawn: 'Янтарный рассвет',
 		oliveMist: 'Оливковый туман',
 		seaGlass: 'Морское стекло',
@@ -82,10 +78,7 @@ export default {
 		update: 'Обновить',
 		edit: '\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C',
 		delete: 'Удалить',
-		preview: 'Предпросмотр',
-		upload: 'Загрузить',
 		search: 'Искать',
-		learnMore: 'Узнать больше',
 		readMore: 'Читать дальше',
 		readLess: 'Свернуть',
 		ban: 'Забанить',
@@ -102,10 +95,8 @@ export default {
 		phone: 'Телефон',
 		city: 'Город',
 		neighborhood: 'Район',
-		language: 'Язык',
 		loginTitle: 'Вход',
 		registerTitle: 'Создать аккаунт',
-		simpleLogin: 'Простой вход по эл. почте. Без входа через Google, подтверждения почты и ReCaptcha.',
 		loginFailed: 'Не удалось войти.',
 		registerFailed: 'Не удалось зарегистрироваться.',
 		forgotPassword: 'Забыли пароль?',
@@ -324,7 +315,6 @@ export default {
 	},
 	businessServices: {
 		title: 'Услуги',
-		helper: 'Опишите услуги или предложения, которые клиенты могут запросить у этого бизнеса.',
 		addService: 'Добавить услугу',
 		name: 'Название услуги',
 		description: 'Описание услуги',
@@ -367,16 +357,11 @@ export default {
 		businessTitle: 'Страница бизнеса',
 		communityTitle: 'Страница сообщества',
 		setup: 'Настройка страницы',
-		setupSubtitle: 'Оформите публичную страницу, которую люди увидят перед тем, как связаться с вами.',
-		helper: 'Выберите палитру, добавьте публичную информацию, задайте часы работы и смотрите предпросмотр вживую.',
-		saveHint: 'Логотип и баннер сохраняются вместе с настройками страницы.',
 		name: 'Публичный заголовок',
 		description: 'Публичное описание',
-		contactEmail: 'Контактная эл. почта',
 		email: 'Эл. почта',
 		tel: 'Телефон',
 		whatsapp: 'WhatsApp',
-		address: 'Адрес',
 		street: 'Улица',
 		number: 'Номер',
 		city: 'Город',
@@ -388,10 +373,7 @@ export default {
 		uploadLogo: 'Загрузить логотип',
 		uploadBanner: 'Загрузить баннер',
 		saveSettings: 'Сохранить настройки страницы',
-		previewDescription: 'Публичное описание',
 		previewDialogTitle: 'Как другие видят вашу страницу',
-		previewSection: 'Публичное впечатление',
-		publicCardTitle: 'Первое впечатление',
 		saved: 'Страница сохранена.',
 		saveFailed: 'Не удалось сохранить страницу.',
 		deleted: '\u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 \u0443\u0434\u0430\u043B\u0435\u043D\u0430.',
@@ -416,10 +398,6 @@ export default {
 			contact: 'Контакты',
 			address: 'Адрес',
 			openingHours: 'Часы работы'
-		},
-		publicCardBody: {
-			business: 'Люди видят идентичность бизнеса, объявления и контакты в одном месте.',
-			community: 'Люди видят идентичность сообщества, объявления и контакты в одном месте.'
 		},
 		previewFallbacks: {
 			business: 'Покажите идентичность бизнеса, доступность и способы связи на одной цельной странице.',
@@ -452,7 +430,6 @@ export default {
 	},
 	profile: {
 		title: 'Профиль',
-		subtitle: 'Только поля профиля пользователя.',
 		photo: 'Фото',
 		languages: 'Языки',
 		userType: 'Тип профиля',
@@ -465,7 +442,6 @@ export default {
 		passwordSaveFailed: 'Не удалось изменить пароль.'
 	},
 	admin: {
-		title: 'Админ',
 		users: 'Пользователи',
 		banned: 'Забанен',
 		active: 'Активен',
@@ -477,12 +453,7 @@ export default {
 	search: {
 		title: 'Поиск',
 		placeholder: 'Искать бизнес, сообщество, объявление или пользователя',
-		users: 'Пользователи',
-		pages: 'Страницы',
-		ads: 'Объявления',
-		empty: 'Результатов нет.',
-		noUsers: 'Пользователей нет.',
-		noPages: 'Страниц нет.'
+		empty: 'Результатов нет.'
 	},
 	seo: {
 		defaultTitle: 'SVEEVEE',
@@ -530,7 +501,6 @@ export default {
 		workflowBody: 'SVEEVEE сохраняет локальный и спокойный опыт: объявления по району, публичные страницы, товары магазина, события сообществ, рейтинги и ограничения чата, которые снижают спам.',
 		pricingKicker: 'Цены',
 		pricingTitle: 'Простая цена для всех',
-		popular: 'Популярно',
 		month: 'в месяц',
 		currency: '\u20AA',
 		contentKicker: 'Локальный поиск',

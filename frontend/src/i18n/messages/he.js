@@ -1,5 +1,4 @@
 export default {
-	brand: 'SVEEVEE',
 	nav: {
 		menu: '\u05EA\u05E4\u05E8\u05D9\u05D8',
 		home: 'בית',
@@ -25,9 +24,6 @@ export default {
 		time24: '\u05D4\u05E9\u05EA\u05DE\u05E9\u05D5 \u05D1\u05E9\u05E2\u05D4 \u05D1\u05E4\u05D5\u05E8\u05DE\u05D8 24 \u05E9\u05E2\u05D5\u05EA, \u05DC\u05DE\u05E9\u05DC 17:30.'
 	},
 	palettes: {
-		sunset: 'שקיעה',
-		olive: 'זית',
-		ink: 'דיו',
 		amberDawn: 'שחר ענברי',
 		oliveMist: 'ערפל זית',
 		seaGlass: 'זכוכית ים',
@@ -82,10 +78,7 @@ export default {
 		update: 'עדכון',
 		edit: '\u05E2\u05E8\u05D9\u05DB\u05D4',
 		delete: 'מחיקה',
-		preview: 'תצוגה מקדימה',
-		upload: 'העלאה',
 		search: 'חיפוש',
-		learnMore: 'למידע נוסף',
 		readMore: 'קראו עוד',
 		readLess: 'הציגו פחות',
 		ban: 'חסימה',
@@ -102,10 +95,8 @@ export default {
 		phone: 'טלפון',
 		city: 'עיר',
 		neighborhood: 'שכונה',
-		language: 'שפה',
 		loginTitle: 'כניסה לחשבון',
 		registerTitle: 'יצירת חשבון',
-		simpleLogin: 'כניסה פשוטה עם אימייל אחד. בלי Google Login, בלי אימות אימייל ובלי ReCaptcha.',
 		loginFailed: 'הכניסה נכשלה.',
 		registerFailed: 'ההרשמה נכשלה.',
 		forgotPassword: 'שכחת סיסמה?',
@@ -324,7 +315,6 @@ export default {
 	},
 	businessServices: {
 		title: '\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD',
-		helper: '\u05EA\u05D0\u05E8\u05D5 \u05D0\u05EA \u05D4\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD \u05D0\u05D5 \u05D4\u05D4\u05E6\u05E2\u05D5\u05EA \u05E9\u05DC\u05E7\u05D5\u05D7\u05D5\u05EA \u05D9\u05DB\u05D5\u05DC\u05D9\u05DD \u05DC\u05D1\u05E7\u05E9 \u05DE\u05D4\u05E2\u05E1\u05E7.',
 		addService: '\u05D4\u05D5\u05E1\u05E4\u05EA \u05E9\u05D9\u05E8\u05D5\u05EA',
 		name: '\u05E9\u05DD \u05D4\u05E9\u05D9\u05E8\u05D5\u05EA',
 		description: '\u05EA\u05D9\u05D0\u05D5\u05E8 \u05D4\u05E9\u05D9\u05E8\u05D5\u05EA',
@@ -367,16 +357,11 @@ export default {
 		businessTitle: 'עמוד עסק',
 		communityTitle: 'עמוד קהילה',
 		setup: 'הגדרת עמוד',
-		setupSubtitle: 'עצבו את העמוד הציבורי שאנשים רואים לפני שהם יוצרים קשר.',
-		helper: 'בחרו פלטה, הוסיפו מידע ציבורי, הגדירו שעות פתיחה וצפו בעמוד בזמן אמת.',
-		saveHint: 'לוגו ובאנר נשמרים יחד עם הגדרות העמוד.',
 		name: 'כותרת ציבורית',
 		description: 'תיאור ציבורי',
-		contactEmail: 'אימייל ליצירת קשר',
 		email: 'אימייל',
 		tel: 'טלפון',
 		whatsapp: 'וואטסאפ',
-		address: 'כתובת',
 		street: 'רחוב',
 		number: 'מספר',
 		city: 'עיר',
@@ -388,10 +373,7 @@ export default {
 		uploadLogo: 'העלאת לוגו',
 		uploadBanner: 'העלאת באנר',
 		saveSettings: 'שמירת הגדרות העמוד',
-		previewDescription: 'תיאור ציבורי',
 		previewDialogTitle: 'איך אחרים רואים את העמוד',
-		previewSection: 'רושם ציבורי',
-		publicCardTitle: 'רושם ראשון',
 		saved: 'העמוד נשמר.',
 		saveFailed: 'לא ניתן לשמור את העמוד.',
 		deleted: '\u05D4\u05E2\u05DE\u05D5\u05D3 \u05E0\u05DE\u05D7\u05E7.',
@@ -416,10 +398,6 @@ export default {
 			contact: 'יצירת קשר',
 			address: 'כתובת',
 			openingHours: 'שעות פתיחה'
-		},
-		publicCardBody: {
-			business: 'אנשים רואים את זהות העסק, המודעות ופרטי הקשר במקום אחד.',
-			community: 'אנשים רואים את זהות הקהילה, המודעות ופרטי הקשר במקום אחד.'
 		},
 		previewFallbacks: {
 			business: 'הציגו זהות עסקית, זמינות ודרכי קשר בתוך עמוד אחד עקבי.',
@@ -452,7 +430,6 @@ export default {
 	},
 	profile: {
 		title: 'פרופיל',
-		subtitle: 'רק הפרטים ששייכים לפרופיל המשתמש.',
 		photo: 'תמונה',
 		languages: 'שפות',
 		userType: 'סוג משתמש',
@@ -465,7 +442,6 @@ export default {
 		passwordSaveFailed: 'לא ניתן לשנות את הסיסמה.'
 	},
 	admin: {
-		title: 'ניהול',
 		users: 'משתמשים',
 		banned: 'חסום',
 		active: 'פעיל',
@@ -477,12 +453,7 @@ export default {
 	search: {
 		title: 'חיפוש',
 		placeholder: 'חיפוש עסק, קהילה, מודעה או משתמש',
-		users: 'משתמשים',
-		pages: 'עמודים',
-		ads: 'מודעות',
-		empty: 'אין תוצאות.',
-		noUsers: 'אין משתמשים.',
-		noPages: 'אין עמודים.'
+		empty: 'אין תוצאות.'
 	},
 	seo: {
 		defaultTitle: 'SVEEVEE',
@@ -530,7 +501,6 @@ export default {
 		workflowBody: 'SVEEVEE שומרת על החוויה מקומית ונקייה: מודעות לפי שכונה, עמודים ציבוריים ברורים, מוצרי חנות, אירועים קהילתיים, דירוגים וצ׳אט עם מגבלות שמונעות ספאם.',
 		pricingKicker: 'מחירים',
 		pricingTitle: 'מחיר פשוט לכולם',
-		popular: 'פופולרי',
 		month: 'לחודש',
 		currency: '\u20AA',
 		contentKicker: 'גילוי מקומי',
