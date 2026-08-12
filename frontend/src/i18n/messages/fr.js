@@ -18,6 +18,10 @@ export default {
 		ru: 'Russe',
 		fr: 'Français'
 	},
+	footer: {
+		label: 'Liens de pied de page',
+		privacy: 'Politique de confidentialite'
+	},
 	validation: {
 		required: 'Ce champ est obligatoire.',
 		requiredFields: 'Veuillez remplir les champs obligatoires.',
@@ -479,6 +483,8 @@ export default {
 		resetPasswordDescription: 'Utilisez votre lien SVEEVEE pour choisir un nouveau mot de passe.',
 		registerTitle: 'Creer un compte SVEEVEE',
 		registerDescription: 'Creez un compte pour publier des annonces locales, creer des pages publiques et discuter avec les personnes proches.',
+		privacyTitle: 'Politique de confidentialite',
+		privacyDescription: 'Lisez comment SVEEVEE collecte, utilise, conserve et partage les donnees personnelles, y compris les donnees de connexion Google.',
 		homeTitle: 'Fil de quartier',
 		homeDescription: 'Parcourez les annonces locales priorisees par quartier, ville et communautes proches.',
 		meTitle: 'Mes annonces',

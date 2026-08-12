@@ -18,6 +18,10 @@ export default {
 		ru: 'רוסית',
 		fr: 'צרפתית'
 	},
+	footer: {
+		label: 'קישורי תחתית',
+		privacy: 'מדיניות פרטיות'
+	},
 	validation: {
 		required: '\u05E9\u05D3\u05D4 \u05D7\u05D5\u05D1\u05D4.',
 		requiredFields: '\u05DE\u05DC\u05D0\u05D5 \u05D0\u05EA \u05E9\u05D3\u05D5\u05EA \u05D4\u05D7\u05D5\u05D1\u05D4.',
@@ -479,6 +483,8 @@ export default {
 		resetPasswordDescription: 'השתמשו בקישור האיפוס כדי לבחור סיסמה חדשה.',
 		registerTitle: 'יצירת חשבון SVEEVEE',
 		registerDescription: 'צרו חשבון כדי לפרסם מודעות מקומיות, לבנות עמודים ציבוריים ולדבר עם אנשים קרובים.',
+		privacyTitle: 'מדיניות פרטיות',
+		privacyDescription: 'קראו כיצד SVEEVEE אוספת, משתמשת, שומרת ומשתפת מידע אישי, כולל נתוני כניסה עם Google.',
 		homeTitle: 'פיד שכונתי',
 		homeDescription: 'עיינו במודעות מקומיות לפי השכונה, העיר והקהילות הקרובות אליכם.',
 		meTitle: 'המודעות שלי',

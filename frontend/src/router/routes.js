@@ -13,6 +13,7 @@ export default [
 			{ path: 'forgot-password', name: 'forgot-password', component: () => import('@/pages/ForgotPasswordPage.vue'), meta: { seo: { titleKey: 'seo.forgotPasswordTitle', descriptionKey: 'seo.forgotPasswordDescription', robots: 'noindex,nofollow' } } },
 			{ path: 'reset-password/:token', name: 'reset-password', component: () => import('@/pages/ResetPasswordPage.vue'), meta: { seo: { titleKey: 'seo.resetPasswordTitle', descriptionKey: 'seo.resetPasswordDescription', robots: 'noindex,nofollow' } } },
 			{ path: 'register', name: 'register', component: () => import('@/pages/RegisterPage.vue'), meta: { seo: { titleKey: 'seo.registerTitle', descriptionKey: 'seo.registerDescription', robots: 'noindex,follow' } } },
+			{ path: 'privacy', name: 'privacy', component: () => import('@/pages/PrivacyPolicyPage.vue'), meta: { seo: { titleKey: 'seo.privacyTitle', descriptionKey: 'seo.privacyDescription' } } },
 			{ path: 'search', name: 'search', component: () => import('@/pages/SearchPage.vue'), meta: { seo: { titleKey: 'seo.searchTitle', descriptionKey: 'seo.searchDescription' } } },
 			{ path: 'users/:id', name: 'user-page', component: () => import('@/pages/UserPage.vue'), meta: { seo: { titleKey: 'seo.userFallbackTitle', descriptionKey: 'seo.userFallbackDescription' } } },
 			{ path: 'pages/:id', name: 'page-detail', component: () => import('@/pages/PageDetailPage.vue'), meta: { seo: { titleKey: 'seo.pageFallbackTitle', descriptionKey: 'seo.pageFallbackDescription' } } }

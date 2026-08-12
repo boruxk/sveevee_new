@@ -18,6 +18,10 @@ export default {
 		ru: 'Russian',
 		fr: 'French'
 	},
+	footer: {
+		label: 'Footer links',
+		privacy: 'Privacy Policy'
+	},
 	validation: {
 		required: 'This field is required.',
 		requiredFields: 'Please fill in the required fields.',
@@ -479,6 +483,8 @@ export default {
 		resetPasswordDescription: 'Use your SVEEVEE reset link to choose a new password.',
 		registerTitle: 'Create a SVEEVEE account',
 		registerDescription: 'Create an account to post local ads, build public pages, and chat with people nearby.',
+		privacyTitle: 'Privacy Policy',
+		privacyDescription: 'Read how SVEEVEE collects, uses, stores, and shares personal data, including Google sign-in data.',
 		homeTitle: 'Neighborhood feed',
 		homeDescription: 'Browse local ads prioritized by your neighborhood, your city, and nearby communities.',
 		meTitle: 'My ads',

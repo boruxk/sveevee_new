@@ -21,6 +21,7 @@
 	const { t } = useI18n()
 
 	const toneClass = computed(() => `shell--${props.tone}`)
+	const currentYear = new Date().getFullYear()
 	const homeRouteName = computed(() => (authStore.isAuthenticated ? 'home' : 'landing'))
 	const unreadCount = computed(() => chatsStore.unreadCount || authStore.unreadMessagesCount)
 	const hasBusinessPage = computed(() => Boolean(authStore.user?.business_page))
@@ -260,6 +261,15 @@
 		<q-page-container>
 			<slot />
 		</q-page-container>
+
+		<footer class="shell-footer">
+			<div class="shell-footer__inner">
+				<div class="shell-footer__brand">© {{ currentYear }} SVEEVEE</div>
+				<nav class="shell-footer__nav" :aria-label="t('footer.label')">
+					<router-link :to="{ name: 'privacy' }">{{ t('footer.privacy') }}</router-link>
+				</nav>
+			</div>
+		</footer>
 	</q-layout>
 </template>
 
@@ -422,6 +432,39 @@
     linear-gradient(180deg, rgba(21, 31, 59, 0.08), transparent 32%);
 }
 
+.shell-footer {
+  padding: 18px 20px 26px;
+}
+
+.shell-footer__inner {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-top: 18px;
+  border-top: 1px solid rgba(17, 34, 45, 0.1);
+  color: rgba(17, 34, 45, 0.56);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.shell-footer__nav {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.shell-footer__nav a {
+  color: var(--soz-primary-deep);
+  text-decoration: none;
+}
+
+.shell-footer__nav a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 900px) {
   .shell-toolbar {
     padding: 14px 12px;
@@ -478,6 +521,17 @@
   .profile-menu-trigger :deep(.q-avatar) {
     width: 44px !important;
     height: 44px !important;
+  }
+
+  .shell-footer {
+    padding-inline: 12px;
+  }
+
+  .shell-footer__inner {
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+    text-align: center;
   }
 }
 </style>
