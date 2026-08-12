@@ -10,6 +10,12 @@ import router from '@/router'
 import i18n, { getQuasarLocale } from '@/i18n'
 import { useAppStore } from '@/stores/app'
 
+const localHosts = ['localhost', '127.0.0.1', '::1']
+
+if (import.meta.env.PROD && window.location.protocol === 'http:' && !localHosts.includes(window.location.hostname)) {
+	window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}${window.location.hash}`)
+}
+
 const app = createApp(App)
 const pinia = createPinia()
 

@@ -8,9 +8,14 @@ use App\Models\PageEvent;
 use App\Models\PageProduct;
 use App\Models\PageService;
 use App\Models\User;
+use App\Notifications\PasswordChangedNotification;
+use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -462,6 +467,51 @@ class SveeveeApiTest extends TestCase
             'id' => $user->id,
             'locale' => 'en',
         ]);
+    }
+
+    public function test_user_can_request_password_reset_email(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create(['email' => 'reset@example.test']);
+
+        $this->postJson('/api/v1/auth/forgot-password', [
+            'email' => 'reset@example.test',
+        ])->assertOk();
+
+        Notification::assertSentTo($user, ResetPasswordNotification::class);
+    }
+
+    public function test_user_can_reset_password_with_email_token(): void
+    {
+        $user = User::factory()->create(['email' => 'reset-token@example.test']);
+        $token = Password::createToken($user);
+
+        $this->postJson('/api/v1/auth/reset-password', [
+            'email' => 'reset-token@example.test',
+            'token' => $token,
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ])->assertOk();
+
+        $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
+    }
+
+    public function test_user_can_update_profile_password_and_receive_email(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create(['password' => 'old-password']);
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/v1/profile/password', [
+            'current_password' => 'old-password',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ])->assertOk();
+
+        $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
+        Notification::assertSentTo($user, PasswordChangedNotification::class);
     }
 
     public function test_user_can_delete_profile_photo(): void

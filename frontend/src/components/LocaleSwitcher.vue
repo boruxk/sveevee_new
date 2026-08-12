@@ -12,6 +12,14 @@
 		persist: {
 			type: Boolean,
 			default: false
+		},
+		guestStorage: {
+			type: Boolean,
+			default: false
+		},
+		compact: {
+			type: Boolean,
+			default: false
 		}
 	})
 	const emit = defineEmits(['update:modelValue'])
@@ -23,18 +31,29 @@
 	const changing = ref(false)
 	const flag = (...points) => String.fromCodePoint(...points)
 
-	const localeOptions = computed(() => [
-		{ label: flag(0x1f1ee, 0x1f1f1), value: 'he' },
-		{ label: flag(0x1f1fa, 0x1f1f8), value: 'en' },
-		{ label: flag(0x1f1f7, 0x1f1fa), value: 'ru' },
-		{ label: flag(0x1f1eb, 0x1f1f7), value: 'fr' }
-	])
+	const localeOptions = computed(() => {
+		const options = [
+			{ flag: flag(0x1f1ee, 0x1f1f1), title: t('languages.he'), value: 'he' },
+			{ flag: flag(0x1f1fa, 0x1f1f8), title: t('languages.en'), value: 'en' },
+			{ flag: flag(0x1f1f7, 0x1f1fa), title: t('languages.ru'), value: 'ru' },
+			{ flag: flag(0x1f1eb, 0x1f1f7), title: t('languages.fr'), value: 'fr' }
+		]
+
+		return options.map((option) => ({
+			label: props.compact ? option.flag : `${option.flag} ${option.title}`,
+			value: option.value
+		}))
+	})
 
 	async function selectLocale(locale) {
 		const previousLocale = appStore.locale
 
 		setLocale(locale)
 		emit('update:modelValue', locale)
+
+		if (props.guestStorage && !authStore.isAuthenticated) {
+			appStore.setGuestLocale(locale)
+		}
 
 		if (!props.persist || !authStore.isAuthenticated) {
 			return
@@ -73,13 +92,15 @@
 		emit-value
 		map-options
 		class="locale-switcher"
-		style="min-width: 68px"
+		:class="{ 'locale-switcher--compact': compact }"
 		@update:model-value="selectLocale"
 	/>
 </template>
 
 <style scoped lang="scss">
 .locale-switcher {
+  min-width: 180px;
+
   :deep(.q-field__control) {
     border-radius: 999px;
     min-height: 42px;
@@ -91,8 +112,23 @@
     min-height: 42px;
     padding-top: 0;
     padding-bottom: 0;
-    font-size: 20px;
-    line-height: 1;
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  &.locale-switcher--compact {
+    min-width: 76px;
+    width: 76px;
+
+    :deep(.q-field__control) {
+      padding-inline: 8px 4px;
+    }
+
+    :deep(.q-field__native) {
+      justify-content: center;
+      font-size: 20px;
+      line-height: 1;
+    }
   }
 }
 </style>

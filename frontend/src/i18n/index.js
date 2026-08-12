@@ -8,7 +8,7 @@ import en from '@/i18n/messages/en'
 import he from '@/i18n/messages/he'
 import ru from '@/i18n/messages/ru'
 import fr from '@/i18n/messages/fr'
-import { useAppStore } from '@/stores/app'
+import { getGuestLocale, useAppStore } from '@/stores/app'
 
 const supportedLocales = ['he', 'en', 'ru', 'fr']
 const quasarLocales = {
@@ -17,7 +17,7 @@ const quasarLocales = {
 	ru: quasarRu,
 	fr: quasarFr
 }
-const initialLocale = 'he'
+const initialLocale = getGuestLocale()
 
 const i18n = createI18n({
 	legacy: false,

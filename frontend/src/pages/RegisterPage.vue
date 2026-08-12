@@ -7,6 +7,7 @@
 	import { useAppStore } from '@/stores/app'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import PasswordInput from '@/components/PasswordInput.vue'
 
 	const { t } = useI18n()
 	const $q = useQuasar()
@@ -102,6 +103,7 @@
 								v-model="form.email"
 								outlined
 								type="email"
+								autocomplete="email"
 								:label="requiredLabel('auth.email')"
 								:rules="[requiredRule]"
 							/>
@@ -119,17 +121,15 @@
 							/>
 						</div>
 						<div class="register-form__row">
-							<q-input class="col-12 col-md-6"
+							<PasswordInput class="col-12 col-md-6"
 								v-model="form.password"
-								outlined
-								type="password"
+								autocomplete="new-password"
 								:label="requiredLabel('auth.password')"
 								:rules="[requiredRule]"
 							/>
-							<q-input class="col-12 col-md-6"
+							<PasswordInput class="col-12 col-md-6"
 								v-model="form.password_confirmation"
-								outlined
-								type="password"
+								autocomplete="new-password"
 								:label="requiredLabel('auth.passwordConfirmation')"
 								:rules="[requiredRule]"
 							/>

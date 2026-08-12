@@ -1,19 +1,19 @@
 <script setup>
 	import { reactive, ref } from 'vue'
-	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
-	import { useAuthStore } from '@/stores/auth'
+	import { forgotPassword } from '@/services/api/auth'
+	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
-	import PasswordInput from '@/components/PasswordInput.vue'
 
 	const { t } = useI18n()
 	const $q = useQuasar()
-	const route = useRoute()
-	const router = useRouter()
-	const authStore = useAuthStore()
 	const formRef = ref(null)
-	const form = reactive({ email: '', password: '' })
+	const sending = ref(false)
+	const sent = ref(false)
+	const form = reactive({
+		email: ''
+	})
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	async function submit() {
@@ -21,11 +21,16 @@
 			return
 		}
 
+		sending.value = true
+
 		try {
-			await authStore.login(form)
-			router.push(route.query.redirect || { name: 'home' })
+			await forgotPassword(form)
+			sent.value = true
+			$q.notify({ type: 'positive', message: t('auth.resetLinkSent') })
 		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('auth.loginFailed') })
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('auth.resetRequestFailed')) })
+		} finally {
+			sending.value = false
 		}
 	}
 </script>
@@ -35,8 +40,11 @@
 		<div class="auth-shell">
 			<section class="soz-section-card auth-panel">
 				<div class="auth-panel__inner">
-					<h1 class="soz-page-title">{{ t('auth.loginTitle') }}</h1>
-					<p>{{ t('auth.simpleLogin') }}</p>
+					<h1 class="soz-page-title">{{ t('auth.forgotPasswordTitle') }}</h1>
+					<p>{{ t('auth.forgotPasswordBody') }}</p>
+					<q-banner v-if="sent" rounded class="reset-banner">
+						{{ t('auth.resetLinkSent') }}
+					</q-banner>
 					<q-form ref="formRef" greedy class="column q-gutter-md" @submit.prevent="submit()">
 						<q-input
 							v-model="form.email"
@@ -46,22 +54,14 @@
 							:label="requiredLabel('auth.email')"
 							:rules="[requiredRule]"
 						/>
-						<PasswordInput
-							v-model="form.password"
-							autocomplete="current-password"
-							:label="requiredLabel('auth.password')"
-							:rules="[requiredRule]"
-						/>
-						<router-link class="forgot-link" :to="{ name: 'forgot-password' }">
-							{{ t('auth.forgotPassword') }}
-						</router-link>
-						<q-btn color="primary"
+						<q-btn
+							color="primary"
 							unelevated
 							rounded
 							type="submit"
-							icon="login"
-							:loading="authStore.loading"
-							:label="t('nav.login')"
+							icon="mail"
+							:loading="sending"
+							:label="t('auth.sendResetLink')"
 						/>
 					</q-form>
 				</div>
@@ -93,10 +93,10 @@
   margin: 0 auto;
 }
 
-.forgot-link {
+.reset-banner {
+  margin: 16px 0;
+  background: rgba(123, 63, 242, 0.1);
   color: var(--soz-primary-deep);
-  font-weight: 600;
-  justify-self: start;
 }
 
 @media (max-width: 700px) {
@@ -106,10 +106,6 @@
 
   .auth-panel {
     padding: 20px;
-  }
-
-  .auth-panel__inner p {
-    line-height: 1.6;
   }
 
   .auth-panel__inner .q-btn {

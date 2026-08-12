@@ -7,9 +7,12 @@ use App\Models\EmailBan;
 use App\Models\User;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -79,6 +82,49 @@ class AuthController extends Controller
         }
 
         return $this->authenticated($user, 'Logged in.');
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $status = Password::sendResetLink(['email' => $data['email']]);
+
+        if ($status === Password::RESET_THROTTLED) {
+            return ApiResponseService::error('Please wait before requesting another password reset email.', status: 429);
+        }
+
+        return ApiResponseService::success(null, 'If an account exists for this email, a reset link has been sent.');
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'token' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:5', 'confirmed'],
+        ]);
+
+        $status = Password::reset($data, function (User $user, string $password): void {
+            $user->forceFill([
+                'password' => $password,
+                'remember_token' => Str::random(60),
+            ])->save();
+
+            event(new PasswordReset($user));
+        });
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return ApiResponseService::error('The reset link is invalid or has expired.', status: 422);
+        }
+
+        return ApiResponseService::success(null, 'Password has been reset.');
     }
 
     public function me(Request $request)

@@ -4,6 +4,7 @@
 	import { useI18n } from 'vue-i18n'
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
+	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 	import logoSrc from '@/assets/sveevee-logo.webp'
 
 	const props = defineProps({
@@ -137,6 +138,12 @@
 						:label="t('nav.register')"
 						:to="{ name: 'register' }"
 					/>
+					<LocaleSwitcher
+						v-if="!authStore.isAuthenticated"
+						guest-storage
+						compact
+						class="shell-guest-locale-switcher"
+					/>
 
 					<q-btn v-if="authStore.isAuthenticated"
 						flat
@@ -221,6 +228,12 @@
 									<q-item-section avatar><q-icon name="person_add" /></q-item-section>
 									<q-item-section>{{ t('nav.register') }}</q-item-section>
 								</q-item>
+								<q-item v-if="!authStore.isAuthenticated" class="mobile-menu__locale">
+									<q-item-section avatar><q-icon name="language" /></q-item-section>
+									<q-item-section>
+										<LocaleSwitcher guest-storage compact class="mobile-menu__locale-select" />
+									</q-item-section>
+								</q-item>
 
 								<q-item v-if="authStore.isAuthenticated && isAdmin" clickable v-close-popup @click="openAdmin">
 									<q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
@@ -281,10 +294,10 @@
 
 .shell-nav {
   min-width: 0;
-  overflow-x: auto;
   overscroll-behavior-inline: contain;
   gap: 10px;
-  padding-bottom: 2px;
+  padding: 8px 4px 12px;
+  margin: -8px -4px -12px;
   scrollbar-width: none;
 }
 
@@ -329,10 +342,18 @@
   min-height: 52px;
 }
 
+.shell-guest-locale-switcher {
+  flex: 0 0 auto;
+  width: 76px;
+}
+
 .mobile-shell-actions {
   display: none;
   align-items: center;
   gap: 8px;
+  padding: 8px;
+  margin: -8px;
+  overflow: visible;
 }
 
 .mobile-menu-trigger {
@@ -341,20 +362,38 @@
   height: 48px;
   background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 12px 26px rgba(40, 22, 93, 0.12);
+  overflow: visible;
 }
 
 .mobile-menu {
   width: min(320px, calc(100vw - 20px));
+  padding-bottom: 12px;
 }
 
 .mobile-menu__list {
   display: grid;
-  gap: 2px;
+  gap: 6px;
+  padding-block: 4px 8px;
+}
+
+.mobile-menu__list :deep(.q-item) {
+  min-height: 52px;
+  overflow: visible;
+  padding-block: 8px;
+  line-height: 1.25;
 }
 
 .mobile-menu__item--active {
   background: rgba(123, 63, 242, 0.12);
   color: var(--soz-primary-deep);
+}
+
+.mobile-menu__locale {
+  align-items: center;
+}
+
+.mobile-menu__locale-select {
+  width: 76px;
 }
 
 .profile-menu-trigger :deep(.q-avatar__content img) {
@@ -422,6 +461,10 @@
     min-width: 44px !important;
     min-height: 44px !important;
     padding: 0 12px !important;
+  }
+
+  .shell-guest-locale-switcher {
+    display: none;
   }
 
   .profile-menu-trigger {

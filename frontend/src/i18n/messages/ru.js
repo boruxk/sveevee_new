@@ -94,6 +94,8 @@ export default {
 	auth: {
 		email: 'Эл. почта',
 		password: 'Пароль',
+		currentPassword: 'Текущий пароль',
+		newPassword: 'Новый пароль',
 		passwordConfirmation: 'Повторите пароль',
 		givenName: 'Имя',
 		familyName: 'Фамилия',
@@ -105,7 +107,18 @@ export default {
 		registerTitle: 'Создать аккаунт',
 		simpleLogin: 'Простой вход по эл. почте. Без входа через Google, подтверждения почты и ReCaptcha.',
 		loginFailed: 'Не удалось войти.',
-		registerFailed: 'Не удалось зарегистрироваться.'
+		registerFailed: 'Не удалось зарегистрироваться.',
+		forgotPassword: 'Забыли пароль?',
+		forgotPasswordTitle: 'Сброс пароля',
+		forgotPasswordBody: 'Введите e-mail, и мы отправим ссылку для выбора нового пароля.',
+		sendResetLink: 'Отправить ссылку',
+		resetLinkSent: 'Если аккаунт с таким e-mail существует, ссылка для сброса отправлена.',
+		resetRequestFailed: 'Не удалось отправить письмо для сброса.',
+		resetPasswordTitle: 'Выберите новый пароль',
+		resetPasswordBody: 'Введите e-mail аккаунта и выберите новый пароль.',
+		resetPassword: 'Сбросить пароль',
+		passwordResetSaved: 'Пароль сброшен.',
+		resetFailed: 'Ссылка недействительна или устарела.'
 	},
 	ads: {
 		title: 'Заголовок',
@@ -443,7 +456,12 @@ export default {
 		photo: 'Фото',
 		languages: 'Языки',
 		saved: 'Профиль сохранен.',
-		saveFailed: 'Не удалось сохранить профиль.'
+		saveFailed: 'Не удалось сохранить профиль.',
+		passwordTitle: 'Пароль',
+		passwordBody: 'Здесь можно изменить пароль. Мы отправим подтверждение на e-mail аккаунта.',
+		changePassword: 'Изменить пароль',
+		passwordSaved: 'Пароль изменен. Мы отправили подтверждение по e-mail.',
+		passwordSaveFailed: 'Не удалось изменить пароль.'
 	},
 	admin: {
 		title: 'Админ',
@@ -474,6 +492,10 @@ export default {
 		searchDescription: 'Ищите пользователей, бизнес-страницы, страницы сообществ и локальные объявления рядом с вами в SVEEVEE.',
 		loginTitle: 'Вход',
 		loginDescription: 'Войдите, чтобы управлять профилем, страницами, объявлениями и чатами в SVEEVEE.',
+		forgotPasswordTitle: 'Сброс пароля',
+		forgotPasswordDescription: 'Запросите ссылку для сброса пароля SVEEVEE по e-mail.',
+		resetPasswordTitle: 'Выберите новый пароль',
+		resetPasswordDescription: 'Используйте ссылку SVEEVEE, чтобы выбрать новый пароль.',
 		registerTitle: 'Создать аккаунт SVEEVEE',
 		registerDescription: 'Создайте аккаунт, чтобы публиковать локальные объявления, создавать публичные страницы и общаться с людьми рядом.',
 		homeTitle: 'Районная лента',

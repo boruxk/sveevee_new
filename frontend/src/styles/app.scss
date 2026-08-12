@@ -465,6 +465,29 @@ h6 {
   border-radius: 26px;
 }
 
+.mobile-menu {
+  padding-bottom: 12px;
+}
+
+.mobile-menu .q-list {
+  padding-bottom: 8px;
+}
+
+.mobile-menu .q-item {
+  min-height: 52px;
+  overflow: visible;
+  padding-block: 8px;
+  line-height: 1.25;
+}
+
+.shell-nav,
+.mobile-shell-actions,
+.mobile-menu-trigger,
+.shell-link,
+.profile-menu-trigger {
+  overflow: visible;
+}
+
 .q-chip.bg-positive,
 .q-chip.bg-primary,
 .q-chip.bg-secondary {

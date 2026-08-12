@@ -94,6 +94,8 @@ export default {
 	auth: {
 		email: 'E-mail',
 		password: 'Mot de passe',
+		currentPassword: 'Mot de passe actuel',
+		newPassword: 'Nouveau mot de passe',
 		passwordConfirmation: 'Répéter le mot de passe',
 		givenName: 'Prénom',
 		familyName: 'Nom',
@@ -105,7 +107,18 @@ export default {
 		registerTitle: 'Créer un compte',
 		simpleLogin: 'Connexion simple par e-mail. Pas de connexion Google, pas de confirmation d’e-mail, pas de ReCaptcha.',
 		loginFailed: 'La connexion a échoué.',
-		registerFailed: 'L’inscription a échoué.'
+		registerFailed: 'L’inscription a échoué.',
+		forgotPassword: 'Mot de passe oublié ?',
+		forgotPasswordTitle: 'Réinitialiser le mot de passe',
+		forgotPasswordBody: 'Entrez votre e-mail et nous vous enverrons un lien pour choisir un nouveau mot de passe.',
+		sendResetLink: 'Envoyer le lien',
+		resetLinkSent: 'Si un compte existe pour cet e-mail, un lien de réinitialisation a été envoyé.',
+		resetRequestFailed: 'L’e-mail de réinitialisation n’a pas pu être envoyé.',
+		resetPasswordTitle: 'Choisir un nouveau mot de passe',
+		resetPasswordBody: 'Entrez l’e-mail de votre compte et choisissez un nouveau mot de passe.',
+		resetPassword: 'Réinitialiser',
+		passwordResetSaved: 'Le mot de passe a été réinitialisé.',
+		resetFailed: 'Le lien est invalide ou expiré.'
 	},
 	ads: {
 		title: 'Titre',
@@ -443,7 +456,12 @@ export default {
 		photo: 'Photo',
 		languages: 'Langues',
 		saved: 'Profil enregistré.',
-		saveFailed: 'Le profil n’a pas pu être enregistré.'
+		saveFailed: 'Le profil n’a pas pu être enregistré.',
+		passwordTitle: 'Mot de passe',
+		passwordBody: 'Changez votre mot de passe ici. Nous enverrons une confirmation à votre adresse e-mail.',
+		changePassword: 'Changer le mot de passe',
+		passwordSaved: 'Mot de passe changé. Une confirmation a été envoyée par e-mail.',
+		passwordSaveFailed: 'Le mot de passe n’a pas pu être changé.'
 	},
 	admin: {
 		title: 'Admin',
@@ -474,6 +492,10 @@ export default {
 		searchDescription: 'Recherchez utilisateurs, pages entreprise, pages communaute et annonces locales pres de vous sur SVEEVEE.',
 		loginTitle: 'Connexion',
 		loginDescription: 'Connectez-vous pour gerer votre profil, vos pages, vos annonces et vos chats SVEEVEE.',
+		forgotPasswordTitle: 'Réinitialiser le mot de passe',
+		forgotPasswordDescription: 'Demandez un lien de réinitialisation SVEEVEE par e-mail.',
+		resetPasswordTitle: 'Choisir un nouveau mot de passe',
+		resetPasswordDescription: 'Utilisez votre lien SVEEVEE pour choisir un nouveau mot de passe.',
 		registerTitle: 'Creer un compte SVEEVEE',
 		registerDescription: 'Creez un compte pour publier des annonces locales, creer des pages publiques et discuter avec les personnes proches.',
 		homeTitle: 'Fil de quartier',

@@ -6,10 +6,11 @@
 	import { useAppStore } from '@/stores/app'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
-	import { deleteProfilePhoto, fetchProfile, updateProfile, uploadProfilePhoto } from '@/services/api/profile'
+	import { deleteProfilePhoto, fetchProfile, updateProfile, updateProfilePassword, uploadProfilePhoto } from '@/services/api/profile'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
+	import PasswordInput from '@/components/PasswordInput.vue'
 
 	const { t } = useI18n()
 	const $q = useQuasar()
@@ -17,8 +18,10 @@
 	const appStore = useAppStore()
 	const loading = ref(false)
 	const saving = ref(false)
+	const passwordSaving = ref(false)
 	const photoDeleting = ref(false)
 	const formRef = ref(null)
+	const passwordFormRef = ref(null)
 	const photo = ref(null)
 	const citySelectOptions = ref([])
 	const neighborhoodSelectOptions = ref([])
@@ -30,6 +33,11 @@
 		city: '',
 		neighborhood: '',
 		locale: 'he'
+	})
+	const passwordForm = reactive({
+		current_password: '',
+		password: '',
+		password_confirmation: ''
 	})
 	const {
 		cityOptions,
@@ -104,6 +112,26 @@
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('profile.saveFailed')) })
 		} finally {
 			photoDeleting.value = false
+		}
+	}
+
+	async function savePassword() {
+		if (!(await validateRequiredForm(passwordFormRef))) {
+			return
+		}
+
+		passwordSaving.value = true
+
+		try {
+			await updateProfilePassword(passwordForm)
+			passwordForm.current_password = ''
+			passwordForm.password = ''
+			passwordForm.password_confirmation = ''
+			$q.notify({ type: 'positive', message: t('profile.passwordSaved') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('profile.passwordSaveFailed')) })
+		} finally {
+			passwordSaving.value = false
 		}
 	}
 
@@ -255,6 +283,47 @@
 						:label="t('actions.save')"
 					/>
 				</q-form>
+				<q-separator v-if="!loading" spaced class="profile-password-separator" />
+				<q-form v-if="!loading"
+					ref="passwordFormRef"
+					greedy
+					class="profile-password-form column q-gutter-md q-pl-md"
+					@submit.prevent="savePassword()"
+				>
+					<div>
+						<h2>{{ t('profile.passwordTitle') }}</h2>
+						<p>{{ t('profile.passwordBody') }}</p>
+					</div>
+					<div class="row q-col-gutter-md">
+						<PasswordInput class="col-12 col-md-4"
+							v-model="passwordForm.current_password"
+							autocomplete="current-password"
+							:label="requiredLabel('auth.currentPassword')"
+							:rules="[requiredRule]"
+						/>
+						<PasswordInput class="col-12 col-md-4"
+							v-model="passwordForm.password"
+							autocomplete="new-password"
+							:label="requiredLabel('auth.newPassword')"
+							:rules="[requiredRule]"
+						/>
+						<PasswordInput class="col-12 col-md-4"
+							v-model="passwordForm.password_confirmation"
+							autocomplete="new-password"
+							:label="requiredLabel('auth.passwordConfirmation')"
+							:rules="[requiredRule]"
+						/>
+					</div>
+					<q-btn class="form-submit"
+						color="primary"
+						unelevated
+						rounded
+						type="submit"
+						icon="lock_reset"
+						:loading="passwordSaving"
+						:label="t('profile.changePassword')"
+					/>
+				</q-form>
 				<q-spinner v-else color="primary" />
 			</section>
 		</div>
@@ -280,6 +349,24 @@
   margin-inline-start: 0 !important;
 }
 
+.profile-password-separator {
+  margin-block: 28px;
+}
+
+.profile-password-form {
+  h2 {
+    margin: 0 0 6px;
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+
+  p {
+    margin: 0;
+    color: var(--soz-muted);
+    line-height: 1.55;
+  }
+}
+
 .profile-language-field {
   display: grid;
   align-content: center;
@@ -295,7 +382,7 @@
 }
 
 .profile-locale-switcher {
-  width: min(160px, 100%);
+  width: min(220px, 100%);
 }
 
 @media (max-width: 700px) {
@@ -310,6 +397,11 @@
 
   .profile-panel :deep(.q-form) {
     padding-top: 10px !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .profile-password-form {
     padding-right: 0 !important;
     padding-left: 0 !important;
   }

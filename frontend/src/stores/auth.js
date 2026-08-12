@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { fetchMe, login, logout, register } from '@/services/api/auth'
 import { tokenStorageKey } from '@/services/api/client'
 import { setLocale } from '@/i18n'
+import { getGuestLocale } from '@/stores/app'
 
 const supportedLocales = ['he', 'en', 'ru', 'fr']
 
@@ -99,7 +100,7 @@ export const useAuthStore = defineStore('auth', {
 			this.user = null
 			this.initialized = true
 			localStorage.removeItem(tokenStorageKey)
-			setLocale('he')
+			setLocale(getGuestLocale())
 		},
 		syncLocaleFromUser() {
 			const preferredLocale = this.user?.locale

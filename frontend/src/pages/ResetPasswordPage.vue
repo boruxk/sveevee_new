@@ -3,7 +3,8 @@
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
-	import { useAuthStore } from '@/stores/auth'
+	import { resetPassword } from '@/services/api/auth'
+	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import PasswordInput from '@/components/PasswordInput.vue'
 
@@ -11,9 +12,13 @@
 	const $q = useQuasar()
 	const route = useRoute()
 	const router = useRouter()
-	const authStore = useAuthStore()
 	const formRef = ref(null)
-	const form = reactive({ email: '', password: '' })
+	const saving = ref(false)
+	const form = reactive({
+		email: String(route.query.email || ''),
+		password: '',
+		password_confirmation: ''
+	})
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	async function submit() {
@@ -21,11 +26,19 @@
 			return
 		}
 
+		saving.value = true
+
 		try {
-			await authStore.login(form)
-			router.push(route.query.redirect || { name: 'home' })
+			await resetPassword({
+				...form,
+				token: route.params.token
+			})
+			$q.notify({ type: 'positive', message: t('auth.passwordResetSaved') })
+			router.push({ name: 'login' })
 		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('auth.loginFailed') })
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('auth.resetFailed')) })
+		} finally {
+			saving.value = false
 		}
 	}
 </script>
@@ -35,8 +48,8 @@
 		<div class="auth-shell">
 			<section class="soz-section-card auth-panel">
 				<div class="auth-panel__inner">
-					<h1 class="soz-page-title">{{ t('auth.loginTitle') }}</h1>
-					<p>{{ t('auth.simpleLogin') }}</p>
+					<h1 class="soz-page-title">{{ t('auth.resetPasswordTitle') }}</h1>
+					<p>{{ t('auth.resetPasswordBody') }}</p>
 					<q-form ref="formRef" greedy class="column q-gutter-md" @submit.prevent="submit()">
 						<q-input
 							v-model="form.email"
@@ -48,20 +61,24 @@
 						/>
 						<PasswordInput
 							v-model="form.password"
-							autocomplete="current-password"
-							:label="requiredLabel('auth.password')"
+							autocomplete="new-password"
+							:label="requiredLabel('auth.newPassword')"
 							:rules="[requiredRule]"
 						/>
-						<router-link class="forgot-link" :to="{ name: 'forgot-password' }">
-							{{ t('auth.forgotPassword') }}
-						</router-link>
-						<q-btn color="primary"
+						<PasswordInput
+							v-model="form.password_confirmation"
+							autocomplete="new-password"
+							:label="requiredLabel('auth.passwordConfirmation')"
+							:rules="[requiredRule]"
+						/>
+						<q-btn
+							color="primary"
 							unelevated
 							rounded
 							type="submit"
-							icon="login"
-							:loading="authStore.loading"
-							:label="t('nav.login')"
+							icon="lock_reset"
+							:loading="saving"
+							:label="t('auth.resetPassword')"
 						/>
 					</q-form>
 				</div>
@@ -93,12 +110,6 @@
   margin: 0 auto;
 }
 
-.forgot-link {
-  color: var(--soz-primary-deep);
-  font-weight: 600;
-  justify-self: start;
-}
-
 @media (max-width: 700px) {
   .auth-page {
     padding-inline: 10px;
@@ -106,10 +117,6 @@
 
   .auth-panel {
     padding: 20px;
-  }
-
-  .auth-panel__inner p {
-    line-height: 1.6;
   }
 
   .auth-panel__inner .q-btn {

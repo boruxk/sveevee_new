@@ -94,6 +94,8 @@ export default {
 	auth: {
 		email: 'Email',
 		password: 'Password',
+		currentPassword: 'Current password',
+		newPassword: 'New password',
 		passwordConfirmation: 'Repeat password',
 		givenName: 'First name',
 		familyName: 'Last name',
@@ -105,7 +107,18 @@ export default {
 		registerTitle: 'Create account',
 		simpleLogin: 'Simple email login. No Google login, no email verification, no ReCaptcha.',
 		loginFailed: 'Login failed.',
-		registerFailed: 'Registration failed.'
+		registerFailed: 'Registration failed.',
+		forgotPassword: 'Forgot password?',
+		forgotPasswordTitle: 'Reset password',
+		forgotPasswordBody: 'Enter your email and we will send you a link to choose a new password.',
+		sendResetLink: 'Send reset link',
+		resetLinkSent: 'If an account exists for this email, a reset link has been sent.',
+		resetRequestFailed: 'The reset email could not be sent.',
+		resetPasswordTitle: 'Choose a new password',
+		resetPasswordBody: 'Enter the email for your account and choose a new password.',
+		resetPassword: 'Reset password',
+		passwordResetSaved: 'Password has been reset.',
+		resetFailed: 'The reset link is invalid or has expired.'
 	},
 	ads: {
 		title: 'Headline',
@@ -443,7 +456,12 @@ export default {
 		photo: 'Photo',
 		languages: 'Languages',
 		saved: 'Profile saved.',
-		saveFailed: 'Profile could not be saved.'
+		saveFailed: 'Profile could not be saved.',
+		passwordTitle: 'Password',
+		passwordBody: 'Change your password here. We will send a confirmation email to your account address.',
+		changePassword: 'Change password',
+		passwordSaved: 'Password changed. We sent you a confirmation email.',
+		passwordSaveFailed: 'Password could not be changed.'
 	},
 	admin: {
 		title: 'Admin',
@@ -474,6 +492,10 @@ export default {
 		searchDescription: 'Search users, business pages, community pages, and local ads near you on SVEEVEE.',
 		loginTitle: 'Login',
 		loginDescription: 'Log in to manage your SVEEVEE profile, pages, ads, and chats.',
+		forgotPasswordTitle: 'Reset password',
+		forgotPasswordDescription: 'Request a SVEEVEE password reset link by email.',
+		resetPasswordTitle: 'Choose a new password',
+		resetPasswordDescription: 'Use your SVEEVEE reset link to choose a new password.',
 		registerTitle: 'Create a SVEEVEE account',
 		registerDescription: 'Create an account to post local ads, build public pages, and chat with people nearby.',
 		homeTitle: 'Neighborhood feed',

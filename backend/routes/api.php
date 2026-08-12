@@ -26,6 +26,8 @@ Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth-login');
+        Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-login');
+        Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-login');
         Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
     });
 
@@ -36,6 +38,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::put('/profile', [ProfileController::class, 'update']);
         Route::put('/profile/locale', [ProfileController::class, 'updateLocale']);
+        Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
         Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
         Route::delete('/profile/photo', [ProfileController::class, 'destroyPhoto']);
 

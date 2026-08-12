@@ -94,6 +94,8 @@ export default {
 	auth: {
 		email: 'אימייל',
 		password: 'סיסמה',
+		currentPassword: 'סיסמה נוכחית',
+		newPassword: 'סיסמה חדשה',
 		passwordConfirmation: 'אימות סיסמה',
 		givenName: 'שם פרטי',
 		familyName: 'שם משפחה',
@@ -105,7 +107,18 @@ export default {
 		registerTitle: 'יצירת חשבון',
 		simpleLogin: 'כניסה פשוטה עם אימייל אחד. בלי Google Login, בלי אימות אימייל ובלי ReCaptcha.',
 		loginFailed: 'הכניסה נכשלה.',
-		registerFailed: 'ההרשמה נכשלה.'
+		registerFailed: 'ההרשמה נכשלה.',
+		forgotPassword: 'שכחת סיסמה?',
+		forgotPasswordTitle: 'איפוס סיסמה',
+		forgotPasswordBody: 'הזינו את האימייל ונשלח קישור לבחירת סיסמה חדשה.',
+		sendResetLink: 'שליחת קישור איפוס',
+		resetLinkSent: 'אם קיים חשבון עם האימייל הזה, נשלח קישור איפוס.',
+		resetRequestFailed: 'לא ניתן לשלוח את אימייל האיפוס.',
+		resetPasswordTitle: 'בחירת סיסמה חדשה',
+		resetPasswordBody: 'הזינו את אימייל החשבון ובחרו סיסמה חדשה.',
+		resetPassword: 'איפוס סיסמה',
+		passwordResetSaved: 'הסיסמה אופסה.',
+		resetFailed: 'קישור האיפוס אינו תקין או שפג תוקפו.'
 	},
 	ads: {
 		title: 'כותרת',
@@ -443,7 +456,12 @@ export default {
 		photo: 'תמונה',
 		languages: 'שפות',
 		saved: 'הפרופיל נשמר.',
-		saveFailed: 'לא ניתן לשמור את הפרופיל.'
+		saveFailed: 'לא ניתן לשמור את הפרופיל.',
+		passwordTitle: 'סיסמה',
+		passwordBody: 'כאן אפשר לשנות את הסיסמה. נשלח אישור לאימייל של החשבון.',
+		changePassword: 'שינוי סיסמה',
+		passwordSaved: 'הסיסמה שונתה. שלחנו אישור באימייל.',
+		passwordSaveFailed: 'לא ניתן לשנות את הסיסמה.'
 	},
 	admin: {
 		title: 'ניהול',
@@ -474,6 +492,10 @@ export default {
 		searchDescription: 'חפשו משתמשים, עמודי עסק, עמודי קהילה ומודעות מקומיות קרוב אליכם ב-SVEEVEE.',
 		loginTitle: 'כניסה',
 		loginDescription: 'היכנסו כדי לנהל את הפרופיל, העמודים, המודעות והצאטים שלכם ב-SVEEVEE.',
+		forgotPasswordTitle: 'איפוס סיסמה',
+		forgotPasswordDescription: 'בקשו קישור לאיפוס סיסמת SVEEVEE באימייל.',
+		resetPasswordTitle: 'בחירת סיסמה חדשה',
+		resetPasswordDescription: 'השתמשו בקישור האיפוס כדי לבחור סיסמה חדשה.',
 		registerTitle: 'יצירת חשבון SVEEVEE',
 		registerDescription: 'צרו חשבון כדי לפרסם מודעות מקומיות, לבנות עמודים ציבוריים ולדבר עם אנשים קרובים.',
 		homeTitle: 'פיד שכונתי',

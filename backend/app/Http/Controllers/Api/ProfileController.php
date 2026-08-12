@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Models\Ad;
 use App\Models\EmailBan;
+use App\Notifications\PasswordChangedNotification;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
@@ -84,6 +86,25 @@ class ProfileController extends Controller
             'profile' => $this->payloads->profile($user->profile, $user),
             'user' => $this->payloads->user($user, includePrivate: true),
         ], 'Profile saved.');
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:5', 'confirmed'],
+        ]);
+
+        if (! Hash::check($data['current_password'], $user->password)) {
+            return ApiResponseService::error('The current password is incorrect.', status: 422);
+        }
+
+        $user->forceFill(['password' => $data['password']])->save();
+        $user->notify(new PasswordChangedNotification());
+
+        return ApiResponseService::success(null, 'Password changed.');
     }
 
     public function uploadPhoto(Request $request)
