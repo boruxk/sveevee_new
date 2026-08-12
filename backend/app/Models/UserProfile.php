@@ -16,6 +16,7 @@ class UserProfile extends Model
         'phone',
         'city',
         'neighborhood',
+        'user_type',
     ];
 
     public function user(): BelongsTo

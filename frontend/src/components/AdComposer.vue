@@ -45,6 +45,9 @@
 
 		return buildAdCategorySelectOptions((key) => t(key, { currentLocale }))
 	})
+	const selectedCategoryOption = computed(() => (
+		categoryOptions.value.find((option) => option.value === form.category) || null
+	))
 	const hasStoredImage = computed(() => Boolean(props.ad?.image_url) && !form.image && !imageRemoved.value)
 	const imageDisplayName = computed(() => imageUploadDisplayName(
 		form.image,
@@ -141,6 +144,12 @@
 			:label="t('ads.category')"
 			:disable="disabled"
 		>
+			<template #selected>
+				<div v-if="selectedCategoryOption" class="ad-category-selection">
+					<span class="ad-category-option__dot" :style="{ backgroundColor: selectedCategoryOption.color }" />
+					<span>{{ selectedCategoryOption.label }}</span>
+				</div>
+			</template>
 			<template #option="scope">
 				<q-item v-bind="scope.itemProps" :class="{ 'ad-category-option--group': scope.opt.group }">
 					<q-item-section avatar>
@@ -209,6 +218,21 @@
   font-weight: 900;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+
+.ad-category-selection {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ad-category-selection span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ad-category-option__dot {

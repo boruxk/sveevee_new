@@ -9,6 +9,7 @@ use App\Models\EmailBan;
 use App\Notifications\PasswordChangedNotification;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Support\UserTypes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -32,7 +33,10 @@ class ProfileController extends Controller
     public function update(Request $request)
     {
         $user = $request->user();
-        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+        $request->merge([
+            'email' => strtolower(trim((string) $request->input('email'))),
+            'user_type' => $request->filled('user_type') ? $request->input('user_type') : null,
+        ]);
 
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
@@ -41,6 +45,7 @@ class ProfileController extends Controller
             'phone' => ['nullable', 'string', 'max:40'],
             'city' => ['nullable', 'string', 'max:120'],
             'neighborhood' => ['nullable', 'string', 'max:120'],
+            'user_type' => ['nullable', 'string', Rule::in(UserTypes::KEYS)],
             'locale' => ['nullable', 'string', Rule::in(['he', 'en', 'ru', 'fr'])],
         ]);
 
@@ -60,6 +65,7 @@ class ProfileController extends Controller
             'phone' => $data['phone'] ?? null,
             'city' => $data['city'] ?? null,
             'neighborhood' => $data['neighborhood'] ?? null,
+            'user_type' => $data['user_type'] ?? null,
         ]);
         $user->ads()
             ->whereNull('page_id')

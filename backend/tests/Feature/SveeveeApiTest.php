@@ -526,6 +526,53 @@ class SveeveeApiTest extends TestCase
         ]);
     }
 
+    public function test_user_can_update_optional_profile_user_type(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'profile-type@example.test',
+            'given_name' => 'Ada',
+            'family_name' => 'Lovelace',
+            'locale' => 'he',
+        ]);
+        Sanctum::actingAs($user);
+
+        $payload = [
+            'email' => $user->email,
+            'given_name' => 'Ada',
+            'family_name' => 'Lovelace',
+            'phone' => '+972 50 111 2222',
+            'city' => 'Haifa',
+            'neighborhood' => 'Hadar',
+            'locale' => 'he',
+            'user_type' => 'professionals.electricians',
+        ];
+
+        $this->putJson('/api/v1/profile', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.user_type', 'professionals.electricians');
+
+        $this->assertDatabaseHas('user_profiles', [
+            'user_id' => $user->id,
+            'user_type' => 'professionals.electricians',
+        ]);
+
+        $this->putJson('/api/v1/profile', [
+            ...$payload,
+            'user_type' => '',
+        ])->assertOk()
+            ->assertJsonPath('data.user_type', null);
+
+        $this->assertDatabaseHas('user_profiles', [
+            'user_id' => $user->id,
+            'user_type' => null,
+        ]);
+
+        $this->putJson('/api/v1/profile', [
+            ...$payload,
+            'user_type' => 'private_seller.general',
+        ])->assertStatus(422);
+    }
+
     public function test_user_can_request_password_reset_email(): void
     {
         Notification::fake();

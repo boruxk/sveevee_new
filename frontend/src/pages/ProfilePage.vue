@@ -9,10 +9,10 @@
 	import { deleteProfilePhoto, fetchProfile, updateProfile, updateProfilePassword, uploadProfilePhoto } from '@/services/api/profile'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
-	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 	import PasswordInput from '@/components/PasswordInput.vue'
+	import { buildUserTypeSelectOptions } from '@/constants/userTypes'
 
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const appStore = useAppStore()
@@ -32,6 +32,7 @@
 		phone: '',
 		city: '',
 		neighborhood: '',
+		user_type: '',
 		locale: 'he'
 	})
 	const passwordForm = reactive({
@@ -54,6 +55,17 @@
 		authStore.user?.profile?.photo_name
 	))
 	const hasStoredPhoto = computed(() => Boolean(authStore.user?.profile?.photo_url) && !photo.value)
+	const flag = (...points) => String.fromCodePoint(...points)
+	const localeOptions = computed(() => [
+		{ label: `${flag(0x1f1ee, 0x1f1f1)} ${t('languages.he')}`, title: t('languages.he'), value: 'he', flag: flag(0x1f1ee, 0x1f1f1) },
+		{ label: `${flag(0x1f1fa, 0x1f1f8)} ${t('languages.en')}`, title: t('languages.en'), value: 'en', flag: flag(0x1f1fa, 0x1f1f8) },
+		{ label: `${flag(0x1f1f7, 0x1f1fa)} ${t('languages.ru')}`, title: t('languages.ru'), value: 'ru', flag: flag(0x1f1f7, 0x1f1fa) },
+		{ label: `${flag(0x1f1eb, 0x1f1f7)} ${t('languages.fr')}`, title: t('languages.fr'), value: 'fr', flag: flag(0x1f1eb, 0x1f1f7) }
+	])
+	const userTypeOptions = computed(() => buildUserTypeSelectOptions(locale.value))
+	const selectedUserTypeOption = computed(() => (
+		userTypeOptions.value.find((option) => option.value === form.user_type) || null
+	))
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	function hydrate(profile) {
@@ -63,6 +75,7 @@
 		form.phone = profile?.phone || ''
 		form.city = profile?.city || ''
 		form.neighborhood = profile?.neighborhood || ''
+		form.user_type = profile?.user_type || ''
 		form.locale = profile?.locale || authStore.user?.locale || appStore.locale
 	}
 
@@ -179,7 +192,6 @@
 			<section class="soz-section-card page-head">
 				<div>
 					<h1 class="soz-page-title">{{ t('profile.title') }}</h1>
-					<p>{{ t('profile.subtitle') }}</p>
 				</div>
 			</section>
 
@@ -243,12 +255,64 @@
 							@new-value="addOption"
 						/>
 					</div>
-					<div class="row q-col-gutter-md q-pb-md">
-						<div class="col-12 col-md-6 profile-language-field">
-							<div class="profile-language-field__label">{{ t('profile.languages') }}</div>
-							<LocaleSwitcher persist class="profile-locale-switcher" @update:model-value="form.locale = $event" />
-						</div>
-						<q-file class="col-12 col-md-6"
+					<div class="row q-col-gutter-md q-pb-md profile-user-settings-row">
+						<q-select
+							v-model="form.locale"
+							class="col-12 col-md-3 profile-locale-select"
+							outlined
+							emit-value
+							map-options
+							options-dense
+							popup-content-class="profile-locale-select-menu"
+							popup-content-style="max-height: min(72vh, 520px); overflow-y: auto;"
+							:options="localeOptions"
+							:label="t('profile.languages')"
+						>
+							<template #option="scope">
+								<q-item v-bind="scope.itemProps">
+									<q-item-section avatar>
+										<span class="profile-locale-option__flag">{{ scope.opt.flag }}</span>
+									</q-item-section>
+									<q-item-section>
+										<q-item-label>{{ scope.opt.title }}</q-item-label>
+									</q-item-section>
+								</q-item>
+							</template>
+						</q-select>
+						<q-select
+							v-model="form.user_type"
+							class="col-12 col-md-4"
+							outlined
+							clearable
+							emit-value
+							map-options
+							options-dense
+							popup-content-class="user-type-select-menu"
+							popup-content-style="max-height: min(72vh, 520px); overflow-y: auto;"
+							:virtual-scroll-item-size="46"
+							:virtual-scroll-slice-size="36"
+							:options="userTypeOptions"
+							option-disable="disable"
+							:label="t('profile.userType')"
+						>
+							<template #selected>
+								<div v-if="selectedUserTypeOption" class="profile-select-value">
+									<span class="user-type-option__dot" :style="{ backgroundColor: selectedUserTypeOption.color }" />
+									<span>{{ selectedUserTypeOption.label }}</span>
+								</div>
+							</template>
+							<template #option="scope">
+								<q-item v-bind="scope.itemProps" :class="{ 'user-type-option--group': scope.opt.group }">
+									<q-item-section avatar>
+										<span class="user-type-option__dot" :style="{ backgroundColor: scope.opt.color }" />
+									</q-item-section>
+									<q-item-section>
+										<q-item-label>{{ scope.opt.label }}</q-item-label>
+									</q-item-section>
+								</q-item>
+							</template>
+						</q-select>
+						<q-file class="col-12 col-md-5"
 							v-model="photo"
 							outlined
 							clearable
@@ -283,18 +347,18 @@
 						:label="t('actions.save')"
 					/>
 				</q-form>
-				<q-separator v-if="!loading" spaced class="profile-password-separator" />
+				<div v-if="!loading" class="profile-password-gap" />
 				<q-form v-if="!loading"
 					ref="passwordFormRef"
 					greedy
 					class="profile-password-form column q-gutter-md q-pl-md"
 					@submit.prevent="savePassword()"
 				>
-					<div>
+					<div class="profile-password-intro">
 						<h2>{{ t('profile.passwordTitle') }}</h2>
 						<p>{{ t('profile.passwordBody') }}</p>
 					</div>
-					<div class="row q-col-gutter-md">
+					<div class="row q-col-gutter-md profile-password-fields">
 						<PasswordInput class="col-12 col-md-4"
 							v-model="passwordForm.current_password"
 							autocomplete="current-password"
@@ -345,17 +409,23 @@
   padding: 28px;
 }
 
+.page-head h1 {
+  margin: 0;
+}
+
 .form-submit {
   margin-inline-start: 0 !important;
 }
 
-.profile-password-separator {
-  margin-block: 28px;
+.profile-password-gap {
+  height: 52px;
 }
 
 .profile-password-form {
+  gap: 0;
+
   h2 {
-    margin: 0 0 6px;
+    margin: 0 0 14px;
     font-size: 1.35rem;
     line-height: 1.25;
   }
@@ -367,22 +437,61 @@
   }
 }
 
-.profile-language-field {
-  display: grid;
-  align-content: center;
-  min-height: 50px;
-  gap: 6px;
+.profile-password-fields {
+  margin-top: 30px;
 }
 
-.profile-language-field__label {
-  color: var(--soz-primary-deep);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.2;
+.profile-password-form .form-submit {
+  margin-top: 26px;
 }
 
-.profile-locale-switcher {
-  width: min(220px, 100%);
+.profile-user-settings-row {
+  align-items: center;
+}
+
+.profile-select-value {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.profile-select-value span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-type-option--group {
+  min-height: 44px;
+  color: rgba(17, 34, 45, 0.9);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.profile-locale-option__flag {
+  display: block;
+  width: 24px;
+  font-size: 20px;
+  line-height: 1;
+  text-align: center;
+}
+
+.user-type-option__dot {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.user-type-option--group .user-type-option__dot {
+  width: 15px;
+  height: 15px;
+  box-shadow: 0 6px 14px rgba(17, 34, 45, 0.18);
 }
 
 @media (max-width: 700px) {
@@ -410,8 +519,20 @@
     width: 100%;
   }
 
-  .profile-locale-switcher {
-    width: 100%;
+  .profile-password-gap {
+    height: 40px;
+  }
+
+  .profile-password-fields {
+    margin-top: 22px;
+  }
+
+}
+
+@media (min-width: 701px) {
+  .form-submit {
+    align-self: center;
+    width: 33.333%;
   }
 }
 </style>

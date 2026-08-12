@@ -60,6 +60,7 @@ class PayloadService
             'phone' => $profile?->phone,
             'city' => $profile?->city,
             'neighborhood' => $profile?->neighborhood,
+            'user_type' => $profile?->user_type,
             'locale' => $user?->locale,
         ];
     }

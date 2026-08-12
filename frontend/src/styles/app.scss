@@ -162,8 +162,11 @@ a {
 
 .soz-page-title {
   font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+  margin: 0;
+  font-size: clamp(1.65rem, 2.2vw, 2.15rem);
   font-weight: 300 !important;
-  letter-spacing: -0.04em;
+  line-height: 1.18;
+  letter-spacing: 0;
 }
 
 h1,
@@ -500,8 +503,8 @@ h6 {
   }
 
   .soz-page-title {
-    font-size: clamp(2rem, 10vw, 2.8rem);
-    line-height: 1.5 !important;
+    font-size: clamp(1.5rem, 7vw, 2rem);
+    line-height: 1.22 !important;
     letter-spacing: 0;
   }
 

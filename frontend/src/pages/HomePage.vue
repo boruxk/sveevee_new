@@ -85,6 +85,10 @@
   padding: 28px;
 }
 
+.page-head h1 {
+  margin: 0;
+}
+
 .listing-grid {
   display: grid;
   grid-template-columns: 1fr;
