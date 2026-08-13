@@ -20,6 +20,7 @@ Route::prefix('v1')->middleware('recaptcha')->group(function () {
     Route::get('/search', [SearchController::class, 'index']);
     Route::get('/locations', [LocationController::class, 'index']);
     Route::get('/users/{user}', [PublicUserController::class, 'show']);
+    Route::get('/ads/{ad}', [AdController::class, 'show']);
     Route::get('/pages/{page}/ratings', [PageRatingController::class, 'index']);
     Route::get('/pages/{page}', [PageController::class, 'show']);
 
@@ -64,6 +65,8 @@ Route::prefix('v1')->middleware('recaptcha')->group(function () {
         Route::delete('/ads/{ad}', [AdController::class, 'destroy']);
 
         Route::get('/chats', [ChatController::class, 'index']);
+        Route::get('/chats/support', [ChatController::class, 'support']);
+        Route::post('/chats/support/messages', [ChatController::class, 'sendSupport'])->middleware('throttle:chat-send');
         Route::get('/chats/users/{user}', [ChatController::class, 'start']);
         Route::post('/chats/users/{user}/messages', [ChatController::class, 'sendToUser'])->middleware('throttle:chat-send');
         Route::get('/chats/{conversation}', [ChatController::class, 'show']);

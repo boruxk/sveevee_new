@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Models\Page;
 use App\Models\PageEvent;
+use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
 use Illuminate\Http\Request;
@@ -25,8 +26,8 @@ class PageEventController extends Controller
         }
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string', 'max:3000'],
+            'name' => ['required', 'string', 'max:1000', new CleanContent()],
+            'description' => ['required', 'string', 'max:5000', new CleanContent()],
             'image' => ['required', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'date' => ['required', 'date'],
             'time' => ['required', 'date_format:H:i'],
@@ -60,8 +61,8 @@ class PageEventController extends Controller
         }
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string', 'max:3000'],
+            'name' => ['required', 'string', 'max:1000', new CleanContent()],
+            'description' => ['required', 'string', 'max:5000', new CleanContent()],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'image_remove' => ['nullable', 'boolean'],
             'date' => ['required', 'date'],

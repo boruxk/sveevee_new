@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Models\Ad;
 use App\Models\Page;
 use App\Models\User;
+use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
 use App\Support\AdCategories;
@@ -50,11 +51,22 @@ class AdController extends Controller
         );
     }
 
+    public function show(Ad $ad)
+    {
+        $ad->loadMissing(['user.profile', 'page']);
+
+        if (! $ad->isVisible() || $ad->user?->banned_at) {
+            return ApiResponseService::error('Resource not found.', status: 404);
+        }
+
+        return ApiResponseService::success($this->payloads->ad($ad));
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:300'],
-            'text' => ['required', 'string', 'max:2000'],
+            'title' => ['required', 'string', 'max:1000', new CleanContent()],
+            'text' => ['required', 'string', 'max:5000', new CleanContent()],
             'category' => ['nullable', 'string', Rule::in(AdCategories::KEYS)],
             'page_id' => ['nullable', 'integer', 'exists:pages,id'],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
@@ -96,8 +108,8 @@ class AdController extends Controller
         }
 
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:300'],
-            'text' => ['required', 'string', 'max:2000'],
+            'title' => ['required', 'string', 'max:1000', new CleanContent()],
+            'text' => ['required', 'string', 'max:5000', new CleanContent()],
             'category' => ['nullable', 'string', Rule::in(AdCategories::KEYS)],
             'status' => ['nullable', Rule::in(['active', 'paused'])],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],

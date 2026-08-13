@@ -25,7 +25,9 @@ export default {
 	validation: {
 		required: 'This field is required.',
 		requiredFields: 'Please fill in the required fields.',
-		time24: 'Use 24h time, for example 17:30.'
+		time24: 'Use 24h time, for example 17:30.',
+		maxCharacters: 'Max. {max} characters.',
+		charactersRemaining: '{count} of {max} characters remaining.'
 	},
 	palettes: {
 		amberDawn: 'Amber Dawn',
@@ -89,6 +91,7 @@ export default {
 		restore: 'Restore'
 	},
 	auth: {
+		identifier: 'Email or login',
 		email: 'Email',
 		password: 'Password',
 		currentPassword: 'Current password',
@@ -358,6 +361,11 @@ export default {
 		title: 'Chat',
 		empty: 'Choose a chat on the left.',
 		placeholder: 'Write a message',
+		supportTitle: 'sveevee support',
+		supportOpen: 'Open support chat',
+		supportClose: 'Close support chat',
+		supportIntro: 'Write to the sveevee team.',
+		supportUnavailable: 'Support chat is not available right now.',
 		pendingReply: 'You can write again after this person replies to your first message.',
 		dailyLimit: 'You can contact only 10 new users per day.',
 		noMessages: 'No messages yet.',
@@ -500,17 +508,23 @@ export default {
 		userFallbackTitle: 'sveevee profile',
 		userFallbackDescription: 'View a public sveevee profile, pages, and local ads.',
 		userDescription: 'View {name} on sveevee, including public pages and local ads.',
+		adFallbackTitle: 'sveevee ad',
+		adFallbackDescription: 'View a local ad on sveevee.',
 		pageFallbackTitle: 'sveevee page',
 		pageFallbackDescription: 'View a public business or community page on sveevee.',
 		pageDescription: 'View {name}, a public {type} page on sveevee.'
 	},
 	landing: {
-		eyebrow: 'Local ads, less noise',
+		eyebrow: 'Local ads, local businesses.',
 		title: 'sveevee',
-		purposeKicker: 'About sveevee',
-		purposeTitle: 'sveevee is a local discovery app for ads, business pages, community pages, products, events, ratings, and direct chat.',
-		purposeBody: 'Visitors can search by city and neighborhood without registration. Creating an account lets people post ads, manage a public profile, build business and community pages, add products or services, publish events, rate public pages, and start conversations. Google sign-in is optional and uses only your Google email and basic profile details to create or access your account.',
-		purposePrivacyLink: 'Privacy Policy',
+		purposeKicker: '',
+		purposeTitle: 'About sveevee',
+		purposeParagraphs: [
+			'sveevee gives local businesses an easy way to present themselves, showcase their products and services, and publish offers. Communities can promote their events, while everyone can post free ads and connect directly with others.',
+			'Business owners can create their own public business pages, add products or services, post ads, and communicate directly with customers through chat. Everything is organized by city and neighborhood, helping businesses reach people who are actually nearby.',
+			'At the same time, users can discover local businesses, products, services, community pages, events, and ads without creating an account.',
+			'With sveevee, we want to give local businesses and communities a simple place to build their presence, reach new customers, and stay connected with the people around them.'
+		],
 		subtitle: 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.',
 		searchWithoutRegistration: 'Search without registration',
 		featureKicker: 'What is inside',

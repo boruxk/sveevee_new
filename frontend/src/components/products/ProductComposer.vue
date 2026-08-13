@@ -6,6 +6,7 @@
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
+	import { TITLE_MAX_LENGTH, TEXT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
 	const props = defineProps({
 		pageId: {
@@ -95,6 +96,10 @@
 			v-model="form.name"
 			outlined
 			:label="requiredLabel('products.name')"
+			:maxlength="TITLE_MAX_LENGTH"
+			:hint="characterLimitHint(form.name, TITLE_MAX_LENGTH, t)"
+			counter
+			persistent-hint
 			:rules="[requiredRule]"
 		/>
 		<q-input
@@ -103,6 +108,10 @@
 			type="textarea"
 			autogrow
 			:label="requiredLabel('products.description')"
+			:maxlength="TEXT_MAX_LENGTH"
+			:hint="characterLimitHint(form.description, TEXT_MAX_LENGTH, t)"
+			counter
+			persistent-hint
 			:rules="[requiredRule]"
 		/>
 		<div class="product-composer__row">

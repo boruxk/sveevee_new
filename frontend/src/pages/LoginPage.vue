@@ -43,9 +43,9 @@
 						<q-input
 							v-model="form.email"
 							outlined
-							type="email"
-							autocomplete="email"
-							:label="requiredLabel('auth.email')"
+							type="text"
+							autocomplete="username"
+							:label="requiredLabel('auth.identifier')"
 							:rules="[requiredRule]"
 						/>
 						<PasswordInput

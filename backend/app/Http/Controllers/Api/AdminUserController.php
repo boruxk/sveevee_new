@@ -27,6 +27,7 @@ class AdminUserController extends Controller
                     $inner
                         ->where('name', 'like', $like)
                         ->orWhere('email', 'like', $like)
+                        ->orWhere('login', 'like', $like)
                         ->orWhere('given_name', 'like', $like)
                         ->orWhere('family_name', 'like', $like);
                 });

@@ -224,7 +224,9 @@ class PayloadService
     {
         $conversation->loadMissing(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
         $other = $conversation->otherParticipant($viewer);
-        $latest = $conversation->messages->sortByDesc('created_at')->first();
+        $latest = $conversation->messages
+            ->sortBy(fn ($message): string => sprintf('%020s%020d', $message->created_at?->format('Uu') ?? '0', $message->id))
+            ->last();
 
         $payload = [
             'id' => $conversation->id,

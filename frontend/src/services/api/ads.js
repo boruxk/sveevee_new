@@ -30,6 +30,10 @@ export function fetchAds(params = {}) {
 	return apiClient.get('/ads', { params })
 }
 
+export function fetchAd(id) {
+	return apiClient.get(`/ads/${id}`)
+}
+
 export async function createAd(payload) {
 	return apiClient.post('/ads', await toAdFormData(payload))
 }

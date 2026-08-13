@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ChatMessage;
 use App\Models\Conversation;
 use App\Models\User;
+use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
 use Illuminate\Http\Request;
@@ -62,6 +63,30 @@ class ChatController extends Controller
         ));
     }
 
+    public function support(Request $request)
+    {
+        $supportAdmin = $this->supportAdmin();
+
+        if (! $supportAdmin || $supportAdmin->banned_at) {
+            return ApiResponseService::error('Support chat is not available right now.', status: 503);
+        }
+
+        if ($request->user()->id === $supportAdmin->id) {
+            return ApiResponseService::error('You cannot chat with yourself.', status: 422);
+        }
+
+        $conversation = $this->conversationFor($request->user(), $supportAdmin);
+        $this->markRead($request->user(), $conversation);
+        $conversation->load(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
+
+        return ApiResponseService::success($this->payloads->conversation(
+            $conversation,
+            $request->user(),
+            $this->composerState($request->user(), $conversation),
+            withMessages: true
+        ));
+    }
+
     public function show(Request $request, Conversation $conversation)
     {
         if (! $this->isParticipant($request->user(), $conversation)) {
@@ -103,6 +128,23 @@ class ChatController extends Controller
         return $this->sendIntoConversation($request, $conversation, enforceLimits: true);
     }
 
+    public function sendSupport(Request $request)
+    {
+        $supportAdmin = $this->supportAdmin();
+
+        if (! $supportAdmin || $supportAdmin->banned_at) {
+            return ApiResponseService::error('Support chat is not available right now.', status: 503);
+        }
+
+        if ($request->user()->id === $supportAdmin->id) {
+            return ApiResponseService::error('You cannot chat with yourself.', status: 422);
+        }
+
+        $conversation = $this->conversationFor($request->user(), $supportAdmin);
+
+        return $this->sendIntoConversation($request, $conversation, enforceLimits: false);
+    }
+
     public function markAsRead(Request $request, Conversation $conversation)
     {
         if (! $this->isParticipant($request->user(), $conversation)) {
@@ -130,7 +172,7 @@ class ChatController extends Controller
     private function sendIntoConversation(Request $request, Conversation $conversation, bool $enforceLimits)
     {
         $data = $request->validate([
-            'body' => ['required', 'string', 'max:5000'],
+            'body' => ['required', 'string', 'max:5000', new CleanContent()],
         ]);
 
         if ($enforceLimits) {
@@ -162,6 +204,14 @@ class ChatController extends Controller
     {
         $conversation->loadMissing('messages');
 
+        if ($this->isSupportConversation($conversation)) {
+            return [
+                'can_send' => true,
+                'reason' => null,
+                'message' => null,
+            ];
+        }
+
         $ownMessages = $conversation->messages->where('sender_id', $user->id)->count();
         $otherMessages = $conversation->messages->where('sender_id', '!=', $user->id)->count();
 
@@ -191,6 +241,7 @@ class ChatController extends Controller
     private function newRecipientsToday(User $user): int
     {
         $since = Carbon::today();
+        $supportAdminId = $this->supportAdmin()?->id;
         $messages = ChatMessage::query()
             ->with('conversation')
             ->where('sender_id', $user->id)
@@ -216,6 +267,7 @@ class ChatController extends Controller
                     : $conversation->user_one_id;
             })
             ->filter()
+            ->reject(fn (int $recipientId): bool => $supportAdminId && $recipientId === $supportAdminId)
             ->unique()
             ->count();
     }
@@ -242,5 +294,20 @@ class ChatController extends Controller
             ->where('sender_id', '!=', $user->id)
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
+    }
+
+    private function isSupportConversation(Conversation $conversation): bool
+    {
+        $supportAdmin = $this->supportAdmin();
+
+        return $supportAdmin
+            && in_array($supportAdmin->id, [$conversation->user_one_id, $conversation->user_two_id], true);
+    }
+
+    private function supportAdmin(): ?User
+    {
+        return User::query()
+            ->where('email', config('sveevee.support_admin_email'))
+            ->first();
     }
 }

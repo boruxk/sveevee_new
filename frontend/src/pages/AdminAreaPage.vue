@@ -3,6 +3,7 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { banAdminUser, fetchAdminUsers, messageAdminUser, restoreAdminUser } from '@/services/api/admin'
+	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
 	const { t } = useI18n()
 	const $q = useQuasar()
@@ -97,7 +98,17 @@
 					</div>
 
 					<div class="q-mt-lg">
-						<q-input v-model="message" outlined type="textarea" autogrow :label="t('admin.message')" />
+						<q-input
+							v-model="message"
+							outlined
+							type="textarea"
+							autogrow
+							:label="t('admin.message')"
+							:maxlength="CHAT_MAX_LENGTH"
+							:hint="characterLimitHint(message, CHAT_MAX_LENGTH, t)"
+							counter
+							persistent-hint
+						/>
 						<q-btn class="q-mt-sm"
 							color="primary"
 							unelevated

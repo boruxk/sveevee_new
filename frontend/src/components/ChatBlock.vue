@@ -4,6 +4,7 @@
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
+	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
 	const props = defineProps({
 		targetUserId: {
@@ -29,6 +30,7 @@
 	const composerState = computed(() => chatsStore.composerState)
 	const composerBlocked = computed(() => !composerState.value.can_send)
 	const composerMessage = computed(() => localizedChatLimit(composerState.value.reason, composerState.value.message) || t('chat.placeholder'))
+	const composerHint = computed(() => (composerBlocked.value ? '' : characterLimitHint(draft.value, CHAT_MAX_LENGTH, t)))
 	const composerModel = computed({
 		get: () => (composerBlocked.value ? composerMessage.value : draft.value),
 		set: (value) => {
@@ -185,6 +187,10 @@
 					:disable="!active || chatsStore.sending"
 					:class="['chat-composer', composerClass]"
 					:placeholder="t('chat.placeholder')"
+					:maxlength="CHAT_MAX_LENGTH"
+					:hint="composerHint"
+					:counter="!composerBlocked"
+					:persistent-hint="!composerBlocked"
 					@keydown.enter.exact.prevent="send"
 				/>
 				<q-btn round
@@ -280,6 +286,7 @@
   display: grid;
   align-content: start;
   gap: 10px;
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
   padding: 16px;
@@ -293,6 +300,7 @@
 
 .chat-message {
   display: flex;
+  min-width: 0;
   justify-content: flex-start;
 }
 
@@ -302,11 +310,14 @@
 
 .chat-message__bubble {
   max-width: min(74%, 520px);
+  min-width: 0;
   padding: 10px 12px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 8px 18px rgba(17, 34, 45, 0.06);
+  overflow-wrap: anywhere;
   white-space: pre-line;
+  word-break: break-word;
 }
 
 .chat-message--own .chat-message__bubble {

@@ -19,6 +19,7 @@
 
 	const featureCards = computed(() => listMessage('landing.features'))
 	const contentBlocks = computed(() => listMessage('landing.contentBlocks'))
+	const purposeParagraphs = computed(() => listMessage('landing.purposeParagraphs'))
 	const steps = computed(() => listMessage('landing.steps'))
 	const plans = computed(() => listMessage('landing.plans'))
 	const featureTitleParts = computed(() => {
@@ -123,15 +124,11 @@
 		<section class="landing-section landing-purpose-section" aria-labelledby="landing-purpose-title">
 			<div class="landing-purpose">
 				<div class="landing-purpose__copy">
-					<div class="section-kicker">{{ t('landing.purposeKicker') }}</div>
+					<div v-if="t('landing.purposeKicker')" class="section-kicker">{{ t('landing.purposeKicker') }}</div>
 					<h2 id="landing-purpose-title">{{ t('landing.purposeTitle') }}</h2>
-					<p>{{ t('landing.purposeBody') }}</p>
+					<p v-for="paragraph in purposeParagraphs" :key="paragraph">{{ paragraph }}</p>
 				</div>
 
-				<router-link class="landing-purpose__link" :to="{ name: 'privacy' }">
-					<q-icon name="privacy_tip" size="20px" />
-					<span>{{ t('landing.purposePrivacyLink') }}</span>
-				</router-link>
 			</div>
 		</section>
 
@@ -422,36 +419,14 @@
 }
 
 .landing-purpose h2 {
-  max-width: 980px;
   font-size: clamp(28px, 3vw, 42px);
 }
 
 .landing-purpose p {
-  max-width: 960px;
   margin: 16px 0 0;
   color: rgba(21, 31, 59, 0.72);
   font-size: 17px;
   line-height: 1.72;
-}
-
-.landing-purpose__link {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  justify-self: end;
-  min-height: 46px;
-  padding: 0 18px;
-  border-radius: 999px;
-  color: #ffffff;
-  background: var(--soz-menu-gradient);
-  box-shadow: 0 12px 24px rgba(123, 63, 242, 0.24);
-  font-weight: 800;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.landing-page--rtl .landing-purpose__link {
-  justify-self: start;
 }
 
 .landing-section--features h2 {
@@ -1000,11 +975,6 @@
   .landing-purpose {
     grid-template-columns: 1fr;
     align-items: start;
-  }
-
-  .landing-purpose__link,
-  .landing-page--rtl .landing-purpose__link {
-    justify-self: start;
   }
 
   .workflow-copy {

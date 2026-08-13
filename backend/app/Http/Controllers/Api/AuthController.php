@@ -11,6 +11,7 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
@@ -64,21 +65,30 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+        $identifier = trim((string) $request->input('email'));
+        $normalizedEmail = strtolower($identifier);
+        $request->merge(['email' => $identifier]);
 
         $data = $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
         ]);
 
-        if (EmailBan::query()->where('email', $data['email'])->exists()) {
+        if (filter_var($identifier, FILTER_VALIDATE_EMAIL) && EmailBan::query()->where('email', $normalizedEmail)->exists()) {
             return ApiResponseService::error('This email address is banned.', status: 403);
         }
 
-        $user = User::query()->where('email', $data['email'])->first();
+        $user = User::query()
+            ->where('email', $normalizedEmail)
+            ->when(Schema::hasColumn('users', 'login'), fn ($query) => $query->orWhere('login', $data['email']))
+            ->first();
 
-        if (! $user || ! Hash::check($data['password'], $user->password)) {
+        if (! $user || ! filled($user->password) || ! Hash::check($data['password'], $user->password)) {
             return ApiResponseService::error('The email or password is incorrect.', status: 422);
+        }
+
+        if (EmailBan::query()->where('email', $user->email)->exists()) {
+            return ApiResponseService::error('This email address is banned.', status: 403);
         }
 
         if ($user->banned_at) {

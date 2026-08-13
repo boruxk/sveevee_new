@@ -16,6 +16,7 @@ export default [
 			{ path: 'privacy', name: 'privacy', component: () => import('@/pages/PrivacyPolicyPage.vue'), meta: { seo: { titleKey: 'seo.privacyTitle', descriptionKey: 'seo.privacyDescription' } } },
 			{ path: 'search', name: 'search', component: () => import('@/pages/SearchPage.vue'), meta: { seo: { titleKey: 'seo.searchTitle', descriptionKey: 'seo.searchDescription' } } },
 			{ path: 'users/:id', name: 'user-page', component: () => import('@/pages/UserPage.vue'), meta: { seo: { titleKey: 'seo.userFallbackTitle', descriptionKey: 'seo.userFallbackDescription' } } },
+			{ path: 'ads/:id', name: 'ad-detail', component: () => import('@/pages/AdDetailPage.vue'), meta: { seo: { titleKey: 'seo.adFallbackTitle', descriptionKey: 'seo.adFallbackDescription' } } },
 			{ path: 'pages/:id', name: 'page-detail', component: () => import('@/pages/PageDetailPage.vue'), meta: { seo: { titleKey: 'seo.pageFallbackTitle', descriptionKey: 'seo.pageFallbackDescription' } } }
 		]
 	},

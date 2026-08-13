@@ -25,7 +25,9 @@ export default {
 	validation: {
 		required: '\u05E9\u05D3\u05D4 \u05D7\u05D5\u05D1\u05D4.',
 		requiredFields: '\u05DE\u05DC\u05D0\u05D5 \u05D0\u05EA \u05E9\u05D3\u05D5\u05EA \u05D4\u05D7\u05D5\u05D1\u05D4.',
-		time24: '\u05D4\u05E9\u05EA\u05DE\u05E9\u05D5 \u05D1\u05E9\u05E2\u05D4 \u05D1\u05E4\u05D5\u05E8\u05DE\u05D8 24 \u05E9\u05E2\u05D5\u05EA, \u05DC\u05DE\u05E9\u05DC 17:30.'
+		time24: '\u05D4\u05E9\u05EA\u05DE\u05E9\u05D5 \u05D1\u05E9\u05E2\u05D4 \u05D1\u05E4\u05D5\u05E8\u05DE\u05D8 24 \u05E9\u05E2\u05D5\u05EA, \u05DC\u05DE\u05E9\u05DC 17:30.',
+		maxCharacters: '\u05DE\u05E7\u05E1\u05D9\u05DE\u05D5\u05DD {max} \u05EA\u05D5\u05D5\u05D9\u05DD.',
+		charactersRemaining: '\u05E0\u05D5\u05EA\u05E8\u05D5 {count} \u05DE\u05EA\u05D5\u05DA {max} \u05EA\u05D5\u05D5\u05D9\u05DD.'
 	},
 	palettes: {
 		amberDawn: 'שחר ענברי',
@@ -89,6 +91,7 @@ export default {
 		restore: 'שחזור'
 	},
 	auth: {
+		identifier: '\u05D0\u05D9\u05DE\u05D9\u05D9\u05DC \u05D0\u05D5 \u05DC\u05D5\u05D2\u05D9\u05DF',
 		email: 'אימייל',
 		password: 'סיסמה',
 		currentPassword: 'סיסמה נוכחית',
@@ -358,6 +361,11 @@ export default {
 		title: 'צ׳אט',
 		empty: 'בחרו שיחה מהרשימה.',
 		placeholder: 'כתיבת הודעה',
+		supportTitle: '\u05EA\u05DE\u05D9\u05DB\u05EA sveevee',
+		supportOpen: '\u05E4\u05EA\u05D9\u05D7\u05EA \u05E6\u05F3\u05D0\u05D8 \u05EA\u05DE\u05D9\u05DB\u05D4',
+		supportClose: '\u05E1\u05D2\u05D9\u05E8\u05EA \u05E6\u05F3\u05D0\u05D8 \u05EA\u05DE\u05D9\u05DB\u05D4',
+		supportIntro: '\u05DB\u05EA\u05D1\u05D5 \u05DC\u05E6\u05D5\u05D5\u05EA sveevee.',
+		supportUnavailable: '\u05E6\u05F3\u05D0\u05D8 \u05D4\u05EA\u05DE\u05D9\u05DB\u05D4 \u05DC\u05D0 \u05D6\u05DE\u05D9\u05DF \u05DB\u05E8\u05D2\u05E2.',
 		pendingReply: 'אפשר לשלוח הודעה נוספת רק אחרי שהמשתמש השני ענה להודעה הראשונה.',
 		dailyLimit: 'אפשר לפנות עד 10 משתמשים חדשים ביום.',
 		noMessages: 'אין עדיין הודעות.',
@@ -500,17 +508,23 @@ export default {
 		userFallbackTitle: 'פרופיל sveevee',
 		userFallbackDescription: 'צפו בפרופיל ציבורי, עמודים ומודעות מקומיות ב-sveevee.',
 		userDescription: 'צפו ב-{name} ב-sveevee, כולל עמודים ציבוריים ומודעות מקומיות.',
+		adFallbackTitle: '\u05DE\u05D5\u05D3\u05E2\u05D4 \u05D1-sveevee',
+		adFallbackDescription: '\u05E6\u05E4\u05D5 \u05D1\u05DE\u05D5\u05D3\u05E2\u05D4 \u05DE\u05E7\u05D5\u05DE\u05D9\u05EA \u05D1-sveevee.',
 		pageFallbackTitle: 'עמוד sveevee',
 		pageFallbackDescription: 'צפו בעמוד עסק או קהילה ציבורי ב-sveevee.',
 		pageDescription: 'צפו ב-{name}, עמוד {type} ציבורי ב-sveevee.'
 	},
 	landing: {
-		eyebrow: 'מודעות מקומיות, בלי רעש',
+		eyebrow: 'מודעות מקומיות, עסקים מקומיים.',
 		title: 'sveevee',
-		purposeKicker: 'על sveevee',
-		purposeTitle: 'sveevee היא אפליקציה לגילוי מקומי של מודעות, עמודי עסק, עמודי קהילה, מוצרים, אירועים, דירוגים וצ׳אט ישיר.',
-		purposeBody: 'מבקרים יכולים לחפש לפי עיר ושכונה ללא הרשמה. פתיחת חשבון מאפשרת לפרסם מודעות, לנהל פרופיל ציבורי, לבנות עמודי עסק וקהילה, להוסיף מוצרים או שירותים, לפרסם אירועים, לדרג עמודים ציבוריים ולהתחיל שיחות. כניסה עם Google היא אופציונלית ומשתמשת רק באימייל ובפרטי הפרופיל הבסיסיים מ-Google כדי ליצור חשבון או להיכנס אליו.',
-		purposePrivacyLink: 'מדיניות פרטיות',
+		purposeKicker: '',
+		purposeTitle: 'על sveevee',
+		purposeParagraphs: [
+			'sveevee נותנת לעסקים מקומיים דרך קלה להציג את עצמם, להציג את המוצרים והשירותים שלהם ולפרסם הצעות. קהילות יכולות לקדם את האירועים שלהן, וכל אחד יכול לפרסם מודעות בחינם ולהתחבר ישירות לאחרים.',
+			'בעלי עסקים יכולים ליצור עמודי עסק ציבוריים משלהם, להוסיף מוצרים או שירותים, לפרסם מודעות ולתקשר ישירות עם לקוחות דרך הצ׳אט. הכל מאורגן לפי עיר ושכונה, ועוזר לעסקים להגיע לאנשים שבאמת נמצאים קרוב.',
+			'במקביל, משתמשים יכולים לגלות עסקים מקומיים, מוצרים, שירותים, עמודי קהילה, אירועים ומודעות בלי ליצור חשבון.',
+			'עם sveevee, אנחנו רוצים לתת לעסקים ולקהילות מקומיות מקום פשוט לבנות נוכחות, להגיע ללקוחות חדשים ולהישאר מחוברים לאנשים שסביבם.'
+		],
 		subtitle: 'מודעות שכונתיות, עמודי עסק, עמודי קהילה, מוצרי חנות, אירועים, דירוגים וצ׳אט ישיר במקום אחד פשוט.',
 		searchWithoutRegistration: 'חיפוש ללא הרשמה',
 		featureKicker: 'מה יש בפנים',

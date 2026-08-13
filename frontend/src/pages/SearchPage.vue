@@ -182,7 +182,9 @@
 							</div>
 						</router-link>
 
-						<AdCard v-else :ad="item.value" />
+						<router-link v-else :to="{ name: 'ad-detail', params: { id: item.value.id } }" class="result-ad-link">
+							<AdCard :ad="item.value" />
+						</router-link>
 					</template>
 				</div>
 			</section>
@@ -241,6 +243,11 @@
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.76);
   overflow: hidden;
+}
+
+.result-ad-link {
+  color: inherit;
+  text-decoration: none;
 }
 
 .result-list :deep(.listing-card) {

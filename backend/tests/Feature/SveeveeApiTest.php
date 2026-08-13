@@ -10,6 +10,7 @@ use App\Models\PageProduct;
 use App\Models\PageService;
 use App\Models\User;
 use App\Notifications\PasswordChangedNotification;
+use App\Support\ContentModeration;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -226,6 +227,7 @@ class SveeveeApiTest extends TestCase
         $this->seed();
 
         $this->assertDatabaseHas('users', ['email' => 'admin@sveevee.local', 'role' => 'admin']);
+        $this->assertDatabaseHas('users', ['email' => 'support@sveevee.local', 'login' => 'sffSrgsrgrsgsG', 'role' => 'admin']);
         $this->assertDatabaseHas('users', ['email' => 'user@sveevee.local', 'role' => 'user']);
         $this->assertDatabaseMissing('pages', ['type' => 'business']);
         $this->assertDatabaseMissing('pages', ['type' => 'community']);
@@ -243,6 +245,23 @@ class SveeveeApiTest extends TestCase
             'password' => 'password',
         ])->assertOk()
             ->assertJsonPath('data.user.email', 'admin@sveevee.local')
+            ->assertJsonPath('data.user.role', 'admin');
+    }
+
+    public function test_login_accepts_login_identifier(): void
+    {
+        User::factory()->create([
+            'login' => 'fixedAdminLogin',
+            'email' => 'fixed-admin@example.test',
+            'password' => 'password',
+            'role' => 'admin',
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'fixedAdminLogin',
+            'password' => 'password',
+        ])->assertOk()
+            ->assertJsonPath('data.user.email', 'fixed-admin@example.test')
             ->assertJsonPath('data.user.role', 'admin');
     }
 
@@ -296,6 +315,167 @@ class SveeveeApiTest extends TestCase
         ])->assertStatus(429)
             ->assertJsonPath('errors.reason', 'daily_limit')
             ->assertJsonPath('message', 'You can contact only 10 new users per day.');
+    }
+
+    public function test_support_chat_is_visible_to_admin_and_bypasses_first_reply_limit(): void
+    {
+        $supportAdmin = User::query()->where('email', 'support@sveevee.local')->firstOrFail();
+        $user = User::factory()->create();
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/chats/support/messages', [
+            'body' => 'I need help.',
+        ])->assertCreated()
+            ->assertJsonPath('data.other_user.id', $supportAdmin->id)
+            ->assertJsonPath('data.composer_state.can_send', true);
+
+        $this->postJson('/api/v1/chats/support/messages', [
+            'body' => 'Second support message.',
+        ])->assertCreated()
+            ->assertJsonPath('data.composer_state.can_send', true);
+
+        Sanctum::actingAs($supportAdmin);
+
+        $this->getJson('/api/v1/chats')
+            ->assertOk()
+            ->assertJsonPath('data.conversations.0.other_user.id', $user->id)
+            ->assertJsonPath('data.conversations.0.latest_message.body', 'Second support message.');
+    }
+
+    public function test_chat_message_body_is_limited_to_five_thousand_characters(): void
+    {
+        $sender = User::factory()->create();
+        $recipient = User::factory()->create();
+
+        Sanctum::actingAs($sender);
+
+        $this->postJson("/api/v1/chats/users/{$recipient->id}/messages", [
+            'body' => str_repeat('a', 5001),
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('body');
+    }
+
+    public function test_content_moderation_detects_blocked_language_in_four_languages(): void
+    {
+        $this->assertTrue(ContentModeration::containsBlockedLanguage('what the fuck'));
+        $this->assertTrue(ContentModeration::containsBlockedLanguage('איזה חרא'));
+        $this->assertTrue(ContentModeration::containsBlockedLanguage('ну ты сука'));
+        $this->assertTrue(ContentModeration::containsBlockedLanguage('quelle merde'));
+        $this->assertTrue(ContentModeration::containsBlockedLanguage('f u c k'));
+        $this->assertFalse(ContentModeration::containsBlockedLanguage('Local electrician service in Ramot.'));
+    }
+
+    public function test_chat_and_ads_reject_blocked_language(): void
+    {
+        $sender = User::factory()->create();
+        $recipient = User::factory()->create();
+
+        Sanctum::actingAs($sender);
+
+        $this->postJson("/api/v1/chats/users/{$recipient->id}/messages", [
+            'body' => 'what the fuck',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('body');
+
+        $this->postJson('/api/v1/ads', [
+            'title' => 'quelle merde',
+            'text' => 'Clean text.',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('title');
+    }
+
+    public function test_ad_title_and_text_limits_are_enforced(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/ads', [
+            'title' => str_repeat('a', 1000),
+            'text' => str_repeat('b', 5000),
+        ])->assertCreated();
+
+        $this->postJson('/api/v1/ads', [
+            'title' => str_repeat('a', 1001),
+            'text' => str_repeat('b', 5000),
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('title');
+
+        $this->postJson('/api/v1/ads', [
+            'title' => str_repeat('a', 1000),
+            'text' => str_repeat('b', 5001),
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('text');
+    }
+
+    public function test_public_ad_show_returns_only_visible_ads(): void
+    {
+        $user = User::factory()->create();
+        $visibleAd = Ad::query()->create([
+            'user_id' => $user->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Visible ad',
+            'text' => 'Visible text',
+            'status' => 'active',
+            'expires_at' => now()->addDay(),
+        ]);
+        $expiredAd = Ad::query()->create([
+            'user_id' => $user->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Expired ad',
+            'text' => 'Expired text',
+            'status' => 'active',
+            'expires_at' => now()->subDay(),
+        ]);
+
+        $this->getJson("/api/v1/ads/{$visibleAd->id}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $visibleAd->id);
+
+        $this->getJson("/api/v1/ads/{$expiredAd->id}")
+            ->assertNotFound();
+    }
+
+    public function test_sitemap_includes_public_pages_and_active_ads_dynamically(): void
+    {
+        config()->set('app.url', 'https://sveevee.co.il');
+
+        $user = User::factory()->create();
+        $page = Page::query()->create([
+            'user_id' => $user->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Miri Studio',
+            'public_description' => 'Local help.',
+        ]);
+        $ad = Ad::query()->create([
+            'user_id' => $user->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Sitemap ad',
+            'text' => 'Sitemap text',
+            'status' => 'active',
+            'expires_at' => now()->addDay(),
+        ]);
+        $expiredAd = Ad::query()->create([
+            'user_id' => $user->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Expired sitemap ad',
+            'text' => 'Expired sitemap text',
+            'status' => 'active',
+            'expires_at' => now()->subDay(),
+        ]);
+
+        $this->get('/sitemap.xml')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/xml; charset=UTF-8')
+            ->assertSee('https://sveevee.co.il/pages/'.$page->id, false)
+            ->assertSee('https://sveevee.co.il/ads/'.$ad->id, false)
+            ->assertDontSee('https://sveevee.co.il/ads/'.$expiredAd->id, false);
+
+        $ad->delete();
+
+        $this->get('/sitemap.xml')
+            ->assertOk()
+            ->assertDontSee('https://sveevee.co.il/ads/'.$ad->id, false);
     }
 
     public function test_user_can_create_page_with_presence_details(): void

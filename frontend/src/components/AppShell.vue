@@ -5,6 +5,7 @@
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
 	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
+	import SupportChatWidget from '@/components/SupportChatWidget.vue'
 	import logoSrc from '@/assets/sveevee-logo.webp'
 
 	const props = defineProps({
@@ -270,6 +271,7 @@
 				</nav>
 			</div>
 		</footer>
+		<SupportChatWidget />
 	</q-layout>
 </template>
 

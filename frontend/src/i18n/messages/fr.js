@@ -25,7 +25,9 @@ export default {
 	validation: {
 		required: 'Ce champ est obligatoire.',
 		requiredFields: 'Veuillez remplir les champs obligatoires.',
-		time24: 'Utilisez le format 24 h, par exemple 17:30.'
+		time24: 'Utilisez le format 24 h, par exemple 17:30.',
+		maxCharacters: 'Max. {max} caracteres.',
+		charactersRemaining: '{count} sur {max} caracteres restants.'
 	},
 	palettes: {
 		amberDawn: 'Aube ambrée',
@@ -89,6 +91,7 @@ export default {
 		restore: 'Restaurer'
 	},
 	auth: {
+		identifier: 'E-mail ou login',
 		email: 'E-mail',
 		password: 'Mot de passe',
 		currentPassword: 'Mot de passe actuel',
@@ -358,6 +361,11 @@ export default {
 		title: 'Chat',
 		empty: 'Choisissez un chat à gauche.',
 		placeholder: 'Écrire un message',
+		supportTitle: 'Support sveevee',
+		supportOpen: 'Ouvrir le chat support',
+		supportClose: 'Fermer le chat support',
+		supportIntro: 'Écrivez à l’équipe sveevee.',
+		supportUnavailable: 'Le chat support n’est pas disponible pour le moment.',
 		pendingReply: 'Vous pourrez écrire à nouveau après la réponse de cette personne à votre premier message.',
 		dailyLimit: 'Vous pouvez contacter seulement 10 nouveaux utilisateurs par jour.',
 		noMessages: 'Aucun message pour le moment.',
@@ -500,17 +508,23 @@ export default {
 		userFallbackTitle: 'Profil sveevee',
 		userFallbackDescription: 'Consultez un profil public sveevee, ses pages et annonces locales.',
 		userDescription: 'Consultez {name} sur sveevee, avec ses pages publiques et annonces locales.',
+		adFallbackTitle: 'Annonce sveevee',
+		adFallbackDescription: 'Consultez une annonce locale sur sveevee.',
 		pageFallbackTitle: 'Page sveevee',
 		pageFallbackDescription: 'Consultez une page entreprise ou communaute publique sur sveevee.',
 		pageDescription: 'Consultez {name}, une page publique {type} sur sveevee.'
 	},
 	landing: {
-		eyebrow: 'Annonces locales, moins de bruit',
+		eyebrow: 'Annonces locales, entreprises locales.',
 		title: 'sveevee',
-		purposeKicker: 'A propos de sveevee',
-		purposeTitle: 'sveevee est une application de decouverte locale pour annonces, pages entreprise, pages communaute, produits, evenements, avis et chat direct.',
-		purposeBody: 'Les visiteurs peuvent chercher par ville et quartier sans inscription. Un compte permet de publier des annonces, gerer un profil public, creer des pages entreprise et communaute, ajouter des produits ou services, publier des evenements, noter des pages publiques et commencer des conversations. La connexion Google est facultative et utilise seulement votre e-mail Google et les informations de profil de base pour creer ou ouvrir votre compte.',
-		purposePrivacyLink: 'Politique de confidentialite',
+		purposeKicker: '',
+		purposeTitle: 'A propos de sveevee',
+		purposeParagraphs: [
+			'sveevee donne aux entreprises locales un moyen simple de se presenter, de montrer leurs produits et services et de publier des offres. Les communautes peuvent promouvoir leurs evenements, tandis que chacun peut publier des annonces gratuites et contacter directement les autres.',
+			'Les proprietaires d entreprise peuvent creer leurs propres pages publiques, ajouter des produits ou services, publier des annonces et communiquer directement avec les clients par chat. Tout est organise par ville et quartier, ce qui aide les entreprises a toucher les personnes vraiment proches.',
+			'En meme temps, les utilisateurs peuvent decouvrir des entreprises locales, produits, services, pages communaute, evenements et annonces sans creer de compte.',
+			'Avec sveevee, nous voulons donner aux entreprises locales et aux communautes un endroit simple pour construire leur presence, atteindre de nouveaux clients et rester connectees avec les personnes autour d elles.'
+		],
 		subtitle: 'Annonces locales, pages entreprise, pages communaute, produits, evenements, avis et chat direct pour votre quartier.',
 		searchWithoutRegistration: 'Rechercher sans inscription',
 		featureKicker: 'Ce qui est inclus',

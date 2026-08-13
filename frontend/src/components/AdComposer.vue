@@ -7,6 +7,7 @@
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import { buildAdCategorySelectOptions } from '@/constants/adCategories'
+	import { TITLE_MAX_LENGTH, TEXT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
 	const props = defineProps({
 		pageId: {
@@ -26,8 +27,6 @@
 	const emit = defineEmits(['saved'])
 	const { t, locale } = useI18n()
 	const $q = useQuasar()
-	const TITLE_MAX_LENGTH = 300
-	const TEXT_MAX_LENGTH = 2000
 	const loading = ref(false)
 	const formRef = ref(null)
 	const imageRemoved = ref(false)
@@ -115,7 +114,9 @@
 			:label="requiredLabel('ads.title')"
 			:disable="disabled"
 			:maxlength="TITLE_MAX_LENGTH"
+			:hint="characterLimitHint(form.title, TITLE_MAX_LENGTH, t)"
 			counter
+			persistent-hint
 			:rules="[requiredRule]"
 		/>
 		<q-input v-model="form.text"
@@ -125,7 +126,9 @@
 			:label="requiredLabel('ads.text')"
 			:disable="disabled"
 			:maxlength="TEXT_MAX_LENGTH"
+			:hint="characterLimitHint(form.text, TEXT_MAX_LENGTH, t)"
 			counter
+			persistent-hint
 			:rules="[requiredRule]"
 		/>
 		<q-select
