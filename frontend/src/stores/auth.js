@@ -42,7 +42,7 @@ export const useAuthStore = defineStore('auth', {
 			try {
 				await this.refreshUser()
 			} catch {
-				this.clearSession()
+				await this.clearSession()
 			} finally {
 				this.initialized = true
 			}
@@ -52,7 +52,7 @@ export const useAuthStore = defineStore('auth', {
 
 			try {
 				const { data } = await login(payload)
-				this.persistSession(data.data)
+				await this.persistSession(data.data)
 				return data
 			} finally {
 				this.loading = false
@@ -63,7 +63,7 @@ export const useAuthStore = defineStore('auth', {
 
 			try {
 				const { data } = await register(payload)
-				this.persistSession(data.data)
+				await this.persistSession(data.data)
 				return data
 			} finally {
 				this.loading = false
@@ -81,7 +81,7 @@ export const useAuthStore = defineStore('auth', {
 
 				return this.user
 			} catch (error) {
-				this.clearSession()
+				await this.clearSession()
 				throw error
 			} finally {
 				this.loading = false
@@ -93,7 +93,7 @@ export const useAuthStore = defineStore('auth', {
 					await logout()
 				}
 			} finally {
-				this.clearSession()
+				await this.clearSession()
 			}
 		},
 		async refreshUser() {
@@ -103,29 +103,29 @@ export const useAuthStore = defineStore('auth', {
 
 			const { data } = await fetchMe()
 			this.user = data.data
-			this.syncLocaleFromUser()
+			await this.syncLocaleFromUser()
 
 			return this.user
 		},
-		persistSession(payload) {
+		async persistSession(payload) {
 			this.token = payload.token
 			this.user = payload.user
 			this.initialized = true
 			localStorage.setItem(tokenStorageKey, payload.token)
-			this.syncLocaleFromUser()
+			await this.syncLocaleFromUser()
 		},
-		clearSession() {
+		async clearSession() {
 			this.token = null
 			this.user = null
 			this.initialized = true
 			localStorage.removeItem(tokenStorageKey)
-			setLocale(getGuestLocale())
+			await setLocale(getGuestLocale())
 		},
-		syncLocaleFromUser() {
+		async syncLocaleFromUser() {
 			const preferredLocale = this.user?.locale
 			const locale = supportedLocales.includes(preferredLocale) ? preferredLocale : 'he'
 
-			setLocale(locale)
+			await setLocale(locale)
 		},
 		canAccess(allowedRoles = []) {
 			if (allowedRoles.length === 0) {

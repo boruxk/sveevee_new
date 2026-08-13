@@ -3,8 +3,11 @@
 	import { useRoute } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useAuthStore } from '@/stores/auth'
+	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { fetchPage } from '@/services/api/pages'
 	import { findPresencePalette } from '@/constants/presencePalettes'
+	import { catalogLabel, catalogPath, catalogTopicByKey } from '@/constants/catalogTopics'
+	import { locationLabel } from '@/utils/locationLabels'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
 	import EventCard from '@/components/events/EventCard.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
@@ -14,8 +17,9 @@
 	import PageReviewDialog from '@/components/ratings/PageReviewDialog.vue'
 
 	const route = useRoute()
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const authStore = useAuthStore()
+	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const page = ref(null)
 	const loading = ref(false)
 	const ratingsDialogOpen = ref(false)
@@ -42,6 +46,30 @@
 	const hasPreviewContent = computed(() => hasStoreProducts.value || hasBusinessServices.value || hasCommunityEvents.value)
 	const pageTypeLabel = computed(() => t(`pages.kinds.${page.value?.type || 'business'}`))
 	const pageAddress = computed(() => page.value?.address_details || {})
+	const pageTopic = computed(() => catalogTopicByKey(catalogGroups.value, page.value?.category_key))
+	const pageCatalogLinks = computed(() => {
+		if (!pageTopic.value) {
+			return []
+		}
+
+		const city = pageAddress.value.city || ''
+		const neighborhood = pageAddress.value.neighborhood || ''
+
+		return [
+			{
+				label: catalogLabel(pageTopic.value.labels, locale.value),
+				to: catalogPath(pageTopic.value)
+			},
+			city ? {
+				label: locationLabel(city, 'city', locale.value),
+				to: catalogPath(pageTopic.value, city)
+			} : null,
+			city && neighborhood ? {
+				label: locationLabel(neighborhood, 'neighborhood', locale.value),
+				to: catalogPath(pageTopic.value, city, neighborhood)
+			} : null
+		].filter(Boolean)
+	})
 	const seoDescription = computed(() => {
 		if (!page.value) {
 			return t('seo.pageFallbackDescription')
@@ -72,7 +100,7 @@
 		title: page.value?.name || t('seo.pageFallbackTitle'),
 		description: seoDescription.value,
 		image: seoImage.value,
-		canonical: route.path,
+		canonical: page.value?.public_path || route.path,
 		type: 'website',
 		robots: page.value ? 'index,follow' : 'noindex,follow',
 		jsonLd: page.value ? {
@@ -80,7 +108,7 @@
 			'@type': page.value.type === 'business' ? 'LocalBusiness' : 'Organization',
 			name: page.value.name,
 			description: seoDescription.value,
-			url: absoluteUrl(route.path),
+			url: absoluteUrl(page.value.public_path || route.path),
 			image: seoImage.value || undefined,
 			telephone: page.value.contact?.tel || page.value.phone || undefined,
 			email: page.value.contact?.email || page.value.contact_email || undefined,
@@ -118,12 +146,20 @@
 		syncRatingSummary(payload.summary)
 	}
 
-	onMounted(load)
+	onMounted(async() => {
+		await Promise.all([load(), loadCatalogTopics()])
+	})
 </script>
 
 <template>
 	<q-page padding class="detail-page">
 		<div v-if="page" class="page-shell">
+			<nav v-if="pageCatalogLinks.length" class="detail-catalog-links" aria-label="Catalog">
+				<router-link v-for="link in pageCatalogLinks" :key="link.to" :to="link.to">
+					{{ link.label }}
+				</router-link>
+			</nav>
+
 			<PagePreview
 				:page="page"
 				:palette="selectedPalette"
@@ -191,6 +227,26 @@
 .page-shell {
   max-width: 1280px;
   margin: 0 auto;
+}
+
+.detail-catalog-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.detail-catalog-links a {
+  color: var(--soz-primary-deep);
+  font-weight: 780;
+  text-decoration: none;
+}
+
+.detail-catalog-links a + a::before {
+  padding-inline: 8px;
+  color: rgba(17, 34, 45, 0.36);
+  content: "/";
 }
 
 .product-grid {

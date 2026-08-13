@@ -4,8 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Ad;
 use App\Models\Page;
+use App\Models\PageEvent;
+use App\Models\PageProduct;
+use App\Models\PageService;
+use App\Models\User;
+use App\Support\CatalogTopics;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class SitemapController extends Controller
 {
@@ -15,16 +21,38 @@ class SitemapController extends Controller
             $this->entry('/', now(), 'daily', '1.0'),
             $this->entry('/search', now(), 'daily', '0.8'),
             $this->entry('/privacy', now(), 'monthly', '0.3'),
+            $this->entry('/terms', now(), 'monthly', '0.3'),
+            $this->entry('/disclaimer', now(), 'monthly', '0.3'),
         ]);
+
+        collect(CatalogTopics::scopeHubs())->each(fn (array $hub) => $entries->push(
+            $this->entry($hub['path'], now(), 'daily', '0.7')
+        ));
+
+        User::query()
+            ->with('profile:id,user_id,updated_at')
+            ->whereNull('banned_at')
+            ->where('role', 'user')
+            ->where(function ($query): void {
+                $query
+                    ->where('name', '!=', '')
+                    ->orWhere('given_name', '!=', '')
+                    ->orWhere('family_name', '!=', '');
+            })
+            ->orderBy('id')
+            ->get(['id', 'name', 'given_name', 'family_name', 'updated_at'])
+            ->each(fn (User $user) => $entries->push(
+                $this->entry("/users/{$user->id}", $this->latestUserTimestamp($user), 'weekly', '0.6')
+            ));
 
         Page::query()
             ->whereNotNull('name')
             ->where('name', '!=', '')
             ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
             ->orderBy('id')
-            ->get(['id', 'updated_at'])
+            ->get(['id', 'name', 'updated_at'])
             ->each(fn (Page $page) => $entries->push(
-                $this->entry("/pages/{$page->id}", $page->updated_at, 'weekly', '0.8')
+                $this->entry("/pages/{$page->public_slug}", $page->updated_at, 'weekly', '0.8')
             ));
 
         Ad::query()
@@ -36,8 +64,126 @@ class SitemapController extends Controller
                 $this->entry("/ads/{$ad->id}", $ad->updated_at, 'daily', '0.7')
             ));
 
+        $this->catalogEntries()->each(fn (array $entry) => $entries->push($entry));
+
         return response($this->toXml($entries->take(50000)->all()), 200)
             ->header('Content-Type', 'application/xml; charset=UTF-8');
+    }
+
+    private function catalogEntries(): Collection
+    {
+        $paths = [];
+        $register = function (?string $topicKey, ?string $city, ?string $neighborhood, ?Carbon $updatedAt) use (&$paths): void {
+            $topic = CatalogTopics::findByKey($topicKey);
+
+            if (! $topic) {
+                return;
+            }
+
+            $candidates = [
+                CatalogTopics::catalogPath($topic),
+            ];
+
+            if (filled($city)) {
+                $candidates[] = CatalogTopics::catalogPath($topic, $city);
+            }
+
+            if (filled($city) && filled($neighborhood)) {
+                $candidates[] = CatalogTopics::catalogPath($topic, $city, $neighborhood);
+            }
+
+            foreach ($candidates as $path) {
+                $current = $paths[$path] ?? null;
+                $candidateDate = $updatedAt ?: now();
+
+                if (! $current || $candidateDate->greaterThan($current)) {
+                    $paths[$path] = $candidateDate;
+                }
+            }
+        };
+
+        Page::query()
+            ->whereNotNull('category_key')
+            ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
+            ->orderBy('id')
+            ->get(['id', 'category_key', 'setup', 'address', 'updated_at'])
+            ->each(fn (Page $page) => $register(
+                $page->category_key,
+                $this->pageAddressValue($page, 'city'),
+                $this->pageAddressValue($page, 'neighborhood'),
+                $page->updated_at
+            ));
+
+        PageProduct::query()
+            ->with('page:id,user_id,setup,address')
+            ->whereNotNull('category_key')
+            ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
+            ->orderBy('id')
+            ->get(['id', 'page_id', 'category_key', 'updated_at'])
+            ->each(fn (PageProduct $product) => $register(
+                $product->category_key,
+                $this->pageAddressValue($product->page, 'city'),
+                $this->pageAddressValue($product->page, 'neighborhood'),
+                $product->updated_at
+            ));
+
+        PageService::query()
+            ->with('page:id,user_id,setup,address')
+            ->whereNotNull('category_key')
+            ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
+            ->orderBy('id')
+            ->get(['id', 'page_id', 'category_key', 'updated_at'])
+            ->each(fn (PageService $service) => $register(
+                $service->category_key,
+                $this->pageAddressValue($service->page, 'city'),
+                $this->pageAddressValue($service->page, 'neighborhood'),
+                $service->updated_at
+            ));
+
+        PageEvent::query()
+            ->with('page:id,user_id,setup,address')
+            ->whereNotNull('category_key')
+            ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
+            ->orderBy('id')
+            ->get(['id', 'page_id', 'category_key', 'updated_at'])
+            ->each(fn (PageEvent $event) => $register(
+                $event->category_key,
+                $this->pageAddressValue($event->page, 'city'),
+                $this->pageAddressValue($event->page, 'neighborhood'),
+                $event->updated_at
+            ));
+
+        Ad::query()
+            ->with(['user.profile', 'page'])
+            ->active()
+            ->whereNotNull('category')
+            ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
+            ->orderBy('id')
+            ->get(['id', 'user_id', 'page_id', 'category', 'city', 'neighborhood', 'updated_at', 'expires_at', 'status'])
+            ->each(fn (Ad $ad) => $register(
+                CatalogTopics::keyForAdCategory($ad->category),
+                $this->adLocationValue($ad, 'city'),
+                $this->adLocationValue($ad, 'neighborhood'),
+                $ad->updated_at
+            ));
+
+        User::query()
+            ->with('profile')
+            ->whereNull('banned_at')
+            ->where('role', 'user')
+            ->whereHas('profile', fn ($query) => $query->whereNotNull('user_type'))
+            ->orderBy('id')
+            ->get(['id', 'name', 'given_name', 'family_name', 'updated_at'])
+            ->each(fn (User $user) => $register(
+                CatalogTopics::keyForUserType($user->profile?->user_type),
+                $user->profile?->city,
+                $user->profile?->neighborhood,
+                $this->latestUserTimestamp($user)
+            ));
+
+        return collect($paths)
+            ->map(fn (Carbon $lastModified, string $path): array => $this->entry($path, $lastModified, 'weekly', '0.65'))
+            ->values();
     }
 
     private function entry(string $path, ?Carbon $lastModified, string $changeFrequency, string $priority): array
@@ -48,6 +194,51 @@ class SitemapController extends Controller
             'changefreq' => $changeFrequency,
             'priority' => $priority,
         ];
+    }
+
+    private function latestUserTimestamp(User $user): ?Carbon
+    {
+        $profileUpdatedAt = $user->profile?->updated_at;
+
+        if (! $profileUpdatedAt) {
+            return $user->updated_at;
+        }
+
+        return $user->updated_at?->greaterThan($profileUpdatedAt)
+            ? $user->updated_at
+            : $profileUpdatedAt;
+    }
+
+    private function pageAddressValue(?Page $page, string $field): ?string
+    {
+        $setup = $page?->setup ?? [];
+        $address = is_array($setup['address'] ?? null) ? $setup['address'] : [];
+        $value = trim((string) ($address[$field] ?? ''));
+
+        if ($value !== '') {
+            return $value;
+        }
+
+        if ($field === 'city' && filled($page?->address)) {
+            return collect(config('locations.cities', []))
+                ->pluck('name')
+                ->first(fn (string $city) => str_contains((string) $page->address, $city));
+        }
+
+        return null;
+    }
+
+    private function adLocationValue(Ad $ad, string $field): ?string
+    {
+        if (filled($ad->{$field})) {
+            return $ad->{$field};
+        }
+
+        if ($ad->page_id && $ad->page) {
+            return $this->pageAddressValue($ad->page, $field);
+        }
+
+        return $ad->user?->profile?->{$field};
     }
 
     private function absoluteUrl(string $path): string

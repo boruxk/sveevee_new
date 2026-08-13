@@ -2,6 +2,15 @@ import PublicLayout from '@/layouts/PublicLayout.vue'
 import UserLayout from '@/layouts/UserLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
+const catalogPage = () => import('@/pages/CatalogPage.vue')
+const legalPage = () => import('@/pages/PrivacyPolicyPage.vue')
+const catalogSeo = { titleKey: 'seo.catalogTitle', descriptionKey: 'seo.catalogDescription' }
+const catalogHubRoutes = ['businesses', 'communities', 'products', 'services', 'events', 'ads', 'people'].flatMap((slug) => [
+	{ path: `catalog/${slug}`, name: `catalog-${slug}`, component: catalogPage, meta: { catalogScopeSlug: slug, seo: catalogSeo } },
+	{ path: `catalog/${slug}/:citySlug`, name: `catalog-${slug}-city`, component: catalogPage, meta: { catalogScopeSlug: slug, seo: catalogSeo } },
+	{ path: `catalog/${slug}/:citySlug/:neighborhoodSlug`, name: `catalog-${slug}-neighborhood`, component: catalogPage, meta: { catalogScopeSlug: slug, seo: catalogSeo } }
+])
+
 export default [
 	{
 		path: '/',
@@ -13,7 +22,14 @@ export default [
 			{ path: 'forgot-password', name: 'forgot-password', component: () => import('@/pages/ForgotPasswordPage.vue'), meta: { seo: { titleKey: 'seo.forgotPasswordTitle', descriptionKey: 'seo.forgotPasswordDescription', robots: 'noindex,nofollow' } } },
 			{ path: 'reset-password/:token', name: 'reset-password', component: () => import('@/pages/ResetPasswordPage.vue'), meta: { seo: { titleKey: 'seo.resetPasswordTitle', descriptionKey: 'seo.resetPasswordDescription', robots: 'noindex,nofollow' } } },
 			{ path: 'register', name: 'register', component: () => import('@/pages/RegisterPage.vue'), meta: { seo: { titleKey: 'seo.registerTitle', descriptionKey: 'seo.registerDescription', robots: 'noindex,follow' } } },
-			{ path: 'privacy', name: 'privacy', component: () => import('@/pages/PrivacyPolicyPage.vue'), meta: { seo: { titleKey: 'seo.privacyTitle', descriptionKey: 'seo.privacyDescription' } } },
+			{ path: 'privacy', name: 'privacy', component: legalPage, meta: { legalDocument: 'privacy', seo: { titleKey: 'seo.privacyTitle', descriptionKey: 'seo.privacyDescription' } } },
+			{ path: 'terms', name: 'terms', component: legalPage, meta: { legalDocument: 'terms' } },
+			{ path: 'disclaimer', name: 'disclaimer', component: legalPage, meta: { legalDocument: 'disclaimer' } },
+			{ path: 'catalog', redirect: { name: 'catalog-businesses' } },
+			...catalogHubRoutes,
+			{ path: 'catalog/:topicSlug', name: 'catalog-topic', component: catalogPage, meta: { seo: catalogSeo } },
+			{ path: 'catalog/:topicSlug/:citySlug', name: 'catalog-topic-city', component: catalogPage, meta: { seo: catalogSeo } },
+			{ path: 'catalog/:topicSlug/:citySlug/:neighborhoodSlug', name: 'catalog-topic-neighborhood', component: catalogPage, meta: { seo: catalogSeo } },
 			{ path: 'search', name: 'search', component: () => import('@/pages/SearchPage.vue'), meta: { seo: { titleKey: 'seo.searchTitle', descriptionKey: 'seo.searchDescription' } } },
 			{ path: 'users/:id', name: 'user-page', component: () => import('@/pages/UserPage.vue'), meta: { seo: { titleKey: 'seo.userFallbackTitle', descriptionKey: 'seo.userFallbackDescription' } } },
 			{ path: 'ads/:id', name: 'ad-detail', component: () => import('@/pages/AdDetailPage.vue'), meta: { seo: { titleKey: 'seo.adFallbackTitle', descriptionKey: 'seo.adFallbackDescription' } } },

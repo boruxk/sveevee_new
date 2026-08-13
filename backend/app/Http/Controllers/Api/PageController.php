@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Models\Page;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Support\CatalogTopics;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -46,6 +47,8 @@ class PageController extends Controller
     public function upsert(Request $request, string $type)
     {
         $this->validateType($type);
+        $catalogScope = $this->catalogScopeForType($type);
+        $this->normalizeCategoryKey($request, $catalogScope);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -53,6 +56,7 @@ class PageController extends Controller
             'contact_email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:40'],
             'address' => ['nullable', 'string', 'max:255'],
+            'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope($catalogScope))],
             'palette_key' => ['nullable', 'string', 'max:50'],
             'setup' => ['nullable'],
             'logo' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
@@ -76,6 +80,7 @@ class PageController extends Controller
             'contact_email' => $data['contact_email'] ?? $contact['email'] ?? $request->user()->email,
             'phone' => $data['phone'] ?? $contact['tel'] ?? null,
             'address' => $data['address'] ?? $this->addressLine($addressDetails),
+            'category_key' => $data['category_key'],
             'palette_key' => $data['palette_key'] ?? 'amber-dawn',
             'setup' => $setup,
         ]);
@@ -143,6 +148,26 @@ class PageController extends Controller
         validator(['type' => $type], [
             'type' => ['required', Rule::in([Page::TYPE_BUSINESS, Page::TYPE_COMMUNITY])],
         ])->validate();
+    }
+
+    private function catalogScopeForType(string $type): string
+    {
+        return $type === Page::TYPE_COMMUNITY
+            ? CatalogTopics::SCOPE_COMMUNITY_PAGES
+            : CatalogTopics::SCOPE_BUSINESS_PAGES;
+    }
+
+    private function normalizeCategoryKey(Request $request, string $scope): void
+    {
+        $key = trim((string) $request->input('category_key', ''));
+
+        if ($key === '') {
+            return;
+        }
+
+        $request->merge([
+            'category_key' => CatalogTopics::canonicalKeyForScope($key, $scope) ?? $key,
+        ]);
     }
 
     private function normalizedSetup(mixed $setup): array

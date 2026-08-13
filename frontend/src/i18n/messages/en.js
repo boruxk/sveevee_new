@@ -20,6 +20,16 @@ export default {
 	},
 	footer: {
 		label: 'Footer links',
+		explore: 'Explore',
+		marketplace: 'Marketplace',
+		community: 'Community',
+		businesses: 'Businesses',
+		communities: 'Communities',
+		products: 'Products',
+		services: 'Services',
+		events: 'Events',
+		ads: 'Ads',
+		people: 'People',
 		privacy: 'Privacy Policy'
 	},
 	validation: {
@@ -85,6 +95,7 @@ export default {
 		edit: 'Edit',
 		delete: 'Delete',
 		search: 'Search',
+		clear: 'Clear',
 		readMore: 'Read more',
 		readLess: 'Show less',
 		ban: 'Ban',
@@ -450,7 +461,7 @@ export default {
 		title: 'Profile',
 		photo: 'Photo',
 		languages: 'Languages',
-		userType: 'User type',
+		userType: 'Profession',
 		saved: 'Profile saved.',
 		saveFailed: 'Profile could not be saved.',
 		passwordTitle: 'Change password',
@@ -474,15 +485,44 @@ export default {
 	search: {
 		title: 'Search',
 		placeholder: 'Search business, community, ad, or user',
+		advanced: 'Advanced search',
+		hideAdvanced: 'Hide advanced search',
+		chooseType: 'What do you want to search?',
 		empty: 'No results.'
+	},
+	catalog: {
+		title: 'Catalog',
+		kicker: 'Local catalog',
+		intro: 'Browse local business pages, products, services, events, ads, and people by category, city, and neighborhood.',
+		popularTitle: 'Popular categories',
+		allTitle: 'All categories',
+		category: 'Category',
+		mainCategory: 'Main category',
+		chooseMainCategory: 'Choose a main category',
+		applyLocation: 'Apply location',
+		clearLocation: 'Clear location',
+		openCatalogPage: 'Open catalog page',
+		resultsCount: '{count} results',
+		related: 'Related categories',
+		empty: 'No public results yet.',
+		sections: {
+			pages: 'Pages',
+			products: 'Products',
+			services: 'Services',
+			events: 'Events',
+			ads: 'Ads',
+			users: 'People'
+		}
 	},
 	seo: {
 		defaultTitle: 'sveevee',
 		defaultDescription: 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.',
 		landingTitle: 'sveevee - Local discovery app for ads, pages, products, events, ratings, and chat',
-		landingDescription: 'sveevee helps people find local ads, business pages, community pages, products, services, events, ratings, nearby people, and direct chat by city and neighborhood.',
+		landingDescription: 'sveevee helps people find local ads, SEO-optimized business pages, community pages, products, services, events, ratings, nearby people, and direct chat by city and neighborhood.',
 		searchTitle: 'Search local ads, pages, and people',
 		searchDescription: 'Search users, business pages, community pages, and local ads near you on sveevee.',
+		catalogTitle: 'Local catalog',
+		catalogDescription: 'Browse local categories on sveevee by business page, product, service, event, ad, user, city, and neighborhood.',
 		loginTitle: 'Login',
 		loginDescription: 'Log in to manage your sveevee profile, pages, ads, and chats.',
 		forgotPasswordTitle: 'Reset password',
@@ -520,8 +560,8 @@ export default {
 		purposeKicker: '',
 		purposeTitle: 'About sveevee',
 		purposeParagraphs: [
-			'sveevee gives local businesses an easy way to present themselves, showcase their products and services, and publish offers. Communities can promote their events, while everyone can post free ads and connect directly with others.',
-			'Business owners can create their own public business pages, add products or services, post ads, and communicate directly with customers through chat. Everything is organized by city and neighborhood, helping businesses reach people who are actually nearby.',
+			'sveevee gives local businesses an easy way to present themselves with SEO-ready business pages, showcase their products and services, and publish offers. Communities can promote their events, while everyone can post free ads and connect directly with others.',
+			'Business owners can create their own public business pages, add products or services, post ads, and communicate directly with customers through chat. Clear page text, local address details, products, services, ratings, and city and neighborhood context help search engines understand the business and help nearby customers find it.',
 			'At the same time, users can discover local businesses, products, services, community pages, events, and ads without creating an account.',
 			'With sveevee, we want to give local businesses and communities a simple place to build their presence, reach new customers, and stay connected with the people around them.'
 		],
@@ -532,6 +572,8 @@ export default {
 		workflowKicker: 'How it works',
 		workflowTitle: 'Search, post, and start chatting',
 		workflowBody: 'sveevee keeps the experience local and clean: neighborhood ads, clear public pages, store products, community events, ratings, and chat limits that reduce spam.',
+		catalogKicker: 'Popular categories',
+		catalogTitle: 'Find local categories by city and neighborhood',
 		pricingKicker: 'Pricing',
 		pricingTitle: 'Simple pricing for everyone',
 		month: 'per month',
@@ -544,8 +586,8 @@ export default {
 				body: 'sveevee focuses on local ads that are connected to a real city and, when available, a specific neighborhood. People can search for private ads, business ads, and community ads without opening an account first, then narrow the results by the area that matters to them. That keeps discovery practical for daily needs: a nearby service, a useful recommendation, a local offer, or a person in the same neighborhood.'
 			},
 			{
-				title: 'Public pages for businesses and communities',
-				body: 'Small businesses and community initiatives can keep their public information in one clear place. A business page can show a store with products, prices, images, and links to the seller website. A community page can show events with date, time, end time, and a map-ready address. Both page types can include logo, banner, contact details, opening hours, ads, ratings, and public previews, giving search engines and visitors richer context than a short ad alone.'
+				title: 'SEO-ready public pages for businesses and communities',
+				body: 'Small businesses and community initiatives can keep their public information in one clear place. A business page can show a store with products, prices, images, services, opening hours, ratings, local address details, and links to the seller website. This gives search engines and visitors richer context than a short ad alone. A community page can show events with date, time, end time, and a map-ready address. Both page types can include logo, banner, contact details, ads, and public previews.'
 			},
 			{
 				title: 'Search first, register when it matters',
@@ -564,8 +606,8 @@ export default {
 			},
 			{
 				icon: 'storefront',
-				title: 'Business and community pages',
-				body: 'Each user can create one business page and one community page with images, contact details, address, opening hours, and public preview.'
+				title: 'SEO-ready business pages',
+				body: 'Each user can create one business page and one community page. Business pages include public text, images, contact details, address, opening hours, products, services, and ratings that help local search.'
 			},
 			{
 				icon: 'inventory_2',
@@ -617,7 +659,7 @@ export default {
 				title: 'Business',
 				subtitle: 'For a small business or community initiative that needs a public presence.',
 				featured: true,
-				features: ['One business page', 'One community page', 'Store products', 'Community events', 'Ratings and reviews', 'Business and community ads']
+				features: ['SEO-ready business page', 'One community page', 'Store products', 'Community events', 'Ratings and reviews', 'Business and community ads']
 			}
 		]
 	}

@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
-use App\Support\AdCategories;
+use App\Support\CatalogTopics;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -67,7 +67,7 @@ class AdController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:1000', new CleanContent()],
             'text' => ['required', 'string', 'max:5000', new CleanContent()],
-            'category' => ['nullable', 'string', Rule::in(AdCategories::KEYS)],
+            'category' => $this->categoryRules(),
             'page_id' => ['nullable', 'integer', 'exists:pages,id'],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
         ]);
@@ -110,7 +110,7 @@ class AdController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:1000', new CleanContent()],
             'text' => ['required', 'string', 'max:5000', new CleanContent()],
-            'category' => ['nullable', 'string', Rule::in(AdCategories::KEYS)],
+            'category' => $this->categoryRules(),
             'status' => ['nullable', Rule::in(['active', 'paused'])],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'image_remove' => ['nullable', 'boolean'],
@@ -175,6 +175,19 @@ class AdController extends Controller
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
+    }
+
+    private function categoryRules(): array
+    {
+        return [
+            'nullable',
+            'string',
+            function (string $attribute, mixed $value, \Closure $fail): void {
+                if (filled($value) && ! CatalogTopics::isAdCategoryValue((string) $value)) {
+                    $fail('The selected category is invalid.');
+                }
+            },
+        ];
     }
 
     private function locationFor(?Page $page, ?User $user): array

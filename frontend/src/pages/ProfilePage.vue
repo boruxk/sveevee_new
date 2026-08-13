@@ -11,9 +11,11 @@
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import PasswordInput from '@/components/PasswordInput.vue'
-	import { buildUserTypeSelectOptions } from '@/constants/userTypes'
+	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
+	import { useCatalogTopics } from '@/composables/useCatalogTopics'
+	import { CATALOG_SCOPES } from '@/constants/catalogTopics'
 
-	const { t, locale } = useI18n()
+	const { t } = useI18n()
 	const $q = useQuasar()
 	const route = useRoute()
 	const router = useRouter()
@@ -65,11 +67,8 @@
 		{ label: `${flag(0x1f1f7, 0x1f1fa)} ${t('languages.ru')}`, title: t('languages.ru'), value: 'ru', flag: flag(0x1f1f7, 0x1f1fa) },
 		{ label: `${flag(0x1f1eb, 0x1f1f7)} ${t('languages.fr')}`, title: t('languages.fr'), value: 'fr', flag: flag(0x1f1eb, 0x1f1f7) }
 	])
-	const userTypeOptions = computed(() => buildUserTypeSelectOptions(locale.value))
+	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const hasPassword = computed(() => authStore.user?.has_password !== false)
-	const selectedUserTypeOption = computed(() => (
-		userTypeOptions.value.find((option) => option.value === form.user_type) || null
-	))
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	function hydrate(profile) {
@@ -188,7 +187,7 @@
 	})
 
 	onMounted(async() => {
-		await Promise.all([load(), loadLocationOptions()])
+		await Promise.all([load(), loadLocationOptions(), loadCatalogTopics()])
 		citySelectOptions.value = cityOptions.value
 		neighborhoodSelectOptions.value = neighborhoodOptions.value
 	})
@@ -294,39 +293,13 @@
 								</q-item>
 							</template>
 						</q-select>
-						<q-select
+						<CatalogCategorySelect
 							v-model="form.user_type"
 							class="col-12 col-md-4"
-							outlined
-							clearable
-							emit-value
-							map-options
-							options-dense
-							popup-content-class="user-type-select-menu"
-							popup-content-style="max-height: min(72vh, 520px); overflow-y: auto;"
-							:virtual-scroll-item-size="46"
-							:virtual-scroll-slice-size="36"
-							:options="userTypeOptions"
-							option-disable="disable"
+							:groups="catalogGroups"
+							:scope="CATALOG_SCOPES.USERS"
 							:label="t('profile.userType')"
-						>
-							<template #selected>
-								<div v-if="selectedUserTypeOption" class="profile-select-value">
-									<span class="user-type-option__dot" :style="{ backgroundColor: selectedUserTypeOption.color }" />
-									<span>{{ selectedUserTypeOption.label }}</span>
-								</div>
-							</template>
-							<template #option="scope">
-								<q-item v-bind="scope.itemProps" :class="{ 'user-type-option--group': scope.opt.group }">
-									<q-item-section avatar>
-										<span class="user-type-option__dot" :style="{ backgroundColor: scope.opt.color }" />
-									</q-item-section>
-									<q-item-section>
-										<q-item-label>{{ scope.opt.label }}</q-item-label>
-									</q-item-section>
-								</q-item>
-							</template>
-						</q-select>
+						/>
 						<q-file class="col-12 col-md-5"
 							v-model="photo"
 							outlined
@@ -505,49 +478,12 @@
   align-items: center;
 }
 
-.profile-select-value {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  gap: 8px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.profile-select-value span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-type-option--group {
-  min-height: 44px;
-  color: rgba(17, 34, 45, 0.9);
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
 .profile-locale-option__flag {
   display: block;
   width: 24px;
   font-size: 20px;
   line-height: 1;
   text-align: center;
-}
-
-.user-type-option__dot {
-  display: block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.user-type-option--group .user-type-option__dot {
-  width: 15px;
-  height: 15px;
-  box-shadow: 0 6px 14px rgba(17, 34, 45, 0.18);
 }
 
 @media (max-width: 700px) {

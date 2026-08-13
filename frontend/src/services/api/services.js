@@ -5,6 +5,7 @@ async function toServiceFormData(payload) {
 	const formData = new FormData()
 	formData.append('name', payload.name || '')
 	formData.append('description', payload.description || '')
+	formData.append('category_key', payload.category_key || '')
 	formData.append('link', payload.link || '')
 
 	if (payload.image_remove) {

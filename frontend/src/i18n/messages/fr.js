@@ -19,6 +19,16 @@ export default {
 		fr: 'Français'
 	},
 	footer: {
+		explore: 'Explorer',
+		marketplace: 'Marche local',
+		community: 'Communaute',
+		businesses: 'Entreprises',
+		communities: 'Communautes',
+		products: 'Produits',
+		services: 'Services',
+		events: 'Evenements',
+		ads: 'Annonces',
+		people: 'Personnes',
 		label: 'Liens de pied de page',
 		privacy: 'Politique de confidentialite'
 	},
@@ -72,6 +82,7 @@ export default {
 		pinkAzure: 'Rose azur'
 	},
 	actions: {
+		clear: 'Effacer',
 		save: 'Enregistrer',
 		send: 'Envoyer',
 		chat: 'Chat',
@@ -450,7 +461,7 @@ export default {
 		title: 'Profil',
 		photo: 'Photo',
 		languages: 'Langues',
-		userType: 'Type de profil',
+		userType: 'Profession',
 		saved: 'Profil enregistré.',
 		saveFailed: 'Le profil n’a pas pu être enregistré.',
 		passwordTitle: 'Changer le mot de passe',
@@ -474,15 +485,44 @@ export default {
 	search: {
 		title: 'Recherche',
 		placeholder: 'Rechercher une entreprise, une communauté, une annonce ou un utilisateur',
+		advanced: 'Recherche avancee',
+		hideAdvanced: 'Masquer la recherche avancee',
+		chooseType: 'Que voulez-vous rechercher ?',
 		empty: 'Aucun resultat.'
+	},
+	catalog: {
+		chooseMainCategory: 'Choisir une categorie principale',
+		applyLocation: 'Appliquer le lieu',
+		clearLocation: 'Effacer le lieu',
+		title: 'Catalogue',
+		kicker: 'Catalogue local',
+		intro: 'Parcourez pages entreprise, produits, services, evenements, annonces et personnes par categorie, ville et quartier.',
+		popularTitle: 'Categories populaires',
+		allTitle: 'Toutes les categories',
+		category: 'Categorie',
+		mainCategory: 'Categorie principale',
+		openCatalogPage: 'Ouvrir la page catalogue',
+		resultsCount: '{count} resultats',
+		related: 'Categories liees',
+		empty: 'Aucun resultat public pour le moment.',
+		sections: {
+			pages: 'Pages',
+			products: 'Produits',
+			services: 'Services',
+			events: 'Evenements',
+			ads: 'Annonces',
+			users: 'Personnes'
+		}
 	},
 	seo: {
 		defaultTitle: 'sveevee',
 		defaultDescription: 'Annonces locales, pages entreprise, pages communaute, produits, evenements, avis et chat direct pour votre quartier.',
 		landingTitle: 'sveevee - application locale pour annonces, pages, produits, evenements, avis et chat',
-		landingDescription: 'sveevee aide a trouver annonces locales, pages entreprise, pages communaute, produits, services, evenements, avis, personnes proches et chat par ville et quartier.',
+		landingDescription: 'sveevee aide a trouver annonces locales, pages entreprise optimisees SEO, pages communaute, produits, services, evenements, avis, personnes proches et chat par ville et quartier.',
 		searchTitle: 'Recherche annonces locales, pages et personnes',
 		searchDescription: 'Recherchez utilisateurs, pages entreprise, pages communaute et annonces locales pres de vous sur sveevee.',
+		catalogTitle: 'Catalogue local',
+		catalogDescription: 'Parcourez les categories locales sur sveevee par page entreprise, produit, service, evenement, annonce, utilisateur, ville et quartier.',
 		loginTitle: 'Connexion',
 		loginDescription: 'Connectez-vous pour gerer votre profil, vos pages, vos annonces et vos chats sveevee.',
 		forgotPasswordTitle: 'Réinitialiser le mot de passe',
@@ -520,8 +560,8 @@ export default {
 		purposeKicker: '',
 		purposeTitle: 'A propos de sveevee',
 		purposeParagraphs: [
-			'sveevee donne aux entreprises locales un moyen simple de se presenter, de montrer leurs produits et services et de publier des offres. Les communautes peuvent promouvoir leurs evenements, tandis que chacun peut publier des annonces gratuites et contacter directement les autres.',
-			'Les proprietaires d entreprise peuvent creer leurs propres pages publiques, ajouter des produits ou services, publier des annonces et communiquer directement avec les clients par chat. Tout est organise par ville et quartier, ce qui aide les entreprises a toucher les personnes vraiment proches.',
+			'sveevee donne aux entreprises locales un moyen simple de se presenter avec des pages entreprise pretes pour le SEO, de montrer leurs produits et services et de publier des offres. Les communautes peuvent promouvoir leurs evenements, tandis que chacun peut publier des annonces gratuites et contacter directement les autres.',
+			'Les proprietaires d entreprise peuvent creer leurs propres pages publiques, ajouter des produits ou services, publier des annonces et communiquer directement avec les clients par chat. Un texte clair, une adresse locale, des produits, services, avis et le contexte ville/quartier aident les moteurs de recherche a comprendre l entreprise et les clients proches a la trouver.',
 			'En meme temps, les utilisateurs peuvent decouvrir des entreprises locales, produits, services, pages communaute, evenements et annonces sans creer de compte.',
 			'Avec sveevee, nous voulons donner aux entreprises locales et aux communautes un endroit simple pour construire leur presence, atteindre de nouveaux clients et rester connectees avec les personnes autour d elles.'
 		],
@@ -532,6 +572,8 @@ export default {
 		workflowKicker: 'Comment ça marche',
 		workflowTitle: 'Chercher, publier et commencer à discuter',
 		workflowBody: 'sveevee garde une experience locale et propre: annonces par quartier, pages publiques, produits boutique, evenements communautaires, avis et limites de chat qui reduisent le spam.',
+		catalogKicker: 'Categories populaires',
+		catalogTitle: 'Trouvez des categories locales par ville et quartier',
 		pricingKicker: 'Tarifs',
 		pricingTitle: 'Un prix simple pour tout le monde',
 		month: 'par mois',
@@ -544,8 +586,8 @@ export default {
 				body: 'sveevee met en avant des annonces reliees a une vraie ville et, quand c est possible, a un quartier precis. Les visiteurs peuvent rechercher des annonces privees, des annonces d entreprise et des annonces de communaute avant meme de creer un compte, puis affiner les resultats par zone. La recherche reste ainsi utile pour les besoins quotidiens: service proche, recommandation locale, offre du quartier ou personne situee pres de chez soi.'
 			},
 			{
-				title: 'Pages publiques pour entreprises et communautes',
-				body: 'Les petites entreprises et les initiatives communautaires peuvent regrouper leurs informations publiques dans un endroit clair. Une page entreprise peut afficher une boutique avec produits, prix, images et liens vers le site du vendeur. Une page communaute peut afficher des evenements avec date, heure, heure de fin et adresse ouvrable sur la carte. Les deux types de pages peuvent inclure logo, banniere, coordonnees, horaires, annonces, avis et apercu public.'
+				title: 'Pages publiques pretes pour le SEO pour entreprises et communautes',
+				body: 'Les petites entreprises et les initiatives communautaires peuvent regrouper leurs informations publiques dans un endroit clair. Une page entreprise peut afficher une boutique avec produits, prix, images, services, horaires, avis, adresse locale et liens vers le site du vendeur. Cela donne aux moteurs de recherche et aux visiteurs plus de contexte qu une simple annonce courte. Une page communaute peut afficher des evenements avec date, heure, heure de fin et adresse ouvrable sur la carte. Les deux types de pages peuvent inclure logo, banniere, coordonnees, annonces et apercu public.'
 			},
 			{
 				title: 'Chercher d abord, s inscrire quand c est utile',
@@ -564,8 +606,8 @@ export default {
 			},
 			{
 				icon: 'storefront',
-				title: 'Pages entreprise et communauté',
-				body: 'Chaque utilisateur peut creer une page entreprise et une page communaute avec images, coordonnees, adresse, horaires et apercu public.'
+				title: 'Pages entreprise pretes pour le SEO',
+				body: 'Chaque utilisateur peut creer une page entreprise et une page communaute. Les pages entreprise incluent texte public, images, coordonnees, adresse, horaires, produits, services et avis qui aident la recherche locale.'
 			},
 			{
 				icon: 'inventory_2',
@@ -617,7 +659,7 @@ export default {
 				title: 'Entreprise',
 				subtitle: 'Pour une petite entreprise ou une initiative communautaire qui veut une présence publique.',
 				featured: true,
-				features: ['Une page entreprise', 'Une page communaute', 'Produits boutique', 'Evenements communaute', 'Notes et avis', 'Annonces entreprise et communaute']
+				features: ['Page entreprise prete pour le SEO', 'Une page communaute', 'Produits boutique', 'Evenements communaute', 'Notes et avis', 'Annonces entreprise et communaute']
 			}
 		]
 	}

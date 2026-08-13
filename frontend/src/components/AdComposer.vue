@@ -1,12 +1,14 @@
 <script setup>
-	import { computed, reactive, ref, watch } from 'vue'
+	import { computed, onMounted, reactive, ref, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { createAd, updateAd } from '@/services/api/ads'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
-	import { buildAdCategorySelectOptions } from '@/constants/adCategories'
+	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
+	import { useCatalogTopics } from '@/composables/useCatalogTopics'
+	import { catalogTopicForAdCategory, CATALOG_SCOPES } from '@/constants/catalogTopics'
 	import { TITLE_MAX_LENGTH, TEXT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
 	const props = defineProps({
@@ -25,12 +27,13 @@
 	})
 
 	const emit = defineEmits(['saved'])
-	const { t, locale } = useI18n()
+	const { t } = useI18n()
 	const $q = useQuasar()
 	const loading = ref(false)
 	const formRef = ref(null)
 	const imageRemoved = ref(false)
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
+	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const form = reactive({
 		title: '',
 		text: '',
@@ -39,14 +42,6 @@
 	})
 	const isEditing = computed(() => Boolean(props.ad?.id))
 	const actionLabel = computed(() => (isEditing.value ? t('actions.update') : t('actions.createAd')))
-	const categoryOptions = computed(() => {
-		const currentLocale = locale.value
-
-		return buildAdCategorySelectOptions((key) => t(key, { currentLocale }))
-	})
-	const selectedCategoryOption = computed(() => (
-		categoryOptions.value.find((option) => option.value === form.category) || null
-	))
 	const hasStoredImage = computed(() => Boolean(props.ad?.image_url) && !form.image && !imageRemoved.value)
 	const imageDisplayName = computed(() => imageUploadDisplayName(
 		form.image,
@@ -54,10 +49,18 @@
 		imageRemoved.value ? '' : props.ad?.image_name
 	))
 
+	function normalizedCategoryValue(value) {
+		if (!value) {
+			return ''
+		}
+
+		return catalogTopicForAdCategory(catalogGroups.value, value)?.key || value
+	}
+
 	function hydrate(ad) {
 		form.title = ad?.title || ''
 		form.text = ad?.text || ''
-		form.category = ad?.category || ''
+		form.category = normalizedCategoryValue(ad?.category)
 		form.image = null
 		imageRemoved.value = false
 	}
@@ -99,11 +102,16 @@
 	}
 
 	watch(() => props.ad, hydrate, { immediate: true })
+	watch(catalogGroups, () => {
+		form.category = normalizedCategoryValue(form.category)
+	})
 	watch(() => form.image, (value) => {
 		if (value) {
 			imageRemoved.value = false
 		}
 	})
+
+	onMounted(loadCatalogTopics)
 </script>
 
 <template>
@@ -131,39 +139,13 @@
 			persistent-hint
 			:rules="[requiredRule]"
 		/>
-		<q-select
+		<CatalogCategorySelect
 			v-model="form.category"
-			outlined
-			clearable
-			emit-value
-			map-options
-			options-dense
-			popup-content-class="ad-category-select-menu"
-			popup-content-style="max-height: min(72vh, 520px); overflow-y: auto;"
-			:virtual-scroll-item-size="46"
-			:virtual-scroll-slice-size="36"
-			:options="categoryOptions"
-			option-disable="disable"
+			:groups="catalogGroups"
+			:scope="CATALOG_SCOPES.ADS"
 			:label="t('ads.category')"
 			:disable="disabled"
-		>
-			<template #selected>
-				<div v-if="selectedCategoryOption" class="ad-category-selection">
-					<span class="ad-category-option__dot" :style="{ backgroundColor: selectedCategoryOption.color }" />
-					<span>{{ selectedCategoryOption.label }}</span>
-				</div>
-			</template>
-			<template #option="scope">
-				<q-item v-bind="scope.itemProps" :class="{ 'ad-category-option--group': scope.opt.group }">
-					<q-item-section avatar>
-						<span class="ad-category-option__dot" :style="{ backgroundColor: scope.opt.color }" />
-					</q-item-section>
-					<q-item-section>
-						<q-item-label>{{ scope.opt.label }}</q-item-label>
-					</q-item-section>
-				</q-item>
-			</template>
-		</q-select>
+		/>
 		<div class="listing-composer__row">
 			<q-file v-model="form.image"
 				outlined
@@ -212,43 +194,6 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-}
-
-.ad-category-option--group {
-  min-height: 44px;
-  color: rgba(17, 34, 45, 0.9);
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.ad-category-selection {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  gap: 8px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.ad-category-selection span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ad-category-option__dot {
-  display: block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.ad-category-option--group .ad-category-option__dot {
-  width: 15px;
-  height: 15px;
-  box-shadow: 0 6px 14px rgba(17, 34, 45, 0.18);
 }
 
 @media (max-width: 700px) {

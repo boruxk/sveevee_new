@@ -1,12 +1,11 @@
 <script setup>
-	import { computed, onMounted, watch } from 'vue'
+	import { computed, defineAsyncComponent, onMounted, watch } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
 	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
-	import SupportChatWidget from '@/components/SupportChatWidget.vue'
-	import logoSrc from '@/assets/sveevee-logo.webp'
+	import { getLegalDocument } from '@/constants/legalDocuments'
 
 	const props = defineProps({
 		tone: {
@@ -19,7 +18,9 @@
 	const router = useRouter()
 	const authStore = useAuthStore()
 	const chatsStore = useChatsStore()
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
+	const logoSrc = '/assets/landing/sveevee-logo.v1.webp'
+	const SupportChatWidget = defineAsyncComponent(() => import('@/components/SupportChatWidget.vue'))
 
 	const toneClass = computed(() => `shell--${props.tone}`)
 	const currentYear = new Date().getFullYear()
@@ -42,6 +43,35 @@
 		{ label: t('nav.community'), name: 'community', icon: 'diversity_3', visible: authStore.isAuthenticated && hasCommunityPage.value }
 	])
 	const visibleNavLinks = computed(() => navLinks.value.filter((link) => link.visible))
+	const footerColumns = computed(() => [
+		{
+			title: t('footer.explore'),
+			links: [
+				{ label: t('footer.businesses'), name: 'catalog-businesses' },
+				{ label: t('footer.communities'), name: 'catalog-communities' },
+				{ label: t('footer.people'), name: 'catalog-people' }
+			]
+		},
+		{
+			title: t('footer.marketplace'),
+			links: [
+				{ label: t('footer.products'), name: 'catalog-products' },
+				{ label: t('footer.services'), name: 'catalog-services' },
+				{ label: t('footer.ads'), name: 'catalog-ads' }
+			]
+		},
+		{
+			title: t('footer.community'),
+			links: [
+				{ label: t('footer.events'), name: 'catalog-events' }
+			]
+		}
+	])
+	const legalLinks = computed(() => [
+		{ label: getLegalDocument('privacy', locale.value).title, name: 'privacy' },
+		{ label: getLegalDocument('terms', locale.value).title, name: 'terms' },
+		{ label: getLegalDocument('disclaimer', locale.value).title, name: 'disclaimer' }
+	])
 
 	function isActive(name) {
 		return route.name === name
@@ -69,7 +99,7 @@
 			try {
 				await authStore.refreshUser()
 			} catch {
-				authStore.clearSession()
+				await authStore.clearSession()
 			}
 		}
 	}
@@ -94,7 +124,14 @@
 		<q-header class="bg-transparent text-dark shell-header">
 			<q-toolbar class="shell-toolbar">
 				<router-link :to="{ name: homeRouteName }" class="brand-lockup">
-					<img :src="logoSrc" alt="sveevee" class="brand-logo" />
+					<img
+						:src="logoSrc"
+						alt="sveevee"
+						class="brand-logo"
+						width="1218"
+						height="238"
+						decoding="async"
+					/>
 				</router-link>
 
 				<q-space />
@@ -266,12 +303,23 @@
 		<footer class="shell-footer">
 			<div class="shell-footer__inner">
 				<div class="shell-footer__brand">© {{ currentYear }} sveevee</div>
+				<nav class="shell-footer__legal" aria-label="Legal">
+					<router-link v-for="link in legalLinks" :key="link.name" :to="{ name: link.name }">
+						{{ link.label }}
+					</router-link>
+				</nav>
+				<p class="shell-footer__recaptcha">This site is protected by reCAPTCHA.</p>
 				<nav class="shell-footer__nav" :aria-label="t('footer.label')">
-					<router-link :to="{ name: 'privacy' }">{{ t('footer.privacy') }}</router-link>
+					<div v-for="column in footerColumns" :key="column.title" class="shell-footer__column">
+						<h2>{{ column.title }}</h2>
+						<router-link v-for="link in column.links" :key="link.name" :to="{ name: link.name }">
+							{{ link.label }}
+						</router-link>
+					</div>
 				</nav>
 			</div>
 		</footer>
-		<SupportChatWidget />
+		<SupportChatWidget v-if="authStore.isAuthenticated && !isAdmin" />
 	</q-layout>
 </template>
 
@@ -439,9 +487,10 @@
 }
 
 .shell-footer__inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.3fr);
   gap: 16px;
-  align-items: center;
+  align-items: start;
   justify-content: space-between;
   max-width: 1280px;
   margin: 0 auto;
@@ -452,18 +501,52 @@
   font-weight: 700;
 }
 
-.shell-footer__nav {
-  display: flex;
-  gap: 14px;
-  align-items: center;
+.shell-footer__recaptcha {
+  grid-column: 1;
+  margin: 4px 0 0;
+  color: rgba(17, 34, 45, 0.38);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
 }
 
-.shell-footer__nav a {
+.shell-footer__legal {
+  display: grid;
+  grid-column: 1;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.shell-footer__nav {
+  display: grid;
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  justify-content: flex-end;
+}
+
+.shell-footer__column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.shell-footer__column h2 {
+  margin: 0 0 2px;
+  color: rgba(17, 34, 45, 0.72);
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.shell-footer__nav a,
+.shell-footer__legal a {
   color: var(--soz-primary-deep);
   text-decoration: none;
 }
 
-.shell-footer__nav a:hover {
+.shell-footer__nav a:hover,
+.shell-footer__legal a:hover {
   text-decoration: underline;
 }
 
@@ -530,10 +613,27 @@
   }
 
   .shell-footer__inner {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 10px;
     justify-content: center;
     text-align: center;
+  }
+
+  .shell-footer__legal,
+  .shell-footer__recaptcha,
+  .shell-footer__nav {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .shell-footer__nav {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .shell-footer__legal,
+  .shell-footer__column {
+    justify-items: center;
   }
 }
 </style>

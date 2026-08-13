@@ -7,6 +7,8 @@
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import { TITLE_MAX_LENGTH, TEXT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
+	import { catalogTopicByKey, catalogTopicMatchesScope, CATALOG_SCOPES } from '@/constants/catalogTopics'
+	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
 
 	const props = defineProps({
 		pageId: {
@@ -16,6 +18,14 @@
 		service: {
 			type: Object,
 			default: null
+		},
+		pageCategoryKey: {
+			type: String,
+			default: ''
+		},
+		catalogGroups: {
+			type: Array,
+			default: () => []
 		}
 	})
 
@@ -29,6 +39,7 @@
 	const form = reactive({
 		name: '',
 		description: '',
+		category_key: '',
 		image: null,
 		link: ''
 	})
@@ -44,9 +55,17 @@
 	function hydrate(service) {
 		form.name = service?.name || ''
 		form.description = service?.description || ''
+		form.category_key = service?.category_key || defaultCategoryKey()
 		form.image = null
 		form.link = service?.link || ''
 		imageRemoved.value = false
+	}
+
+	function defaultCategoryKey() {
+		const pageCategory = catalogTopicByKey(props.catalogGroups, props.pageCategoryKey)
+		const canUsePageCategory = pageCategory && catalogTopicMatchesScope(pageCategory, CATALOG_SCOPES.SERVICES)
+
+		return canUsePageCategory ? pageCategory.key : ''
 	}
 
 	function removeStoredImage() {
@@ -81,6 +100,11 @@
 	}
 
 	watch(() => props.service, hydrate, { immediate: true })
+	watch(() => [props.pageCategoryKey, props.catalogGroups], () => {
+		if (!isEditing.value && !form.category_key) {
+			form.category_key = defaultCategoryKey()
+		}
+	})
 	watch(() => form.image, (value) => {
 		if (value) {
 			imageRemoved.value = false
@@ -99,6 +123,13 @@
 			counter
 			persistent-hint
 			:rules="[requiredRule]"
+		/>
+		<CatalogCategorySelect
+			v-model="form.category_key"
+			:groups="catalogGroups"
+			:scope="CATALOG_SCOPES.SERVICES"
+			required
+			:label="requiredLabel('catalog.category')"
 		/>
 		<q-input
 			v-model="form.description"

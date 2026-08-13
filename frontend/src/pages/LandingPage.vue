@@ -1,16 +1,20 @@
 <script setup>
-	import { computed } from 'vue'
+	import { computed, onMounted } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useAppStore } from '@/stores/app'
-	import heroSrc from '@/assets/hero-main.webp'
-	import mobileHeroSrc from '@/assets/hero-mobile.webp'
-	import pricingBusinessSrc from '@/assets/pricing-business.webp'
-	import pricingPrivateSrc from '@/assets/pricing-private.webp'
-	import logoSrc from '@/assets/sveevee-logo.webp'
-	import workflowHouseSrc from '@/assets/workflow-house.webp'
+	import { useCatalogTopics } from '@/composables/useCatalogTopics'
+	import { catalogLabel, catalogPath } from '@/constants/catalogTopics'
 
 	const { t, tm, locale } = useI18n()
 	const appStore = useAppStore()
+	const { catalogPopularTopics, loadCatalogTopics } = useCatalogTopics()
+	const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
+	const heroSrc = '/assets/landing/hero-main.v1.webp'
+	const mobileHeroSrc = '/assets/landing/hero-mobile.v1.webp'
+	const pricingBusinessSrc = '/assets/landing/pricing-business.v1.webp'
+	const pricingPrivateSrc = '/assets/landing/pricing-private.v1.webp'
+	const logoSrc = '/assets/landing/sveevee-logo.v1.webp'
+	const workflowHouseSrc = '/assets/landing/workflow-house.v1.webp'
 
 	function listMessage(key) {
 		const value = tm(key)
@@ -22,6 +26,7 @@
 	const purposeParagraphs = computed(() => listMessage('landing.purposeParagraphs'))
 	const steps = computed(() => listMessage('landing.steps'))
 	const plans = computed(() => listMessage('landing.plans'))
+	const popularCatalogTopics = computed(() => catalogPopularTopics.value.slice(0, 12))
 	const featureTitleParts = computed(() => {
 		const title = t('landing.featureTitle')
 		const words = title.split(' ')
@@ -72,6 +77,12 @@
 	function stepIcon(index) {
 		return ['person', 'edit', 'search', 'verified'][index] ?? 'check'
 	}
+
+	function topicName(topic) {
+		return catalogLabel(topic?.labels, locale.value)
+	}
+
+	onMounted(loadCatalogTopics)
 </script>
 
 <template>
@@ -84,7 +95,14 @@
 					</q-chip>
 
 					<h1 class="landing-hero__title">
-						<img class="landing-hero__wordmark" :src="logoSrc" :alt="t('landing.title')" />
+						<img
+							class="landing-hero__wordmark"
+							:src="logoSrc"
+							:alt="t('landing.title')"
+							width="1218"
+							height="238"
+							decoding="async"
+						/>
 					</h1>
 					<p class="landing-hero__subtitle">
 						<span class="landing-hero__subtitle-shape" aria-hidden="true"></span>
@@ -92,7 +110,18 @@
 					</p>
 
 					<div class="landing-hero__mobile-visual">
-						<img :src="mobileHeroSrc" alt="" loading="eager" fetchpriority="high" />
+						<picture>
+							<source media="(max-width: 640px)" :srcset="mobileHeroSrc" type="image/webp" />
+							<img
+								:src="transparentPixel"
+								alt=""
+								width="1254"
+								height="1254"
+								loading="eager"
+								fetchpriority="high"
+								decoding="async"
+							/>
+						</picture>
 					</div>
 
 					<div class="landing-hero__actions">
@@ -116,7 +145,18 @@
 				</div>
 
 				<div class="landing-hero__visual">
-					<img :src="heroSrc" alt="" />
+					<picture>
+						<source media="(min-width: 641px)" :srcset="heroSrc" type="image/webp" />
+						<img
+							:src="transparentPixel"
+							alt=""
+							width="1672"
+							height="941"
+							loading="eager"
+							fetchpriority="high"
+							decoding="async"
+						/>
+					</picture>
 				</div>
 			</div>
 		</section>
@@ -129,6 +169,25 @@
 					<p v-for="paragraph in purposeParagraphs" :key="paragraph">{{ paragraph }}</p>
 				</div>
 
+			</div>
+		</section>
+
+		<section v-if="popularCatalogTopics.length" class="landing-section landing-catalog-section">
+			<div class="landing-section__head">
+				<div class="section-kicker">{{ t('landing.catalogKicker') }}</div>
+				<h2>{{ t('landing.catalogTitle') }}</h2>
+			</div>
+			<div class="landing-topic-grid">
+				<router-link
+					v-for="topic in popularCatalogTopics"
+					:key="topic.key"
+					class="landing-topic-chip"
+					:to="catalogPath(topic)"
+					:style="{ '--topic-color': topic.color }"
+				>
+					<span class="landing-topic-chip__dot" />
+					<span>{{ topicName(topic) }}</span>
+				</router-link>
 			</div>
 		</section>
 
@@ -171,7 +230,15 @@
 				<div class="section-kicker">{{ t('landing.workflowKicker') }}</div>
 				<h2>{{ t('landing.workflowTitle') }}</h2>
 				<p>{{ t('landing.workflowBody') }}</p>
-				<img class="workflow-art" :src="workflowHouseSrc" alt="" />
+				<img
+					class="workflow-art"
+					:src="workflowHouseSrc"
+					alt=""
+					width="1536"
+					height="1024"
+					loading="lazy"
+					decoding="async"
+				/>
 			</div>
 
 			<div class="step-list">
@@ -225,7 +292,15 @@
 							</ul>
 						</div>
 
-						<img class="pricing-card__art" :src="planImage(plan)" alt="" />
+						<img
+							class="pricing-card__art"
+							:src="planImage(plan)"
+							alt=""
+							:width="plan.featured ? 770 : 537"
+							:height="plan.featured ? 794 : 668"
+							loading="lazy"
+							decoding="async"
+						/>
 					</div>
 
 					<q-btn
@@ -329,10 +404,14 @@
   mask-image: linear-gradient(to right, transparent 0%, transparent 14%, rgba(0, 0, 0, 0.42) 34%, #000000 62%, #000000 100%);
 }
 
+.landing-hero__visual picture,
 .landing-hero__visual img {
   display: block;
   width: 100%;
   height: auto;
+}
+
+.landing-hero__visual img {
   object-fit: contain;
   object-position: center;
 }
@@ -352,6 +431,7 @@
   display: none;
 }
 
+.landing-hero__mobile-visual picture,
 .landing-hero__mobile-visual img {
   display: block;
   width: 100%;
@@ -427,6 +507,47 @@
   color: rgba(21, 31, 59, 0.72);
   font-size: 17px;
   line-height: 1.72;
+}
+
+.landing-catalog-section {
+  display: grid;
+  gap: 18px;
+}
+
+.landing-topic-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 11px;
+}
+
+.landing-topic-chip {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 42px;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 14px;
+  border: 1px solid color-mix(in srgb, var(--topic-color, #f54291) 28%, rgba(17, 34, 45, 0.08));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--topic-color, #f54291) 10%, rgba(255, 255, 255, 0.86));
+  color: #152033;
+  font-weight: 780;
+  text-decoration: none;
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--topic-color, #f54291) 12%, transparent);
+}
+
+.landing-topic-chip__dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--topic-color, #f54291);
+}
+
+.landing-topic-chip span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .landing-section--features h2 {

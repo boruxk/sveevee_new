@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AdController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\HomeFeedController;
 use App\Http\Controllers\Api\LocationController;
@@ -17,6 +18,10 @@ use App\Http\Controllers\Api\SearchController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('recaptcha')->group(function () {
+    Route::get('/catalog', [CatalogController::class, 'index']);
+    Route::get('/catalog/{topicSlug}', [CatalogController::class, 'index']);
+    Route::get('/catalog/{topicSlug}/{citySlug}', [CatalogController::class, 'index']);
+    Route::get('/catalog/{topicSlug}/{citySlug}/{neighborhoodSlug}', [CatalogController::class, 'index']);
     Route::get('/search', [SearchController::class, 'index']);
     Route::get('/locations', [LocationController::class, 'index']);
     Route::get('/users/{user}', [PublicUserController::class, 'show']);

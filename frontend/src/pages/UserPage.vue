@@ -4,21 +4,49 @@
 	import { useI18n } from 'vue-i18n'
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
+	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { fetchUser } from '@/services/api/users'
+	import { catalogLabel, catalogPath, catalogTopicByKey, pageRoute } from '@/constants/catalogTopics'
+	import { locationLabel } from '@/utils/locationLabels'
 	import { absoluteUrl, truncateText, useSeo } from '@/composables/useSeo'
 	import AdCard from '@/components/AdCard.vue'
 	import ChatBlock from '@/components/ChatBlock.vue'
 
 	const route = useRoute()
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const authStore = useAuthStore()
 	const chatsStore = useChatsStore()
+	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const loading = ref(false)
 	const user = ref(null)
 	const chatOpen = ref(false)
 
 	const pages = computed(() => [user.value?.business_page, user.value?.community_page].filter(Boolean))
 	const profileLocation = computed(() => [user.value?.profile?.neighborhood, user.value?.profile?.city].filter(Boolean).join(', '))
+	const userTopic = computed(() => catalogTopicByKey(catalogGroups.value, user.value?.profile?.user_type))
+	const userCatalogLinks = computed(() => {
+		if (!userTopic.value) {
+			return []
+		}
+
+		const city = user.value?.profile?.city || ''
+		const neighborhood = user.value?.profile?.neighborhood || ''
+
+		return [
+			{
+				label: catalogLabel(userTopic.value.labels, locale.value),
+				to: catalogPath(userTopic.value)
+			},
+			city ? {
+				label: locationLabel(city, 'city', locale.value),
+				to: catalogPath(userTopic.value, city)
+			} : null,
+			city && neighborhood ? {
+				label: locationLabel(neighborhood, 'neighborhood', locale.value),
+				to: catalogPath(userTopic.value, city, neighborhood)
+			} : null
+		].filter(Boolean)
+	})
 	const seoDescription = computed(() => {
 		if (!user.value) {
 			return t('seo.userFallbackDescription')
@@ -69,7 +97,9 @@
 		chatOpen.value = true
 	}
 
-	onMounted(load)
+	onMounted(async() => {
+		await Promise.all([load(), loadCatalogTopics()])
+	})
 </script>
 
 <template>
@@ -93,9 +123,14 @@
 					@click="openChat"
 				/>
 			</section>
+			<nav v-if="userCatalogLinks.length" class="detail-catalog-links" aria-label="Catalog">
+				<router-link v-for="link in userCatalogLinks" :key="link.to" :to="link.to">
+					{{ link.label }}
+				</router-link>
+			</nav>
 
 			<section v-if="pages.length" class="page-row q-mt-lg">
-				<router-link v-for="page in pages" :key="page.id" :to="{ name: 'page-detail', params: { id: page.id } }" class="public-page-card">
+				<router-link v-for="page in pages" :key="page.id" :to="pageRoute(page)" class="public-page-card">
 					<q-icon :name="page.type === 'business' ? 'storefront' : 'diversity_3'" size="34px" color="primary" />
 					<div>
 						<h2>{{ page.name }}</h2>
@@ -134,6 +169,26 @@
   gap: 20px;
   align-items: center;
   padding: 28px;
+}
+
+.detail-catalog-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.detail-catalog-links a {
+  color: var(--soz-primary-deep);
+  font-weight: 780;
+  text-decoration: none;
+}
+
+.detail-catalog-links a + a::before {
+  padding-inline: 8px;
+  color: rgba(17, 34, 45, 0.36);
+  content: "/";
 }
 
 .page-row {

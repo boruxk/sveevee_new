@@ -5,6 +5,7 @@ async function toEventFormData(payload) {
 	const formData = new FormData()
 	formData.append('name', payload.name || '')
 	formData.append('description', payload.description || '')
+	formData.append('category_key', payload.category_key || '')
 	formData.append('date', payload.date || '')
 	formData.append('time', payload.time || '')
 	formData.append('end_time', payload.end_time || '')

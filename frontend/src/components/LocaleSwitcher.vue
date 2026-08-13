@@ -48,27 +48,27 @@
 	async function selectLocale(locale) {
 		const previousLocale = appStore.locale
 
-		setLocale(locale)
-		emit('update:modelValue', locale)
-
-		if (props.guestStorage && !authStore.isAuthenticated) {
-			appStore.setGuestLocale(locale)
-		}
-
-		if (!props.persist || !authStore.isAuthenticated) {
-			return
-		}
-
 		changing.value = true
 
 		try {
+			await setLocale(locale)
+			emit('update:modelValue', locale)
+
+			if (props.guestStorage && !authStore.isAuthenticated) {
+				appStore.setGuestLocale(locale)
+			}
+
+			if (!props.persist || !authStore.isAuthenticated) {
+				return
+			}
+
 			const { data } = await updateProfileLocale(locale)
 
 			if (data.data?.user) {
 				authStore.user = data.data.user
 			}
 		} catch (error) {
-			setLocale(previousLocale)
+			await setLocale(previousLocale)
 			emit('update:modelValue', previousLocale)
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('profile.saveFailed')) })
 		} finally {

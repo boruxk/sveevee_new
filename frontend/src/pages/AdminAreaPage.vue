@@ -3,6 +3,7 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { banAdminUser, fetchAdminUsers, messageAdminUser, restoreAdminUser } from '@/services/api/admin'
+	import { pageRoute } from '@/constants/catalogTopics'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
 	const { t } = useI18n()
@@ -89,10 +90,10 @@
 					</div>
 
 					<div class="page-links q-mt-md">
-						<router-link v-if="selectedUser.business_page" :to="{ name: 'page-detail', params: { id: selectedUser.business_page.id } }">
+						<router-link v-if="selectedUser.business_page" :to="pageRoute(selectedUser.business_page)">
 							{{ selectedUser.business_page.name }}
 						</router-link>
-						<router-link v-if="selectedUser.community_page" :to="{ name: 'page-detail', params: { id: selectedUser.community_page.id } }">
+						<router-link v-if="selectedUser.community_page" :to="pageRoute(selectedUser.community_page)">
 							{{ selectedUser.community_page.name }}
 						</router-link>
 					</div>

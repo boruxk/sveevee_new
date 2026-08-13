@@ -9,7 +9,9 @@ use App\Models\PageService;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Support\CatalogTopics;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PageServiceController extends Controller
 {
@@ -25,9 +27,12 @@ class PageServiceController extends Controller
             return $error;
         }
 
+        $this->normalizeCategoryKey($request);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:1000', new CleanContent()],
             'description' => ['required', 'string', 'max:5000', new CleanContent()],
+            'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope(CatalogTopics::SCOPE_SERVICES))],
             'image' => ['required', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'link' => ['nullable', 'url', 'max:2048'],
         ]);
@@ -38,6 +43,7 @@ class PageServiceController extends Controller
             'page_id' => $page->id,
             'name' => $data['name'],
             'description' => $data['description'],
+            'category_key' => $data['category_key'],
             'image_path' => $this->storePublicWebp($image, 'services', 'image'),
             'image_original_name' => $this->originalUploadName($request, 'image', $image),
             'link' => $data['link'] ?? null,
@@ -54,9 +60,12 @@ class PageServiceController extends Controller
             return $error;
         }
 
+        $this->normalizeCategoryKey($request);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:1000', new CleanContent()],
             'description' => ['required', 'string', 'max:5000', new CleanContent()],
+            'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope(CatalogTopics::SCOPE_SERVICES))],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'image_remove' => ['nullable', 'boolean'],
             'link' => ['nullable', 'url', 'max:2048'],
@@ -65,6 +74,7 @@ class PageServiceController extends Controller
         $service->fill([
             'name' => $data['name'],
             'description' => $data['description'],
+            'category_key' => $data['category_key'],
             'link' => $data['link'] ?? null,
         ]);
 
@@ -110,5 +120,18 @@ class PageServiceController extends Controller
         }
 
         return null;
+    }
+
+    private function normalizeCategoryKey(Request $request): void
+    {
+        $key = trim((string) $request->input('category_key', ''));
+
+        if ($key === '') {
+            return;
+        }
+
+        $request->merge([
+            'category_key' => CatalogTopics::canonicalKeyForScope($key, CatalogTopics::SCOPE_SERVICES) ?? $key,
+        ]);
     }
 }

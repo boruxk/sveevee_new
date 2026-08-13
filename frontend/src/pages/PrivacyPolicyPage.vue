@@ -1,10 +1,12 @@
 <script setup>
 	import { computed } from 'vue'
+	import { useRoute } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
-	import { getPrivacyPolicy } from '@/constants/privacyPolicy'
+	import { getLegalDocument } from '@/constants/legalDocuments'
 
+	const route = useRoute()
 	const { locale } = useI18n()
-	const policy = computed(() => getPrivacyPolicy(locale.value))
+	const policy = computed(() => getLegalDocument(route.meta.legalDocument || 'privacy', locale.value))
 </script>
 
 <template>

@@ -10,6 +10,7 @@ use App\Models\PageProduct;
 use App\Models\PageService;
 use App\Models\User;
 use App\Notifications\PasswordChangedNotification;
+use App\Support\CatalogTopics;
 use App\Support\ContentModeration;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -436,11 +437,13 @@ class SveeveeApiTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_sitemap_includes_public_pages_and_active_ads_dynamically(): void
+    public function test_sitemap_includes_public_users_pages_and_active_ads_dynamically(): void
     {
         config()->set('app.url', 'https://sveevee.co.il');
 
         $user = User::factory()->create();
+        $bannedUser = User::factory()->create(['banned_at' => now()]);
+        $adminUser = User::factory()->create(['role' => 'admin']);
         $page = Page::query()->create([
             'user_id' => $user->id,
             'type' => Page::TYPE_BUSINESS,
@@ -467,7 +470,10 @@ class SveeveeApiTest extends TestCase
         $this->get('/sitemap.xml')
             ->assertOk()
             ->assertHeader('content-type', 'application/xml; charset=UTF-8')
-            ->assertSee('https://sveevee.co.il/pages/'.$page->id, false)
+            ->assertSee('https://sveevee.co.il/users/'.$user->id, false)
+            ->assertDontSee('https://sveevee.co.il/users/'.$bannedUser->id, false)
+            ->assertDontSee('https://sveevee.co.il/users/'.$adminUser->id, false)
+            ->assertSee('https://sveevee.co.il/pages/'.$page->public_slug, false)
             ->assertSee('https://sveevee.co.il/ads/'.$ad->id, false)
             ->assertDontSee('https://sveevee.co.il/ads/'.$expiredAd->id, false);
 
@@ -476,6 +482,234 @@ class SveeveeApiTest extends TestCase
         $this->get('/sitemap.xml')
             ->assertOk()
             ->assertDontSee('https://sveevee.co.il/ads/'.$ad->id, false);
+    }
+
+    public function test_catalog_topics_endpoint_lists_registry(): void
+    {
+        $this->getJson('/api/v1/catalog')
+            ->assertOk()
+            ->assertJsonPath('data.popular_topics.0.key', CatalogTopics::POPULAR_KEYS[0])
+            ->assertJsonPath('data.groups.0.topics.0.slug', fn ($value) => filled($value));
+
+        $this->getJson('/api/v1/catalog/businesses')
+            ->assertOk()
+            ->assertJsonPath('data.hub.slug', 'businesses')
+            ->assertJsonPath('data.groups.0.topics.0.slug', fn ($value) => filled($value));
+
+        $this->getJson('/api/v1/catalog/businesses/haifa')
+            ->assertOk()
+            ->assertJsonPath('data.hub.slug', 'businesses')
+            ->assertJsonPath('data.city', 'Haifa');
+    }
+
+    public function test_catalog_categories_are_validated_and_saved_for_pages_and_items(): void
+    {
+        Storage::fake('public');
+
+        $owner = User::factory()->create();
+        Sanctum::actingAs($owner);
+
+        $this->postJson('/api/v1/pages/business', [
+            'name' => 'Electric Studio',
+            'public_description' => 'Local electrical work.',
+            'category_key' => 'professionals.electricians',
+            'setup' => [
+                'address' => [
+                    'city' => 'Haifa',
+                    'neighborhood' => 'Hadar',
+                ],
+            ],
+        ])->assertOk()
+            ->assertJsonPath('data.category_key', 'professionals.electricians');
+
+        $page = Page::query()->where('user_id', $owner->id)->where('type', Page::TYPE_BUSINESS)->firstOrFail();
+
+        $this->postJson('/api/v1/pages/business', [
+            'name' => 'Missing Category Studio',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('category_key');
+
+        $this->postJson('/api/v1/pages/business', [
+            'name' => 'Electric Studio',
+            'category_key' => 'events.community',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('category_key');
+
+        $this->post("/api/v1/pages/{$page->id}/services", [
+            'name' => 'Electrical repairs',
+            'description' => 'Sockets, boards, and lighting.',
+            'category_key' => 'services.home_repairs',
+            'image' => UploadedFile::fake()->image('repair.jpg'),
+        ], ['Accept' => 'application/json'])->assertCreated()
+            ->assertJsonPath('data.category_key', 'services.home_repairs.handyman');
+
+        $this->post("/api/v1/pages/{$page->id}/services", [
+            'name' => 'Bad service',
+            'description' => 'Wrong category scope.',
+            'category_key' => 'products.home_garden',
+            'image' => UploadedFile::fake()->image('bad.jpg'),
+        ], ['Accept' => 'application/json'])->assertStatus(422);
+    }
+
+    public function test_catalog_api_filters_segments_by_topic_and_location(): void
+    {
+        Storage::fake('public');
+
+        $owner = User::factory()->create();
+        $owner->profile()->update([
+            'city' => 'Haifa',
+            'neighborhood' => 'Hadar',
+            'user_type' => 'professionals.electricians',
+        ]);
+
+        $page = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Electric Studio',
+            'public_description' => 'Local electrical work.',
+            'category_key' => 'professionals.electricians',
+            'setup' => [
+                'address' => [
+                    'city' => 'Haifa',
+                    'neighborhood' => 'Hadar',
+                ],
+            ],
+        ]);
+
+        PageService::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Electrical repairs',
+            'description' => 'Sockets and boards.',
+            'category_key' => 'services.home_repairs.handyman',
+            'image_path' => 'services/repair.webp',
+        ]);
+
+        Ad::query()->create([
+            'user_id' => $owner->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Need electrician',
+            'text' => 'Local help needed.',
+            'category' => 'home_professionals.electrician',
+            'status' => 'active',
+            'city' => 'Haifa',
+            'neighborhood' => 'Hadar',
+            'expires_at' => now()->addDay(),
+        ]);
+
+        $this->getJson('/api/v1/catalog/electricians/haifa/hadar')
+            ->assertOk()
+            ->assertJsonPath('data.indexable', true)
+            ->assertJsonPath('data.counts.pages', 1)
+            ->assertJsonPath('data.counts.ads', 1)
+            ->assertJsonPath('data.counts.users', 1)
+            ->assertJsonPath('data.segments.pages.items.0.name', 'Electric Studio')
+            ->assertJsonPath('data.segments.pages.items.0.slug', $page->public_slug)
+            ->assertJsonPath('data.segments.ads.items.0.title', 'Need electrician');
+
+        $this->getJson('/api/v1/catalog/home-repair-services/haifa/hadar')
+            ->assertOk()
+            ->assertJsonPath('data.counts.services', 1)
+            ->assertJsonPath('data.segments.services.items.0.page.name', 'Electric Studio')
+            ->assertJsonPath('data.segments.services.items.0.page.slug', $page->public_slug);
+
+        $this->getJson('/api/v1/catalog/electricians/tel-aviv')
+            ->assertOk()
+            ->assertJsonPath('data.indexable', false)
+            ->assertJsonPath('data.total_count', 0);
+    }
+
+    public function test_search_scope_limits_results_and_validates_category_scope(): void
+    {
+        $owner = User::factory()->create();
+        $owner->profile()->update([
+            'city' => 'Haifa',
+            'neighborhood' => 'Hadar',
+            'user_type' => 'professionals.electricians',
+        ]);
+
+        $page = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Electric Studio',
+            'public_description' => 'Local electrical work.',
+            'category_key' => 'professionals.electricians',
+            'setup' => [
+                'address' => [
+                    'city' => 'Haifa',
+                    'neighborhood' => 'Hadar',
+                ],
+            ],
+        ]);
+
+        PageService::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Electrical repairs',
+            'description' => 'Sockets and boards.',
+            'category_key' => 'services.home_repairs.handyman',
+            'image_path' => 'services/repair.webp',
+        ]);
+
+        Ad::query()->create([
+            'user_id' => $owner->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Electric ad',
+            'text' => 'Local help needed.',
+            'category' => 'home_professionals.electrician',
+            'status' => 'active',
+            'city' => 'Haifa',
+            'neighborhood' => 'Hadar',
+            'expires_at' => now()->addDay(),
+        ]);
+
+        $this->getJson('/api/v1/search?q=Electric&scope=pages')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.pages')
+            ->assertJsonCount(0, 'data.services')
+            ->assertJsonCount(0, 'data.ads')
+            ->assertJsonPath('data.pages.0.slug', $page->public_slug);
+
+        $this->getJson('/api/v1/search?scope=services&category=services.home_repairs')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.pages')
+            ->assertJsonCount(1, 'data.services')
+            ->assertJsonPath('data.services.0.page.slug', $page->public_slug);
+
+        $this->getJson('/api/v1/search?scope=services&category=products.home_garden')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('category');
+    }
+
+    public function test_sitemap_includes_only_non_empty_catalog_pages(): void
+    {
+        config()->set('app.url', 'https://sveevee.co.il');
+
+        $owner = User::factory()->create();
+        Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Electric Studio',
+            'category_key' => 'professionals.electricians',
+            'setup' => [
+                'address' => [
+                    'city' => 'Haifa',
+                    'neighborhood' => 'Hadar',
+                ],
+            ],
+        ]);
+
+        $this->get('/sitemap.xml')
+            ->assertOk()
+            ->assertSee('https://sveevee.co.il/catalog/businesses', false)
+            ->assertSee('https://sveevee.co.il/catalog/communities', false)
+            ->assertSee('https://sveevee.co.il/catalog/products', false)
+            ->assertSee('https://sveevee.co.il/catalog/services', false)
+            ->assertSee('https://sveevee.co.il/catalog/events', false)
+            ->assertSee('https://sveevee.co.il/catalog/ads', false)
+            ->assertSee('https://sveevee.co.il/catalog/people', false)
+            ->assertSee('https://sveevee.co.il/catalog/electricians', false)
+            ->assertSee('https://sveevee.co.il/catalog/electricians/haifa', false)
+            ->assertSee('https://sveevee.co.il/catalog/electricians/haifa/hadar', false)
+            ->assertDontSee('https://sveevee.co.il/catalog/home-repair-services', false);
     }
 
     public function test_user_can_create_page_with_presence_details(): void
@@ -488,6 +722,7 @@ class SveeveeApiTest extends TestCase
         $createdPage = $this->postJson('/api/v1/pages/business', [
             'name' => 'Miri Studio',
             'public_description' => 'Local design help.',
+            'category_key' => 'creators.graphic_designer',
             'contact_email' => 'hello@example.test',
             'phone' => '+972 50 111 2222',
             'address' => 'Herzl 10, Haifa',
@@ -515,6 +750,8 @@ class SveeveeApiTest extends TestCase
         ]);
 
         $createdPage->assertOk()
+            ->assertJsonPath('data.slug', 'miri-studio-'.$createdPage->json('data.id'))
+            ->assertJsonPath('data.public_path', '/pages/miri-studio-'.$createdPage->json('data.id'))
             ->assertJsonPath('data.palette_key', 'sea-glass')
             ->assertJsonPath('data.contact.whatsapp', '+972 50 111 2222')
             ->assertJsonPath('data.address_details.street', 'Herzl')
@@ -533,6 +770,10 @@ class SveeveeApiTest extends TestCase
             ->assertJsonPath('data.features.events', false)
             ->assertJsonCount(0, 'data.services');
 
+        $this->getJson('/api/v1/pages/'.$createdPage->json('data.slug'))
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Miri Studio');
+
         $this->getJson('/api/v1/me')
             ->assertOk()
             ->assertJsonPath('data.business_page.name', 'Miri Studio');
@@ -550,6 +791,7 @@ class SveeveeApiTest extends TestCase
         $this->post('/api/v1/pages/business', [
             'name' => 'Miri Studio',
             'public_description' => 'Local design help.',
+            'category_key' => 'creators.graphic_designer',
             'contact_email' => 'hello@example.test',
             'phone' => '+972 50 111 2222',
             'address' => 'Herzl 10, Haifa',
@@ -590,6 +832,20 @@ class SveeveeApiTest extends TestCase
             ->assertJsonPath('data.category', 'real_estate.for_sale')
             ->assertJsonPath('data.city', 'Jerusalem')
             ->assertJsonPath('data.neighborhood', 'Ramot');
+
+        $this->postJson('/api/v1/ads', [
+            'title' => 'Catalog category ad',
+            'text' => 'Stored with a catalog topic.',
+            'category' => 'professionals.electricians',
+        ])->assertCreated()
+            ->assertJsonPath('data.category', 'professionals.electricians');
+
+        $this->postJson('/api/v1/ads', [
+            'title' => 'Invalid category ad',
+            'text' => 'This should not save.',
+            'category' => 'not.a.category',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('category');
 
         $page = Page::query()->create([
             'user_id' => $owner->id,
@@ -985,6 +1241,7 @@ class SveeveeApiTest extends TestCase
         $createdProduct = $this->post("/api/v1/pages/{$businessPage->id}/products", [
             'name' => 'Ceramic cup',
             'description' => 'Handmade cup from the studio.',
+            'category_key' => 'products.home_garden.kitchen_dining',
             'image' => UploadedFile::fake()->image('cup.jpg'),
             'price' => '29.90',
             'link' => 'https://seller.example/products/cup',
@@ -1000,6 +1257,7 @@ class SveeveeApiTest extends TestCase
             '_method' => 'PUT',
             'name' => 'Ceramic bowl',
             'description' => 'Updated product description.',
+            'category_key' => 'products.home_garden.kitchen_dining',
             'price' => '39.90',
             'link' => 'https://seller.example/products/bowl',
         ], ['Accept' => 'application/json'])->assertOk()
@@ -1018,6 +1276,7 @@ class SveeveeApiTest extends TestCase
             '_method' => 'PUT',
             'name' => 'Ceramic bowl',
             'description' => 'Updated product description.',
+            'category_key' => 'products.home_garden.kitchen_dining',
             'price' => '39.90',
             'link' => 'https://seller.example/products/bowl',
             'image_remove' => '1',
@@ -1035,6 +1294,7 @@ class SveeveeApiTest extends TestCase
         $deletedProduct = $this->post("/api/v1/pages/{$businessPage->id}/products", [
             'name' => 'Delete me',
             'description' => 'This product should be deleted.',
+            'category_key' => 'products.home_garden.kitchen_dining',
             'image' => UploadedFile::fake()->image('delete-me.jpg'),
             'price' => '12.00',
             'link' => 'https://seller.example/products/delete-me',
@@ -1085,6 +1345,7 @@ class SveeveeApiTest extends TestCase
         $createdService = $this->post("/api/v1/pages/{$businessPage->id}/services", [
             'name' => 'Electrical repairs',
             'description' => 'Fuse boxes, sockets, lighting, and urgent visits.',
+            'category_key' => 'services.home_repairs.plumbing',
             'image' => UploadedFile::fake()->image('electrician.jpg'),
             'link' => 'https://seller.example/services/electrician',
         ], ['Accept' => 'application/json'])->assertCreated()
@@ -1099,6 +1360,7 @@ class SveeveeApiTest extends TestCase
             '_method' => 'PUT',
             'name' => 'Home electrical work',
             'description' => 'Repairs, installations, and safety checks.',
+            'category_key' => 'services.home_repairs.plumbing',
             'link' => '',
         ], ['Accept' => 'application/json'])->assertOk()
             ->assertJsonPath('data.name', 'Home electrical work')
@@ -1120,6 +1382,7 @@ class SveeveeApiTest extends TestCase
         $deletedService = $this->post("/api/v1/pages/{$businessPage->id}/services", [
             'name' => 'Delete me',
             'description' => 'This service should be deleted.',
+            'category_key' => 'services.home_repairs.plumbing',
             'image' => UploadedFile::fake()->image('delete-service.jpg'),
         ], ['Accept' => 'application/json'])->assertCreated();
 
@@ -1166,6 +1429,7 @@ class SveeveeApiTest extends TestCase
         $createdEvent = $this->post("/api/v1/pages/{$communityPage->id}/events", [
             'name' => 'Friday Picnic',
             'description' => 'Bring snacks and meet the neighbors.',
+            'category_key' => 'events.community_social.neighborhood_meeting',
             'image' => UploadedFile::fake()->image('picnic.jpg'),
             'date' => '2026-08-14',
             'time' => '17:30',
@@ -1185,6 +1449,7 @@ class SveeveeApiTest extends TestCase
             '_method' => 'PUT',
             'name' => 'Friday Picnic Updated',
             'description' => 'Updated event details.',
+            'category_key' => 'events.community_social.neighborhood_meeting',
             'date' => '2026-08-15',
             'time' => '18:45',
             'end_time' => '20:15',
@@ -1208,6 +1473,7 @@ class SveeveeApiTest extends TestCase
             '_method' => 'PUT',
             'name' => 'Friday Picnic Updated',
             'description' => 'Updated event details.',
+            'category_key' => 'events.community_social.neighborhood_meeting',
             'date' => '2026-08-15',
             'time' => '18:45',
             'end_time' => '',
@@ -1230,6 +1496,7 @@ class SveeveeApiTest extends TestCase
         $deletedEvent = $this->post("/api/v1/pages/{$communityPage->id}/events", [
             'name' => 'Delete event',
             'description' => 'This event should be deleted.',
+            'category_key' => 'events.community_social.neighborhood_meeting',
             'image' => UploadedFile::fake()->image('delete-event.jpg'),
             'date' => '2026-08-16',
             'time' => '19:15',

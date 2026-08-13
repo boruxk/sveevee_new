@@ -1,0 +1,14 @@
+# sveevee
+
+sveevee is a local discovery platform for people, local businesses, and communities. Users can discover nearby ads, SEO-optimized public business pages, community pages, products, services, events, ratings, and direct chat by city and neighborhood.
+
+## Main Links
+
+- [Homepage](https://sveevee.co.il/)
+- [Search](https://sveevee.co.il/search)
+- [Privacy Policy](https://sveevee.co.il/privacy)
+- [Sitemap](https://sveevee.co.il/sitemap.xml)
+
+## Crawling Guidance
+
+Public pages, user profiles, and active ads are intended to be discoverable. Login, registration, profile settings, admin screens, and authenticated user areas are not intended for indexing.

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Page extends Model
 {
@@ -21,6 +22,7 @@ class Page extends Model
         'contact_email',
         'phone',
         'address',
+        'category_key',
         'palette_key',
         'logo_path',
         'logo_original_name',
@@ -74,5 +76,29 @@ class Page extends Model
     protected function bannerUrl(): Attribute
     {
         return Attribute::get(fn () => $this->banner_path ? url(Storage::url($this->banner_path)) : null);
+    }
+
+    protected function publicSlug(): Attribute
+    {
+        return Attribute::get(function (): string {
+            $nameSlug = Str::slug((string) $this->name);
+
+            return ($nameSlug !== '' ? $nameSlug : 'page').'-'.$this->id;
+        });
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $candidate = (string) $value;
+
+        if (ctype_digit($candidate)) {
+            return $this->whereKey($candidate)->first();
+        }
+
+        if (preg_match('/-(\d+)$/', $candidate, $matches)) {
+            return $this->whereKey($matches[1])->first();
+        }
+
+        return null;
     }
 }

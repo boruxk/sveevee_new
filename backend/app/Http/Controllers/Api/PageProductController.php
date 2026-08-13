@@ -9,7 +9,9 @@ use App\Models\PageProduct;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Support\CatalogTopics;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PageProductController extends Controller
 {
@@ -25,9 +27,12 @@ class PageProductController extends Controller
             return $error;
         }
 
+        $this->normalizeCategoryKey($request);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:1000', new CleanContent()],
             'description' => ['required', 'string', 'max:5000', new CleanContent()],
+            'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope(CatalogTopics::SCOPE_PRODUCTS))],
             'image' => ['required', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'link' => ['required', 'url', 'max:2048'],
@@ -39,6 +44,7 @@ class PageProductController extends Controller
             'page_id' => $page->id,
             'name' => $data['name'],
             'description' => $data['description'],
+            'category_key' => $data['category_key'],
             'image_path' => $this->storePublicWebp($image, 'products', 'image'),
             'image_original_name' => $this->originalUploadName($request, 'image', $image),
             'price' => $data['price'],
@@ -56,9 +62,12 @@ class PageProductController extends Controller
             return $error;
         }
 
+        $this->normalizeCategoryKey($request);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:1000', new CleanContent()],
             'description' => ['required', 'string', 'max:5000', new CleanContent()],
+            'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope(CatalogTopics::SCOPE_PRODUCTS))],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'image_remove' => ['nullable', 'boolean'],
             'price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
@@ -68,6 +77,7 @@ class PageProductController extends Controller
         $product->fill([
             'name' => $data['name'],
             'description' => $data['description'],
+            'category_key' => $data['category_key'],
             'price' => $data['price'],
             'link' => $data['link'],
         ]);
@@ -114,5 +124,18 @@ class PageProductController extends Controller
         }
 
         return null;
+    }
+
+    private function normalizeCategoryKey(Request $request): void
+    {
+        $key = trim((string) $request->input('category_key', ''));
+
+        if ($key === '') {
+            return;
+        }
+
+        $request->merge([
+            'category_key' => CatalogTopics::canonicalKeyForScope($key, CatalogTopics::SCOPE_PRODUCTS) ?? $key,
+        ]);
     }
 }

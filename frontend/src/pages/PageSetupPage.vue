@@ -5,6 +5,7 @@
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { deleteAd } from '@/services/api/ads'
 	import { deleteEvent } from '@/services/api/events'
@@ -12,10 +13,12 @@
 	import { deleteProduct } from '@/services/api/products'
 	import { deleteService } from '@/services/api/services'
 	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
+	import { CATALOG_SCOPES } from '@/constants/catalogTopics'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import AdCard from '@/components/AdCard.vue'
 	import AdComposer from '@/components/AdComposer.vue'
+	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
 	import EventCard from '@/components/events/EventCard.vue'
 	import EventComposer from '@/components/events/EventComposer.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
@@ -63,6 +66,7 @@
 	const bannerRemoved = ref(false)
 	const citySelectOptions = ref([])
 	const neighborhoodSelectOptions = ref([])
+	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const form = reactive({
 		name: '',
 		public_description: '',
@@ -81,6 +85,7 @@
 			services: false,
 			events: false
 		},
+		category_key: '',
 		palette_key: presencePalettes[0].key,
 		logo: null,
 		banner: null
@@ -89,6 +94,9 @@
 	const type = computed(() => route.meta.pageType || 'business')
 	const isBusinessPage = computed(() => type.value === 'business')
 	const isCommunityPage = computed(() => type.value === 'community')
+	const pageCatalogScope = computed(() => (
+		isCommunityPage.value ? CATALOG_SCOPES.COMMUNITY_PAGES : CATALOG_SCOPES.BUSINESS_PAGES
+	))
 	const title = computed(() => (type.value === 'business' ? t('pages.businessTitle') : t('pages.communityTitle')))
 	const selectedPalette = computed(() => findPresencePalette(form.palette_key))
 	const adDialogTitle = computed(() => (editingAd.value ? t('actions.update') : t('actions.createAd')))
@@ -159,6 +167,7 @@
 			services: form.features.services,
 			events: form.features.events
 		},
+		category_key: form.category_key || null,
 		palette_key: form.palette_key,
 		logo_url: logoRemoved.value ? null : localLogoPreviewUrl.value || page.value?.logo_url || null,
 		banner_url: bannerRemoved.value ? null : localBannerPreviewUrl.value || page.value?.banner_url || null,
@@ -266,6 +275,7 @@
 		form.features.store = featureFlag(value, 'store', false)
 		form.features.services = featureFlag(value, 'services', false)
 		form.features.events = featureFlag(value, 'events', false)
+		form.category_key = value?.category_key || ''
 		form.palette_key = findPresencePalette(value?.palette_key || setup.palette_key).key
 		form.logo = null
 		form.banner = null
@@ -280,6 +290,7 @@
 			contact_email: form.contact_email.trim(),
 			phone: form.phone.trim(),
 			address: addressLine(form.address),
+			category_key: form.category_key || null,
 			palette_key: form.palette_key,
 			setup: {
 				contact: {
@@ -711,7 +722,7 @@
 	attachObjectPreview(() => form.banner, localBannerPreviewUrl)
 
 	onMounted(async() => {
-		await Promise.all([load(), loadLocationOptions()])
+		await Promise.all([load(), loadLocationOptions(), loadCatalogTopics()])
 		citySelectOptions.value = cityOptions.value
 		neighborhoodSelectOptions.value = neighborhoodOptions.value
 	})
@@ -963,6 +974,13 @@
 									:input-style="{ minHeight: '150px' }"
 									:label="t('pages.description')"
 								/>
+								<CatalogCategorySelect
+									v-model="form.category_key"
+									:groups="catalogGroups"
+									:scope="pageCatalogScope"
+									required
+									:label="requiredLabel('catalog.category')"
+								/>
 
 								<section class="presence-segment">
 									<div class="presence-segment__title">{{ t('pages.sections.contact') }}</div>
@@ -1173,7 +1191,14 @@
 					<q-btn flat round icon="close" color="dark" v-close-popup />
 				</q-card-section>
 				<q-card-section>
-					<ProductComposer v-if="page?.id" :page-id="page.id" :product="editingProduct" @saved="handleProductSaved" />
+					<ProductComposer
+						v-if="page?.id"
+						:page-id="page.id"
+						:product="editingProduct"
+						:page-category-key="form.category_key"
+						:catalog-groups="catalogGroups"
+						@saved="handleProductSaved"
+					/>
 				</q-card-section>
 			</q-card>
 		</q-dialog>
@@ -1184,7 +1209,14 @@
 					<q-btn flat round icon="close" color="dark" v-close-popup />
 				</q-card-section>
 				<q-card-section>
-					<ServiceComposer v-if="page?.id" :page-id="page.id" :service="editingService" @saved="handleServiceSaved" />
+					<ServiceComposer
+						v-if="page?.id"
+						:page-id="page.id"
+						:service="editingService"
+						:page-category-key="form.category_key"
+						:catalog-groups="catalogGroups"
+						@saved="handleServiceSaved"
+					/>
 				</q-card-section>
 			</q-card>
 		</q-dialog>
@@ -1195,7 +1227,14 @@
 					<q-btn flat round icon="close" color="dark" v-close-popup />
 				</q-card-section>
 				<q-card-section>
-					<EventComposer v-if="page?.id" :page-id="page.id" :event="editingEvent" @saved="handleEventSaved" />
+					<EventComposer
+						v-if="page?.id"
+						:page-id="page.id"
+						:event="editingEvent"
+						:page-category-key="form.category_key"
+						:catalog-groups="catalogGroups"
+						@saved="handleEventSaved"
+					/>
 				</q-card-section>
 			</q-card>
 		</q-dialog>

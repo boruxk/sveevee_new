@@ -265,31 +265,6 @@ function translated(t, key, fallback) {
 	return value === key ? fallback : value
 }
 
-export function buildAdCategorySelectOptions(t) {
-	return AD_CATEGORY_GROUPS.flatMap((group) => {
-		const groupLabel = translated(t, `adCategories.groups.${group.key}`, group.label)
-
-		return [
-			{
-				label: groupLabel,
-				value: `${group.key}.__group`,
-				disable: true,
-				group: true,
-				color: group.color
-			},
-			...group.items.map(([itemKey, fallbackLabel]) => ({
-				label: translated(t, `adCategories.items.${group.key}.${itemKey}`, fallbackLabel),
-				value: `${group.key}.${itemKey}`,
-				itemKey,
-				groupKey: group.key,
-				groupLabel,
-				color: group.color,
-				soft: group.soft
-			}))
-		]
-	})
-}
-
 export function localizedAdCategoryMeta(category, t) {
 	const meta = adCategoryMeta(category)
 

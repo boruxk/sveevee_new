@@ -3,6 +3,8 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { localizedAdCategoryMeta } from '@/constants/adCategories'
+	import { useCatalogTopics } from '@/composables/useCatalogTopics'
+	import { catalogLabel, catalogTopicForAdCategory } from '@/constants/catalogTopics'
 
 	const props = defineProps({
 		ad: {
@@ -22,6 +24,7 @@
 	const textRef = ref(null)
 	const isExpanded = ref(false)
 	const hasOverflow = ref(false)
+	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	let resizeObserver = null
 	const compactActionButtons = computed(() => $q.screen.width <= 700)
 
@@ -49,8 +52,19 @@
 	const badgeLabel = computed(() => [badgeTypeLabel.value, ownerName.value].filter(Boolean).join(': '))
 	const categoryMeta = computed(() => {
 		const currentLocale = locale.value
+		const legacyMeta = localizedAdCategoryMeta(props.ad.category, (key) => t(key, { currentLocale }))
 
-		return localizedAdCategoryMeta(props.ad.category, (key) => t(key, { currentLocale }))
+		if (legacyMeta) {
+			return legacyMeta
+		}
+
+		const topic = catalogTopicForAdCategory(catalogGroups.value, props.ad.category)
+
+		return topic ? {
+			label: catalogLabel(topic.labels, locale.value),
+			color: topic.color,
+			soft: `${topic.color}24`
+		} : null
 	})
 	const cardStyle = computed(() => (categoryMeta.value ? {
 		'--ad-category-color': categoryMeta.value.color,
@@ -83,6 +97,7 @@
 	})
 
 	onMounted(async() => {
+		await loadCatalogTopics()
 		await nextTick()
 		measureOverflow()
 

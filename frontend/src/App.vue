@@ -2,21 +2,23 @@
 	import { computed } from 'vue'
 	import { useRoute } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
-	import heroSeoImage from '@/assets/hero-main.webp'
 	import { absoluteUrl, SITE_NAME, useSeo } from '@/composables/useSeo'
+	import { getLegalDocument } from '@/constants/legalDocuments'
 
 	const route = useRoute()
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
+	const heroSeoImage = '/assets/landing/hero-main.v1.webp'
 
 	const routeSeo = computed(() => {
 		const seo = route.meta.seo || {}
 		const requiresAuth = Boolean(route.meta.requiresAuth)
 		const isLanding = route.name === 'landing'
 		const canonical = route.path
+		const legalDocument = route.meta.legalDocument ? getLegalDocument(route.meta.legalDocument, locale.value) : null
 
 		return {
-			title: seo.titleKey ? t(seo.titleKey) : t('seo.defaultTitle'),
-			description: seo.descriptionKey ? t(seo.descriptionKey) : t('seo.defaultDescription'),
+			title: legalDocument?.title || (seo.titleKey ? t(seo.titleKey) : t('seo.defaultTitle')),
+			description: legalDocument?.intro || (seo.descriptionKey ? t(seo.descriptionKey) : t('seo.defaultDescription')),
 			robots: seo.robots || (requiresAuth ? 'noindex,nofollow' : 'index,follow'),
 			type: seo.type || 'website',
 			canonical,

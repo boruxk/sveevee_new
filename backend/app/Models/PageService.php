@@ -13,6 +13,7 @@ class PageService extends Model
         'page_id',
         'name',
         'description',
+        'category_key',
         'image_path',
         'image_original_name',
         'link',

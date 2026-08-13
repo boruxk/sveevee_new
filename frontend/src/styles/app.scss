@@ -54,6 +54,10 @@ canvas {
   overflow-x: clip;
 }
 
+.grecaptcha-badge {
+  visibility: hidden;
+}
+
 body.sveevee-rtl,
 .sveevee-rtl .q-layout,
 .sveevee-rtl .q-page-container,
