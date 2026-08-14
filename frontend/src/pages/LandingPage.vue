@@ -9,12 +9,22 @@
 	const appStore = useAppStore()
 	const { catalogPopularTopics, loadCatalogTopics } = useCatalogTopics()
 	const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
-	const heroSrc = '/assets/landing/hero-main.v1.webp'
-	const mobileHeroSrc = '/assets/landing/hero-mobile.v1.webp'
-	const pricingBusinessSrc = '/assets/landing/pricing-business.v1.webp'
-	const pricingPrivateSrc = '/assets/landing/pricing-private.v1.webp'
-	const logoSrc = '/assets/landing/sveevee-logo.v1.webp'
-	const workflowHouseSrc = '/assets/landing/workflow-house.v1.webp'
+	const heroAvifSrcSet = '/assets/landing/hero-main-960.v1.avif 960w, /assets/landing/hero-main-1360.v1.avif 1360w'
+	const heroWebpSrcSet = '/assets/landing/hero-main-960.v1.webp 960w, /assets/landing/hero-main-1360.v1.webp 1360w'
+	const mobileHeroAvifSrcSet = '/assets/landing/hero-mobile-720.v1.avif 720w, /assets/landing/hero-mobile-960.v1.avif 960w'
+	const mobileHeroWebpSrcSet = '/assets/landing/hero-mobile-720.v1.webp 720w, /assets/landing/hero-mobile-960.v1.webp 960w'
+	const pricingBusinessSrc = '/assets/landing/pricing-business-280.v1.webp'
+	const pricingPrivateSrc = '/assets/landing/pricing-private-220.v1.webp'
+	const pricingBusinessAvifSrcSet = '/assets/landing/pricing-business-280.v1.avif 280w, /assets/landing/pricing-business-520.v1.avif 520w'
+	const pricingBusinessWebpSrcSet = '/assets/landing/pricing-business-280.v1.webp 280w, /assets/landing/pricing-business-520.v1.webp 520w'
+	const pricingPrivateAvifSrcSet = '/assets/landing/pricing-private-220.v1.avif 220w, /assets/landing/pricing-private-360.v1.avif 360w'
+	const pricingPrivateWebpSrcSet = '/assets/landing/pricing-private-220.v1.webp 220w, /assets/landing/pricing-private-360.v1.webp 360w'
+	const logoSrc = '/assets/landing/sveevee-logo-640.v1.webp'
+	const logoAvifSrcSet = '/assets/landing/sveevee-logo-320.v1.avif 320w, /assets/landing/sveevee-logo-640.v1.avif 640w'
+	const logoWebpSrcSet = '/assets/landing/sveevee-logo-320.v1.webp 320w, /assets/landing/sveevee-logo-640.v1.webp 640w'
+	const workflowHouseSrc = '/assets/landing/workflow-house-420.v1.webp'
+	const workflowHouseAvifSrcSet = '/assets/landing/workflow-house-420.v1.avif 420w, /assets/landing/workflow-house-720.v1.avif 720w'
+	const workflowHouseWebpSrcSet = '/assets/landing/workflow-house-420.v1.webp 420w, /assets/landing/workflow-house-720.v1.webp 720w'
 
 	function listMessage(key) {
 		const value = tm(key)
@@ -62,6 +72,18 @@
 		return plan.featured ? pricingBusinessSrc : pricingPrivateSrc
 	}
 
+	function planImageAvifSrcSet(plan) {
+		return plan.featured ? pricingBusinessAvifSrcSet : pricingPrivateAvifSrcSet
+	}
+
+	function planImageWebpSrcSet(plan) {
+		return plan.featured ? pricingBusinessWebpSrcSet : pricingPrivateWebpSrcSet
+	}
+
+	function planImageSizes(plan) {
+		return plan.featured ? '280px' : '220px'
+	}
+
 	function planTone(plan) {
 		return plan.featured ? 'business' : 'private'
 	}
@@ -95,14 +117,18 @@
 					</q-chip>
 
 					<h1 class="landing-hero__title">
-						<img
-							class="landing-hero__wordmark"
-							:src="logoSrc"
-							:alt="t('landing.title')"
-							width="1218"
-							height="238"
-							decoding="async"
-						/>
+						<picture>
+							<source :srcset="logoAvifSrcSet" sizes="(max-width: 640px) calc(100vw - 48px), 560px" type="image/avif" />
+							<source :srcset="logoWebpSrcSet" sizes="(max-width: 640px) calc(100vw - 48px), 560px" type="image/webp" />
+							<img
+								class="landing-hero__wordmark"
+								:src="logoSrc"
+								:alt="t('landing.title')"
+								width="640"
+								height="125"
+								decoding="async"
+							/>
+						</picture>
 					</h1>
 					<p class="landing-hero__subtitle">
 						<span class="landing-hero__subtitle-shape" aria-hidden="true"></span>
@@ -111,12 +137,13 @@
 
 					<div class="landing-hero__mobile-visual">
 						<picture>
-							<source media="(max-width: 640px)" :srcset="mobileHeroSrc" type="image/webp" />
+							<source media="(max-width: 640px)" :srcset="mobileHeroAvifSrcSet" sizes="100vw" type="image/avif" />
+							<source media="(max-width: 640px)" :srcset="mobileHeroWebpSrcSet" sizes="100vw" type="image/webp" />
 							<img
 								:src="transparentPixel"
 								alt=""
-								width="1254"
-								height="1254"
+								width="720"
+								height="720"
 								loading="eager"
 								fetchpriority="high"
 								decoding="async"
@@ -146,12 +173,13 @@
 
 				<div class="landing-hero__visual">
 					<picture>
-						<source media="(min-width: 641px)" :srcset="heroSrc" type="image/webp" />
+						<source media="(min-width: 641px)" :srcset="heroAvifSrcSet" sizes="90vw" type="image/avif" />
+						<source media="(min-width: 641px)" :srcset="heroWebpSrcSet" sizes="90vw" type="image/webp" />
 						<img
 							:src="transparentPixel"
 							alt=""
-							width="1672"
-							height="941"
+							width="1360"
+							height="766"
 							loading="eager"
 							fetchpriority="high"
 							decoding="async"
@@ -230,15 +258,18 @@
 				<div class="section-kicker">{{ t('landing.workflowKicker') }}</div>
 				<h2>{{ t('landing.workflowTitle') }}</h2>
 				<p>{{ t('landing.workflowBody') }}</p>
-				<img
-					class="workflow-art"
-					:src="workflowHouseSrc"
-					alt=""
-					width="1536"
-					height="1024"
-					loading="lazy"
-					decoding="async"
-				/>
+				<picture class="workflow-art">
+					<source :srcset="workflowHouseAvifSrcSet" sizes="(max-width: 640px) calc(100vw - 32px), 420px" type="image/avif" />
+					<source :srcset="workflowHouseWebpSrcSet" sizes="(max-width: 640px) calc(100vw - 32px), 420px" type="image/webp" />
+					<img
+						:src="workflowHouseSrc"
+						alt=""
+						width="420"
+						height="280"
+						loading="lazy"
+						decoding="async"
+					/>
+				</picture>
 			</div>
 
 			<div class="step-list">
@@ -292,15 +323,19 @@
 							</ul>
 						</div>
 
-						<img
-							class="pricing-card__art"
-							:src="planImage(plan)"
-							alt=""
-							:width="plan.featured ? 770 : 537"
-							:height="plan.featured ? 794 : 668"
-							loading="lazy"
-							decoding="async"
-						/>
+						<picture class="pricing-card__art-wrap">
+							<source :srcset="planImageAvifSrcSet(plan)" :sizes="planImageSizes(plan)" type="image/avif" />
+							<source :srcset="planImageWebpSrcSet(plan)" :sizes="planImageSizes(plan)" type="image/webp" />
+							<img
+								class="pricing-card__art"
+								:src="planImage(plan)"
+								alt=""
+								:width="plan.featured ? 280 : 220"
+								:height="plan.featured ? 289 : 274"
+								loading="lazy"
+								decoding="async"
+							/>
+						</picture>
 					</div>
 
 					<q-btn
@@ -467,15 +502,11 @@
 }
 
 .section-kicker {
-  color: var(--soz-primary);
+  color: #7f1239;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
-}
-
-.landing-section--features .section-kicker {
-  color: #f54291;
 }
 
 .landing-section h2 {
@@ -725,10 +756,6 @@
   font-weight: 600;
 }
 
-.workflow-copy .section-kicker {
-  color: #f54291;
-}
-
 .workflow-copy h2 {
   max-width: 380px;
   color: #2a176b;
@@ -737,14 +764,19 @@
 }
 
 .workflow-art {
+  display: block;
   width: min(100%, 420px);
-  height: auto;
   aspect-ratio: 16 / 9;
   margin-top: 18px;
-  object-fit: contain;
-  object-position: center;
   border-radius: 8px;
   filter: saturate(1.04);
+}
+
+.workflow-art img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
 }
 
 .step-list {
@@ -850,7 +882,6 @@
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  color: #f54291;
 }
 
 .pricing-head h2 {
@@ -1031,22 +1062,27 @@
   color: #ff7426;
 }
 
-.pricing-card__art {
+.pricing-card__art-wrap {
   order: 2;
   flex: 0 1 44%;
   justify-self: center;
   width: min(100%, 220px);
   max-height: 230px;
-  object-fit: contain;
   pointer-events: none;
   user-select: none;
 }
 
-.landing-page--rtl .pricing-card__art {
+.pricing-card__art {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.landing-page--rtl .pricing-card__art-wrap {
   order: 1;
 }
 
-.pricing-card--business .pricing-card__art {
+.pricing-card--business .pricing-card__art-wrap {
   width: min(100%, 280px);
   max-height: 260px;
 }
@@ -1266,8 +1302,8 @@
     width: 100%;
   }
 
-  .pricing-card__art,
-  .pricing-card--business .pricing-card__art {
+  .pricing-card__art-wrap,
+  .pricing-card--business .pricing-card__art-wrap {
     display: none;
   }
 

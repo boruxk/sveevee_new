@@ -1614,4 +1614,20 @@ class SveeveeApiTest extends TestCase
             'password' => 'password',
         ])->assertStatus(403);
     }
+
+    public function test_admin_user_table_is_paginated(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        User::factory()->count(55)->create();
+        $total = User::query()->count();
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/v1/admin/users?paginated=1&per_page=50')
+            ->assertOk()
+            ->assertJsonCount(50, 'data.items')
+            ->assertJsonPath('data.pagination.per_page', 50)
+            ->assertJsonPath('data.pagination.total', $total)
+            ->assertJsonPath('data.items.0.email', fn ($value) => filled($value));
+    }
 }

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
+    "optimize:landing-images": "node scripts/optimize-landing-images.mjs",
     "preview": "vite preview",
     "lint": "eslint -c .eslintrc.cjs src vite.config.js --ext .js,.vue",
     "lint:fix": "eslint -c .eslintrc.cjs src vite.config.js --ext .js,.vue --fix"
@@ -30,7 +31,8 @@
     "eslint-plugin-promise": "^6.6.0",
     "eslint-plugin-vue": "^9.33.0",
     "sass-embedded": "^1.93.2",
-    "vue-eslint-parser": "^9.4.3",
-    "vite": "^8.0.12"
+    "sharp": "^0.35.3",
+    "vite": "^8.0.12",
+    "vue-eslint-parser": "^9.4.3"
   }
 }

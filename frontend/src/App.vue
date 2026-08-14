@@ -7,7 +7,7 @@
 
 	const route = useRoute()
 	const { t, locale } = useI18n()
-	const heroSeoImage = '/assets/landing/hero-main.v1.webp'
+	const heroSeoImage = '/assets/landing/hero-main-1360.v1.webp'
 
 	const routeSeo = computed(() => {
 		const seo = route.meta.seo || {}

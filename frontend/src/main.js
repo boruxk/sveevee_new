@@ -1,14 +1,14 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { Quasar, Notify } from 'quasar'
-import iconSet from 'quasar/icon-set/material-icons'
-import '@/styles/material-icons.scss'
+import iconSet from 'quasar/icon-set/svg-material-icons'
 import 'quasar/src/css/index.sass'
 import '@/styles/app.scss'
 import App from './App.vue'
 import router from '@/router'
 import i18n, { prepareLocale } from '@/i18n'
 import { useAppStore } from '@/stores/app'
+import { materialIconMapFn } from '@/utils/materialIconMap'
 
 const localHosts = ['localhost', '127.0.0.1', '::1']
 
@@ -29,6 +29,7 @@ async function bootstrap() {
 		iconSet,
 		lang: initialLocale.quasarLocale,
 		config: {
+			iconMapFn: materialIconMapFn,
 			notify: {
 				position: 'top-right',
 				timeout: 2200
@@ -40,7 +41,6 @@ async function bootstrap() {
 	appStore.syncDocument(initialLocale.locale)
 
 	app.mount('#app')
-	document.getElementById('homepage-purpose-fallback')?.remove()
 }
 
 bootstrap()

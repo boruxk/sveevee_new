@@ -19,7 +19,7 @@
 	const authStore = useAuthStore()
 	const chatsStore = useChatsStore()
 	const { t, locale } = useI18n()
-	const logoSrc = '/assets/landing/sveevee-logo.v1.webp'
+	const logoSrc = '/assets/landing/sveevee-logo-320.v1.webp'
 	const SupportChatWidget = defineAsyncComponent(() => import('@/components/SupportChatWidget.vue'))
 
 	const toneClass = computed(() => `shell--${props.tone}`)
@@ -128,8 +128,8 @@
 						:src="logoSrc"
 						alt="sveevee"
 						class="brand-logo"
-						width="1218"
-						height="238"
+						width="320"
+						height="63"
 						decoding="async"
 					/>
 				</router-link>

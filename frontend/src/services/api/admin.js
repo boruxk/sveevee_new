@@ -4,6 +4,10 @@ export function fetchAdminUsers(params = {}) {
 	return apiClient.get('/admin/users', { params })
 }
 
+export function fetchAdminUserTable(params = {}) {
+	return apiClient.get('/admin/users', { params: { paginated: 1, per_page: 50, ...params } })
+}
+
 export function fetchAdminUser(id) {
 	return apiClient.get(`/admin/users/${id}`)
 }

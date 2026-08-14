@@ -19,7 +19,7 @@ class AdminUserController extends Controller
     {
         $search = trim((string) $request->query('q', ''));
 
-        $users = User::query()
+        $query = User::query()
             ->with(['profile', 'pages'])
             ->when($search !== '', function ($query) use ($search): void {
                 $like = '%'.$search.'%';
@@ -32,7 +32,27 @@ class AdminUserController extends Controller
                         ->orWhere('family_name', 'like', $like);
                 });
             })
-            ->orderByDesc('created_at')
+            ->orderByDesc('created_at');
+
+        if ($request->boolean('paginated')) {
+            $perPage = min(50, max(1, $request->integer('per_page', 50)));
+            $users = $query->paginate($perPage);
+
+            return ApiResponseService::success([
+                'items' => $users->getCollection()
+                    ->map(fn (User $user) => $this->payloads->user($user, includePrivate: true))
+                    ->values()
+                    ->all(),
+                'pagination' => [
+                    'current_page' => $users->currentPage(),
+                    'last_page' => $users->lastPage(),
+                    'per_page' => $users->perPage(),
+                    'total' => $users->total(),
+                ],
+            ]);
+        }
+
+        $users = $query
             ->limit(100)
             ->get()
             ->map(fn (User $user) => $this->payloads->user($user, includePrivate: true))
