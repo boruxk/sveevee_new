@@ -486,7 +486,9 @@ export default {
 		reason: 'סיבה',
 		message: 'הודעה למשתמש',
 		messageSent: 'ההודעה נשלחה.',
-		messageFailed: 'לא ניתן לשלוח את ההודעה.'
+		messageFailed: 'לא ניתן לשלוח את ההודעה.',
+		supportInbox: 'תיבת תמיכה',
+		noSupportChats: 'אין עדיין שיחות תמיכה.'
 	},
 	search: {
 		title: 'חיפוש',

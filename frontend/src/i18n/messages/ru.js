@@ -486,7 +486,9 @@ export default {
 		reason: 'Причина',
 		message: 'Сообщение пользователю',
 		messageSent: 'Сообщение отправлено.',
-		messageFailed: 'Не удалось отправить сообщение.'
+		messageFailed: 'Не удалось отправить сообщение.',
+		supportInbox: 'Входящие поддержки',
+		noSupportChats: 'Пока нет чатов поддержки.'
 	},
 	search: {
 		title: 'Поиск',

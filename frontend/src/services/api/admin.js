@@ -8,6 +8,10 @@ export function fetchAdminUserTable(params = {}) {
 	return apiClient.get('/admin/users', { params: { paginated: 1, per_page: 50, ...params } })
 }
 
+export function fetchAdminSupportChats() {
+	return apiClient.get('/admin/support-chats')
+}
+
 export function fetchAdminUser(id) {
 	return apiClient.get(`/admin/users/${id}`)
 }

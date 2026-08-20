@@ -80,6 +80,7 @@ Route::prefix('v1')->middleware('recaptcha')->group(function () {
     });
 
     Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+        Route::get('/support-chats', [ChatController::class, 'adminSupportIndex']);
         Route::get('/users', [AdminUserController::class, 'index']);
         Route::get('/users/{user}', [AdminUserController::class, 'show']);
         Route::patch('/users/{user}/ban', [AdminUserController::class, 'ban']);

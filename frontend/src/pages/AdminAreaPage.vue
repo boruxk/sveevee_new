@@ -1,26 +1,41 @@
 <script setup>
-	import { computed, onMounted, ref } from 'vue'
+	import { computed, nextTick, onMounted, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
-	import { banAdminUser, fetchAdminUserTable, fetchAdminUsers, messageAdminUser, restoreAdminUser } from '@/services/api/admin'
-	import { pageRoute } from '@/constants/catalogTopics'
+	import { banAdminUser, fetchAdminSupportChats, fetchAdminUserTable, restoreAdminUser } from '@/services/api/admin'
+	import { fetchChat, sendChatMessage } from '@/services/api/chats'
+	import { useAuthStore } from '@/stores/auth'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
-	const { t } = useI18n()
+	const { locale, t } = useI18n()
 	const $q = useQuasar()
-	const loading = ref(false)
+	const authStore = useAuthStore()
+	const supportLoading = ref(false)
 	const tableLoading = ref(false)
 	const activeTab = ref('communication')
-	const users = ref([])
+	const supportConversations = ref([])
 	const userRows = ref([])
-	const selectedUserId = ref(null)
-	const message = ref('')
+	const selectedConversationId = ref(null)
+	const activeSupportConversation = ref(null)
+	const supportMessage = ref('')
+	const messagesEl = ref(null)
 	const tablePagination = ref({
 		page: 1,
 		rowsPerPage: 50,
 		rowsNumber: 0
 	})
-	const selectedUser = computed(() => users.value.find((user) => user.id === selectedUserId.value) || users.value[0] || null)
+	const supportMessages = computed(() => activeSupportConversation.value?.messages || [])
+	const selectedSupportConversation = computed(() =>
+		supportConversations.value.find((conversation) => conversation.id === selectedConversationId.value) || activeSupportConversation.value || null
+	)
+	const activeSupportUser = computed(() => activeSupportConversation.value?.other_user || selectedSupportConversation.value?.other_user || null)
+	const supportComposerHint = computed(() => characterLimitHint(supportMessage.value, CHAT_MAX_LENGTH, t))
+	const intlLocale = computed(() => ({
+		he: 'he-IL',
+		en: 'en-US',
+		ru: 'ru-RU',
+		fr: 'fr-FR'
+	}[locale.value] || locale.value))
 	const userColumns = computed(() => [
 		{
 			name: 'name',
@@ -59,14 +74,69 @@
 		}
 	])
 
-	async function load() {
-		loading.value = true
+	function formatMessageTime(value) {
+		if (!value) {
+			return ''
+		}
+
+		const date = new Date(value)
+
+		if (Number.isNaN(date.getTime())) {
+			return ''
+		}
+
+		return new Intl.DateTimeFormat(intlLocale.value, {
+			hour: 'numeric',
+			minute: '2-digit',
+			hour12: false
+		}).format(date)
+	}
+
+	function isOwn(message) {
+		return message.sender_id === authStore.user?.id
+	}
+
+	async function scrollToBottom() {
+		await nextTick()
+		if (messagesEl.value) {
+			messagesEl.value.scrollTop = messagesEl.value.scrollHeight
+		}
+	}
+
+	async function refreshSupportConversations() {
+		const { data } = await fetchAdminSupportChats()
+		supportConversations.value = data.data?.conversations || []
+	}
+
+	async function openSupportConversation(id, { refresh = true } = {}) {
+		if (!id) {
+			activeSupportConversation.value = null
+			selectedConversationId.value = null
+			return
+		}
+
+		selectedConversationId.value = id
+		const { data } = await fetchChat(id)
+		activeSupportConversation.value = data.data
+
+		if (refresh) {
+			await refreshSupportConversations()
+		}
+
+		await scrollToBottom()
+	}
+
+	async function loadSupportConversations() {
+		supportLoading.value = true
 		try {
-			const { data } = await fetchAdminUsers()
-			users.value = data.data || []
-			selectedUserId.value ||= users.value[0]?.id || null
+			await refreshSupportConversations()
+
+			const selectedStillExists = supportConversations.value.some((conversation) => conversation.id === selectedConversationId.value)
+			const nextId = selectedStillExists ? selectedConversationId.value : supportConversations.value[0]?.id
+
+			await openSupportConversation(nextId, { refresh: false })
 		} finally {
-			loading.value = false
+			supportLoading.value = false
 		}
 	}
 
@@ -89,10 +159,7 @@
 	}
 
 	async function reloadAfterModeration() {
-		await Promise.all([
-			load(),
-			loadUserTable(tablePagination.value.page)
-		])
+		await loadUserTable(tablePagination.value.page)
 	}
 
 	async function ban(user) {
@@ -109,10 +176,19 @@
 		loadUserTable(pagination.page || 1)
 	}
 
-	async function sendMessage(user) {
+	async function sendSupportReply() {
+		const body = supportMessage.value.trim()
+
+		if (!body || !activeSupportConversation.value) {
+			return
+		}
+
 		try {
-			await messageAdminUser(user.id, message.value)
-			message.value = ''
+			const { data } = await sendChatMessage(activeSupportConversation.value.id, body)
+			activeSupportConversation.value = data.data
+			supportMessage.value = ''
+			await refreshSupportConversations()
+			await scrollToBottom()
 			$q.notify({ type: 'positive', message: t('admin.messageSent') })
 		} catch (error) {
 			$q.notify({ type: 'negative', message: error.response?.data?.message || t('admin.messageFailed') })
@@ -120,7 +196,7 @@
 	}
 
 	onMounted(() => {
-		load()
+		loadSupportConversations()
 		loadUserTable()
 	})
 </script>
@@ -149,65 +225,91 @@
 			<q-tab-panels v-model="activeTab" animated class="admin-panels">
 				<q-tab-panel name="communication" class="admin-panel">
 					<div class="admin-grid">
-						<section class="soz-section-card user-list">
+						<section class="soz-section-card support-list">
 							<button
-								v-for="user in users"
-								:key="user.id"
+								v-for="conversation in supportConversations"
+								:key="conversation.id"
 								type="button"
-								class="user-row"
-								:class="{ 'user-row--active': selectedUser?.id === user.id }"
-								@click="selectedUserId = user.id"
+								class="support-row"
+								:class="{ 'support-row--active': selectedConversationId === conversation.id }"
+								@click="openSupportConversation(conversation.id)"
 							>
-								<span>
-									<strong>{{ user.display_name }}</strong>
-									<small>{{ user.email }}</small>
+								<q-avatar size="38px" color="primary" text-color="white">
+									<img v-if="conversation.other_user?.profile?.photo_url" :src="conversation.other_user.profile.photo_url" alt="" />
+									<span v-else>{{ conversation.other_user?.display_name?.slice(0, 1) || 'S' }}</span>
+								</q-avatar>
+								<span class="support-row__copy">
+									<strong>{{ conversation.other_user?.display_name }}</strong>
+									<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
 								</span>
-								<q-chip dense :color="user.banned_at ? 'negative' : 'positive'" text-color="white">
-									{{ user.banned_at ? t('admin.banned') : t('admin.active') }}
-								</q-chip>
+								<q-badge v-if="conversation.unread_count" color="negative" rounded>{{ conversation.unread_count }}</q-badge>
 							</button>
+							<div v-if="!supportLoading && supportConversations.length === 0" class="support-empty">
+								<q-icon name="forum" size="28px" />
+								<strong>{{ t('admin.noSupportChats') }}</strong>
+							</div>
+							<q-inner-loading :showing="supportLoading" />
 						</section>
 
-						<section v-if="selectedUser" class="soz-section-card detail-panel">
-							<div class="row items-start justify-between q-gutter-md">
-								<div>
-									<h2>{{ selectedUser.display_name }}</h2>
-									<p>{{ selectedUser.email }}</p>
-									<p>{{ selectedUser.profile?.city || '-' }} / {{ selectedUser.profile?.neighborhood || '-' }}</p>
+						<section class="soz-section-card detail-panel support-detail">
+							<template v-if="activeSupportConversation">
+								<header class="support-detail__head">
+									<div>
+										<h2>{{ activeSupportUser?.display_name }}</h2>
+										<p>{{ activeSupportUser?.email }}</p>
+										<p>{{ activeSupportUser?.profile?.city || '-' }} / {{ activeSupportUser?.profile?.neighborhood || '-' }}</p>
+									</div>
+									<q-chip color="primary" text-color="white">{{ t('admin.supportInbox') }}</q-chip>
+								</header>
+
+								<div ref="messagesEl" class="support-messages">
+									<div v-if="supportMessages.length === 0" class="support-empty">{{ t('chat.noMessages') }}</div>
+									<template v-else>
+										<div
+											v-for="chatMessage in supportMessages"
+											:key="chatMessage.id"
+											class="support-message"
+											:class="{ 'support-message--own': isOwn(chatMessage) }"
+										>
+											<div class="support-message__bubble">
+												<small class="support-message__meta">
+													{{ chatMessage.sender?.display_name || activeSupportUser?.display_name || '-' }}
+													<span>{{ formatMessageTime(chatMessage.created_at) }}</span>
+												</small>
+												{{ chatMessage.body }}
+											</div>
+										</div>
+									</template>
 								</div>
-								<q-chip :color="selectedUser.role === 'admin' ? 'dark' : 'primary'" text-color="white">{{ selectedUser.role }}</q-chip>
-							</div>
 
-							<div class="page-links q-mt-md">
-								<router-link v-if="selectedUser.business_page" :to="pageRoute(selectedUser.business_page)">
-									{{ selectedUser.business_page.name }}
-								</router-link>
-								<router-link v-if="selectedUser.community_page" :to="pageRoute(selectedUser.community_page)">
-									{{ selectedUser.community_page.name }}
-								</router-link>
-							</div>
-
-							<div class="q-mt-lg">
-								<q-input
-									v-model="message"
-									outlined
-									type="textarea"
-									autogrow
-									:label="t('admin.message')"
-									:maxlength="CHAT_MAX_LENGTH"
-									:hint="characterLimitHint(message, CHAT_MAX_LENGTH, t)"
-									counter
-									persistent-hint
-								/>
-								<q-btn class="q-mt-sm"
-									color="primary"
-									unelevated
-									rounded
-									icon="send"
-									:label="t('actions.send')"
-									:disable="!message.trim()"
-									@click="sendMessage(selectedUser)"
-								/>
+								<footer class="support-compose">
+									<q-input
+										v-model="supportMessage"
+										outlined
+										type="textarea"
+										autogrow
+										:label="t('admin.message')"
+										:maxlength="CHAT_MAX_LENGTH"
+										:hint="supportComposerHint"
+										counter
+										persistent-hint
+										class="support-compose__input"
+										@keydown.enter.exact.prevent="sendSupportReply"
+									/>
+									<q-btn
+										color="primary"
+										unelevated
+										rounded
+										icon="send"
+										:label="t('actions.send')"
+										:disable="!supportMessage.trim()"
+										@click="sendSupportReply"
+									/>
+								</footer>
+							</template>
+							<div v-else class="support-empty support-empty--panel">
+								<q-icon name="forum" size="32px" />
+								<strong>{{ t('admin.noSupportChats') }}</strong>
 							</div>
 						</section>
 					</div>
@@ -253,19 +355,25 @@
 								<q-td :props="props">
 									<q-btn v-if="!props.row.banned_at"
 										color="negative"
-										unelevated
+										flat
+										dense
 										rounded
+										size="sm"
 										icon="block"
 										:label="t('actions.ban')"
 										:disable="props.row.role === 'admin'"
+										class="moderation-btn"
 										@click="ban(props.row)"
 									/>
 									<q-btn v-else
 										color="positive"
-										unelevated
+										flat
+										dense
 										rounded
+										size="sm"
 										icon="restart_alt"
 										:label="t('admin.unban')"
+										class="moderation-btn"
 										@click="restore(props.row)"
 									/>
 								</q-td>
@@ -289,7 +397,7 @@
 }
 
 .page-head,
-.user-list,
+.support-list,
 .detail-panel {
   padding: 28px;
 }
@@ -333,51 +441,157 @@
   gap: 18px;
 }
 
-.user-list {
+.support-list {
+  position: relative;
   display: grid;
   gap: 8px;
+  align-content: start;
+  min-height: 420px;
 }
 
-.user-row {
-  display: flex;
+.support-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   padding: 14px;
   border: 1px solid rgba(17, 34, 45, 0.08);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.64);
+  color: var(--soz-ink);
   text-align: start;
   cursor: pointer;
 }
 
-.user-row--active,
-.user-row:hover {
+.support-row--active,
+.support-row:hover {
   border-color: rgba(123, 63, 242, 0.38);
   background: rgba(123, 63, 242, 0.08);
 }
 
-.user-row span {
+.support-row__copy {
   display: grid;
+  gap: 3px;
   min-width: 0;
 }
 
-.user-row small {
+.support-row__copy strong,
+.support-row__copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.support-row__copy small {
   color: rgba(17, 34, 45, 0.56);
+}
+
+.support-detail {
+  display: grid;
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.support-detail > template,
+.support-detail > :not(.support-empty--panel) {
+  min-height: 0;
+}
+
+.support-detail__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(17, 34, 45, 0.1);
+}
+
+.support-detail__head h2 {
+  margin: 0 0 4px;
+  font-size: 24px;
+}
+
+.support-detail__head p {
+  margin: 0;
+  color: rgba(17, 34, 45, 0.62);
   overflow-wrap: anywhere;
 }
 
-.page-links {
-  display: flex;
-  flex-wrap: wrap;
+.support-messages {
+  display: grid;
+  align-content: start;
   gap: 10px;
+  min-height: 0;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 18px 0;
 }
 
-.page-links a {
+.support-message {
+  display: flex;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.support-message--own {
+  justify-content: flex-end;
+}
+
+.support-message__bubble {
+  max-width: min(76%, 620px);
   padding: 10px 12px;
-  border: 1px solid rgba(17, 34, 45, 0.1);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.74);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 18px rgba(17, 34, 45, 0.06);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.support-message--own .support-message__bubble {
+  background: rgba(123, 63, 242, 0.14);
+}
+
+.support-message__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: rgba(17, 34, 45, 0.5);
+  font-size: 11px;
+}
+
+.support-compose {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding-top: 14px;
+  border-top: 1px solid rgba(17, 34, 45, 0.1);
+}
+
+.support-compose__input {
+  min-width: 0;
+}
+
+.support-empty {
+  display: grid;
+  gap: 8px;
+  place-items: center;
+  min-height: 160px;
+  color: rgba(17, 34, 45, 0.56);
+  text-align: center;
+}
+
+.support-empty--panel {
+  min-height: 460px;
+}
+
+.moderation-btn {
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 12px;
+  opacity: 0.78;
 }
 
 @media (max-width: 900px) {
@@ -392,21 +606,24 @@
   }
 
   .page-head,
-  .user-list,
+  .support-list,
   .detail-panel {
     padding: 20px;
   }
 
-  .user-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+  .support-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
-  .detail-panel p {
-    overflow-wrap: anywhere;
+  .support-messages {
+    max-height: 360px;
   }
 
-  .detail-panel .q-btn {
+  .support-compose {
+    grid-template-columns: 1fr;
+  }
+
+  .support-compose .q-btn {
     width: 100%;
   }
 }

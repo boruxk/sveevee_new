@@ -237,6 +237,7 @@ class PayloadService
         $payload = [
             'id' => $conversation->id,
             'other_user' => $other ? $this->user($other) : null,
+            'is_support' => (bool) $conversation->is_support,
             'last_message_at' => $conversation->last_message_at?->toISOString(),
             'latest_message' => $latest ? $this->message($latest) : null,
             'unread_count' => $conversation->messages

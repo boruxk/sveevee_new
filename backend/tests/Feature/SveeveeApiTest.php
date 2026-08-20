@@ -329,6 +329,7 @@ class SveeveeApiTest extends TestCase
             'body' => 'I need help.',
         ])->assertCreated()
             ->assertJsonPath('data.other_user.id', $supportAdmin->id)
+            ->assertJsonPath('data.is_support', true)
             ->assertJsonPath('data.composer_state.can_send', true);
 
         $this->postJson('/api/v1/chats/support/messages', [
@@ -336,12 +337,46 @@ class SveeveeApiTest extends TestCase
         ])->assertCreated()
             ->assertJsonPath('data.composer_state.can_send', true);
 
+        $this->getJson('/api/v1/chats')
+            ->assertOk()
+            ->assertJsonPath('data.conversations.0.other_user.id', $supportAdmin->id)
+            ->assertJsonPath('data.conversations.0.is_support', true)
+            ->assertJsonPath('data.conversations.0.latest_message.body', 'Second support message.');
+
         Sanctum::actingAs($supportAdmin);
 
         $this->getJson('/api/v1/chats')
             ->assertOk()
+            ->assertJsonCount(0, 'data.conversations');
+
+        $this->getJson('/api/v1/admin/support-chats')
+            ->assertOk()
             ->assertJsonPath('data.conversations.0.other_user.id', $user->id)
+            ->assertJsonPath('data.conversations.0.is_support', true)
             ->assertJsonPath('data.conversations.0.latest_message.body', 'Second support message.');
+    }
+
+    public function test_normal_admin_chat_stays_out_of_admin_support_inbox(): void
+    {
+        $supportAdmin = User::query()->where('email', 'support@sveevee.local')->firstOrFail();
+        $user = User::factory()->create();
+
+        Sanctum::actingAs($supportAdmin);
+
+        $this->postJson("/api/v1/chats/users/{$user->id}/messages", [
+            'body' => 'Normal admin message.',
+        ])->assertCreated()
+            ->assertJsonPath('data.is_support', false);
+
+        $this->getJson('/api/v1/chats')
+            ->assertOk()
+            ->assertJsonPath('data.conversations.0.other_user.id', $user->id)
+            ->assertJsonPath('data.conversations.0.is_support', false)
+            ->assertJsonPath('data.conversations.0.latest_message.body', 'Normal admin message.');
+
+        $this->getJson('/api/v1/admin/support-chats')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.conversations');
     }
 
     public function test_chat_message_body_is_limited_to_five_thousand_characters(): void

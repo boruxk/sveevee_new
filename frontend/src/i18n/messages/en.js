@@ -486,7 +486,9 @@ export default {
 		reason: 'Reason',
 		message: 'Message to user',
 		messageSent: 'Message sent.',
-		messageFailed: 'Message could not be sent.'
+		messageFailed: 'Message could not be sent.',
+		supportInbox: 'Support inbox',
+		noSupportChats: 'No support chats yet.'
 	},
 	search: {
 		title: 'Search',

@@ -24,6 +24,32 @@ class ChatController extends Controller
 
         $conversations = Conversation::query()
             ->forParticipant($user)
+            ->when($user->hasRole('admin'), fn ($query) => $query->where('is_support', false))
+            ->whereNotNull('last_message_at')
+            ->with(['userOne.profile', 'userTwo.profile', 'messages.sender.profile'])
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('updated_at')
+            ->get()
+            ->map(fn (Conversation $conversation) => $this->payloads->conversation(
+                $conversation,
+                $user,
+                $this->composerState($user, $conversation)
+            ))
+            ->values();
+
+        return ApiResponseService::success([
+            'conversations' => $conversations,
+            'unread_count' => $this->payloads->unreadMessageCount($user),
+        ]);
+    }
+
+    public function adminSupportIndex(Request $request)
+    {
+        $user = $request->user();
+
+        $conversations = Conversation::query()
+            ->forParticipant($user)
+            ->where('is_support', true)
             ->whereNotNull('last_message_at')
             ->with(['userOne.profile', 'userTwo.profile', 'messages.sender.profile'])
             ->orderByDesc('last_message_at')
@@ -75,7 +101,7 @@ class ChatController extends Controller
             return ApiResponseService::error('You cannot chat with yourself.', status: 422);
         }
 
-        $conversation = $this->conversationFor($request->user(), $supportAdmin);
+        $conversation = $this->conversationFor($request->user(), $supportAdmin, isSupport: true);
         $this->markRead($request->user(), $conversation);
         $conversation->load(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
 
@@ -140,7 +166,7 @@ class ChatController extends Controller
             return ApiResponseService::error('You cannot chat with yourself.', status: 422);
         }
 
-        $conversation = $this->conversationFor($request->user(), $supportAdmin);
+        $conversation = $this->conversationFor($request->user(), $supportAdmin, isSupport: true);
 
         return $this->sendIntoConversation($request, $conversation, enforceLimits: false);
     }
@@ -241,7 +267,6 @@ class ChatController extends Controller
     private function newRecipientsToday(User $user): int
     {
         $since = Carbon::today();
-        $supportAdminId = $this->supportAdmin()?->id;
         $messages = ChatMessage::query()
             ->with('conversation')
             ->where('sender_id', $user->id)
@@ -253,7 +278,9 @@ class ChatController extends Controller
             ->filter(function (ChatMessage $message) use ($since): bool {
                 $firstMessage = $message->conversation?->messages()->oldest()->first();
 
-                return $firstMessage?->id === $message->id && $firstMessage->created_at >= $since;
+                return ! $message->conversation?->is_support
+                    && $firstMessage?->id === $message->id
+                    && $firstMessage->created_at >= $since;
             })
             ->map(function (ChatMessage $message) use ($user): ?int {
                 $conversation = $message->conversation;
@@ -267,17 +294,16 @@ class ChatController extends Controller
                     : $conversation->user_one_id;
             })
             ->filter()
-            ->reject(fn (int $recipientId): bool => $supportAdminId && $recipientId === $supportAdminId)
             ->unique()
             ->count();
     }
 
-    private function conversationFor(User $current, User $other): Conversation
+    private function conversationFor(User $current, User $other, bool $isSupport = false): Conversation
     {
         [$one, $two] = Conversation::pairFor($current, $other);
 
         return Conversation::query()->firstOrCreate(
-            ['user_one_id' => $one, 'user_two_id' => $two],
+            ['user_one_id' => $one, 'user_two_id' => $two, 'is_support' => $isSupport],
             ['started_by_user_id' => $current->id]
         );
     }
@@ -300,7 +326,8 @@ class ChatController extends Controller
     {
         $supportAdmin = $this->supportAdmin();
 
-        return $supportAdmin
+        return (bool) $conversation->is_support
+            && $supportAdmin
             && in_array($supportAdmin->id, [$conversation->user_one_id, $conversation->user_two_id], true);
     }
 

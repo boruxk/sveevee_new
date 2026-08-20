@@ -13,12 +13,14 @@ class Conversation extends Model
         'user_one_id',
         'user_two_id',
         'started_by_user_id',
+        'is_support',
         'last_message_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'is_support' => 'boolean',
             'last_message_at' => 'datetime',
         ];
     }
