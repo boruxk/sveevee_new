@@ -1,10 +1,11 @@
 <script setup>
 	import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+	import { RouterLink } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { localizedAdCategoryMeta } from '@/constants/adCategories'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
-	import { catalogLabel, catalogTopicForAdCategory } from '@/constants/catalogTopics'
+	import { catalogHubPath, catalogLabel, catalogPath, catalogTopicForAdCategory, pageRoute } from '@/constants/catalogTopics'
 
 	const props = defineProps({
 		ad: {
@@ -14,6 +15,10 @@
 		editable: {
 			type: Boolean,
 			default: false
+		},
+		detailLinks: {
+			type: Boolean,
+			default: true
 		}
 	})
 
@@ -50,6 +55,7 @@
 	const locationLabel = computed(() => [props.ad.neighborhood, props.ad.city].filter(Boolean).join(', '))
 	const ownerName = computed(() => props.ad.page?.name || props.ad.user?.display_name || '')
 	const badgeLabel = computed(() => [badgeTypeLabel.value, ownerName.value].filter(Boolean).join(': '))
+	const categoryTopic = computed(() => catalogTopicForAdCategory(catalogGroups.value, props.ad.category))
 	const categoryMeta = computed(() => {
 		const currentLocale = locale.value
 		const legacyMeta = localizedAdCategoryMeta(props.ad.category, (key) => t(key, { currentLocale }))
@@ -58,7 +64,7 @@
 			return legacyMeta
 		}
 
-		const topic = catalogTopicForAdCategory(catalogGroups.value, props.ad.category)
+		const topic = categoryTopic.value
 
 		return topic ? {
 			label: catalogLabel(topic.labels, locale.value),
@@ -71,6 +77,49 @@
 		'--ad-category-soft': categoryMeta.value.soft,
 		'--ad-category-x': locale.value === 'he' ? '0%' : '100%'
 	} : null))
+	const ownerRoute = computed(() => {
+		if (props.ad.page) {
+			return pageRoute(props.ad.page)
+		}
+
+		if (props.ad.user?.id) {
+			return { name: 'user-page', params: { id: props.ad.user.id } }
+		}
+
+		return null
+	})
+	const categoryRoute = computed(() => {
+		if (categoryTopic.value) {
+			return catalogPath(categoryTopic.value)
+		}
+
+		if (props.ad.category) {
+			return { name: 'search', query: { scope: 'ads', category: props.ad.category } }
+		}
+
+		return null
+	})
+	const locationRoute = computed(() => {
+		const city = props.ad.city || ''
+		const neighborhood = props.ad.neighborhood || ''
+
+		if (!city) {
+			return null
+		}
+
+		if (categoryTopic.value) {
+			return catalogPath(categoryTopic.value, city, neighborhood)
+		}
+
+		return catalogHubPath('ads', city, neighborhood)
+	})
+	const adDetailRoute = computed(() => {
+		if (!props.detailLinks || props.editable || !props.ad.id) {
+			return null
+		}
+
+		return { name: 'ad-detail', params: { id: props.ad.id } }
+	})
 
 	function measureOverflow() {
 		if (isExpanded.value || !textWrapRef.value || !textRef.value) {
@@ -118,14 +167,36 @@
 		:class="{ 'listing-card--with-image': imageStyle, 'listing-card--expanded': isExpanded, 'listing-card--with-category': categoryMeta }"
 		:style="cardStyle"
 	>
-		<div v-if="imageStyle" class="listing-card__image" :style="imageStyle" />
+		<RouterLink
+			v-if="imageStyle && adDetailRoute"
+			:to="adDetailRoute"
+			class="listing-card__image listing-card__image-link"
+			:style="imageStyle"
+		/>
+		<div v-else-if="imageStyle" class="listing-card__image" :style="imageStyle" />
 		<div class="listing-card__body">
 			<div class="listing-card__head">
-				<q-chip dense :color="typeColor" text-color="white" class="listing-card__badge">
+				<RouterLink v-if="ownerRoute" :to="ownerRoute" class="listing-card__badge-link">
+					<q-chip dense clickable :color="typeColor" text-color="white" class="listing-card__badge">
+						{{ badgeLabel }}
+					</q-chip>
+				</RouterLink>
+				<q-chip v-else dense :color="typeColor" text-color="white" class="listing-card__badge">
 					{{ badgeLabel }}
 				</q-chip>
+				<RouterLink v-if="categoryMeta && categoryRoute" :to="categoryRoute" class="listing-card__badge-link">
+					<q-chip
+						dense
+						clickable
+						text-color="white"
+						class="listing-card__badge listing-card__category-badge"
+						:style="{ backgroundColor: categoryMeta.color }"
+					>
+						{{ categoryMeta.label }}
+					</q-chip>
+				</RouterLink>
 				<q-chip
-					v-if="categoryMeta"
+					v-else-if="categoryMeta"
 					dense
 					text-color="white"
 					class="listing-card__badge listing-card__category-badge"
@@ -134,8 +205,15 @@
 					{{ categoryMeta.label }}
 				</q-chip>
 			</div>
-			<h3 class="listing-card__title">{{ ad.title }}</h3>
-			<div v-if="locationLabel" class="listing-card__location">
+			<h3 class="listing-card__title">
+				<RouterLink v-if="adDetailRoute" :to="adDetailRoute">{{ ad.title }}</RouterLink>
+				<span v-else>{{ ad.title }}</span>
+			</h3>
+			<RouterLink v-if="locationLabel && locationRoute" :to="locationRoute" class="listing-card__location listing-card__location--link">
+				<q-icon name="place" size="16px" />
+				<span>{{ locationLabel }}</span>
+			</RouterLink>
+			<div v-else-if="locationLabel" class="listing-card__location">
 				<q-icon name="place" size="16px" />
 				<span>{{ locationLabel }}</span>
 			</div>
@@ -219,6 +297,10 @@
   background-position: center;
 }
 
+.listing-card__image-link {
+  display: block;
+}
+
 .listing-card--with-image .listing-card__image {
   grid-column: 1;
   grid-row: 1;
@@ -291,6 +373,22 @@
   font-weight: 800;
 }
 
+.listing-card__badge-link {
+  display: inline-flex;
+  max-width: 100%;
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.listing-card__badge-link:focus-visible,
+.listing-card__location--link:focus-visible,
+.listing-card__title a:focus-visible,
+.listing-card__image-link:focus-visible {
+  outline: 2px solid var(--soz-primary);
+  outline-offset: 3px;
+}
+
 .listing-card__badge :deep(.q-chip__content) {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -305,6 +403,15 @@
   margin: 16px 0 10px;
   font-size: 30px;
   line-height: 1.18;
+}
+
+.listing-card__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.listing-card__title a:hover {
+  color: var(--soz-primary-deep);
 }
 
 .listing-card__text-wrap {
@@ -337,6 +444,15 @@
   align-items: center;
   color: rgba(17, 34, 45, 0.56);
   font-size: 14px;
+}
+
+.listing-card__location--link {
+  width: fit-content;
+  text-decoration: none;
+}
+
+.listing-card__location--link:hover {
+  color: var(--soz-primary-deep);
 }
 
 .listing-card__footer {

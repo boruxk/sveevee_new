@@ -95,7 +95,7 @@
 						{{ link.label }}
 					</router-link>
 				</nav>
-				<AdCard :ad="ad" />
+				<AdCard :ad="ad" :detail-links="false" />
 			</div>
 			<div v-else-if="loading" class="row justify-center q-pa-xl">
 				<q-spinner color="primary" />

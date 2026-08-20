@@ -293,9 +293,9 @@
 							</div>
 						</router-link>
 
-						<router-link v-else :to="{ name: 'ad-detail', params: { id: item.value.id } }" class="result-ad-link">
+						<div v-else class="result-ad-link">
 							<AdCard :ad="item.value" />
-						</router-link>
+						</div>
 					</template>
 				</div>
 			</section>

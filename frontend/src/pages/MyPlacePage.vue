@@ -1,6 +1,6 @@
 <script setup>
 	import { computed, onMounted, ref } from 'vue'
-	import { useRouter } from 'vue-router'
+	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
@@ -10,6 +10,7 @@
 	import ChatBlock from '@/components/ChatBlock.vue'
 	import PageCreateDialog from '@/components/pages/PageCreateDialog.vue'
 
+	const route = useRoute()
 	const router = useRouter()
 	const { t } = useI18n()
 	const $q = useQuasar()
@@ -24,6 +25,7 @@
 	const showCommunityPageButton = computed(() => !authStore.user?.community_page)
 	const adDialogTitle = computed(() => (editingAd.value ? t('actions.update') : t('actions.createAd')))
 	const visibleAds = computed(() => (Array.isArray(ads.value) ? ads.value.filter((ad) => ad?.id) : []))
+	const chatTargetUserId = computed(() => route.query.chatWith || null)
 
 	async function loadAds() {
 		loading.value = true
@@ -121,7 +123,7 @@
 
 			<section class="soz-section-card panel panel--chat q-mt-lg">
 				<h2>{{ t('chat.title') }}</h2>
-				<ChatBlock />
+				<ChatBlock :target-user-id="chatTargetUserId" />
 			</section>
 
 			<section class="soz-section-card panel q-mt-lg">
