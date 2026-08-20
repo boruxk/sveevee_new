@@ -12,6 +12,15 @@ export default {
 		profile: 'Profil',
 		logout: 'Déconnexion'
 	},
+	mePage: {
+		overview: 'Vue d ensemble',
+		ads: 'Annonces',
+		messages: 'Messages',
+		recentMessages: 'Messages recents',
+		latestAds: 'Dernieres annonces',
+		openMessages: 'Ouvrir les messages',
+		openAds: 'Ouvrir les annonces'
+	},
 	languages: {
 		he: 'Hébreu',
 		en: 'Anglais',
@@ -380,6 +389,8 @@ export default {
 		pendingReply: 'Vous pourrez écrire à nouveau après la réponse de cette personne à votre premier message.',
 		dailyLimit: 'Vous pouvez contacter seulement 10 nouveaux utilisateurs par jour.',
 		noMessages: 'Aucun message pour le moment.',
+		backToList: 'Retour aux chats',
+		loadOlder: 'Charger {count} messages plus anciens',
 		sendFailed: 'Le message n’a pas pu être envoyé.'
 	},
 	pages: {

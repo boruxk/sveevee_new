@@ -12,6 +12,15 @@ export default {
 		logout: 'Logout',
 		menu: 'Menu'
 	},
+	mePage: {
+		overview: 'Overview',
+		ads: 'Ads',
+		messages: 'Messages',
+		recentMessages: 'Recent messages',
+		latestAds: 'Latest ads',
+		openMessages: 'Open messages',
+		openAds: 'Open ads'
+	},
 	languages: {
 		he: 'Hebrew',
 		en: 'English',
@@ -380,7 +389,9 @@ export default {
 		pendingReply: 'You can write again after this person replies to your first message.',
 		dailyLimit: 'You can contact only 10 new users per day.',
 		noMessages: 'No messages yet.',
-		sendFailed: 'Message could not be sent.'
+		sendFailed: 'Message could not be sent.',
+		backToList: 'Back to chats',
+		loadOlder: 'Load {count} older messages'
 	},
 	pages: {
 		businessTitle: 'Business page',

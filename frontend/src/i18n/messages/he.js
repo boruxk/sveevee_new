@@ -12,6 +12,15 @@ export default {
 		profile: 'פרופיל',
 		logout: 'יציאה'
 	},
+	mePage: {
+		overview: 'Overview',
+		ads: 'Ads',
+		messages: 'Messages',
+		recentMessages: 'Recent messages',
+		latestAds: 'Latest ads',
+		openMessages: 'Open messages',
+		openAds: 'Open ads'
+	},
 	languages: {
 		he: 'עברית',
 		en: 'אנגלית',
@@ -380,6 +389,8 @@ export default {
 		pendingReply: 'אפשר לשלוח הודעה נוספת רק אחרי שהמשתמש השני ענה להודעה הראשונה.',
 		dailyLimit: 'אפשר לפנות עד 10 משתמשים חדשים ביום.',
 		noMessages: 'אין עדיין הודעות.',
+		backToList: 'Back to chats',
+		loadOlder: 'Load {count} older messages',
 		sendFailed: 'לא ניתן לשלוח את ההודעה.'
 	},
 	pages: {

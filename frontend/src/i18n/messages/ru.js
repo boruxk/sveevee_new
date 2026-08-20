@@ -12,6 +12,15 @@ export default {
 		profile: 'Профиль',
 		logout: 'Выход'
 	},
+	mePage: {
+		overview: 'Overview',
+		ads: 'Ads',
+		messages: 'Messages',
+		recentMessages: 'Recent messages',
+		latestAds: 'Latest ads',
+		openMessages: 'Open messages',
+		openAds: 'Open ads'
+	},
 	languages: {
 		he: 'Иврит',
 		en: 'Английский',
@@ -380,6 +389,8 @@ export default {
 		pendingReply: 'Вы сможете написать снова после того, как этот пользователь ответит на ваше первое сообщение.',
 		dailyLimit: 'Можно написать только 10 новым пользователям в день.',
 		noMessages: 'Сообщений пока нет.',
+		backToList: 'Back to chats',
+		loadOlder: 'Load {count} older messages',
 		sendFailed: 'Не удалось отправить сообщение.'
 	},
 	pages: {
