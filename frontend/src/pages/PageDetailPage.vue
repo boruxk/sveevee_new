@@ -56,10 +56,6 @@
 		const neighborhood = pageAddress.value.neighborhood || ''
 
 		return [
-			{
-				label: catalogLabel(pageTopic.value.labels, locale.value),
-				to: catalogPath(pageTopic.value)
-			},
 			city ? {
 				label: locationLabel(city, 'city', locale.value),
 				to: catalogPath(pageTopic.value, city)
@@ -67,7 +63,11 @@
 			city && neighborhood ? {
 				label: locationLabel(neighborhood, 'neighborhood', locale.value),
 				to: catalogPath(pageTopic.value, city, neighborhood)
-			} : null
+			} : null,
+			{
+				label: catalogLabel(pageTopic.value.labels, locale.value),
+				to: catalogPath(pageTopic.value)
+			}
 		].filter(Boolean)
 	})
 	const seoDescription = computed(() => {

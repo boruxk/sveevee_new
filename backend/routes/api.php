@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->middleware('recaptcha')->group(function () {
     Route::get('/catalog', [CatalogController::class, 'index']);
     Route::get('/catalog/{topicSlug}', [CatalogController::class, 'index']);
-    Route::get('/catalog/{topicSlug}/{citySlug}', [CatalogController::class, 'index']);
-    Route::get('/catalog/{topicSlug}/{citySlug}/{neighborhoodSlug}', [CatalogController::class, 'index']);
+    Route::get('/catalog/{citySlug}/{topicSlug}', [CatalogController::class, 'indexForCity']);
+    Route::get('/catalog/{citySlug}/{neighborhoodSlug}/{topicSlug}', [CatalogController::class, 'indexForNeighborhood']);
     Route::get('/search', [SearchController::class, 'index']);
     Route::get('/locations', [LocationController::class, 'index']);
     Route::get('/users/{user}', [PublicUserController::class, 'show']);

@@ -15,7 +15,7 @@
 	const ad = ref(null)
 	const loading = ref(false)
 	const ownerName = computed(() => ad.value?.page?.name || ad.value?.user?.display_name || '')
-	const locationLabel = computed(() => [ad.value?.neighborhood, ad.value?.city].filter(Boolean).join(', '))
+	const locationLabel = computed(() => [ad.value?.city, ad.value?.neighborhood].filter(Boolean).join(', '))
 	const adTopic = computed(() => catalogTopicForAdCategory(catalogGroups.value, ad.value?.category))
 	const adCatalogLinks = computed(() => {
 		if (!adTopic.value) {
@@ -26,10 +26,6 @@
 		const neighborhood = ad.value?.neighborhood || ''
 
 		return [
-			{
-				label: catalogLabel(adTopic.value.labels, locale.value),
-				to: catalogPath(adTopic.value)
-			},
 			city ? {
 				label: localizedLocationLabel(city, 'city', locale.value),
 				to: catalogPath(adTopic.value, city)
@@ -37,7 +33,11 @@
 			city && neighborhood ? {
 				label: localizedLocationLabel(neighborhood, 'neighborhood', locale.value),
 				to: catalogPath(adTopic.value, city, neighborhood)
-			} : null
+			} : null,
+			{
+				label: catalogLabel(adTopic.value.labels, locale.value),
+				to: catalogPath(adTopic.value)
+			}
 		].filter(Boolean)
 	})
 	const seoDescription = computed(() => {

@@ -7,8 +7,8 @@ const legalPage = () => import('@/pages/PrivacyPolicyPage.vue')
 const catalogSeo = { titleKey: 'seo.catalogTitle', descriptionKey: 'seo.catalogDescription' }
 const catalogHubRoutes = ['businesses', 'communities', 'products', 'services', 'events', 'ads', 'people'].flatMap((slug) => [
 	{ path: `catalog/${slug}`, name: `catalog-${slug}`, component: catalogPage, meta: { catalogScopeSlug: slug, seo: catalogSeo } },
-	{ path: `catalog/${slug}/:citySlug`, name: `catalog-${slug}-city`, component: catalogPage, meta: { catalogScopeSlug: slug, seo: catalogSeo } },
-	{ path: `catalog/${slug}/:citySlug/:neighborhoodSlug`, name: `catalog-${slug}-neighborhood`, component: catalogPage, meta: { catalogScopeSlug: slug, seo: catalogSeo } }
+	{ path: `catalog/:citySlug/${slug}`, name: `catalog-${slug}-city`, component: catalogPage, meta: { catalogScopeSlug: slug, seo: catalogSeo } },
+	{ path: `catalog/:citySlug/:neighborhoodSlug/${slug}`, name: `catalog-${slug}-neighborhood`, component: catalogPage, meta: { catalogScopeSlug: slug, seo: catalogSeo } }
 ])
 
 export default [
@@ -28,8 +28,8 @@ export default [
 			{ path: 'catalog', redirect: { name: 'catalog-businesses' } },
 			...catalogHubRoutes,
 			{ path: 'catalog/:topicSlug', name: 'catalog-topic', component: catalogPage, meta: { seo: catalogSeo } },
-			{ path: 'catalog/:topicSlug/:citySlug', name: 'catalog-topic-city', component: catalogPage, meta: { seo: catalogSeo } },
-			{ path: 'catalog/:topicSlug/:citySlug/:neighborhoodSlug', name: 'catalog-topic-neighborhood', component: catalogPage, meta: { seo: catalogSeo } },
+			{ path: 'catalog/:citySlug/:topicSlug', name: 'catalog-topic-city', component: catalogPage, meta: { seo: catalogSeo } },
+			{ path: 'catalog/:citySlug/:neighborhoodSlug/:topicSlug', name: 'catalog-topic-neighborhood', component: catalogPage, meta: { seo: catalogSeo } },
 			{ path: 'search', name: 'search', component: () => import('@/pages/SearchPage.vue'), meta: { seo: { titleKey: 'seo.searchTitle', descriptionKey: 'seo.searchDescription' } } },
 			{ path: 'users/:id', name: 'user-page', component: () => import('@/pages/UserPage.vue'), meta: { seo: { titleKey: 'seo.userFallbackTitle', descriptionKey: 'seo.userFallbackDescription' } } },
 			{ path: 'ads/:id', name: 'ad-detail', component: () => import('@/pages/AdDetailPage.vue'), meta: { seo: { titleKey: 'seo.adFallbackTitle', descriptionKey: 'seo.adFallbackDescription' } } },

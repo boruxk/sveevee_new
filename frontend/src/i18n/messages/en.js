@@ -513,6 +513,8 @@ export default {
 		title: 'Catalog',
 		kicker: 'Local catalog',
 		intro: 'Browse local business pages, products, services, events, ads, and people by category, city, and neighborhood.',
+		topicDescription: 'Browse local business pages, products, services, events, ads, and people for {topic}{location} on sveevee.',
+		locationPhrase: ' in {location}',
 		popularTitle: 'Popular categories',
 		allTitle: 'All categories',
 		category: 'Category',

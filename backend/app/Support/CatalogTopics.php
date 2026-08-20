@@ -412,8 +412,9 @@ class CatalogTopics
     public static function catalogPath(array|string $topic, ?string $city = null, ?string $neighborhood = null): string
     {
         $topicPayload = is_array($topic) ? $topic : self::findByKey($topic);
+        $topicSlug = $topicPayload['slug'] ?? (string) $topic;
 
-        $parts = ['catalog', $topicPayload['slug'] ?? (string) $topic];
+        $parts = ['catalog'];
 
         if (filled($city)) {
             $parts[] = self::locationSlug($city);
@@ -421,6 +422,10 @@ class CatalogTopics
 
         if (filled($city) && filled($neighborhood)) {
             $parts[] = self::locationSlug($neighborhood);
+        }
+
+        if (filled($topicSlug)) {
+            $parts[] = $topicSlug;
         }
 
         return '/'.implode('/', $parts);

@@ -513,6 +513,8 @@ export default {
 		title: 'קטלוג',
 		kicker: 'קטלוג מקומי',
 		intro: 'דפדוף בעמודי עסק, מוצרים, שירותים, אירועים, מודעות ואנשים לפי קטגוריה, עיר ושכונה.',
+		topicDescription: 'עסקים, מוצרים, שירותים, אירועים, מודעות ואנשים מקומיים בתחום {topic}{location} ב-sveevee.',
+		locationPhrase: ' באזור {location}',
 		popularTitle: 'קטגוריות פופולריות',
 		allTitle: 'כל הקטגוריות',
 		category: 'קטגוריה',

@@ -531,7 +531,7 @@ class SveeveeApiTest extends TestCase
             ->assertJsonPath('data.hub.slug', 'businesses')
             ->assertJsonPath('data.groups.0.topics.0.slug', fn ($value) => filled($value));
 
-        $this->getJson('/api/v1/catalog/businesses/haifa')
+        $this->getJson('/api/v1/catalog/haifa/businesses')
             ->assertOk()
             ->assertJsonPath('data.hub.slug', 'businesses')
             ->assertJsonPath('data.city', 'Haifa');
@@ -631,7 +631,7 @@ class SveeveeApiTest extends TestCase
             'expires_at' => now()->addDay(),
         ]);
 
-        $this->getJson('/api/v1/catalog/electricians/haifa/hadar')
+        $this->getJson('/api/v1/catalog/haifa/hadar/electricians')
             ->assertOk()
             ->assertJsonPath('data.indexable', true)
             ->assertJsonPath('data.counts.pages', 1)
@@ -641,13 +641,13 @@ class SveeveeApiTest extends TestCase
             ->assertJsonPath('data.segments.pages.items.0.slug', $page->public_slug)
             ->assertJsonPath('data.segments.ads.items.0.title', 'Need electrician');
 
-        $this->getJson('/api/v1/catalog/home-repair-services/haifa/hadar')
+        $this->getJson('/api/v1/catalog/haifa/hadar/home-repair-services')
             ->assertOk()
             ->assertJsonPath('data.counts.services', 1)
             ->assertJsonPath('data.segments.services.items.0.page.name', 'Electric Studio')
             ->assertJsonPath('data.segments.services.items.0.page.slug', $page->public_slug);
 
-        $this->getJson('/api/v1/catalog/electricians/tel-aviv')
+        $this->getJson('/api/v1/catalog/tel-aviv/electricians')
             ->assertOk()
             ->assertJsonPath('data.indexable', false)
             ->assertJsonPath('data.total_count', 0);
@@ -742,8 +742,8 @@ class SveeveeApiTest extends TestCase
             ->assertSee('https://sveevee.co.il/catalog/ads', false)
             ->assertSee('https://sveevee.co.il/catalog/people', false)
             ->assertSee('https://sveevee.co.il/catalog/electricians', false)
-            ->assertSee('https://sveevee.co.il/catalog/electricians/haifa', false)
-            ->assertSee('https://sveevee.co.il/catalog/electricians/haifa/hadar', false)
+            ->assertSee('https://sveevee.co.il/catalog/haifa/electricians', false)
+            ->assertSee('https://sveevee.co.il/catalog/haifa/hadar/electricians', false)
             ->assertDontSee('https://sveevee.co.il/catalog/home-repair-services', false);
     }
 

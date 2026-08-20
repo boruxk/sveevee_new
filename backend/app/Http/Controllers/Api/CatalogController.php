@@ -28,6 +28,23 @@ class CatalogController extends Controller
 
     public function index(
         Request $request,
+        ?string $topicSlug = null
+    ) {
+        return $this->showCatalog($request, $topicSlug);
+    }
+
+    public function indexForCity(Request $request, string $citySlug, string $topicSlug)
+    {
+        return $this->showCatalog($request, $topicSlug, $citySlug);
+    }
+
+    public function indexForNeighborhood(Request $request, string $citySlug, string $neighborhoodSlug, string $topicSlug)
+    {
+        return $this->showCatalog($request, $topicSlug, $citySlug, $neighborhoodSlug);
+    }
+
+    private function showCatalog(
+        Request $request,
         ?string $topicSlug = null,
         ?string $citySlug = null,
         ?string $neighborhoodSlug = null
@@ -311,10 +328,7 @@ class CatalogController extends Controller
 
     private function breadcrumbs(array $topic, ?string $city, ?string $neighborhood): array
     {
-        $crumbs = [
-            ['label' => 'קטלוג', 'path' => '/catalog'],
-            ['label' => $topic['labels']['he'], 'path' => CatalogTopics::catalogPath($topic)],
-        ];
+        $crumbs = [];
 
         if ($city) {
             $crumbs[] = [
@@ -330,19 +344,24 @@ class CatalogController extends Controller
             ];
         }
 
+        $crumbs[] = [
+            'label' => $topic['labels']['he'],
+            'path' => CatalogTopics::catalogPath($topic),
+        ];
+
         return $crumbs;
     }
 
     private function titleHe(array $topic, ?string $city, ?string $neighborhood): string
     {
-        return collect([$topic['labels']['he'], $neighborhood, $city])
+        return collect([$city, $neighborhood, $topic['labels']['he']])
             ->filter()
             ->implode(' - ');
     }
 
     private function descriptionHe(array $topic, ?string $city, ?string $neighborhood): string
     {
-        $location = collect([$neighborhood, $city])->filter()->implode(', ');
+        $location = collect([$city, $neighborhood])->filter()->implode(', ');
         $suffix = $location ? ' באזור '.$location : '';
 
         return 'עסקים, מוצרים, שירותים, אירועים, מודעות ואנשים מקומיים בתחום '.$topic['labels']['he'].$suffix.' ב-sveevee.';
@@ -350,14 +369,14 @@ class CatalogController extends Controller
 
     private function hubTitleHe(array $hub, ?string $city, ?string $neighborhood): string
     {
-        return collect([$hub['labels']['he'] ?? $hub['labels']['en'], $neighborhood, $city])
+        return collect([$city, $neighborhood, $hub['labels']['he'] ?? $hub['labels']['en']])
             ->filter()
             ->implode(' - ');
     }
 
     private function hubDescriptionHe(array $hub, ?string $city, ?string $neighborhood): string
     {
-        $location = collect([$neighborhood, $city])->filter()->implode(', ');
+        $location = collect([$city, $neighborhood])->filter()->implode(', ');
         $suffix = $location ? ' באזור '.$location : '';
 
         return ($hub['descriptions']['he'] ?? $hub['descriptions']['en']).$suffix;
@@ -365,9 +384,7 @@ class CatalogController extends Controller
 
     private function hubBreadcrumbs(array $hub, ?string $city, ?string $neighborhood): array
     {
-        $crumbs = [
-            ['label' => $hub['labels']['he'] ?? $hub['labels']['en'], 'path' => $this->hubPath($hub)],
-        ];
+        $crumbs = [];
 
         if ($city) {
             $crumbs[] = [
@@ -383,12 +400,17 @@ class CatalogController extends Controller
             ];
         }
 
+        $crumbs[] = [
+            'label' => $hub['labels']['he'] ?? $hub['labels']['en'],
+            'path' => $this->hubPath($hub),
+        ];
+
         return $crumbs;
     }
 
     private function hubPath(array $hub, ?string $city = null, ?string $neighborhood = null): string
     {
-        $parts = ['catalog', $hub['slug']];
+        $parts = ['catalog'];
 
         if (filled($city)) {
             $parts[] = CatalogTopics::locationSlug($city);
@@ -397,6 +419,8 @@ class CatalogController extends Controller
         if (filled($city) && filled($neighborhood)) {
             $parts[] = CatalogTopics::locationSlug($neighborhood);
         }
+
+        $parts[] = $hub['slug'];
 
         return '/'.implode('/', $parts);
     }

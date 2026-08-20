@@ -3,10 +3,13 @@
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { fetchCatalog } from '@/services/api/catalog'
+	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
-	import { CATALOG_SCOPES, catalogHubPath, catalogLabel, catalogPath, catalogResultPath } from '@/constants/catalogTopics'
-	import { locationLabel } from '@/utils/locationLabels'
+	import { CATALOG_SCOPES, catalogHubPath, catalogLabel, catalogPath, catalogResultPath, catalogTopicBySlug, locationSlug } from '@/constants/catalogTopics'
+	import { locationLabel, optionValue } from '@/utils/locationLabels'
+
+	const SCOPE_HUB_SLUGS = ['businesses', 'communities', 'products', 'services', 'events', 'ads', 'people']
 
 	const route = useRoute()
 	const router = useRouter()
@@ -28,6 +31,7 @@
 		filterOptions,
 		hasOptionValue
 	} = useLocationOptions(toRef(locationForm, 'city'))
+	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 
 	const scopeHubSlug = computed(() => String(route.meta.catalogScopeSlug || ''))
 	const isDirectory = computed(() => !route.params.topicSlug || Boolean(scopeHubSlug.value))
@@ -35,29 +39,46 @@
 	const groups = computed(() => directory.value.groups || [])
 	const popularTopics = computed(() => directory.value.popular_topics || [])
 	const topic = computed(() => catalog.value?.topic || null)
+	const topicLabel = computed(() => catalogLabel(topic.value?.labels, locale.value))
 	const activeCity = computed(() => directory.value?.city || catalog.value?.city || '')
 	const activeNeighborhood = computed(() => directory.value?.neighborhood || catalog.value?.neighborhood || '')
 	const hasActiveLocation = computed(() => Boolean(activeCity.value || activeNeighborhood.value))
 	const activeCityLabel = computed(() => locationLabel(activeCity.value, 'city', locale.value))
 	const activeNeighborhoodLabel = computed(() => locationLabel(activeNeighborhood.value, 'neighborhood', locale.value))
+	const cityLabel = computed(() => locationLabel(catalog.value?.city, 'city', locale.value))
+	const neighborhoodLabel = computed(() => locationLabel(catalog.value?.neighborhood, 'neighborhood', locale.value))
+	const catalogLocationLabel = computed(() => [cityLabel.value, neighborhoodLabel.value].filter(Boolean).join(', '))
+	const catalogLocationPhrase = computed(() => (catalogLocationLabel.value ? t('catalog.locationPhrase', { location: catalogLocationLabel.value }) : ''))
 	const totalCount = computed(() => Number(catalog.value?.total_count || 0))
 	const pageTitle = computed(() => {
 		if (isDirectory.value) {
 			return [
-				catalogLabel(hub.value?.labels, locale.value) || t('catalog.title'),
+				activeCityLabel.value,
 				activeNeighborhoodLabel.value,
-				activeCityLabel.value
+				catalogLabel(hub.value?.labels, locale.value) || t('catalog.title')
 			].filter(Boolean).join(' - ')
 		}
 
-		return catalog.value?.title_he || catalogLabel(topic.value?.labels, 'he') || t('catalog.title')
+		return [
+			cityLabel.value,
+			neighborhoodLabel.value,
+			topicLabel.value || t('catalog.title')
+		].filter(Boolean).join(' - ')
 	})
 	const pageDescription = computed(() => {
 		if (isDirectory.value) {
 			return catalogLabel(hub.value?.descriptions, locale.value) || t('catalog.intro')
 		}
 
-		return catalog.value?.description_he || t('catalog.intro')
+		if (locale.value === 'he' && catalog.value?.description_he) {
+			return catalog.value.description_he
+		}
+
+		if (!topicLabel.value) {
+			return t('catalog.intro')
+		}
+
+		return t('catalog.topicDescription', { topic: topicLabel.value, location: catalogLocationPhrase.value })
 	})
 	const segmentDefinitions = computed(() => [
 		{ key: 'pages', label: t('catalog.sections.pages'), icon: 'storefront', kind: 'page' },
@@ -75,22 +96,56 @@
 		}))
 		.filter((segment) => segment.count > 0 || segment.items.length > 0))
 	const relatedTopics = computed(() => catalog.value?.related_topics || [])
-	const cityLabel = computed(() => locationLabel(catalog.value?.city, 'city', locale.value))
-	const neighborhoodLabel = computed(() => locationLabel(catalog.value?.neighborhood, 'neighborhood', locale.value))
-	const localLinks = computed(() => {
+	const catalogBreadcrumbs = computed(() => {
 		if (!topic.value) {
 			return []
 		}
 
+		const city = catalog.value?.city || ''
+		const neighborhood = catalog.value?.neighborhood || ''
+
 		return [
-			catalog.value?.city ? {
+			city ? {
 				label: cityLabel.value,
-				to: catalogPath(topic.value, catalog.value.city)
+				path: catalogPath(topic.value, city)
 			} : null,
-			catalog.value?.city && catalog.value?.neighborhood ? {
+			city && neighborhood ? {
 				label: neighborhoodLabel.value,
-				to: catalogPath(topic.value, catalog.value.city, catalog.value.neighborhood)
-			} : null
+				path: catalogPath(topic.value, city, neighborhood)
+			} : null,
+			{
+				label: topicLabel.value,
+				path: catalogPath(topic.value)
+			}
+		].filter(Boolean)
+	})
+	const catalogTitleLinks = computed(() => {
+		if (!isDirectory.value) {
+			return catalogBreadcrumbs.value.map((crumb) => ({
+				label: crumb.label,
+				to: crumb.path
+			}))
+		}
+
+		const hubSlug = hub.value?.slug || scopeHubSlug.value
+
+		if (!hubSlug) {
+			return []
+		}
+
+		return [
+			activeCity.value ? {
+				label: activeCityLabel.value,
+				to: catalogHubPath(hubSlug, activeCity.value)
+			} : null,
+			activeCity.value && activeNeighborhood.value ? {
+				label: activeNeighborhoodLabel.value,
+				to: catalogHubPath(hubSlug, activeCity.value, activeNeighborhood.value)
+			} : null,
+			{
+				label: catalogLabel(hub.value?.labels, locale.value) || t('catalog.title'),
+				to: catalogHubPath(hubSlug)
+			}
 		].filter(Boolean)
 	})
 	const robots = computed(() => {
@@ -124,12 +179,12 @@
 				name: pageTitle.value,
 				description: pageDescription.value,
 				url: absoluteUrl(route.path),
-				about: topic.value ? catalogLabel(topic.value.labels, 'he') : undefined
+				about: topic.value ? topicLabel.value : undefined
 			},
 			{
 				'@context': 'https://schema.org',
 				'@type': 'BreadcrumbList',
-				itemListElement: (catalog.value?.breadcrumbs || []).map((crumb, index) => ({
+				itemListElement: catalogBreadcrumbs.value.map((crumb, index) => ({
 					'@type': 'ListItem',
 					position: index + 1,
 					name: crumb.label,
@@ -194,6 +249,79 @@
 		update(() => {
 			neighborhoodSelectOptions.value = filterOptions(neighborhoodOptions.value, value)
 		})
+	}
+
+	function cityValueForSlug(slug) {
+		const normalizedSlug = String(slug || '').toLocaleLowerCase()
+
+		if (!normalizedSlug) {
+			return ''
+		}
+
+		return cityOptions.value
+			.map((option) => optionValue(option))
+			.find((value) => locationSlug(value) === normalizedSlug) || ''
+	}
+
+	function legacyCatalogSubjectSlug(slug) {
+		const normalizedSlug = String(slug || '').toLocaleLowerCase()
+
+		if (!normalizedSlug) {
+			return ''
+		}
+
+		const topicMatch = catalogTopicBySlug(catalogGroups.value, normalizedSlug)
+
+		if (topicMatch) {
+			return topicMatch.slug
+		}
+
+		return SCOPE_HUB_SLUGS.includes(normalizedSlug) ? normalizedSlug : ''
+	}
+
+	function normalizeLegacyCatalogRoute() {
+		const firstSegment = String(route.params.citySlug || '')
+		const subjectSlug = legacyCatalogSubjectSlug(firstSegment)
+
+		if (!subjectSlug) {
+			return false
+		}
+
+		const oldCitySlug = String(route.params.neighborhoodSlug || route.params.topicSlug || '')
+		const oldCity = cityValueForSlug(oldCitySlug)
+
+		if (!oldCity) {
+			return false
+		}
+
+		const parts = ['catalog', locationSlug(oldCity)]
+
+		if (route.params.neighborhoodSlug && route.params.topicSlug) {
+			parts.push(String(route.params.topicSlug))
+		}
+
+		parts.push(subjectSlug)
+
+		const targetPath = `/${parts.join('/')}`
+
+		if (targetPath !== route.path) {
+			router.replace({ path: targetPath, query: route.query, hash: route.hash })
+			return true
+		}
+
+		return false
+	}
+
+	async function loadForRoute() {
+		await Promise.all([loadLocationOptions(), loadCatalogTopics()])
+		citySelectOptions.value = cityOptions.value
+		neighborhoodSelectOptions.value = neighborhoodOptions.value
+
+		if (normalizeLegacyCatalogRoute()) {
+			return
+		}
+
+		await load()
 	}
 
 	function topicLink(value) {
@@ -308,7 +436,7 @@
 		}
 
 		if (kind === 'user') {
-			text = [item.profile?.neighborhood, item.profile?.city].filter(Boolean).join(', ')
+			text = [item.profile?.city, item.profile?.neighborhood].filter(Boolean).join(', ')
 		}
 
 		return truncateText(cleanText(text), 150)
@@ -324,11 +452,11 @@
 
 	function itemOwner(kind, item) {
 		if (kind === 'page') {
-			return [item.address_details?.neighborhood, item.address_details?.city].filter(Boolean).join(', ')
+			return [item.address_details?.city, item.address_details?.neighborhood].filter(Boolean).join(', ')
 		}
 
 		if (kind === 'ad') {
-			return [item.neighborhood, item.city].filter(Boolean).join(', ')
+			return [item.city, item.neighborhood].filter(Boolean).join(', ')
 		}
 
 		return item.page?.name || ''
@@ -353,12 +481,8 @@
 		}
 	})
 
-	watch(() => route.fullPath, load)
-	onMounted(async() => {
-		await Promise.all([loadLocationOptions(), load()])
-		citySelectOptions.value = cityOptions.value
-		neighborhoodSelectOptions.value = neighborhoodOptions.value
-	})
+	watch(() => route.fullPath, loadForRoute)
+	onMounted(loadForRoute)
 </script>
 
 <template>
@@ -367,7 +491,17 @@
 			<section class="soz-section-card catalog-head">
 				<div>
 					<div class="catalog-kicker">{{ t('catalog.kicker') }}</div>
-					<h1 class="soz-page-title">{{ pageTitle }}</h1>
+					<h1 class="soz-page-title catalog-title">
+						<template v-if="catalogTitleLinks.length">
+							<template v-for="(link, index) in catalogTitleLinks" :key="link.to">
+								<span v-if="index > 0" class="catalog-title__separator">/</span>
+								<router-link :to="link.to">{{ link.label }}</router-link>
+							</template>
+						</template>
+						<template v-else>
+							{{ pageTitle }}
+						</template>
+					</h1>
 					<p>{{ pageDescription }}</p>
 				</div>
 				<q-btn
@@ -484,23 +618,6 @@
 			</template>
 
 			<template v-else-if="catalog">
-				<nav v-if="catalog.breadcrumbs?.length" class="catalog-breadcrumbs" aria-label="Breadcrumb">
-					<router-link v-for="crumb in catalog.breadcrumbs" :key="crumb.path" :to="crumb.path">
-						{{ crumb.label }}
-					</router-link>
-				</nav>
-
-				<section class="catalog-summary">
-					<q-chip dense text-color="white" :style="{ backgroundColor: topic?.color }">
-						{{ t('catalog.resultsCount', { count: totalCount }) }}
-					</q-chip>
-					<div v-if="localLinks.length" class="catalog-link-row">
-						<router-link v-for="link in localLinks" :key="link.to" :to="link.to">
-							{{ link.label }}
-						</router-link>
-					</div>
-				</section>
-
 				<section v-if="totalCount === 0" class="catalog-empty">
 					{{ t('catalog.empty') }}
 				</section>
@@ -581,6 +698,26 @@
 
 .catalog-head h1 {
   margin: 0;
+}
+
+.catalog-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.catalog-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.catalog-title a:hover {
+  color: var(--soz-primary-deep);
+}
+
+.catalog-title__separator {
+  color: rgba(17, 34, 45, 0.34);
 }
 
 .catalog-head p {
@@ -688,36 +825,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.catalog-breadcrumbs,
-.catalog-link-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin-top: 18px;
-}
-
-.catalog-breadcrumbs a,
-.catalog-link-row a {
-  color: var(--soz-primary-deep);
-  font-weight: 760;
-  text-decoration: none;
-}
-
-.catalog-breadcrumbs a + a::before {
-  padding-inline: 8px;
-  color: rgba(17, 34, 45, 0.38);
-  content: "/";
-}
-
-.catalog-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  margin-top: 18px;
 }
 
 .catalog-empty {

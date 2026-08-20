@@ -207,7 +207,7 @@ export function locationSlug(value) {
 
 export function catalogPath(topic, city = '', neighborhood = '') {
 	const slug = typeof topic === 'string' ? topic : topic?.slug
-	const parts = ['catalog', slug].filter(Boolean)
+	const parts = ['catalog']
 
 	if (city) {
 		parts.push(locationSlug(city))
@@ -215,13 +215,17 @@ export function catalogPath(topic, city = '', neighborhood = '') {
 
 	if (city && neighborhood) {
 		parts.push(locationSlug(neighborhood))
+	}
+
+	if (slug) {
+		parts.push(slug)
 	}
 
 	return `/${parts.join('/')}`
 }
 
 export function catalogHubPath(hubSlug, city = '', neighborhood = '') {
-	const parts = ['catalog', hubSlug].filter(Boolean)
+	const parts = ['catalog']
 
 	if (city) {
 		parts.push(locationSlug(city))
@@ -229,6 +233,10 @@ export function catalogHubPath(hubSlug, city = '', neighborhood = '') {
 
 	if (city && neighborhood) {
 		parts.push(locationSlug(neighborhood))
+	}
+
+	if (hubSlug) {
+		parts.push(hubSlug)
 	}
 
 	return `/${parts.join('/')}`

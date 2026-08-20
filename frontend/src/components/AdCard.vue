@@ -52,7 +52,7 @@
 	}[props.ad.type] || 'dark'))
 
 	const imageStyle = computed(() => (props.ad.image_url ? { backgroundImage: `url("${props.ad.image_url}")` } : null))
-	const locationLabel = computed(() => [props.ad.neighborhood, props.ad.city].filter(Boolean).join(', '))
+	const locationLabel = computed(() => [props.ad.city, props.ad.neighborhood].filter(Boolean).join(', '))
 	const ownerName = computed(() => props.ad.page?.name || props.ad.user?.display_name || '')
 	const badgeLabel = computed(() => [badgeTypeLabel.value, ownerName.value].filter(Boolean).join(': '))
 	const categoryTopic = computed(() => catalogTopicForAdCategory(catalogGroups.value, props.ad.category))

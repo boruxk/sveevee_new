@@ -1,13 +1,21 @@
 import apiClient from '@/services/api/client'
 
 export function fetchCatalog(params = {}) {
-	const parts = [
-		params.topicSlug,
-		params.citySlug,
-		params.neighborhoodSlug
-	].filter(Boolean)
+	const parts = ['catalog']
 
-	const path = ['/catalog', ...parts].join('/')
+	if (params.citySlug) {
+		parts.push(params.citySlug)
+	}
+
+	if (params.citySlug && params.neighborhoodSlug) {
+		parts.push(params.neighborhoodSlug)
+	}
+
+	if (params.topicSlug) {
+		parts.push(params.topicSlug)
+	}
+
+	const path = `/${parts.join('/')}`
 
 	return apiClient.get(path)
 }

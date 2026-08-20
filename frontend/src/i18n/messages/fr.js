@@ -516,6 +516,8 @@ export default {
 		title: 'Catalogue',
 		kicker: 'Catalogue local',
 		intro: 'Parcourez pages entreprise, produits, services, evenements, annonces et personnes par categorie, ville et quartier.',
+		topicDescription: 'Parcourez les pages, produits, services, evenements, annonces et personnes pour {topic}{location} sur sveevee.',
+		locationPhrase: ' a {location}',
 		popularTitle: 'Categories populaires',
 		allTitle: 'Toutes les categories',
 		category: 'Categorie',
