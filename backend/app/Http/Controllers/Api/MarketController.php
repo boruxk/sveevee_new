@@ -75,18 +75,19 @@ class MarketController extends Controller
 
     private function productsQuery(string $city, ?array $topic = null): Builder
     {
-        $topicKeys = $topic
-            ? $this->marketTopicKeys($topic)
-            : CatalogTopics::keysForScope(CatalogTopics::SCOPE_PRODUCTS);
-
-        return PageProduct::query()
+        $query = PageProduct::query()
             ->with(['page.user.profile'])
-            ->whereIn('category_key', $topicKeys)
             ->whereHas('page', function (Builder $page) use ($city): void {
                 $page->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
                 $this->inPageCity($page, $city);
             })
             ->latest();
+
+        if ($topic) {
+            $query->whereIn('category_key', $this->marketTopicKeys($topic));
+        }
+
+        return $query;
     }
 
     private function itemWithPage(PageProduct $product): array

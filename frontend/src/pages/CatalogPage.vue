@@ -6,7 +6,7 @@
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
-	import { CATALOG_SCOPES, catalogHubPath, catalogLabel, catalogPath, catalogResultPath, catalogTopicBySlug, locationSlug } from '@/constants/catalogTopics'
+	import { CATALOG_SCOPES, catalogHubPath, catalogLabel, catalogPath, catalogResultPath, catalogTopicBySlug, locationSlug, publicAdPath, publicPagePath, publicUserPath } from '@/constants/catalogTopics'
 	import { locationLabel, optionValue } from '@/utils/locationLabels'
 
 	const SCOPE_HUB_SLUGS = ['businesses', 'communities', 'products', 'services', 'events', 'ads', 'people']
@@ -372,14 +372,14 @@
 		}
 
 		if (target.name === 'user-page') {
-			return `/users/${target.params.id}`
+			return publicUserPath(item)
 		}
 
 		if (target.name === 'ad-detail') {
-			return `/ads/${target.params.id}`
+			return publicAdPath(item)
 		}
 
-		return `/pages/${target.params.id}`
+		return publicPagePath(item.page || item)
 	}
 
 	function resultTo(kind, item) {

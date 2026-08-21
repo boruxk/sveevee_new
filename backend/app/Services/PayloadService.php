@@ -30,6 +30,8 @@ class PayloadService
 
         $payload = [
             'id' => $user->id,
+            'slug' => $user->public_slug,
+            'public_path' => '/users/'.$user->public_slug,
             'name' => $user->name,
             'given_name' => $user->given_name,
             'family_name' => $user->family_name,
@@ -211,6 +213,8 @@ class PayloadService
 
         return [
             'id' => $ad->id,
+            'slug' => $ad->public_slug,
+            'public_path' => '/ads/'.$ad->public_slug,
             'user_id' => $ad->user_id,
             'page_id' => $ad->page_id,
             'type' => $ad->type,

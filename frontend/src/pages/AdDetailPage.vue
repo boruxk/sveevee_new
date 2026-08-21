@@ -47,12 +47,13 @@
 
 		return truncateText([cleanText(ad.value.text), locationLabel.value, ownerName.value].filter(Boolean).join(' '))
 	})
+	const canonicalPath = computed(() => ad.value?.public_path || route.path)
 
 	useSeo(computed(() => ({
 		title: ad.value?.title || t('seo.adFallbackTitle'),
 		description: seoDescription.value,
 		image: ad.value?.image_url,
-		canonical: route.path,
+		canonical: canonicalPath.value,
 		type: 'article',
 		robots: ad.value ? 'index,follow' : 'noindex,follow',
 		jsonLd: ad.value ? {
@@ -60,7 +61,7 @@
 			'@type': 'Offer',
 			name: ad.value.title,
 			description: seoDescription.value,
-			url: absoluteUrl(route.path),
+			url: absoluteUrl(canonicalPath.value),
 			image: ad.value.image_url || undefined,
 			availability: 'https://schema.org/InStock',
 			areaServed: locationLabel.value || undefined,

@@ -5,9 +5,10 @@
 	import { setLocale } from '@/i18n'
 	import { fetchMarket } from '@/services/api/market'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
-	import { catalogLabel, catalogTopicByKey, marketPath, productPath, publicPagePath } from '@/constants/catalogTopics'
+	import { catalogLabel, catalogTopicByKey, marketPath, normalizeCatalogLocale, productPath, publicPagePath } from '@/constants/catalogTopics'
 	import { locationLabel } from '@/utils/locationLabels'
 
+	const SEO_LOCALES = ['he', 'en', 'ru', 'fr']
 	const route = useRoute()
 	const { locale, t } = useI18n()
 	const loading = ref(false)
@@ -21,6 +22,22 @@
 	const products = computed(() => market.value?.products?.items || [])
 	const totalCount = computed(() => Number(market.value?.total_count || 0))
 	const marketTopics = computed(() => market.value?.related_topics || market.value?.market_topics || [])
+	const canonicalPath = computed(() => (
+		city.value ? localizedMarketPath(city.value, topic.value, routeLocale.value || locale.value) : route.path
+	))
+	const alternates = computed(() => {
+		if (!city.value) {
+			return null
+		}
+
+		const links = Object.fromEntries(SEO_LOCALES.map((item) => [
+			item,
+			localizedMarketPath(city.value, topic.value, item)
+		]))
+		links['x-default'] = links.he
+
+		return links
+	})
 	const titleLinks = computed(() => [
 		city.value ? {
 			label: cityLabel.value,
@@ -46,7 +63,7 @@
 			'@type': 'CollectionPage',
 			name: pageTitle.value,
 			description: pageDescription.value,
-			url: absoluteUrl(route.path)
+			url: absoluteUrl(canonicalPath.value)
 		},
 		{
 			'@context': 'https://schema.org',
@@ -74,7 +91,8 @@
 	useSeo(computed(() => ({
 		title: seoTitle.value,
 		description: pageDescription.value,
-		canonical: route.path,
+		canonical: canonicalPath.value,
+		alternates: alternates.value,
 		robots: market.value?.indexable ? 'index,follow' : 'noindex,follow',
 		type: 'website',
 		jsonLd: jsonLd.value
@@ -98,10 +116,10 @@
 		}
 	}
 
-	function localizedMarketPath(cityValue = '', topicValue = '') {
+	function localizedMarketPath(cityValue = '', topicValue = '', targetLocale = routeLocale.value || locale.value) {
 		const path = marketPath(cityValue, topicValue)
 
-		return routeLocale.value ? `/${routeLocale.value}${path}` : path
+		return `/${normalizeCatalogLocale(targetLocale)}${path}`
 	}
 
 	function localizedProductPath(product) {

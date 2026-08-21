@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicSlug;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -127,5 +128,21 @@ class Ad extends Model
     protected function imageUrl(): Attribute
     {
         return Attribute::get(fn () => $this->image_path ? url(Storage::url($this->image_path)) : null);
+    }
+
+    protected function publicSlug(): Attribute
+    {
+        return Attribute::get(fn (): string => PublicSlug::make([
+            $this->title,
+            $this->city,
+            $this->neighborhood,
+        ], 'ad', $this->id));
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $id = PublicSlug::idFromSlug((string) $value);
+
+        return $id ? $this->whereKey($id)->first() : null;
     }
 }

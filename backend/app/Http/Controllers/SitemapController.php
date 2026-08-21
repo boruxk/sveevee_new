@@ -32,7 +32,7 @@ class SitemapController extends Controller
         ));
 
         User::query()
-            ->with('profile:id,user_id,updated_at')
+            ->with('profile:id,user_id,city,updated_at')
             ->whereNull('banned_at')
             ->where('role', 'user')
             ->where(function ($query): void {
@@ -44,7 +44,7 @@ class SitemapController extends Controller
             ->orderBy('id')
             ->get(['id', 'name', 'given_name', 'family_name', 'updated_at'])
             ->each(fn (User $user) => $entries->push(
-                $this->entry("/users/{$user->id}", $this->latestUserTimestamp($user), 'weekly', '0.6')
+                $this->entry("/users/{$user->public_slug}", $this->latestUserTimestamp($user), 'weekly', '0.6')
             ));
 
         Page::query()
@@ -81,9 +81,9 @@ class SitemapController extends Controller
             ->active()
             ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
             ->orderBy('id')
-            ->get(['id', 'updated_at'])
+            ->get(['id', 'title', 'city', 'neighborhood', 'updated_at'])
             ->each(fn (Ad $ad) => $entries->push(
-                $this->entry("/ads/{$ad->id}", $ad->updated_at, 'daily', '0.7')
+                $this->entry("/ads/{$ad->public_slug}", $ad->updated_at, 'daily', '0.7')
             ));
 
         $this->catalogEntries()->each(fn (array $entry) => $entries->push($entry));
@@ -219,16 +219,18 @@ class SitemapController extends Controller
 
             $topic = CatalogTopics::findByKey($topicKey);
 
-            if (! $topic || ! in_array(CatalogTopics::SCOPE_PRODUCTS, $topic['scopes'] ?? [], true)) {
-                return;
+            $candidates = [];
+            $marketType = $topic && in_array(CatalogTopics::SCOPE_PRODUCTS, $topic['scopes'] ?? [], true)
+                ? CatalogTopics::marketProductTypeForTopicKey($topic['key'])
+                : null;
+
+            foreach (self::LOCALES as $locale) {
+                $candidates[] = $this->localizedMarketPath(CatalogTopics::marketPath($city), $locale);
+
+                if ($topic && in_array(CatalogTopics::SCOPE_PRODUCTS, $topic['scopes'] ?? [], true)) {
+                    $candidates[] = $this->localizedMarketPath(CatalogTopics::marketPath($city, $marketType ?: $topic), $locale);
+                }
             }
-
-            $candidates = [
-                $this->localizedMarketPath(CatalogTopics::marketPath($city)),
-            ];
-
-            $marketType = CatalogTopics::marketProductTypeForTopicKey($topic['key']);
-            $candidates[] = $this->localizedMarketPath(CatalogTopics::marketPath($city, $marketType ?: $topic));
 
             foreach ($candidates as $path) {
                 $current = $paths[$path] ?? null;
@@ -242,7 +244,6 @@ class SitemapController extends Controller
 
         PageProduct::query()
             ->with('page:id,user_id,setup,address')
-            ->whereNotNull('category_key')
             ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
             ->orderBy('id')
             ->get(['id', 'page_id', 'category_key', 'updated_at'])

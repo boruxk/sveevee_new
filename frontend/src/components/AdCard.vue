@@ -5,7 +5,7 @@
 	import { useQuasar } from 'quasar'
 	import { localizedAdCategoryMeta } from '@/constants/adCategories'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
-	import { catalogHubPath, catalogLabel, catalogPath, catalogTopicForAdCategory, pageRoute } from '@/constants/catalogTopics'
+	import { adRoute, catalogHubPath, catalogLabel, catalogPath, catalogTopicForAdCategory, pageRoute, userRoute } from '@/constants/catalogTopics'
 
 	const props = defineProps({
 		ad: {
@@ -83,7 +83,7 @@
 		}
 
 		if (props.ad.user?.id) {
-			return { name: 'user-page', params: { id: props.ad.user.id } }
+			return userRoute(props.ad.user)
 		}
 
 		return null
@@ -118,7 +118,7 @@
 			return null
 		}
 
-		return { name: 'ad-detail', params: { id: props.ad.id } }
+		return adRoute(props.ad)
 	})
 
 	function measureOverflow() {

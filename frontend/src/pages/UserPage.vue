@@ -52,18 +52,19 @@
 
 		return truncateText([t('seo.userDescription', { name: user.value.display_name }), profileLocation.value].filter(Boolean).join(' '))
 	})
+	const canonicalPath = computed(() => user.value?.public_path || route.path)
 	useSeo(computed(() => ({
 		title: user.value?.display_name || t('seo.userFallbackTitle'),
 		description: seoDescription.value,
 		image: user.value?.profile?.photo_url,
-		canonical: route.path,
+		canonical: canonicalPath.value,
 		type: 'profile',
 		robots: user.value ? 'index,follow' : 'noindex,follow',
 		jsonLd: user.value ? {
 			'@context': 'https://schema.org',
 			'@type': 'Person',
 			name: user.value.display_name,
-			url: absoluteUrl(route.path),
+			url: absoluteUrl(canonicalPath.value),
 			image: user.value.profile?.photo_url || undefined,
 			address: user.value.profile?.city ? {
 				'@type': 'PostalAddress',

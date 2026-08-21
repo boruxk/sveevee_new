@@ -451,10 +451,11 @@ class SveeveeApiTest extends TestCase
         $visibleAd = Ad::query()->create([
             'user_id' => $user->id,
             'type' => Ad::TYPE_PRIVATE,
-            'title' => 'Visible ad',
+            'title' => 'Visible sofa',
             'text' => 'Visible text',
             'status' => 'active',
             'expires_at' => now()->addDay(),
+            'city' => 'Jerusalem',
         ]);
         $expiredAd = Ad::query()->create([
             'user_id' => $user->id,
@@ -465,12 +466,31 @@ class SveeveeApiTest extends TestCase
             'expires_at' => now()->subDay(),
         ]);
 
-        $this->getJson("/api/v1/ads/{$visibleAd->id}")
+        $this->getJson("/api/v1/ads/{$visibleAd->public_slug}")
             ->assertOk()
-            ->assertJsonPath('data.id', $visibleAd->id);
+            ->assertJsonPath('data.id', $visibleAd->id)
+            ->assertJsonPath('data.slug', $visibleAd->public_slug)
+            ->assertJsonPath('data.public_path', '/ads/'.$visibleAd->public_slug);
 
         $this->getJson("/api/v1/ads/{$expiredAd->id}")
             ->assertNotFound();
+    }
+
+    public function test_public_user_show_accepts_readable_slug(): void
+    {
+        $user = User::factory()->create([
+            'given_name' => 'Avi',
+            'family_name' => 'Cohen',
+            'name' => 'Avi Cohen',
+        ]);
+        $user->profile()->update(['city' => 'Jerusalem']);
+        $user->refresh()->load('profile');
+
+        $this->getJson('/api/v1/users/'.$user->public_slug)
+            ->assertOk()
+            ->assertJsonPath('data.id', $user->id)
+            ->assertJsonPath('data.slug', $user->public_slug)
+            ->assertJsonPath('data.public_path', '/users/'.$user->public_slug);
     }
 
     public function test_public_product_show_returns_product_with_public_business_page(): void
@@ -551,22 +571,25 @@ class SveeveeApiTest extends TestCase
         $this->get('/sitemap.xml')
             ->assertOk()
             ->assertHeader('content-type', 'application/xml; charset=UTF-8')
-            ->assertSee('https://sveevee.co.il/users/'.$user->id, false)
-            ->assertDontSee('https://sveevee.co.il/users/'.$bannedUser->id, false)
-            ->assertDontSee('https://sveevee.co.il/users/'.$adminUser->id, false)
+            ->assertSee('https://sveevee.co.il/users/'.$user->public_slug, false)
+            ->assertDontSee('https://sveevee.co.il/users/'.$user->id, false)
+            ->assertDontSee('https://sveevee.co.il/users/'.$bannedUser->public_slug, false)
+            ->assertDontSee('https://sveevee.co.il/users/'.$adminUser->public_slug, false)
             ->assertSee('https://sveevee.co.il/he/business/'.$page->public_slug, false)
             ->assertSee('https://sveevee.co.il/en/business/'.$page->public_slug, false)
             ->assertDontSee('https://sveevee.co.il/pages/'.$page->public_slug, false)
             ->assertSee('https://sveevee.co.il/he/product/'.$product->public_slug, false)
             ->assertSee('https://sveevee.co.il/en/product/'.$product->public_slug, false)
-            ->assertSee('https://sveevee.co.il/ads/'.$ad->id, false)
-            ->assertDontSee('https://sveevee.co.il/ads/'.$expiredAd->id, false);
+            ->assertSee('https://sveevee.co.il/ads/'.$ad->public_slug, false)
+            ->assertDontSee('https://sveevee.co.il/ads/'.$ad->id, false)
+            ->assertDontSee('https://sveevee.co.il/ads/'.$expiredAd->public_slug, false);
 
+        $adSlug = $ad->public_slug;
         $ad->delete();
 
         $this->get('/sitemap.xml')
             ->assertOk()
-            ->assertDontSee('https://sveevee.co.il/ads/'.$ad->id, false);
+            ->assertDontSee('https://sveevee.co.il/ads/'.$adSlug, false);
     }
 
     public function test_seo_prerender_generates_static_business_and_product_html(): void
@@ -805,7 +828,7 @@ HTML);
 
         PageProduct::query()->create([
             'page_id' => $jerusalemPage->id,
-            'name' => 'Second hand sofa',
+            'name' => 'Local sofa',
             'description' => 'Comfortable local sofa.',
             'category_key' => 'products.home_garden.furniture',
             'image_path' => 'products/sofa.webp',
@@ -815,12 +838,22 @@ HTML);
 
         PageProduct::query()->create([
             'page_id' => $jerusalemPage->id,
-            'name' => 'Used phone',
+            'name' => 'Mobile phone',
             'description' => 'Phone in good condition.',
             'category_key' => 'products.electronics_computers.phones_tablets',
             'image_path' => 'products/phone.webp',
             'price' => 900,
             'link' => 'https://seller.example/phone',
+        ]);
+
+        PageProduct::query()->create([
+            'page_id' => $jerusalemPage->id,
+            'name' => 'Local product',
+            'description' => 'Product without a selected type.',
+            'category_key' => null,
+            'image_path' => 'products/local.webp',
+            'price' => 80,
+            'link' => 'https://seller.example/local',
         ]);
 
         $otherOwner = User::factory()->create();
@@ -847,23 +880,25 @@ HTML);
             'link' => 'https://seller.example/table',
         ]);
 
-        $this->getJson('/api/v1/market/jerusalem')
+        $response = $this->getJson('/api/v1/market/jerusalem')
             ->assertOk()
             ->assertJsonPath('data.city', 'Jerusalem')
-            ->assertJsonPath('data.total_count', 2)
+            ->assertJsonPath('data.total_count', 3)
             ->assertJsonPath('data.products.items.0.page.name', 'Jerusalem Store');
+
+        $this->assertContains('Local product', collect($response->json('data.products.items'))->pluck('name')->all());
 
         $this->getJson('/api/v1/market/jerusalem/furniture')
             ->assertOk()
             ->assertJsonPath('data.topic.slug', 'furniture')
             ->assertJsonPath('data.total_count', 1)
-            ->assertJsonPath('data.products.items.0.name', 'Second hand sofa');
+            ->assertJsonPath('data.products.items.0.name', 'Local sofa');
 
         $this->getJson('/api/v1/market/jerusalem/electronics')
             ->assertOk()
             ->assertJsonPath('data.topic.slug', 'electronics')
             ->assertJsonPath('data.total_count', 1)
-            ->assertJsonPath('data.products.items.0.name', 'Used phone');
+            ->assertJsonPath('data.products.items.0.name', 'Mobile phone');
 
         $this->getJson('/api/v1/market/jerusalem/electricians')
             ->assertNotFound();
@@ -983,7 +1018,7 @@ HTML);
 
         PageProduct::query()->create([
             'page_id' => $page->id,
-            'name' => 'Second hand sofa',
+            'name' => 'Local sofa',
             'description' => 'Comfortable local sofa.',
             'category_key' => 'products.home_garden.furniture',
             'image_path' => 'products/sofa.webp',
@@ -995,7 +1030,44 @@ HTML);
             ->assertOk()
             ->assertSee('https://sveevee.co.il/he/market/jerusalem', false)
             ->assertSee('https://sveevee.co.il/he/market/jerusalem/furniture', false)
+            ->assertSee('https://sveevee.co.il/en/market/jerusalem', false)
+            ->assertSee('https://sveevee.co.il/en/market/jerusalem/furniture', false)
             ->assertDontSee('https://sveevee.co.il/he/market/haifa/furniture', false);
+    }
+
+    public function test_sitemap_includes_city_market_for_uncategorized_products(): void
+    {
+        config()->set('app.url', 'https://sveevee.co.il');
+
+        $owner = User::factory()->create();
+        $page = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Jerusalem Store',
+            'category_key' => 'shopping_retail.general',
+            'setup' => [
+                'address' => [
+                    'city' => 'Jerusalem',
+                    'neighborhood' => 'Ramot',
+                ],
+            ],
+        ]);
+
+        PageProduct::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Local product',
+            'description' => 'Product without a selected type.',
+            'category_key' => null,
+            'image_path' => 'products/local.webp',
+            'price' => 80,
+            'link' => 'https://seller.example/local',
+        ]);
+
+        $this->get('/sitemap.xml')
+            ->assertOk()
+            ->assertSee('https://sveevee.co.il/he/market/jerusalem', false)
+            ->assertSee('https://sveevee.co.il/en/market/jerusalem', false)
+            ->assertDontSee('https://sveevee.co.il/he/market/jerusalem/furniture', false);
     }
 
     public function test_user_can_create_page_with_presence_details(): void

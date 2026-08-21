@@ -6,6 +6,7 @@
 	import { useChatsStore } from '@/stores/chats'
 	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 	import { getLegalDocument } from '@/constants/legalDocuments'
+	import { marketPath, normalizeCatalogLocale } from '@/constants/catalogTopics'
 
 	const props = defineProps({
 		tone: {
@@ -43,30 +44,34 @@
 		{ label: t('nav.community'), name: 'community', icon: 'diversity_3', visible: authStore.isAuthenticated && hasCommunityPage.value }
 	])
 	const visibleNavLinks = computed(() => navLinks.value.filter((link) => link.visible))
-	const footerColumns = computed(() => [
-		{
-			title: t('footer.explore'),
-			links: [
-				{ label: t('footer.businesses'), name: 'catalog-businesses' },
-				{ label: t('footer.communities'), name: 'catalog-communities' },
-				{ label: t('footer.people'), name: 'catalog-people' }
-			]
-		},
-		{
-			title: t('footer.marketplace'),
-			links: [
-				{ label: t('footer.products'), name: 'catalog-products' },
-				{ label: t('footer.services'), name: 'catalog-services' },
-				{ label: t('footer.ads'), name: 'catalog-ads' }
-			]
-		},
-		{
-			title: t('footer.community'),
-			links: [
-				{ label: t('footer.events'), name: 'catalog-events' }
-			]
-		}
-	])
+	const footerColumns = computed(() => {
+		const columns = [
+			{
+				title: t('footer.explore'),
+				links: [
+					{ label: t('footer.businesses'), name: 'catalog-businesses' },
+					{ label: t('footer.communities'), name: 'catalog-communities' },
+					{ label: t('footer.people'), name: 'catalog-people' }
+				]
+			},
+			{
+				title: t('footer.marketplace'),
+				links: [
+					{ label: t('footer.products'), to: `/${normalizeCatalogLocale(locale.value)}${marketPath('Jerusalem')}` },
+					{ label: t('footer.services'), name: 'catalog-services' },
+					{ label: t('footer.ads'), name: 'catalog-ads' }
+				]
+			},
+			{
+				title: t('footer.community'),
+				links: [
+					{ label: t('footer.events'), name: 'catalog-events' }
+				]
+			}
+		]
+
+		return columns
+	})
 	const legalLinks = computed(() => [
 		{ label: getLegalDocument('privacy', locale.value).title, name: 'privacy' },
 		{ label: getLegalDocument('terms', locale.value).title, name: 'terms' },
@@ -75,6 +80,10 @@
 
 	function isActive(name) {
 		return route.name === name
+	}
+
+	function footerLinkTo(link) {
+		return link.to || { name: link.name }
 	}
 
 	async function signOut() {
@@ -312,7 +321,7 @@
 				<nav class="shell-footer__nav" :aria-label="t('footer.label')">
 					<div v-for="column in footerColumns" :key="column.title" class="shell-footer__column">
 						<h2>{{ column.title }}</h2>
-						<router-link v-for="link in column.links" :key="link.name" :to="{ name: link.name }">
+						<router-link v-for="link in column.links" :key="link.name || link.to" :to="footerLinkTo(link)">
 							{{ link.label }}
 						</router-link>
 					</div>
@@ -521,7 +530,7 @@
   display: grid;
   grid-column: 2;
   grid-row: 1 / span 3;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 22px;
   justify-content: flex-end;
 }

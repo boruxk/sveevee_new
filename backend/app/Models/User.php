@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\PublicSlug;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -111,6 +113,21 @@ class User extends Authenticatable
     public function getRoleNamesAttribute(): array
     {
         return [$this->role ?: 'user'];
+    }
+
+    protected function publicSlug(): Attribute
+    {
+        return Attribute::get(fn (): string => PublicSlug::make([
+            $this->display_name,
+            $this->profile?->city,
+        ], 'user', $this->id));
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $id = PublicSlug::idFromSlug((string) $value);
+
+        return $id ? $this->whereKey($id)->first() : null;
     }
 
     protected static function booted(): void

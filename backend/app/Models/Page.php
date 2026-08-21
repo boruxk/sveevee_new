@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use App\Support\PublicSlug;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class Page extends Model
 {
@@ -80,25 +80,15 @@ class Page extends Model
 
     protected function publicSlug(): Attribute
     {
-        return Attribute::get(function (): string {
-            $nameSlug = Str::slug((string) $this->name);
-
-            return ($nameSlug !== '' ? $nameSlug : 'page').'-'.$this->id;
-        });
+        return Attribute::get(fn (): string => PublicSlug::make([$this->name], 'page', $this->id));
     }
 
     public function resolveRouteBinding($value, $field = null)
     {
         $candidate = (string) $value;
 
-        if (ctype_digit($candidate)) {
-            return $this->whereKey($candidate)->first();
-        }
+        $id = PublicSlug::idFromSlug($candidate);
 
-        if (preg_match('/-(\d+)$/', $candidate, $matches)) {
-            return $this->whereKey($matches[1])->first();
-        }
-
-        return null;
+        return $id ? $this->whereKey($id)->first() : null;
     }
 }

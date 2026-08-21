@@ -301,13 +301,41 @@ export function productRoute(product) {
 	return { name: 'product-detail', params: { id: productRouteParam(product) } }
 }
 
+export function userRouteParam(user) {
+	return user?.slug || user?.public_slug || user?.id
+}
+
+export function publicUserPath(user) {
+	const id = userRouteParam(user)
+
+	return id ? `/users/${id}` : '/'
+}
+
+export function userRoute(user) {
+	return { name: 'user-page', params: { id: userRouteParam(user) } }
+}
+
+export function adRouteParam(ad) {
+	return ad?.slug || ad?.public_slug || ad?.id
+}
+
+export function publicAdPath(ad) {
+	const id = adRouteParam(ad)
+
+	return id ? `/ads/${id}` : '/'
+}
+
+export function adRoute(ad) {
+	return { name: 'ad-detail', params: { id: adRouteParam(ad) } }
+}
+
 export function catalogResultPath(kind, item) {
 	if (kind === 'user') {
-		return { name: 'user-page', params: { id: item.id } }
+		return userRoute(item)
 	}
 
 	if (kind === 'ad') {
-		return { name: 'ad-detail', params: { id: item.id } }
+		return adRoute(item)
 	}
 
 	return pageRoute(item.page || item)

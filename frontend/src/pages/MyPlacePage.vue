@@ -10,6 +10,7 @@
 	import AdComposer from '@/components/AdComposer.vue'
 	import ChatBlock from '@/components/ChatBlock.vue'
 	import PageCreateDialog from '@/components/pages/PageCreateDialog.vue'
+	import { adRoute } from '@/constants/catalogTopics'
 
 	const route = useRoute()
 	const router = useRouter()
@@ -38,6 +39,10 @@
 		{ name: 'ads', label: t('mePage.ads'), icon: 'campaign' },
 		{ name: 'messages', label: t('mePage.messages'), icon: 'forum' }
 	])
+
+	function latestAdRoute(ad) {
+		return adRoute(ad)
+	}
 
 	async function loadAds() {
 		loading.value = true
@@ -281,7 +286,7 @@
 								<router-link
 									v-for="ad in latestAds"
 									:key="ad.id"
-									:to="{ name: 'ad-detail', params: { id: ad.id } }"
+									:to="latestAdRoute(ad)"
 									class="overview-list__item overview-list__item--link"
 								>
 									<span v-if="ad.image_url" class="overview-ad-thumb" :style="adImageStyle(ad)" />

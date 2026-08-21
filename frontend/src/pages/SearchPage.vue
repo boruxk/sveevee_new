@@ -5,7 +5,7 @@
 	import { searchEverything } from '@/services/api/search'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
-	import { catalogPath, catalogTopicByKey, catalogTopicMatchesScope, CATALOG_SCOPES, pageRoute } from '@/constants/catalogTopics'
+	import { catalogPath, catalogTopicByKey, catalogTopicMatchesScope, CATALOG_SCOPES, pageRoute, userRoute } from '@/constants/catalogTopics'
 	import AdCard from '@/components/AdCard.vue'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
 
@@ -256,7 +256,7 @@
 				<div v-if="hasSearched && !loading && combinedResults.length === 0" class="empty-state">{{ t('search.empty') }}</div>
 				<div v-else class="result-list">
 					<template v-for="item in combinedResults" :key="item.id">
-						<router-link v-if="item.kind === 'user'" :to="{ name: 'user-page', params: { id: item.value.id } }" class="result-card">
+						<router-link v-if="item.kind === 'user'" :to="userRoute(item.value)" class="result-card">
 							<q-avatar size="54px" color="primary" text-color="white">
 								<img v-if="item.value.profile?.photo_url" :src="item.value.profile.photo_url" alt="" />
 								<span v-else>{{ item.value.display_name.slice(0, 1) }}</span>

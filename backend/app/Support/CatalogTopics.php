@@ -119,10 +119,10 @@ class CatalogTopics
             'key' => 'market.furniture',
             'slug' => 'furniture',
             'labels' => [
-                'he' => 'ריהוט יד שנייה',
-                'en' => 'Second hand furniture',
-                'ru' => 'Second hand furniture',
-                'fr' => 'Meubles d\'occasion',
+                'he' => 'ריהוט',
+                'en' => 'Furniture',
+                'ru' => 'Мебель',
+                'fr' => 'Meubles',
             ],
             'color' => '#0891b2',
             'topic_keys' => [
@@ -133,10 +133,10 @@ class CatalogTopics
             'key' => 'market.bicycles',
             'slug' => 'bicycles',
             'labels' => [
-                'he' => 'אופניים יד שנייה',
-                'en' => 'Second hand bicycles',
-                'ru' => 'Second hand bicycles',
-                'fr' => 'Velos d\'occasion',
+                'he' => 'אופניים',
+                'en' => 'Bicycles',
+                'ru' => 'Велосипеды',
+                'fr' => 'Velos',
             ],
             'color' => '#0284c7',
             'topic_keys' => [
@@ -148,10 +148,10 @@ class CatalogTopics
             'key' => 'market.electronics',
             'slug' => 'electronics',
             'labels' => [
-                'he' => 'מוצרי חשמל יד שנייה',
-                'en' => 'Second hand electronics',
-                'ru' => 'Second hand electronics',
-                'fr' => 'Electronique d\'occasion',
+                'he' => 'מוצרי חשמל',
+                'en' => 'Electronics',
+                'ru' => 'Электроника',
+                'fr' => 'Electronique',
             ],
             'color' => '#475569',
             'topic_keys' => [
@@ -176,10 +176,10 @@ class CatalogTopics
             'key' => 'market.kids',
             'slug' => 'kids',
             'labels' => [
-                'he' => 'מוצרים לילדים יד שנייה',
-                'en' => 'Second hand kids products',
-                'ru' => 'Second hand kids products',
-                'fr' => 'Produits enfant d\'occasion',
+                'he' => 'מוצרים לילדים',
+                'en' => 'Kids products',
+                'ru' => 'Детские товары',
+                'fr' => 'Produits enfant',
             ],
             'color' => '#f59e0b',
             'topic_keys' => [
