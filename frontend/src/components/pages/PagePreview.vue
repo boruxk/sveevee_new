@@ -19,6 +19,14 @@
 		hasAfterInfo: {
 			type: Boolean,
 			default: false
+		},
+		titleTag: {
+			type: String,
+			default: 'h2'
+		},
+		descriptionFallback: {
+			type: String,
+			default: ''
 		}
 	})
 
@@ -28,7 +36,8 @@
 	const pageType = computed(() => props.page?.type || 'business')
 	const pageTypeLabel = computed(() => t(`pages.kinds.${pageType.value}`))
 	const previewTitle = computed(() => props.page?.name?.trim() || pageTypeLabel.value)
-	const previewDescription = computed(() => props.page?.public_description?.trim() || t(`pages.previewFallbacks.${pageType.value}`))
+	const safeTitleTag = computed(() => ['h1', 'h2', 'h3'].includes(props.titleTag) ? props.titleTag : 'h2')
+	const previewDescription = computed(() => props.page?.public_description?.trim() || props.descriptionFallback || t(`pages.previewFallbacks.${pageType.value}`))
 	const previewContact = computed(() => {
 		const contact = props.page?.contact || {}
 
@@ -94,7 +103,7 @@
 				</q-avatar>
 
 				<div class="page-preview__copy">
-					<h2 class="page-preview__title">{{ previewTitle }}</h2>
+					<component :is="safeTitleTag" class="page-preview__title">{{ previewTitle }}</component>
 					<p class="page-preview__description">{{ previewDescription }}</p>
 				</div>
 			</div>

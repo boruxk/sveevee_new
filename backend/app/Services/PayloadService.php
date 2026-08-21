@@ -123,8 +123,12 @@ class PayloadService
 
     public function product(PageProduct $product): array
     {
+        $product->loadMissing('page');
+
         return [
             'id' => $product->id,
+            'slug' => $product->public_slug,
+            'public_path' => '/product/'.$product->public_slug,
             'page_id' => $product->page_id,
             'name' => $product->name,
             'description' => $product->description,

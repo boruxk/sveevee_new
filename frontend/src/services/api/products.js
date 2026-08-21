@@ -31,6 +31,10 @@ export async function updateProduct(id, payload) {
 	return apiClient.post(`/products/${id}`, formData)
 }
 
+export function fetchProduct(id) {
+	return apiClient.get(`/products/${id}`)
+}
+
 export function deleteProduct(id) {
 	return apiClient.delete(`/products/${id}`)
 }

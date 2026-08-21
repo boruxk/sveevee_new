@@ -114,6 +114,86 @@ class CatalogTopics
         'beauty_personal_care.cosmetics' => 'professionals.cosmetics',
     ];
 
+    private const MARKET_PRODUCT_TYPES = [
+        [
+            'key' => 'market.furniture',
+            'slug' => 'furniture',
+            'labels' => [
+                'he' => 'ריהוט יד שנייה',
+                'en' => 'Second hand furniture',
+                'ru' => 'Second hand furniture',
+                'fr' => 'Meubles d\'occasion',
+            ],
+            'color' => '#0891b2',
+            'topic_keys' => [
+                'products.home_garden.furniture',
+            ],
+        ],
+        [
+            'key' => 'market.bicycles',
+            'slug' => 'bicycles',
+            'labels' => [
+                'he' => 'אופניים יד שנייה',
+                'en' => 'Second hand bicycles',
+                'ru' => 'Second hand bicycles',
+                'fr' => 'Velos d\'occasion',
+            ],
+            'color' => '#0284c7',
+            'topic_keys' => [
+                'products.sports_leisure.bikes_scooters',
+                'products.cars_accessories.bike_scooter_parts',
+            ],
+        ],
+        [
+            'key' => 'market.electronics',
+            'slug' => 'electronics',
+            'labels' => [
+                'he' => 'מוצרי חשמל יד שנייה',
+                'en' => 'Second hand electronics',
+                'ru' => 'Second hand electronics',
+                'fr' => 'Electronique d\'occasion',
+            ],
+            'color' => '#475569',
+            'topic_keys' => [
+                'products.electronics_computers.phones_tablets',
+                'products.electronics_computers.computers_laptops',
+                'products.electronics_computers.tv_audio',
+                'products.electronics_computers.cameras',
+                'products.electronics_computers.gaming',
+                'products.electronics_computers.smart_home_security',
+                'products.electronics_computers.accessories_cables',
+                'products.electronics_computers.printers_office_tech',
+                'products.appliances.refrigerators_freezers',
+                'products.appliances.ovens_stoves',
+                'products.appliances.dishwashers',
+                'products.appliances.laundry',
+                'products.appliances.heating_cooling',
+                'products.appliances.coffee_small_appliances',
+                'products.appliances.vacuum_cleaning_devices',
+            ],
+        ],
+        [
+            'key' => 'market.kids',
+            'slug' => 'kids',
+            'labels' => [
+                'he' => 'מוצרים לילדים יד שנייה',
+                'en' => 'Second hand kids products',
+                'ru' => 'Second hand kids products',
+                'fr' => 'Produits enfant d\'occasion',
+            ],
+            'color' => '#f59e0b',
+            'topic_keys' => [
+                'products.kids_baby.strollers_car_seats',
+                'products.kids_baby.baby_furniture',
+                'products.kids_baby.toys_games',
+                'products.kids_baby.school_supplies',
+                'products.kids_baby.baby_clothing',
+                'products.kids_baby.feeding_care',
+                'products.fashion_beauty.kids_clothing',
+            ],
+        ],
+    ];
+
     public static function groups(): array
     {
         return collect(self::rawGroups())
@@ -409,6 +489,34 @@ class CatalogTopics
             ->all();
     }
 
+    public static function marketProductTypes(): array
+    {
+        return collect(self::MARKET_PRODUCT_TYPES)
+            ->map(fn (array $type): array => self::marketProductTypePayload($type))
+            ->values()
+            ->all();
+    }
+
+    public static function findMarketProductType(?string $slug): ?array
+    {
+        if (! filled($slug)) {
+            return null;
+        }
+
+        return collect(self::marketProductTypes())
+            ->first(fn (array $type): bool => $type['slug'] === $slug);
+    }
+
+    public static function marketProductTypeForTopicKey(?string $topicKey): ?array
+    {
+        if (! filled($topicKey)) {
+            return null;
+        }
+
+        return collect(self::marketProductTypes())
+            ->first(fn (array $type): bool => in_array($topicKey, $type['topic_keys'], true));
+    }
+
     public static function catalogPath(array|string $topic, ?string $city = null, ?string $neighborhood = null): string
     {
         $topicPayload = is_array($topic) ? $topic : self::findByKey($topic);
@@ -426,6 +534,22 @@ class CatalogTopics
 
         if (filled($topicSlug)) {
             $parts[] = $topicSlug;
+        }
+
+        return '/'.implode('/', $parts);
+    }
+
+    public static function marketPath(string $city, array|string|null $topic = null): string
+    {
+        $parts = ['market', self::locationSlug($city)];
+
+        if (filled($topic)) {
+            $topicPayload = is_array($topic) ? $topic : self::findByKey($topic);
+            $topicSlug = $topicPayload['market_slug'] ?? $topicPayload['slug'] ?? (string) $topic;
+
+            if (filled($topicSlug)) {
+                $parts[] = $topicSlug;
+            }
         }
 
         return '/'.implode('/', $parts);
@@ -1073,6 +1197,24 @@ class CatalogTopics
             'group_labels' => $group['labels'],
             'scopes' => $topic['scopes'] ?? $group['scopes'],
             'aliases' => collect(Arr::wrap($topic['aliases'] ?? []))->unique()->values()->all(),
+        ];
+    }
+
+    private static function marketProductTypePayload(array $type): array
+    {
+        return [
+            'key' => $type['key'],
+            'slug' => $type['slug'],
+            'market_slug' => $type['slug'],
+            'labels' => $type['labels'],
+            'color' => $type['color'],
+            'scopes' => [self::SCOPE_PRODUCTS],
+            'topic_keys' => collect($type['topic_keys'])
+                ->map(fn (string $key): ?string => self::canonicalKeyForScope($key, self::SCOPE_PRODUCTS))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all(),
         ];
     }
 }

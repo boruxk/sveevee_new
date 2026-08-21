@@ -15,9 +15,11 @@
 		const isLanding = route.name === 'landing'
 		const canonical = route.path
 		const legalDocument = route.meta.legalDocument ? getLegalDocument(route.meta.legalDocument, locale.value) : null
+		const title = legalDocument?.title || (seo.titleKey ? t(seo.titleKey) : t('seo.defaultTitle'))
 
 		return {
-			title: legalDocument?.title || (seo.titleKey ? t(seo.titleKey) : t('seo.defaultTitle')),
+			title,
+			exactTitle: isLanding ? `${title} | Sveevee` : undefined,
 			description: legalDocument?.intro || (seo.descriptionKey ? t(seo.descriptionKey) : t('seo.defaultDescription')),
 			robots: seo.robots || (requiresAuth ? 'noindex,nofollow' : 'index,follow'),
 			type: seo.type || 'website',
@@ -42,6 +44,13 @@
 					url: absoluteUrl('/'),
 					applicationCategory: 'LifestyleApplication',
 					operatingSystem: 'Web'
+				},
+				{
+					'@context': 'https://schema.org',
+					'@type': 'Organization',
+					name: SITE_NAME,
+					url: absoluteUrl('/'),
+					logo: absoluteUrl('/favicon.png')
 				}
 			] : null
 		}

@@ -23,6 +23,7 @@
 	const $q = useQuasar()
 	const detailOpen = ref(false)
 	const compactActionButtons = computed(() => $q.screen.width <= 700)
+	const productDetailPath = computed(() => props.product?.public_path || '')
 	const themeStyle = computed(() => {
 		if (!props.palette) {
 			return null
@@ -37,6 +38,12 @@
 			'--presence-muted': props.palette.muted || 'rgba(17, 34, 45, 0.72)'
 		}
 	})
+
+	function openProduct() {
+		if (!productDetailPath.value) {
+			detailOpen.value = true
+		}
+	}
 </script>
 
 <template>
@@ -57,9 +64,10 @@
 						unelevated
 						color="primary"
 						icon="visibility"
+						:to="productDetailPath || undefined"
 						:aria-label="t('products.open')"
 						:label="compactActionButtons ? undefined : t('products.open')"
-						@click="detailOpen = true"
+						@click="openProduct"
 					/>
 					<q-btn v-if="editable"
 						class="product-card__icon-btn"

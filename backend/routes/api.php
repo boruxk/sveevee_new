@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\HomeFeedController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\MarketController;
 use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\PageEventController;
 use App\Http\Controllers\Api\PageProductController;
@@ -22,10 +23,13 @@ Route::prefix('v1')->middleware('recaptcha')->group(function () {
     Route::get('/catalog/{topicSlug}', [CatalogController::class, 'index']);
     Route::get('/catalog/{citySlug}/{topicSlug}', [CatalogController::class, 'indexForCity']);
     Route::get('/catalog/{citySlug}/{neighborhoodSlug}/{topicSlug}', [CatalogController::class, 'indexForNeighborhood']);
+    Route::get('/market/{citySlug}', [MarketController::class, 'index']);
+    Route::get('/market/{citySlug}/{topicSlug}', [MarketController::class, 'index']);
     Route::get('/search', [SearchController::class, 'index']);
     Route::get('/locations', [LocationController::class, 'index']);
     Route::get('/users/{user}', [PublicUserController::class, 'show']);
     Route::get('/ads/{ad}', [AdController::class, 'show']);
+    Route::get('/products/{product}', [PageProductController::class, 'show']);
     Route::get('/pages/{page}/ratings', [PageRatingController::class, 'index']);
     Route::get('/pages/{page}', [PageController::class, 'show']);
 

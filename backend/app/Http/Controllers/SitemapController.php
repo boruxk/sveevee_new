@@ -15,6 +15,8 @@ use Illuminate\Support\Collection;
 
 class SitemapController extends Controller
 {
+    private const LOCALES = ['he', 'en', 'ru', 'fr'];
+
     public function index(): Response
     {
         $entries = collect([
@@ -50,10 +52,30 @@ class SitemapController extends Controller
             ->where('name', '!=', '')
             ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
             ->orderBy('id')
-            ->get(['id', 'name', 'updated_at'])
-            ->each(fn (Page $page) => $entries->push(
-                $this->entry("/pages/{$page->public_slug}", $page->updated_at, 'weekly', '0.8')
-            ));
+            ->get(['id', 'type', 'name', 'updated_at'])
+            ->each(function (Page $page) use ($entries): void {
+                if ($page->type === Page::TYPE_BUSINESS) {
+                    foreach (self::LOCALES as $locale) {
+                        $entries->push($this->entry($this->localizedBusinessPath($page, $locale), $page->updated_at, 'weekly', '0.8'));
+                    }
+
+                    return;
+                }
+
+                $entries->push($this->entry("/pages/{$page->public_slug}", $page->updated_at, 'weekly', '0.8'));
+            });
+
+        PageProduct::query()
+            ->with('page:id,user_id,type,name,setup,address')
+            ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
+            ->whereHas('page', fn ($query) => $query->where('type', Page::TYPE_BUSINESS))
+            ->orderBy('id')
+            ->get(['id', 'page_id', 'name', 'updated_at'])
+            ->each(function (PageProduct $product) use ($entries): void {
+                foreach (self::LOCALES as $locale) {
+                    $entries->push($this->entry($this->localizedProductPath($product, $locale), $product->updated_at, 'weekly', '0.72'));
+                }
+            });
 
         Ad::query()
             ->active()
@@ -65,6 +87,7 @@ class SitemapController extends Controller
             ));
 
         $this->catalogEntries()->each(fn (array $entry) => $entries->push($entry));
+        $this->marketEntries()->each(fn (array $entry) => $entries->push($entry));
 
         return response($this->toXml($entries->take(50000)->all()), 200)
             ->header('Content-Type', 'application/xml; charset=UTF-8');
@@ -184,6 +207,69 @@ class SitemapController extends Controller
         return collect($paths)
             ->map(fn (Carbon $lastModified, string $path): array => $this->entry($path, $lastModified, 'weekly', '0.65'))
             ->values();
+    }
+
+    private function marketEntries(): Collection
+    {
+        $paths = [];
+        $register = function (?string $topicKey, ?string $city, ?Carbon $updatedAt) use (&$paths): void {
+            if (! filled($city)) {
+                return;
+            }
+
+            $topic = CatalogTopics::findByKey($topicKey);
+
+            if (! $topic || ! in_array(CatalogTopics::SCOPE_PRODUCTS, $topic['scopes'] ?? [], true)) {
+                return;
+            }
+
+            $candidates = [
+                $this->localizedMarketPath(CatalogTopics::marketPath($city)),
+            ];
+
+            $marketType = CatalogTopics::marketProductTypeForTopicKey($topic['key']);
+            $candidates[] = $this->localizedMarketPath(CatalogTopics::marketPath($city, $marketType ?: $topic));
+
+            foreach ($candidates as $path) {
+                $current = $paths[$path] ?? null;
+                $candidateDate = $updatedAt ?: now();
+
+                if (! $current || $candidateDate->greaterThan($current)) {
+                    $paths[$path] = $candidateDate;
+                }
+            }
+        };
+
+        PageProduct::query()
+            ->with('page:id,user_id,setup,address')
+            ->whereNotNull('category_key')
+            ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
+            ->orderBy('id')
+            ->get(['id', 'page_id', 'category_key', 'updated_at'])
+            ->each(fn (PageProduct $product) => $register(
+                $product->category_key,
+                $this->pageAddressValue($product->page, 'city'),
+                $product->updated_at
+            ));
+
+        return collect($paths)
+            ->map(fn (Carbon $lastModified, string $path): array => $this->entry($path, $lastModified, 'weekly', '0.62'))
+            ->values();
+    }
+
+    private function localizedMarketPath(string $path, string $locale = 'he'): string
+    {
+        return '/'.$locale.'/'.ltrim($path, '/');
+    }
+
+    private function localizedBusinessPath(Page $page, string $locale = 'he'): string
+    {
+        return "/{$locale}/business/{$page->public_slug}";
+    }
+
+    private function localizedProductPath(PageProduct $product, string $locale = 'he'): string
+    {
+        return "/{$locale}/product/{$product->public_slug}";
     }
 
     private function entry(string $path, ?Carbon $lastModified, string $changeFrequency, string $priority): array

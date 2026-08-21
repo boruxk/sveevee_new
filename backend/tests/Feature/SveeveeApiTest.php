@@ -18,6 +18,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
@@ -472,6 +473,37 @@ class SveeveeApiTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_public_product_show_returns_product_with_public_business_page(): void
+    {
+        $user = User::factory()->create();
+        $page = Page::query()->create([
+            'user_id' => $user->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Avi Electric',
+            'setup' => [
+                'address' => [
+                    'city' => 'Jerusalem',
+                ],
+            ],
+        ]);
+        $product = PageProduct::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Samsung Galaxy',
+            'description' => 'Phone for sale.',
+            'category_key' => 'products.electronics_computers.phones_tablets',
+            'image_path' => 'products/phone.webp',
+            'price' => '1900.00',
+            'link' => 'https://seller.example/phone',
+        ]);
+
+        $this->getJson('/api/v1/products/'.$product->public_slug)
+            ->assertOk()
+            ->assertJsonPath('data.id', $product->id)
+            ->assertJsonPath('data.slug', $product->public_slug)
+            ->assertJsonPath('data.public_path', '/product/'.$product->public_slug)
+            ->assertJsonPath('data.page.name', 'Avi Electric');
+    }
+
     public function test_sitemap_includes_public_users_pages_and_active_ads_dynamically(): void
     {
         config()->set('app.url', 'https://sveevee.co.il');
@@ -484,6 +516,20 @@ class SveeveeApiTest extends TestCase
             'type' => Page::TYPE_BUSINESS,
             'name' => 'Miri Studio',
             'public_description' => 'Local help.',
+            'setup' => [
+                'address' => [
+                    'city' => 'Jerusalem',
+                ],
+            ],
+        ]);
+        $product = PageProduct::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Oak table',
+            'description' => 'A useful table.',
+            'category_key' => 'products.home_garden.furniture',
+            'image_path' => 'products/table.webp',
+            'price' => '120.00',
+            'link' => 'https://seller.example/table',
         ]);
         $ad = Ad::query()->create([
             'user_id' => $user->id,
@@ -508,7 +554,11 @@ class SveeveeApiTest extends TestCase
             ->assertSee('https://sveevee.co.il/users/'.$user->id, false)
             ->assertDontSee('https://sveevee.co.il/users/'.$bannedUser->id, false)
             ->assertDontSee('https://sveevee.co.il/users/'.$adminUser->id, false)
-            ->assertSee('https://sveevee.co.il/pages/'.$page->public_slug, false)
+            ->assertSee('https://sveevee.co.il/he/business/'.$page->public_slug, false)
+            ->assertSee('https://sveevee.co.il/en/business/'.$page->public_slug, false)
+            ->assertDontSee('https://sveevee.co.il/pages/'.$page->public_slug, false)
+            ->assertSee('https://sveevee.co.il/he/product/'.$product->public_slug, false)
+            ->assertSee('https://sveevee.co.il/en/product/'.$product->public_slug, false)
             ->assertSee('https://sveevee.co.il/ads/'.$ad->id, false)
             ->assertDontSee('https://sveevee.co.il/ads/'.$expiredAd->id, false);
 
@@ -517,6 +567,89 @@ class SveeveeApiTest extends TestCase
         $this->get('/sitemap.xml')
             ->assertOk()
             ->assertDontSee('https://sveevee.co.il/ads/'.$ad->id, false);
+    }
+
+    public function test_seo_prerender_generates_static_business_and_product_html(): void
+    {
+        config()->set('app.url', 'https://sveevee.co.il');
+
+        $dist = storage_path('framework/testing/prerender-'.uniqid());
+        File::ensureDirectoryExists($dist);
+        File::put($dist.'/index.html', <<<'HTML'
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Base description" />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://sveevee.co.il/" />
+    <meta property="og:title" content="Base" />
+    <meta property="og:description" content="Base description" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sveevee.co.il/" />
+    <meta property="og:image" content="https://sveevee.co.il/favicon.png" />
+    <title>Base</title>
+  </head>
+  <body>
+    <noscript><main><h1>Homepage fallback</h1></main></noscript>
+    <div id="app"></div>
+    <script type="module" src="/assets/index.js"></script>
+  </body>
+</html>
+HTML);
+
+        try {
+            $user = User::factory()->create();
+            $page = Page::query()->create([
+                'user_id' => $user->id,
+                'type' => Page::TYPE_BUSINESS,
+                'name' => 'Avi Electric',
+                'public_description' => '',
+                'category_key' => 'professionals.electricians',
+                'phone' => '02-1234567',
+                'contact_email' => 'avi@example.test',
+                'setup' => [
+                    'address' => [
+                        'street' => 'Herzl',
+                        'number' => '10',
+                        'city' => 'Jerusalem',
+                        'neighborhood' => 'Ramot',
+                    ],
+                    'opening_hours' => [
+                        ['weekday' => 'monday', 'is_open' => true, 'opens_at' => '09:00', 'closes_at' => '17:00'],
+                    ],
+                ],
+            ]);
+            $product = PageProduct::query()->create([
+                'page_id' => $page->id,
+                'name' => 'Samsung Galaxy',
+                'description' => 'Phone for sale in Jerusalem.',
+                'category_key' => 'products.electronics_computers.phones_tablets',
+                'image_path' => 'products/phone.webp',
+                'price' => '1900.00',
+                'link' => 'https://seller.example/phone',
+            ]);
+
+            $this->artisan('seo:prerender-public-pages', ['--dist' => $dist])
+                ->assertExitCode(0);
+
+            $businessHtml = File::get($dist.'/he/business/'.$page->public_slug.'/index.html');
+            $productHtml = File::get($dist.'/he/product/'.$product->public_slug.'/index.html');
+
+            $this->assertStringContainsString('<h1>Avi Electric</h1>', $businessHtml);
+            $this->assertStringContainsString('LocalBusiness', $businessHtml);
+            $this->assertStringContainsString('addressCountry', $businessHtml);
+            $this->assertStringContainsString('hreflang="en"', $businessHtml);
+            $this->assertStringContainsString('02-1234567', $businessHtml);
+            $this->assertStringNotContainsString('Homepage fallback', $businessHtml);
+            $this->assertStringContainsString('<h1>Samsung Galaxy</h1>', $productHtml);
+            $this->assertStringContainsString('Product', $productHtml);
+            $this->assertStringContainsString('Offer', $productHtml);
+            $this->assertStringContainsString('₪1,900.00', $productHtml);
+            $this->assertStringContainsString('Phone for sale in Jerusalem.', $productHtml);
+        } finally {
+            File::deleteDirectory($dist);
+        }
     }
 
     public function test_catalog_topics_endpoint_lists_registry(): void
@@ -653,6 +786,89 @@ class SveeveeApiTest extends TestCase
             ->assertJsonPath('data.total_count', 0);
     }
 
+    public function test_market_api_filters_products_by_city_and_type(): void
+    {
+        $owner = User::factory()->create();
+
+        $jerusalemPage = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Jerusalem Store',
+            'category_key' => 'shopping_retail.general',
+            'setup' => [
+                'address' => [
+                    'city' => 'Jerusalem',
+                    'neighborhood' => 'Ramot',
+                ],
+            ],
+        ]);
+
+        PageProduct::query()->create([
+            'page_id' => $jerusalemPage->id,
+            'name' => 'Second hand sofa',
+            'description' => 'Comfortable local sofa.',
+            'category_key' => 'products.home_garden.furniture',
+            'image_path' => 'products/sofa.webp',
+            'price' => 350,
+            'link' => 'https://seller.example/sofa',
+        ]);
+
+        PageProduct::query()->create([
+            'page_id' => $jerusalemPage->id,
+            'name' => 'Used phone',
+            'description' => 'Phone in good condition.',
+            'category_key' => 'products.electronics_computers.phones_tablets',
+            'image_path' => 'products/phone.webp',
+            'price' => 900,
+            'link' => 'https://seller.example/phone',
+        ]);
+
+        $otherOwner = User::factory()->create();
+        $haifaPage = Page::query()->create([
+            'user_id' => $otherOwner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Haifa Store',
+            'category_key' => 'shopping_retail.general',
+            'setup' => [
+                'address' => [
+                    'city' => 'Haifa',
+                    'neighborhood' => 'Hadar',
+                ],
+            ],
+        ]);
+
+        PageProduct::query()->create([
+            'page_id' => $haifaPage->id,
+            'name' => 'Haifa table',
+            'description' => 'Different city.',
+            'category_key' => 'products.home_garden.furniture',
+            'image_path' => 'products/table.webp',
+            'price' => 120,
+            'link' => 'https://seller.example/table',
+        ]);
+
+        $this->getJson('/api/v1/market/jerusalem')
+            ->assertOk()
+            ->assertJsonPath('data.city', 'Jerusalem')
+            ->assertJsonPath('data.total_count', 2)
+            ->assertJsonPath('data.products.items.0.page.name', 'Jerusalem Store');
+
+        $this->getJson('/api/v1/market/jerusalem/furniture')
+            ->assertOk()
+            ->assertJsonPath('data.topic.slug', 'furniture')
+            ->assertJsonPath('data.total_count', 1)
+            ->assertJsonPath('data.products.items.0.name', 'Second hand sofa');
+
+        $this->getJson('/api/v1/market/jerusalem/electronics')
+            ->assertOk()
+            ->assertJsonPath('data.topic.slug', 'electronics')
+            ->assertJsonPath('data.total_count', 1)
+            ->assertJsonPath('data.products.items.0.name', 'Used phone');
+
+        $this->getJson('/api/v1/market/jerusalem/electricians')
+            ->assertNotFound();
+    }
+
     public function test_search_scope_limits_results_and_validates_category_scope(): void
     {
         $owner = User::factory()->create();
@@ -745,6 +961,41 @@ class SveeveeApiTest extends TestCase
             ->assertSee('https://sveevee.co.il/catalog/haifa/electricians', false)
             ->assertSee('https://sveevee.co.il/catalog/haifa/hadar/electricians', false)
             ->assertDontSee('https://sveevee.co.il/catalog/home-repair-services', false);
+    }
+
+    public function test_sitemap_includes_non_empty_market_pages(): void
+    {
+        config()->set('app.url', 'https://sveevee.co.il');
+
+        $owner = User::factory()->create();
+        $page = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Jerusalem Store',
+            'category_key' => 'shopping_retail.general',
+            'setup' => [
+                'address' => [
+                    'city' => 'Jerusalem',
+                    'neighborhood' => 'Ramot',
+                ],
+            ],
+        ]);
+
+        PageProduct::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Second hand sofa',
+            'description' => 'Comfortable local sofa.',
+            'category_key' => 'products.home_garden.furniture',
+            'image_path' => 'products/sofa.webp',
+            'price' => 350,
+            'link' => 'https://seller.example/sofa',
+        ]);
+
+        $this->get('/sitemap.xml')
+            ->assertOk()
+            ->assertSee('https://sveevee.co.il/he/market/jerusalem', false)
+            ->assertSee('https://sveevee.co.il/he/market/jerusalem/furniture', false)
+            ->assertDontSee('https://sveevee.co.il/he/market/haifa/furniture', false);
     }
 
     public function test_user_can_create_page_with_presence_details(): void

@@ -21,6 +21,20 @@ class PageProductController extends Controller
     {
     }
 
+    public function show(PageProduct $product)
+    {
+        $product->loadMissing(['page.user.profile']);
+
+        if ($product->page?->type !== Page::TYPE_BUSINESS || $product->page?->user?->banned_at) {
+            return ApiResponseService::error('Resource not found.', status: 404);
+        }
+
+        return ApiResponseService::success([
+            ...$this->payloads->product($product),
+            'page' => $this->payloads->page($product->page),
+        ]);
+    }
+
     public function store(Request $request, Page $page)
     {
         if ($error = $this->guardBusinessPage($request, $page)) {

@@ -1,12 +1,13 @@
 <script setup>
-	import { computed, onMounted, ref } from 'vue'
+	import { computed, onMounted, ref, watch } from 'vue'
 	import { useRoute } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
+	import { setLocale } from '@/i18n'
 	import { useAuthStore } from '@/stores/auth'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { fetchPage } from '@/services/api/pages'
 	import { findPresencePalette } from '@/constants/presencePalettes'
-	import { catalogLabel, catalogPath, catalogTopicByKey } from '@/constants/catalogTopics'
+	import { catalogLabel, catalogPath, catalogTopicByKey, publicPagePath } from '@/constants/catalogTopics'
 	import { locationLabel } from '@/utils/locationLabels'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
 	import EventCard from '@/components/events/EventCard.vue'
@@ -20,6 +21,16 @@
 	const { t, locale } = useI18n()
 	const authStore = useAuthStore()
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
+	const SEO_LOCALES = ['he', 'en', 'ru', 'fr']
+	const SCHEMA_WEEKDAYS = {
+		sunday: 'Sunday',
+		monday: 'Monday',
+		tuesday: 'Tuesday',
+		wednesday: 'Wednesday',
+		thursday: 'Thursday',
+		friday: 'Friday',
+		saturday: 'Saturday'
+	}
 	const page = ref(null)
 	const loading = ref(false)
 	const ratingsDialogOpen = ref(false)
@@ -44,31 +55,68 @@
 	))
 	const hasCommunityEvents = computed(() => page.value?.type === 'community' && isEventsEnabled.value && page.value?.events?.length > 0)
 	const hasPreviewContent = computed(() => hasStoreProducts.value || hasBusinessServices.value || hasCommunityEvents.value)
+	const routeLocale = computed(() => String(route.params.locale || ''))
+	const isBusinessPage = computed(() => page.value?.type === 'business')
 	const pageTypeLabel = computed(() => t(`pages.kinds.${page.value?.type || 'business'}`))
 	const pageAddress = computed(() => page.value?.address_details || {})
 	const pageTopic = computed(() => catalogTopicByKey(catalogGroups.value, page.value?.category_key))
+	const pageCity = computed(() => pageAddress.value.city || '')
+	const pageNeighborhood = computed(() => pageAddress.value.neighborhood || '')
+	const pageCityLabel = computed(() => (pageCity.value ? locationLabel(pageCity.value, 'city', locale.value) : ''))
+	const pageNeighborhoodLabel = computed(() => (pageNeighborhood.value ? locationLabel(pageNeighborhood.value, 'neighborhood', locale.value) : ''))
+	const pageTopicLabel = computed(() => catalogLabel(pageTopic.value?.labels, locale.value))
 	const pageCatalogLinks = computed(() => {
 		if (!pageTopic.value) {
 			return []
 		}
 
-		const city = pageAddress.value.city || ''
-		const neighborhood = pageAddress.value.neighborhood || ''
-
 		return [
-			city ? {
-				label: locationLabel(city, 'city', locale.value),
-				to: catalogPath(pageTopic.value, city)
+			pageCity.value ? {
+				label: pageCityLabel.value,
+				to: catalogPath(pageTopic.value, pageCity.value)
 			} : null,
-			city && neighborhood ? {
-				label: locationLabel(neighborhood, 'neighborhood', locale.value),
-				to: catalogPath(pageTopic.value, city, neighborhood)
+			pageCity.value && pageNeighborhood.value ? {
+				label: pageNeighborhoodLabel.value,
+				to: catalogPath(pageTopic.value, pageCity.value, pageNeighborhood.value)
 			} : null,
 			{
-				label: catalogLabel(pageTopic.value.labels, locale.value),
+				label: pageTopicLabel.value,
 				to: catalogPath(pageTopic.value)
 			}
 		].filter(Boolean)
+	})
+	const canonicalPath = computed(() => {
+		if (!page.value) {
+			return route.path
+		}
+
+		if (isBusinessPage.value) {
+			return publicPagePath(page.value, routeLocale.value || locale.value)
+		}
+
+		return page.value.public_path || route.path
+	})
+	const localizedAlternates = computed(() => {
+		if (!isBusinessPage.value || !page.value) {
+			return null
+		}
+
+		return {
+			...Object.fromEntries(SEO_LOCALES.map((item) => [item, publicPagePath(page.value, item)])),
+			'x-default': publicPagePath(page.value, 'he')
+		}
+	})
+	const businessSeoDescription = computed(() => {
+		if (!isBusinessPage.value || !page.value) {
+			return ''
+		}
+
+		return t('seo.businessPageDescription', {
+			name: page.value.name,
+			category: pageTopicLabel.value || t('pages.businessTitle'),
+			city: pageCityLabel.value || pageCity.value || t('auth.city'),
+			neighborhood: pageNeighborhoodLabel.value ? ` ${pageNeighborhoodLabel.value}` : ''
+		})
 	})
 	const seoDescription = computed(() => {
 		if (!page.value) {
@@ -77,8 +125,23 @@
 
 		return truncateText(
 			cleanText(page.value.public_description) ||
+				businessSeoDescription.value ||
 				t('seo.pageDescription', { name: page.value.name, type: pageTypeLabel.value })
 		)
+	})
+	const seoTitle = computed(() => {
+		if (!page.value) {
+			return t('seo.pageFallbackTitle')
+		}
+
+		if (isBusinessPage.value && (pageCityLabel.value || pageCity.value)) {
+			return t('seo.businessPageTitle', {
+				name: page.value.name,
+				city: pageCityLabel.value || pageCity.value
+			})
+		}
+
+		return page.value.name
 	})
 	const seoImage = computed(() => page.value?.banner_url || page.value?.logo_url)
 	const structuredAddress = computed(() => {
@@ -92,38 +155,91 @@
 			'@type': 'PostalAddress',
 			streetAddress: [address.street, address.number].filter(Boolean).join(' ') || undefined,
 			addressLocality: address.city || undefined,
-			addressRegion: address.neighborhood || undefined
+			addressRegion: address.neighborhood || undefined,
+			addressCountry: 'IL'
 		}
 	})
+	const structuredOpeningHours = computed(() => (page.value?.opening_hours || [])
+		.filter((item) => item?.is_open && item.opens_at && item.closes_at && SCHEMA_WEEKDAYS[item.weekday])
+		.map((item) => ({
+			'@type': 'OpeningHoursSpecification',
+			dayOfWeek: `https://schema.org/${SCHEMA_WEEKDAYS[item.weekday]}`,
+			opens: item.opens_at,
+			closes: item.closes_at
+		})))
+	const breadcrumbJsonLd = computed(() => {
+		if (!page.value) {
+			return null
+		}
 
-	useSeo(computed(() => ({
-		title: page.value?.name || t('seo.pageFallbackTitle'),
-		description: seoDescription.value,
-		image: seoImage.value,
-		canonical: page.value?.public_path || route.path,
-		type: 'website',
-		robots: page.value ? 'index,follow' : 'noindex,follow',
-		jsonLd: page.value ? {
+		const links = [
+			...pageCatalogLinks.value,
+			{
+				label: page.value.name,
+				to: canonicalPath.value
+			}
+		]
+
+		if (links.length < 2) {
+			return null
+		}
+
+		return {
 			'@context': 'https://schema.org',
-			'@type': page.value.type === 'business' ? 'LocalBusiness' : 'Organization',
+			'@type': 'BreadcrumbList',
+			itemListElement: links.map((link, index) => ({
+				'@type': 'ListItem',
+				position: index + 1,
+				name: link.label,
+				item: absoluteUrl(link.to)
+			}))
+		}
+	})
+	const jsonLd = computed(() => {
+		if (!page.value) {
+			return null
+		}
+
+		const pageSchema = {
+			'@context': 'https://schema.org',
+			'@type': isBusinessPage.value ? 'LocalBusiness' : 'Organization',
 			name: page.value.name,
 			description: seoDescription.value,
-			url: absoluteUrl(page.value.public_path || route.path),
+			url: absoluteUrl(canonicalPath.value),
 			image: seoImage.value || undefined,
+			logo: page.value.logo_url || undefined,
 			telephone: page.value.contact?.tel || page.value.phone || undefined,
 			email: page.value.contact?.email || page.value.contact_email || undefined,
 			address: structuredAddress.value,
+			openingHoursSpecification: isBusinessPage.value && structuredOpeningHours.value.length ? structuredOpeningHours.value : undefined,
 			aggregateRating: page.value.rating_summary?.count > 0 ? {
 				'@type': 'AggregateRating',
 				ratingValue: page.value.rating_summary.average,
 				ratingCount: page.value.rating_summary.count
 			} : undefined
-		} : null
+		}
+
+		return [pageSchema, breadcrumbJsonLd.value].filter(Boolean)
+	})
+
+	useSeo(computed(() => ({
+		title: seoTitle.value,
+		description: seoDescription.value,
+		image: seoImage.value,
+		canonical: canonicalPath.value,
+		alternates: localizedAlternates.value,
+		type: 'website',
+		robots: page.value ? 'index,follow' : 'noindex,follow',
+		jsonLd: jsonLd.value
 	})))
 
 	async function load() {
 		loading.value = true
 		try {
+			if (routeLocale.value && routeLocale.value !== locale.value) {
+				await setLocale(routeLocale.value)
+			}
+
 			const { data } = await fetchPage(route.params.id)
 			page.value = data.data
 		} finally {
@@ -146,6 +262,8 @@
 		syncRatingSummary(payload.summary)
 	}
 
+	watch(() => route.fullPath, load)
+
 	onMounted(async() => {
 		await Promise.all([load(), loadCatalogTopics()])
 	})
@@ -165,6 +283,8 @@
 				:palette="selectedPalette"
 				:can-rate="canRate"
 				:has-after-info="hasPreviewContent"
+				:title-tag="isBusinessPage ? 'h1' : 'h2'"
+				:description-fallback="businessSeoDescription"
 				@show-ratings="ratingsDialogOpen = true"
 				@rate="reviewDialogOpen = true"
 			>

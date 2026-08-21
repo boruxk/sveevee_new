@@ -3,8 +3,14 @@ import UserLayout from '@/layouts/UserLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 const catalogPage = () => import('@/pages/CatalogPage.vue')
+const marketPage = () => import('@/pages/MarketPage.vue')
+const pageDetailPage = () => import('@/pages/PageDetailPage.vue')
+const productDetailPage = () => import('@/pages/ProductDetailPage.vue')
 const legalPage = () => import('@/pages/PrivacyPolicyPage.vue')
 const catalogSeo = { titleKey: 'seo.catalogTitle', descriptionKey: 'seo.catalogDescription' }
+const marketSeo = { titleKey: 'seo.marketTitle', descriptionKey: 'seo.marketDescription' }
+const pageSeo = { titleKey: 'seo.pageFallbackTitle', descriptionKey: 'seo.pageFallbackDescription' }
+const productSeo = { titleKey: 'seo.productFallbackTitle', descriptionKey: 'seo.productFallbackDescription' }
 const catalogHubRoutes = ['businesses', 'communities', 'products', 'services', 'events', 'ads', 'people'].flatMap((slug) => [
 	{ path: `catalog/${slug}`, name: `catalog-${slug}`, component: catalogPage, meta: { catalogScopeSlug: slug, seo: catalogSeo } },
 	{ path: `catalog/:citySlug/${slug}`, name: `catalog-${slug}-city`, component: catalogPage, meta: { catalogScopeSlug: slug, seo: catalogSeo } },
@@ -27,13 +33,21 @@ export default [
 			{ path: 'disclaimer', name: 'disclaimer', component: legalPage, meta: { legalDocument: 'disclaimer' } },
 			{ path: 'catalog', redirect: { name: 'catalog-businesses' } },
 			...catalogHubRoutes,
+			{ path: ':locale(he|en|ru|fr)/market/:citySlug', name: 'localized-market-city', component: marketPage, meta: { seo: marketSeo } },
+			{ path: ':locale(he|en|ru|fr)/market/:citySlug/:topicSlug', name: 'localized-market-city-topic', component: marketPage, meta: { seo: marketSeo } },
+			{ path: 'market/:citySlug', name: 'market-city', component: marketPage, meta: { seo: marketSeo } },
+			{ path: 'market/:citySlug/:topicSlug', name: 'market-city-topic', component: marketPage, meta: { seo: marketSeo } },
 			{ path: 'catalog/:topicSlug', name: 'catalog-topic', component: catalogPage, meta: { seo: catalogSeo } },
 			{ path: 'catalog/:citySlug/:topicSlug', name: 'catalog-topic-city', component: catalogPage, meta: { seo: catalogSeo } },
 			{ path: 'catalog/:citySlug/:neighborhoodSlug/:topicSlug', name: 'catalog-topic-neighborhood', component: catalogPage, meta: { seo: catalogSeo } },
 			{ path: 'search', name: 'search', component: () => import('@/pages/SearchPage.vue'), meta: { seo: { titleKey: 'seo.searchTitle', descriptionKey: 'seo.searchDescription' } } },
 			{ path: 'users/:id', name: 'user-page', component: () => import('@/pages/UserPage.vue'), meta: { seo: { titleKey: 'seo.userFallbackTitle', descriptionKey: 'seo.userFallbackDescription' } } },
 			{ path: 'ads/:id', name: 'ad-detail', component: () => import('@/pages/AdDetailPage.vue'), meta: { seo: { titleKey: 'seo.adFallbackTitle', descriptionKey: 'seo.adFallbackDescription' } } },
-			{ path: 'pages/:id', name: 'page-detail', component: () => import('@/pages/PageDetailPage.vue'), meta: { seo: { titleKey: 'seo.pageFallbackTitle', descriptionKey: 'seo.pageFallbackDescription' } } }
+			{ path: ':locale(he|en|ru|fr)/business/:id', name: 'localized-business-detail', component: pageDetailPage, meta: { seo: pageSeo } },
+			{ path: 'business/:id', name: 'business-detail', component: pageDetailPage, meta: { seo: pageSeo } },
+			{ path: ':locale(he|en|ru|fr)/product/:id', name: 'localized-product-detail', component: productDetailPage, meta: { seo: productSeo } },
+			{ path: 'product/:id', name: 'product-detail', component: productDetailPage, meta: { seo: productSeo } },
+			{ path: 'pages/:id', name: 'page-detail', component: pageDetailPage, meta: { seo: pageSeo } }
 		]
 	},
 	{

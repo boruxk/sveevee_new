@@ -76,6 +76,25 @@ function setCanonical(url) {
 	tag.setAttribute('href', url)
 }
 
+function setAlternateLinks(alternates) {
+	document.head.querySelectorAll('link[data-sveevee-hreflang]').forEach((tag) => tag.remove())
+
+	if (!alternates) {
+		return
+	}
+
+	Object.entries(alternates)
+		.filter(([, url]) => url)
+		.forEach(([hreflang, url]) => {
+			const tag = document.createElement('link')
+			tag.setAttribute('rel', 'alternate')
+			tag.setAttribute('hreflang', hreflang)
+			tag.setAttribute('href', absoluteUrl(url))
+			tag.setAttribute('data-sveevee-hreflang', '')
+			document.head.appendChild(tag)
+		})
+}
+
 function setJsonLd(value) {
 	const id = 'sveevee-jsonld'
 	let tag = document.getElementById(id)
@@ -103,7 +122,7 @@ function applySeo(config = {}) {
 
 	const title = cleanText(config.title || SITE_NAME)
 	const description = truncateText(config.description || DEFAULT_DESCRIPTION)
-	const fullTitle = config.exactTitle || title === SITE_NAME ? title : `${title} | ${SITE_NAME}`
+	const fullTitle = config.exactTitle || (title === SITE_NAME ? title : `${title} | ${SITE_NAME}`)
 	const canonical = absoluteUrl(config.canonical || window.location.pathname)
 	const image = absoluteUrl(config.image)
 	const robots = config.robots || 'index,follow'
@@ -112,6 +131,7 @@ function applySeo(config = {}) {
 
 	document.title = fullTitle
 	setCanonical(canonical)
+	setAlternateLinks(config.alternates)
 	setMeta('name', 'description', description)
 	setMeta('name', 'robots', robots)
 	setMeta('name', 'application-name', SITE_NAME)

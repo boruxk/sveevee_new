@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
+    "build:seo": "npm run build && cd ../backend && php artisan seo:prerender-public-pages",
     "optimize:landing-images": "node scripts/optimize-landing-images.mjs",
     "preview": "vite preview",
     "lint": "eslint -c .eslintrc.cjs src vite.config.js --ext .js,.vue",

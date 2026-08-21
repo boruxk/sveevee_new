@@ -224,6 +224,21 @@ export function catalogPath(topic, city = '', neighborhood = '') {
 	return `/${parts.join('/')}`
 }
 
+export function marketPath(city = '', topic = '') {
+	const slug = typeof topic === 'string' ? topic : (topic?.market_slug || topic?.slug)
+	const parts = ['market']
+
+	if (city) {
+		parts.push(locationSlug(city))
+	}
+
+	if (slug) {
+		parts.push(slug)
+	}
+
+	return `/${parts.join('/')}`
+}
+
 export function catalogHubPath(hubSlug, city = '', neighborhood = '') {
 	const parts = ['catalog']
 
@@ -246,8 +261,44 @@ export function pageRouteParam(page) {
 	return page?.slug || page?.public_slug || page?.id
 }
 
+function localePrefix(locale = '') {
+	return locale ? `/${normalizeCatalogLocale(locale)}` : ''
+}
+
+export function publicPagePath(page, locale = '') {
+	const id = pageRouteParam(page)
+
+	if (!id) {
+		return '/'
+	}
+
+	if (page?.type === 'business') {
+		return `${localePrefix(locale)}/business/${id}`
+	}
+
+	return `/pages/${id}`
+}
+
 export function pageRoute(page) {
+	if (page?.type === 'business') {
+		return { name: 'business-detail', params: { id: pageRouteParam(page) } }
+	}
+
 	return { name: 'page-detail', params: { id: pageRouteParam(page) } }
+}
+
+export function productRouteParam(product) {
+	return product?.slug || product?.public_slug || product?.id
+}
+
+export function productPath(product, locale = '') {
+	const id = productRouteParam(product)
+
+	return id ? `${localePrefix(locale)}/product/${id}` : '/'
+}
+
+export function productRoute(product) {
+	return { name: 'product-detail', params: { id: productRouteParam(product) } }
 }
 
 export function catalogResultPath(kind, item) {
