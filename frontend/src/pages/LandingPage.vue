@@ -11,8 +11,9 @@
 	const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 	const heroAvifSrcSet = '/assets/landing/hero-main-960.v1.avif 960w, /assets/landing/hero-main-1360.v1.avif 1360w'
 	const heroWebpSrcSet = '/assets/landing/hero-main-960.v1.webp 960w, /assets/landing/hero-main-1360.v1.webp 1360w'
-	const mobileHeroAvifSrcSet = '/assets/landing/hero-mobile-720.v1.avif 720w, /assets/landing/hero-mobile-960.v1.avif 960w'
-	const mobileHeroWebpSrcSet = '/assets/landing/hero-mobile-720.v1.webp 720w, /assets/landing/hero-mobile-960.v1.webp 960w'
+	const mobileHeroSizes = '(max-width: 520px) 100vw, 520px'
+	const mobileHeroAvifSrcSet = '/assets/landing/hero-mobile-480.v1.avif 480w, /assets/landing/hero-mobile-640.v1.avif 640w, /assets/landing/hero-mobile-720.v1.avif 720w, /assets/landing/hero-mobile-800.v1.avif 800w'
+	const mobileHeroWebpSrcSet = '/assets/landing/hero-mobile-480.v1.webp 480w, /assets/landing/hero-mobile-640.v1.webp 640w, /assets/landing/hero-mobile-720.v1.webp 720w, /assets/landing/hero-mobile-800.v1.webp 800w'
 	const pricingBusinessSrc = '/assets/landing/pricing-business-280.v1.webp'
 	const pricingPrivateSrc = '/assets/landing/pricing-private-220.v1.webp'
 	const pricingBusinessAvifSrcSet = '/assets/landing/pricing-business-280.v1.avif 280w, /assets/landing/pricing-business-520.v1.avif 520w'
@@ -137,13 +138,13 @@
 
 					<div class="landing-hero__mobile-visual">
 						<picture>
-							<source media="(max-width: 640px)" :srcset="mobileHeroAvifSrcSet" sizes="100vw" type="image/avif" />
-							<source media="(max-width: 640px)" :srcset="mobileHeroWebpSrcSet" sizes="100vw" type="image/webp" />
+							<source media="(max-width: 640px)" :srcset="mobileHeroAvifSrcSet" :sizes="mobileHeroSizes" type="image/avif" />
+							<source media="(max-width: 640px)" :srcset="mobileHeroWebpSrcSet" :sizes="mobileHeroSizes" type="image/webp" />
 							<img
 								:src="transparentPixel"
 								alt=""
-								width="720"
-								height="720"
+								width="800"
+								height="800"
 								loading="eager"
 								fetchpriority="high"
 								decoding="async"
@@ -543,6 +544,7 @@
 .landing-catalog-section {
   display: grid;
   gap: 18px;
+  padding-bottom: 30px;
 }
 
 .landing-topic-grid {
@@ -1219,6 +1221,10 @@
 
   .landing-section {
     padding: 38px 16px 0;
+  }
+
+  .landing-catalog-section {
+    padding-bottom: 30px;
   }
 
   .landing-purpose-section {
