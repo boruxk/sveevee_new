@@ -31,9 +31,25 @@
 		filterOptions,
 		hasOptionValue
 	} = useLocationOptions(toRef(locationForm, 'city'))
-	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
+	const { catalogGroups, scopedCatalogGroups, loadCatalogTopics } = useCatalogTopics()
 
 	const scopeHubSlug = computed(() => String(route.meta.catalogScopeSlug || ''))
+	const scopeForHub = computed(() => {
+		const hubScopeMap = {
+			businesses: CATALOG_SCOPES.BUSINESS_PAGES,
+			communities: CATALOG_SCOPES.COMMUNITY_PAGES,
+			products: CATALOG_SCOPES.PRODUCTS,
+			services: CATALOG_SCOPES.SERVICES,
+			events: CATALOG_SCOPES.EVENTS,
+			ads: CATALOG_SCOPES.ADS,
+			people: CATALOG_SCOPES.USERS
+		}
+
+		return hubScopeMap[scopeHubSlug.value] || ''
+	})
+	const routeCatalogGroups = computed(() => (
+		scopeForHub.value ? scopedCatalogGroups.get(scopeForHub.value) || [] : catalogGroups.value
+	))
 	const isDirectory = computed(() => !route.params.topicSlug || Boolean(scopeHubSlug.value))
 	const hub = computed(() => directory.value?.hub || null)
 	const groups = computed(() => directory.value.groups || [])
@@ -91,8 +107,8 @@
 	const visibleSegments = computed(() => segmentDefinitions.value
 		.map((definition) => ({
 			...definition,
-			count: catalog.value?.segments?.[definition.key]?.count || 0,
-			items: catalog.value?.segments?.[definition.key]?.items || []
+			count: (isDirectory.value ? directory.value : catalog.value)?.segments?.[definition.key]?.count || 0,
+			items: (isDirectory.value ? directory.value : catalog.value)?.segments?.[definition.key]?.items || []
 		}))
 		.filter((segment) => segment.count > 0 || segment.items.length > 0))
 	const relatedTopics = computed(() => catalog.value?.related_topics || [])
@@ -270,7 +286,7 @@
 			return ''
 		}
 
-		const topicMatch = catalogTopicBySlug(catalogGroups.value, normalizedSlug)
+		const topicMatch = catalogTopicBySlug(routeCatalogGroups.value, normalizedSlug)
 
 		if (topicMatch) {
 			return topicMatch.slug
@@ -313,7 +329,7 @@
 	}
 
 	async function loadForRoute() {
-		await Promise.all([loadLocationOptions(), loadCatalogTopics()])
+		await Promise.all([loadLocationOptions(), loadCatalogTopics(scopeForHub.value)])
 		citySelectOptions.value = cityOptions.value
 		neighborhoodSelectOptions.value = neighborhoodOptions.value
 
@@ -572,6 +588,31 @@
 			</div>
 
 			<template v-else-if="isDirectory">
+				<section v-for="segment in visibleSegments" :key="segment.key" class="catalog-section">
+					<div class="catalog-section__head">
+						<h2>{{ segment.label }}</h2>
+						<span>{{ t('catalog.resultsCount', { count: segment.count }) }}</span>
+					</div>
+					<div class="result-grid">
+						<router-link
+							v-for="item in segment.items"
+							:key="`${segment.kind}-${item.id}`"
+							class="catalog-result-card"
+							:to="resultTo(segment.kind, item)"
+						>
+							<div class="catalog-result-card__media">
+								<img v-if="itemImage(segment.kind, item)" :src="itemImage(segment.kind, item)" alt="" loading="lazy" decoding="async" />
+								<q-icon v-else :name="segment.icon" size="34px" />
+							</div>
+							<div class="catalog-result-card__body">
+								<h3>{{ itemTitle(segment.kind, item) }}</h3>
+								<p>{{ itemBody(segment.kind, item) }}</p>
+								<span v-if="itemOwner(segment.kind, item)">{{ itemOwner(segment.kind, item) }}</span>
+							</div>
+						</router-link>
+					</div>
+				</section>
+
 				<section v-if="popularTopics.length" class="catalog-section">
 					<div class="catalog-section__head">
 						<h2>{{ t('catalog.popularTitle') }}</h2>

@@ -213,7 +213,7 @@ class CatalogTopics
             ->values();
     }
 
-    public static function publicPayload(?array $scopes = null): array
+    public static function publicPayload(array|string|null $scopes = null): array
     {
         $normalizedScopes = self::normalizeScopes($scopes);
         $groups = $normalizedScopes === []

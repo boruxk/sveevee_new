@@ -682,6 +682,18 @@ HTML);
             ->assertJsonPath('data.popular_topics.0.key', CatalogTopics::POPULAR_KEYS[0])
             ->assertJsonPath('data.groups.0.topics.0.slug', fn ($value) => filled($value));
 
+        $scopedResponse = $this->getJson('/api/v1/catalog?scope=ads')
+            ->assertOk()
+            ->assertJsonPath('data.groups.0.topics.0.slug', fn ($value) => filled($value));
+
+        $scopedTopicKeys = collect($scopedResponse->json('data.groups'))
+            ->flatMap(fn (array $group): array => collect($group['topics'] ?? [])->pluck('key')->all())
+            ->values()
+            ->all();
+
+        $this->assertContains('professionals.electricians', $scopedTopicKeys);
+        $this->assertNotContains('products.pets.food', $scopedTopicKeys);
+
         $this->getJson('/api/v1/catalog/businesses')
             ->assertOk()
             ->assertJsonPath('data.hub.slug', 'businesses')
@@ -691,6 +703,47 @@ HTML);
             ->assertOk()
             ->assertJsonPath('data.hub.slug', 'businesses')
             ->assertJsonPath('data.city', 'Haifa');
+    }
+
+    public function test_catalog_ads_hub_lists_active_ads(): void
+    {
+        $owner = User::factory()->create();
+
+        Ad::query()->create([
+            'user_id' => $owner->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Visible local ad',
+            'text' => 'A current local ad.',
+            'category' => null,
+            'status' => 'active',
+            'city' => 'Jerusalem',
+            'neighborhood' => 'Ramot',
+            'expires_at' => now()->addDay(),
+        ]);
+
+        Ad::query()->create([
+            'user_id' => $owner->id,
+            'type' => Ad::TYPE_PRIVATE,
+            'title' => 'Expired local ad',
+            'text' => 'An old local ad.',
+            'category' => null,
+            'status' => 'active',
+            'city' => 'Jerusalem',
+            'neighborhood' => 'Ramot',
+            'expires_at' => now()->subDay(),
+        ]);
+
+        $this->getJson('/api/v1/catalog/ads')
+            ->assertOk()
+            ->assertJsonPath('data.hub.slug', 'ads')
+            ->assertJsonPath('data.total_count', 1)
+            ->assertJsonPath('data.counts.ads', 1)
+            ->assertJsonPath('data.segments.ads.items.0.title', 'Visible local ad');
+
+        $this->getJson('/api/v1/catalog/jerusalem/ads')
+            ->assertOk()
+            ->assertJsonPath('data.city', 'Jerusalem')
+            ->assertJsonPath('data.segments.ads.items.0.title', 'Visible local ad');
     }
 
     public function test_catalog_categories_are_validated_and_saved_for_pages_and_items(): void

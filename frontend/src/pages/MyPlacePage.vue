@@ -449,16 +449,16 @@
   margin-top: 18px;
   padding-bottom: 34px;
   background: transparent;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .me-panel {
   padding: 0;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .me-panels :deep(.q-panel) {
-  overflow: visible;
+  overflow: hidden;
 }
 
 .overview-grid {

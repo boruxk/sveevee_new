@@ -50,7 +50,7 @@ class CatalogController extends Controller
         ?string $neighborhoodSlug = null
     ) {
         if (! filled($topicSlug)) {
-            return ApiResponseService::success(CatalogTopics::publicPayload());
+            return ApiResponseService::success(CatalogTopics::publicPayload($request->query('scope')));
         }
 
         $hub = CatalogTopics::findScopeHub($topicSlug);
@@ -66,6 +66,12 @@ class CatalogController extends Controller
                 return ApiResponseService::error('Resource not found.', status: 404);
             }
 
+            $limit = max(1, min(24, (int) $request->query('limit', self::SEGMENT_LIMIT)));
+            $segments = $this->hubSegments($hub, $city, $neighborhood, $limit);
+            $counts = collect($segments)
+                ->map(fn (array $segment): int => $segment['count'])
+                ->all();
+
             return ApiResponseService::success(array_merge(CatalogTopics::publicPayload($hub['scopes']), [
                 'hub' => $hub,
                 'city' => $city,
@@ -75,6 +81,9 @@ class CatalogController extends Controller
                 'title_he' => $this->hubTitleHe($hub, $city, $neighborhood),
                 'description_he' => $this->hubDescriptionHe($hub, $city, $neighborhood),
                 'indexable' => true,
+                'total_count' => array_sum($counts),
+                'counts' => $counts,
+                'segments' => $segments,
                 'breadcrumbs' => $this->hubBreadcrumbs($hub, $city, $neighborhood),
             ]));
         }
@@ -155,6 +164,21 @@ class CatalogController extends Controller
         ];
     }
 
+    private function hubSegments(array $hub, ?string $city, ?string $neighborhood, int $limit): array
+    {
+        if (! in_array(CatalogTopics::SCOPE_ADS, $hub['scopes'] ?? [], true)) {
+            return [];
+        }
+
+        return [
+            'ads' => $this->segment(
+                $this->allAdsQuery($city, $neighborhood),
+                fn (Ad $ad): array => $this->payloads->ad($ad),
+                $limit
+            ),
+        ];
+    }
+
     private function segment(Builder $query, Closure $mapper, int $limit): array
     {
         $count = (clone $query)->count();
@@ -217,16 +241,21 @@ class CatalogController extends Controller
     {
         $categories = CatalogTopics::adCategoriesForTopic($topicKey);
 
-        $query = Ad::query()
+        $query = $this->allAdsQuery($city, $neighborhood);
+
+        return $categories === []
+            ? $query->whereRaw('1 = 0')
+            : $query->whereIn('category', $categories);
+    }
+
+    private function allAdsQuery(?string $city, ?string $neighborhood): Builder
+    {
+        return Ad::query()
             ->with(['user.profile', 'page'])
             ->active()
             ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))
             ->inLocation($city, $neighborhood)
             ->latest();
-
-        return $categories === []
-            ? $query->whereRaw('1 = 0')
-            : $query->whereIn('category', $categories);
     }
 
     private function usersQuery(string $topicKey, ?string $city, ?string $neighborhood): Builder

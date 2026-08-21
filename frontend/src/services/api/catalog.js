@@ -17,5 +17,7 @@ export function fetchCatalog(params = {}) {
 
 	const path = `/${parts.join('/')}`
 
-	return apiClient.get(path)
+	return apiClient.get(path, {
+		params: params.scope ? { scope: params.scope } : undefined
+	})
 }
