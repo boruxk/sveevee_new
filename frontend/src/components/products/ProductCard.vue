@@ -50,7 +50,7 @@
 	<article class="product-card" :style="themeStyle">
 		<div v-if="product.image_url" class="product-card__image" :style="{ backgroundImage: `url(${product.image_url})` }" />
 		<div class="product-card__body">
-			<div>
+			<div class="product-card__copy">
 				<h3 class="product-card__title">{{ product.name }}</h3>
 				<p class="product-card__description">{{ product.description }}</p>
 			</div>
@@ -128,7 +128,7 @@
 .product-card {
   display: flex;
   flex-direction: column;
-  max-height: 450px;
+  height: 100%;
   overflow: hidden;
   border: 1px solid var(--presence-border, rgba(17, 34, 45, 0.1));
   border-radius: 8px;
@@ -150,21 +150,30 @@
   flex: 1;
   min-height: 220px;
   min-width: 0;
+  overflow: hidden;
   padding: 18px;
+}
+
+.product-card__copy {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .product-card__title {
   margin: 0 0 8px;
   font-size: 21px;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .product-card__description {
   display: -webkit-box;
   overflow: hidden;
+  max-height: calc(1.55em * 4);
   margin: 0;
   color: var(--presence-muted, rgba(17, 34, 45, 0.72));
   line-height: 1.55;
+  overflow-wrap: anywhere;
   white-space: pre-line;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
@@ -176,6 +185,7 @@
   gap: 12px;
   align-items: center;
   justify-content: space-between;
+  flex: 0 0 auto;
   margin-top: auto;
 }
 
