@@ -118,6 +118,36 @@ class PageController extends Controller
         return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'services', 'events'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
     }
 
+    public function updateFeatures(Request $request, string $type)
+    {
+        $this->validateType($type);
+
+        $data = $request->validate([
+            'features' => ['required', 'array'],
+            'features.store' => ['nullable', 'boolean'],
+            'features.services' => ['nullable', 'boolean'],
+            'features.events' => ['nullable', 'boolean'],
+        ]);
+
+        $page = Page::query()
+            ->where('user_id', $request->user()->id)
+            ->where('type', $type)
+            ->firstOrFail();
+
+        $features = $data['features'];
+        $setup = is_array($page->setup) ? $page->setup : [];
+        $setup['features'] = [
+            'store' => $type === Page::TYPE_BUSINESS ? $this->booleanValue($features['store'] ?? null, false) : false,
+            'services' => $type === Page::TYPE_BUSINESS ? $this->booleanValue($features['services'] ?? null, false) : false,
+            'events' => $type === Page::TYPE_COMMUNITY ? $this->booleanValue($features['events'] ?? null, false) : false,
+        ];
+
+        $page->setup = $this->normalizedSetup($setup);
+        $page->save();
+
+        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'services', 'events'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
+    }
+
     public function show(Page $page)
     {
         if ($page->user?->banned_at) {

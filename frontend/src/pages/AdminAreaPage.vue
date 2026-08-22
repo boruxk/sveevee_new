@@ -217,6 +217,8 @@
 				indicator-color="primary"
 				align="left"
 				dense
+				mobile-arrows
+				outside-arrows
 			>
 				<q-tab name="communication" icon="forum" :label="t('admin.communication')" />
 				<q-tab name="users" icon="manage_accounts" :label="t('admin.userTable')" />
@@ -609,6 +611,43 @@
   .support-list,
   .detail-panel {
     padding: 20px;
+  }
+
+  .admin-tabs {
+    padding: 6px 38px;
+  }
+
+  .admin-tabs :deep(.q-tabs__content) {
+    gap: 4px;
+  }
+
+  .admin-tabs :deep(.q-tab) {
+    min-height: 38px;
+    padding: 0 8px;
+  }
+
+  .admin-tabs :deep(.q-icon) {
+    font-size: 18px;
+  }
+
+  .admin-tabs :deep(.q-tab__label) {
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .admin-tabs :deep(.q-tabs__arrow) {
+    z-index: 2;
+    min-width: 30px;
+    color: var(--soz-ink);
+    text-shadow: none;
+  }
+
+  .admin-tabs :deep(.q-tabs__arrow--left) {
+    inset-inline-start: 4px;
+  }
+
+  .admin-tabs :deep(.q-tabs__arrow--right) {
+    inset-inline-end: 4px;
   }
 
   .support-row {

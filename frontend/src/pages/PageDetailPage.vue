@@ -144,6 +144,7 @@
 		return page.value.name
 	})
 	const seoImage = computed(() => page.value?.banner_url || page.value?.logo_url)
+	const shareUrl = computed(() => (page.value ? absoluteUrl(canonicalPath.value) : ''))
 	const structuredAddress = computed(() => {
 		const address = pageAddress.value
 
@@ -285,6 +286,7 @@
 				:has-after-info="hasPreviewContent"
 				:title-tag="isBusinessPage ? 'h1' : 'h2'"
 				:description-fallback="businessSeoDescription"
+				:share-url="shareUrl"
 				@show-ratings="ratingsDialogOpen = true"
 				@rate="reviewDialogOpen = true"
 			>

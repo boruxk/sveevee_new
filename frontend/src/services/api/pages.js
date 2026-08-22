@@ -47,6 +47,10 @@ export async function saveMyPage(type, payload) {
 	return apiClient.post(`/pages/${type}`, await toPageFormData(payload))
 }
 
+export function updatePageFeatures(type, payload) {
+	return apiClient.patch(`/pages/${type}/features`, payload)
+}
+
 export function deletePage(id) {
 	return apiClient.delete(`/pages/${id}`)
 }

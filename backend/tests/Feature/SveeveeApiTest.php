@@ -658,7 +658,21 @@ HTML);
 
             $businessHtml = File::get($dist.'/he/business/'.$page->public_slug.'/index.html');
             $productHtml = File::get($dist.'/he/product/'.$product->public_slug.'/index.html');
+            $businessCatalogHtml = File::get($dist.'/catalog/businesses/index.html');
+            $productCatalogHtml = File::get($dist.'/catalog/products/index.html');
+            $adsCatalogHtml = File::get($dist.'/catalog/ads/index.html');
+            $businessHub = CatalogTopics::findScopeHub('businesses');
+            $productHub = CatalogTopics::findScopeHub('products');
+            $adsHub = CatalogTopics::findScopeHub('ads');
 
+            $this->assertStringContainsString('<h1>'.$businessHub['labels']['he'].'</h1>', $businessCatalogHtml);
+            $this->assertStringContainsString('<h1>'.$productHub['labels']['he'].'</h1>', $productCatalogHtml);
+            $this->assertStringContainsString('<h1>'.$adsHub['labels']['he'].'</h1>', $adsCatalogHtml);
+            $this->assertStringContainsString('CollectionPage', $businessCatalogHtml);
+            $this->assertStringContainsString('ItemList', $productCatalogHtml);
+            $this->assertStringNotContainsString('Homepage fallback', $businessCatalogHtml);
+            $this->assertStringNotContainsString('Homepage fallback', $productCatalogHtml);
+            $this->assertStringNotContainsString('Homepage fallback', $adsCatalogHtml);
             $this->assertStringContainsString('<h1>Avi Electric</h1>', $businessHtml);
             $this->assertStringContainsString('LocalBusiness', $businessHtml);
             $this->assertStringContainsString('addressCountry', $businessHtml);
@@ -1215,8 +1229,8 @@ HTML);
             ->assertJsonPath('data.banner_url', null)
             ->assertJsonPath('data.banner_name', null);
 
-        Storage::disk('public')->assertMissing('pages/logos/logo.png');
-        Storage::disk('public')->assertMissing('pages/banners/banner.png');
+        $this->assertFalse(Storage::disk('public')->exists('pages/logos/logo.png'));
+        $this->assertFalse(Storage::disk('public')->exists('pages/banners/banner.png'));
     }
 
     public function test_ads_use_owner_location_and_search_by_location(): void
@@ -1449,7 +1463,7 @@ HTML);
 
         $adId = $created->json('data.id');
         $oldImagePath = Ad::query()->findOrFail($adId)->image_path;
-        Storage::disk('public')->assertExists($oldImagePath);
+        $this->assertTrue(Storage::disk('public')->exists($oldImagePath));
 
         $this->post("/api/v1/ads/{$adId}", [
             '_method' => 'PUT',
@@ -1472,7 +1486,7 @@ HTML);
             'image_path' => null,
             'image_original_name' => null,
         ]);
-        Storage::disk('public')->assertMissing($oldImagePath);
+        $this->assertFalse(Storage::disk('public')->exists($oldImagePath));
     }
 
     public function test_user_can_upload_profile_photo_up_to_twenty_megabytes(): void
@@ -1489,7 +1503,7 @@ HTML);
             ->assertJsonPath('data.profile.photo_url', fn ($value) => is_string($value) && str_contains($value, '/storage/profiles/'))
             ->assertJsonPath('data.profile.photo_name', 'konezki.png');
 
-        Storage::disk('public')->assertExists($user->fresh()->profile->photo_path);
+        $this->assertTrue(Storage::disk('public')->exists($user->fresh()->profile->photo_path));
         $this->assertDatabaseHas('user_profiles', [
             'user_id' => $user->id,
             'photo_original_name' => 'konezki.png',
@@ -1623,7 +1637,7 @@ HTML);
             ->assertJsonPath('data.profile.photo_url', null)
             ->assertJsonPath('data.user.profile.photo_url', null);
 
-        Storage::disk('public')->assertMissing('profiles/avatar.png');
+        $this->assertFalse(Storage::disk('public')->exists('profiles/avatar.png'));
         $this->assertDatabaseHas('user_profiles', [
             'user_id' => $user->id,
             'photo_path' => null,
@@ -1662,7 +1676,7 @@ HTML);
             ->assertJsonPath('data.link', 'https://seller.example/products/cup');
 
         $oldProductImagePath = PageProduct::query()->findOrFail($createdProduct->json('data.id'))->image_path;
-        Storage::disk('public')->assertExists($oldProductImagePath);
+        $this->assertTrue(Storage::disk('public')->exists($oldProductImagePath));
 
         $this->post("/api/v1/products/{$createdProduct->json('data.id')}", [
             '_method' => 'PUT',
@@ -1695,7 +1709,7 @@ HTML);
             ->assertJsonPath('data.image_url', null)
             ->assertJsonPath('data.image_name', null);
 
-        Storage::disk('public')->assertMissing($oldProductImagePath);
+        $this->assertFalse(Storage::disk('public')->exists($oldProductImagePath));
 
         $this->getJson("/api/v1/pages/{$businessPage->id}")
             ->assertOk()
@@ -1713,13 +1727,13 @@ HTML);
 
         $deletedProductId = $deletedProduct->json('data.id');
         $deletedProductImagePath = PageProduct::query()->findOrFail($deletedProductId)->image_path;
-        Storage::disk('public')->assertExists($deletedProductImagePath);
+        $this->assertTrue(Storage::disk('public')->exists($deletedProductImagePath));
 
         $this->deleteJson("/api/v1/products/{$deletedProductId}")
             ->assertOk();
 
         $this->assertDatabaseMissing('page_products', ['id' => $deletedProductId]);
-        Storage::disk('public')->assertMissing($deletedProductImagePath);
+        $this->assertFalse(Storage::disk('public')->exists($deletedProductImagePath));
 
         $this->post("/api/v1/pages/{$communityPage->id}/products", [
             'name' => 'Community cup',
@@ -1765,7 +1779,7 @@ HTML);
             ->assertJsonPath('data.link', 'https://seller.example/services/electrician');
 
         $oldServiceImagePath = PageService::query()->findOrFail($createdService->json('data.id'))->image_path;
-        Storage::disk('public')->assertExists($oldServiceImagePath);
+        $this->assertTrue(Storage::disk('public')->exists($oldServiceImagePath));
 
         $this->post("/api/v1/services/{$createdService->json('data.id')}", [
             '_method' => 'PUT',
@@ -1799,13 +1813,13 @@ HTML);
 
         $deletedServiceId = $deletedService->json('data.id');
         $deletedServiceImagePath = PageService::query()->findOrFail($deletedServiceId)->image_path;
-        Storage::disk('public')->assertExists($deletedServiceImagePath);
+        $this->assertTrue(Storage::disk('public')->exists($deletedServiceImagePath));
 
         $this->deleteJson("/api/v1/services/{$deletedServiceId}")
             ->assertOk();
 
         $this->assertDatabaseMissing('page_services', ['id' => $deletedServiceId]);
-        Storage::disk('public')->assertMissing($deletedServiceImagePath);
+        $this->assertFalse(Storage::disk('public')->exists($deletedServiceImagePath));
 
         $this->post("/api/v1/pages/{$communityPage->id}/services", [
             'name' => 'Community service',
@@ -1854,7 +1868,7 @@ HTML);
             ->assertJsonPath('data.address', 'Gan HaEm, Haifa');
 
         $oldEventImagePath = PageEvent::query()->findOrFail($createdEvent->json('data.id'))->image_path;
-        Storage::disk('public')->assertExists($oldEventImagePath);
+        $this->assertTrue(Storage::disk('public')->exists($oldEventImagePath));
 
         $this->post("/api/v1/events/{$createdEvent->json('data.id')}", [
             '_method' => 'PUT',
@@ -1895,7 +1909,7 @@ HTML);
             ->assertJsonPath('data.image_name', null)
             ->assertJsonPath('data.end_time', null);
 
-        Storage::disk('public')->assertMissing($oldEventImagePath);
+        $this->assertFalse(Storage::disk('public')->exists($oldEventImagePath));
 
         $this->getJson("/api/v1/pages/{$communityPage->id}")
             ->assertOk()
@@ -1916,13 +1930,13 @@ HTML);
 
         $deletedEventId = $deletedEvent->json('data.id');
         $deletedEventImagePath = PageEvent::query()->findOrFail($deletedEventId)->image_path;
-        Storage::disk('public')->assertExists($deletedEventImagePath);
+        $this->assertTrue(Storage::disk('public')->exists($deletedEventImagePath));
 
         $this->deleteJson("/api/v1/events/{$deletedEventId}")
             ->assertOk();
 
         $this->assertDatabaseMissing('page_events', ['id' => $deletedEventId]);
-        Storage::disk('public')->assertMissing($deletedEventImagePath);
+        $this->assertFalse(Storage::disk('public')->exists($deletedEventImagePath));
 
         $this->post("/api/v1/pages/{$businessPage->id}/events", [
             'name' => 'Business Event',

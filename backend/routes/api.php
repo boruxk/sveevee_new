@@ -56,6 +56,7 @@ Route::prefix('v1')->middleware('recaptcha')->group(function () {
 
         Route::get('/pages/{type}/mine', [PageController::class, 'mine']);
         Route::post('/pages/{type}', [PageController::class, 'upsert']);
+        Route::patch('/pages/{type}/features', [PageController::class, 'updateFeatures']);
         Route::delete('/pages/{page}', [PageController::class, 'destroy']);
         Route::post('/pages/{page}/products', [PageProductController::class, 'store']);
         Route::put('/products/{product}', [PageProductController::class, 'update']);

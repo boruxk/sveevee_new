@@ -127,8 +127,14 @@ class SeoPrerenderService
         $this->cleanPreviousFiles($dist);
 
         $files = [];
+        $catalogHubs = 0;
         $businessPages = 0;
         $productPages = 0;
+
+        collect(CatalogTopics::scopeHubs())->each(function (array $hub) use ($dist, $indexHtml, &$files, &$catalogHubs): void {
+            $catalogHubs++;
+            $files[] = $this->writePage($dist, $hub['path'], $this->catalogHubHtml($indexHtml, $hub, 'he'));
+        });
 
         Page::query()
             ->with(['products', 'services', 'user.profile'])
@@ -185,6 +191,7 @@ class SeoPrerenderService
 
         return [
             'dist' => $dist,
+            'catalog_hubs' => $catalogHubs,
             'business_pages' => $businessPages,
             'product_pages' => $productPages,
             'files' => count($files),
@@ -209,6 +216,47 @@ class SeoPrerenderService
             $this->productSchema($product, $locale, $meta),
             $this->breadcrumbSchema($meta['breadcrumbs']),
         ]);
+    }
+
+    private function catalogHubHtml(string $indexHtml, array $hub, string $locale): string
+    {
+        $meta = $this->catalogHubMeta($hub, $locale);
+
+        return $this->decorateIndex($indexHtml, $meta, $this->catalogHubBody($hub, $locale, $meta), [
+            $this->catalogHubSchema($meta),
+            $this->catalogHubItemListSchema($hub, $locale),
+            $this->breadcrumbSchema($meta['breadcrumbs']),
+        ]);
+    }
+
+    private function catalogHubMeta(array $hub, string $locale): array
+    {
+        $label = $this->translated($hub['labels'] ?? [], $locale);
+        $description = $this->translated($hub['descriptions'] ?? [], $locale);
+        $path = $hub['path'] ?? '/catalog/'.$hub['slug'];
+
+        return [
+            'locale' => $locale,
+            'dir' => $this->direction($locale),
+            'type' => 'website',
+            'title' => $label.' | Sveevee',
+            'description' => $this->truncate($description),
+            'canonical' => $this->absoluteUrl($path),
+            'image' => $this->absoluteUrl('/favicon.png'),
+            'alternates' => [],
+            'label' => $label,
+            'path' => $path,
+            'breadcrumbs' => [
+                [
+                    'label' => 'Sveevee',
+                    'path' => '/',
+                ],
+                [
+                    'label' => $label,
+                    'path' => $path,
+                ],
+            ],
+        ];
     }
 
     private function businessMeta(Page $page, string $locale): array
@@ -367,6 +415,40 @@ class SeoPrerenderService
             .'</article></main>';
     }
 
+    private function catalogHubBody(array $hub, string $locale, array $meta): string
+    {
+        $groups = collect(CatalogTopics::publicPayload($hub['scopes'] ?? [])['groups'] ?? []);
+        $sections = $groups
+            ->map(function (array $group) use ($locale): string {
+                $topics = collect($group['topics'] ?? [])
+                    ->map(fn (array $topic): string => sprintf(
+                        '<li><a href="%s">%s</a></li>',
+                        $this->escapeAttribute(CatalogTopics::catalogPath($topic)),
+                        $this->escape($this->translated($topic['labels'] ?? [], $locale))
+                    ))
+                    ->implode('');
+
+                if ($topics === '') {
+                    return '';
+                }
+
+                return $this->section(
+                    $this->translated($group['labels'] ?? [], $locale),
+                    '<ul>'.$topics.'</ul>'
+                );
+            })
+            ->filter()
+            ->implode('');
+
+        return '<main class="sveevee-prerender"><article class="sveevee-prerender__card">'
+            .$this->brand()
+            .$this->breadcrumbHtml($meta['breadcrumbs'])
+            .'<h1>'.$this->escape($meta['label']).'</h1>'
+            .'<p class="sveevee-prerender__lead">'.$this->escape($meta['description']).'</p>'
+            .$sections
+            .'</article></main>';
+    }
+
     private function businessSchema(Page $page, string $locale, array $meta): array
     {
         $schema = [
@@ -410,6 +492,38 @@ class SeoPrerenderService
                 ],
             ],
         ]);
+    }
+
+    private function catalogHubSchema(array $meta): array
+    {
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'CollectionPage',
+            'name' => $meta['label'],
+            'description' => $meta['description'],
+            'url' => $meta['canonical'],
+        ];
+    }
+
+    private function catalogHubItemListSchema(array $hub, string $locale): array
+    {
+        $topics = collect(CatalogTopics::publicPayload($hub['scopes'] ?? [])['groups'] ?? [])
+            ->flatMap(fn (array $group): array => $group['topics'] ?? [])
+            ->take(40)
+            ->values();
+
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'ItemList',
+            'itemListElement' => $topics
+                ->map(fn (array $topic, int $index): array => [
+                    '@type' => 'ListItem',
+                    'position' => $index + 1,
+                    'name' => $this->translated($topic['labels'] ?? [], $locale),
+                    'url' => $this->absoluteUrl(CatalogTopics::catalogPath($topic)),
+                ])
+                ->all(),
+        ];
     }
 
     private function breadcrumbSchema(array $breadcrumbs): ?array
@@ -660,7 +774,12 @@ HTML;
             return '';
         }
 
-        return $topic['labels'][$locale] ?? $topic['labels']['he'] ?? $topic['labels']['en'] ?? '';
+        return $this->translated($topic['labels'] ?? [], $locale);
+    }
+
+    private function translated(array $values, string $locale): string
+    {
+        return $values[$locale] ?? $values['he'] ?? $values['en'] ?? '';
     }
 
     private function priceLabel(PageProduct $product): string

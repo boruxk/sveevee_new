@@ -333,7 +333,7 @@
 				<q-tab-panel name="messages" class="me-panel">
 					<section class="soz-section-card panel panel--chat">
 						<h2>{{ t('mePage.messages') }}</h2>
-						<ChatBlock :target-user-id="chatTargetUserId" :list-reset-key="messagesListResetKey" />
+						<ChatBlock class="me-chat-block" :target-user-id="chatTargetUserId" :list-reset-key="messagesListResetKey" />
 					</section>
 				</q-tab-panel>
 			</q-tab-panels>
@@ -446,18 +446,21 @@
 }
 
 .me-panels {
-  margin-top: 18px;
-  padding-bottom: 34px;
+  margin: 18px -34px 0;
+  padding: 4px 34px 58px;
   background: transparent;
   overflow: hidden;
 }
 
 .me-panel {
-  padding: 0;
+  padding: 0 0 52px;
   overflow: hidden;
 }
 
 .me-panels :deep(.q-panel) {
+  width: calc(100% + 68px);
+  margin-inline: -34px;
+  padding-inline: 34px;
   overflow: hidden;
 }
 
@@ -587,8 +590,10 @@
   margin-bottom: 24px;
 }
 
-.panel--chat :deep(.chat-block) {
-  height: clamp(460px, calc(100dvh - 330px), 780px);
+.panel--chat :deep(.me-chat-block.chat-block) {
+  height: clamp(360px, 44dvh, 520px) !important;
+  min-height: 360px !important;
+  max-height: 520px !important;
 }
 
 .panel-head {
@@ -674,7 +679,7 @@
 
   .me-tabs {
     border-radius: 22px;
-    padding-inline: 4px;
+    padding: 6px 8px;
   }
 
   .overview-block {
@@ -682,26 +687,48 @@
   }
 
   .me-tabs :deep(.q-tabs__content) {
-    gap: 0;
+    width: 100%;
+    gap: 4px;
   }
 
   .me-tabs :deep(.q-tab) {
-    min-height: 48px;
-    padding: 0 10px;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0 6px;
+  }
+
+  .me-tabs :deep(.q-tab__content) {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    gap: 5px;
+    line-height: 1;
+  }
+
+  .me-tabs :deep(.q-icon) {
+    font-size: 18px;
+    line-height: 1;
   }
 
   .me-tabs :deep(.q-tab__label) {
-    font-size: 0.95rem;
+    overflow: visible;
+    font-size: 0.8rem;
     font-weight: 700;
+    text-overflow: clip;
+    white-space: nowrap;
   }
 
   .overview-block__head {
     flex-direction: column;
   }
 
-  .panel--chat :deep(.chat-block) {
-    height: calc(100dvh - 220px);
-    min-height: 430px;
+  .panel--chat :deep(.me-chat-block.chat-block) {
+    height: 66dvh !important;
+    min-height: min(360px, 66dvh) !important;
+    max-height: none !important;
   }
 
   .listing-dialog {

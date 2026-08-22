@@ -110,6 +110,15 @@ export default {
 		ban: 'Ban',
 		restore: 'Restore'
 	},
+	share: {
+		title: 'Share',
+		copyLink: 'Copy Link',
+		qrCode: 'QR Code',
+		copied: 'Link copied.',
+		copyFailed: 'Link could not be copied.',
+		instagramCopied: 'Link copied. Paste it in Instagram.',
+		tiktokCopied: 'Link copied. Paste it in TikTok.'
+	},
 	auth: {
 		identifier: 'Email or login',
 		email: 'Email',
@@ -397,6 +406,11 @@ export default {
 		businessTitle: 'Business page',
 		communityTitle: 'Community page',
 		setup: 'Page setup',
+		modules: 'Modules',
+		tabs: {
+			preview: 'Preview',
+			settings: 'Settings'
+		},
 		name: 'Public title',
 		description: 'Public description',
 		email: 'E-mail',

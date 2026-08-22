@@ -110,6 +110,15 @@ export default {
 		ban: 'Bannir',
 		restore: 'Restaurer'
 	},
+	share: {
+		title: 'Partager',
+		copyLink: 'Copier le lien',
+		qrCode: 'QR Code',
+		copied: 'Lien copie.',
+		copyFailed: 'Le lien n a pas pu etre copie.',
+		instagramCopied: 'Lien copie. Collez-le dans Instagram.',
+		tiktokCopied: 'Lien copie. Collez-le dans TikTok.'
+	},
 	auth: {
 		identifier: 'E-mail ou login',
 		email: 'E-mail',
@@ -397,6 +406,11 @@ export default {
 		businessTitle: 'Page entreprise',
 		communityTitle: 'Page communauté',
 		setup: 'Configuration de la page',
+		modules: 'Modules',
+		tabs: {
+			preview: 'Apercu',
+			settings: 'Reglages'
+		},
 		name: 'Titre public',
 		description: 'Description publique',
 		email: 'E-mail',

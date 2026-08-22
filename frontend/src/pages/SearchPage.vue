@@ -48,12 +48,12 @@
 		users: [CATALOG_SCOPES.USERS]
 	}
 	const searchTypeOptions = computed(() => [
-		{ label: t('catalog.sections.pages'), value: 'pages' },
-		{ label: t('catalog.sections.products'), value: 'products' },
-		{ label: t('catalog.sections.services'), value: 'services' },
-		{ label: t('catalog.sections.events'), value: 'events' },
-		{ label: t('catalog.sections.ads'), value: 'ads' },
-		{ label: t('catalog.sections.users'), value: 'users' }
+		{ label: t('catalog.sections.pages'), value: 'pages', icon: 'storefront' },
+		{ label: t('catalog.sections.products'), value: 'products', icon: 'inventory_2' },
+		{ label: t('catalog.sections.services'), value: 'services', icon: 'design_services' },
+		{ label: t('catalog.sections.events'), value: 'events', icon: 'event' },
+		{ label: t('catalog.sections.ads'), value: 'ads', icon: 'campaign' },
+		{ label: t('catalog.sections.users'), value: 'users', icon: null }
 	])
 	const activeCategoryScopes = computed(() => scopeCatalogMap[filters.scope] || [])
 	const selectedCategoryTopic = computed(() => catalogTopicByKey(catalogGroups.value, filters.category))
@@ -232,13 +232,26 @@
 					<div class="advanced-search-panel__head">
 						<strong>{{ t('search.chooseType') }}</strong>
 					</div>
-					<q-option-group
-						v-model="filters.scope"
-						class="search-type-options"
-						type="radio"
-						inline
-						:options="searchTypeOptions"
-					/>
+					<div class="search-type-options" role="radiogroup" :aria-label="t('search.chooseType')">
+						<button v-for="option in searchTypeOptions"
+							:key="option.value"
+							type="button"
+							class="search-type-option"
+							:class="{ 'search-type-option--active': filters.scope === option.value }"
+							:aria-checked="filters.scope === option.value"
+							role="radio"
+							@click="filters.scope = option.value"
+						>
+							<svg v-if="option.value === 'users'" class="search-type-option__svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M8.5 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" />
+								<path d="M15.8 10.7a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4Z" />
+								<path d="M3.6 19.2c.5-3.4 2.4-5.1 5-5.1 2.7 0 4.6 1.7 5 5.1" />
+								<path d="M13.2 14.4c.7-.3 1.5-.4 2.5-.4 2.4 0 4.1 1.5 4.6 4.4" />
+							</svg>
+							<q-icon v-else :name="option.icon" size="22px" />
+							<span>{{ option.label }}</span>
+						</button>
+					</div>
 					<CatalogCategorySelect
 						v-if="filters.scope"
 						v-model="filters.category"
@@ -361,11 +374,72 @@
 }
 
 .search-type-options {
-  margin-inline: -8px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.search-type-options :deep(.q-radio__label) {
-  font-weight: 720;
+.search-type-option {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  min-width: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(123, 63, 242, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.64);
+  color: rgba(21, 31, 59, 0.78);
+  font: inherit;
+  font-size: 1.02rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.search-type-option:hover {
+  border-color: rgba(123, 63, 242, 0.22);
+  background: var(--soz-primary-tint);
+  color: var(--soz-primary-deep);
+}
+
+.search-type-option--active,
+.search-type-option--active:hover {
+  border-color: transparent;
+  background: var(--soz-menu-gradient);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(123, 63, 242, 0.24);
+  transform: translateY(-1px);
+}
+
+.search-type-option .q-icon {
+  flex: 0 0 auto;
+}
+
+.search-type-option__svg {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
+.search-type-option span {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .catalog-filter-link {
@@ -469,6 +543,10 @@
   .result-list {
     grid-template-columns: 1fr;
   }
+
+  .search-type-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 700px) {
@@ -507,6 +585,16 @@
 
   .search-form .q-btn {
     width: 100%;
+  }
+
+  .search-type-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .search-type-option {
+    min-height: 46px;
+    padding-inline: 10px;
+    font-size: 0.96rem;
   }
 
   .catalog-filter-link {

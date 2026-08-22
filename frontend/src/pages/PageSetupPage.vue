@@ -1,5 +1,5 @@
 <script setup>
-	import { computed, onMounted, reactive, ref, toRef, watch } from 'vue'
+	import { computed, nextTick, onMounted, reactive, ref, toRef, watch } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
@@ -9,11 +9,12 @@
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { deleteAd } from '@/services/api/ads'
 	import { deleteEvent } from '@/services/api/events'
-	import { deletePage, fetchMyPage, saveMyPage } from '@/services/api/pages'
+	import { deletePage, fetchMyPage, saveMyPage, updatePageFeatures } from '@/services/api/pages'
 	import { deleteProduct } from '@/services/api/products'
 	import { deleteService } from '@/services/api/services'
 	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
-	import { CATALOG_SCOPES } from '@/constants/catalogTopics'
+	import { CATALOG_SCOPES, publicPagePath } from '@/constants/catalogTopics'
+	import { absoluteUrl } from '@/composables/useSeo'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import AdCard from '@/components/AdCard.vue'
@@ -40,7 +41,7 @@
 
 	const route = useRoute()
 	const router = useRouter()
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const loading = ref(false)
@@ -49,12 +50,12 @@
 	const logoUploading = ref(false)
 	const bannerUploading = ref(false)
 	const formRef = ref(null)
-	const setupDialogOpen = ref(false)
 	const adDialogOpen = ref(false)
 	const productDialogOpen = ref(false)
 	const serviceDialogOpen = ref(false)
 	const eventDialogOpen = ref(false)
 	const ratingsDialogOpen = ref(false)
+	const activeTab = ref('preview')
 	const editingAd = ref(null)
 	const editingProduct = ref(null)
 	const editingService = ref(null)
@@ -121,6 +122,26 @@
 
 		return []
 	})
+	const pageTabs = computed(() => [
+		{ name: 'preview', label: t('pages.tabs.preview'), icon: 'visibility' },
+		{ name: 'settings', label: t('pages.tabs.settings'), icon: 'settings' },
+		isBusinessPage.value && isStoreEnabled.value ? {
+			name: 'store',
+			label: t('businessFeatures.store'),
+			icon: 'inventory_2'
+		} : null,
+		isBusinessPage.value && isServicesEnabled.value ? {
+			name: 'services',
+			label: t('businessFeatures.services'),
+			icon: 'design_services'
+		} : null,
+		isCommunityPage.value && isEventsEnabled.value ? {
+			name: 'events',
+			label: t('businessFeatures.events'),
+			icon: 'event'
+		} : null,
+		{ name: 'ads', label: t('ads.listTitle'), icon: 'campaign' }
+	].filter(Boolean))
 	const hasStoredLogo = computed(() => Boolean(page.value?.logo_url) && !form.logo && !logoRemoved.value)
 	const hasStoredBanner = computed(() => Boolean(page.value?.banner_url) && !form.banner && !bannerRemoved.value)
 	const logoDisplayName = computed(() => imageUploadDisplayName(
@@ -173,6 +194,17 @@
 		banner_url: bannerRemoved.value ? null : localBannerPreviewUrl.value || page.value?.banner_url || null,
 		rating_summary: page.value?.rating_summary || { average: 0, count: 0 }
 	}))
+	const previewShareUrl = computed(() => {
+		if (!page.value) {
+			return ''
+		}
+
+		if (isBusinessPage.value) {
+			return absoluteUrl(publicPagePath(page.value, locale.value))
+		}
+
+		return absoluteUrl(page.value.public_path || `/pages/${page.value.public_slug || page.value.id}`)
+	})
 	const previewContentPlaceholders = computed(() => {
 		if (isBusinessPage.value) {
 			return [
@@ -181,6 +213,7 @@
 					icon: 'inventory_2',
 					label: t('products.storeTitle'),
 					targetId: 'page-products-section',
+					tabName: 'store',
 					cardCount: 2
 				} : null,
 				isServicesEnabled.value ? {
@@ -188,6 +221,7 @@
 					icon: 'design_services',
 					label: t('businessServices.title'),
 					targetId: 'page-services-section',
+					tabName: 'services',
 					cardCount: 1
 				} : null
 			].filter(Boolean)
@@ -199,6 +233,7 @@
 				icon: 'event',
 				label: t('events.eventsTitle'),
 				targetId: 'page-events-section',
+				tabName: 'events',
 				cardCount: 1
 			}]
 		}
@@ -207,7 +242,9 @@
 	})
 	const hasPreviewPlaceholders = computed(() => previewContentPlaceholders.value.length > 0)
 
-	function scrollToSetupBlock(targetId) {
+	async function openSetupTab(tabName, targetId) {
+		activeTab.value = tabName
+		await nextTick()
 		document.getElementById(targetId)?.scrollIntoView({
 			behavior: 'smooth',
 			block: 'start'
@@ -348,7 +385,6 @@
 			await authStore.refreshUser()
 			if (notify) {
 				$q.notify({ type: 'positive', message: t('pages.saved') })
-				setupDialogOpen.value = false
 			}
 			return true
 		} catch (error) {
@@ -364,15 +400,39 @@
 			return
 		}
 
-		const previousValue = Boolean(form.features[key])
-		form.features[key] = !previousValue
+		const previousFeatures = { ...form.features }
+		form.features[key] = !previousFeatures[key]
 
 		if (!page.value) {
 			return
 		}
 
-		if (!(await save({ notify: false, validate: false }))) {
-			form.features[key] = previousValue
+		saving.value = true
+		try {
+			const { data } = await updatePageFeatures(type.value, { features: { ...form.features } })
+			const savedPage = data.data
+			const savedFeatures = savedPage?.features || savedPage?.setup?.features || form.features
+
+			page.value = {
+				...page.value,
+				...savedPage,
+				setup: {
+					...(page.value?.setup || {}),
+					...(savedPage?.setup || {}),
+					features: savedFeatures
+				},
+				features: savedFeatures
+			}
+			form.features.store = featureFlag(page.value, 'store', false)
+			form.features.services = featureFlag(page.value, 'services', false)
+			form.features.events = featureFlag(page.value, 'events', false)
+		} catch (error) {
+			form.features.store = previousFeatures.store
+			form.features.services = previousFeatures.services
+			form.features.events = previousFeatures.events
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('pages.saveFailed')) })
+		} finally {
+			saving.value = false
 		}
 	}
 
@@ -687,6 +747,11 @@
 	}
 
 	watch(type, load)
+	watch(pageTabs, (tabs) => {
+		if (!tabs.some((tab) => tab.name === activeTab.value)) {
+			activeTab.value = 'settings'
+		}
+	})
 	watch(cityOptions, (options) => {
 		citySelectOptions.value = options
 	}, { immediate: true })
@@ -737,442 +802,462 @@
 				</div>
 			</section>
 
-			<section class="soz-section-card panel q-mt-lg">
-				<div class="preview-head">
-					<div>
-						<h2>{{ t('pages.previewDialogTitle') }}</h2>
-					</div>
-					<div class="page-toolbar-actions">
-						<q-btn rounded
-							unelevated
-							color="negative"
-							class="page-delete-btn"
-							icon="delete"
-							:disable="!page"
-							:loading="deleting"
-							:label="t('actions.deletePage')"
-							@click="confirmDeletePage"
-						/>
-						<q-btn rounded
-							unelevated
-							color="primary"
-							class="page-setup-btn"
-							icon="settings"
-							:label="t('pages.setup')"
-							@click="setupDialogOpen = true"
-						/>
-					</div>
-				</div>
+			<q-tabs
+				v-model="activeTab"
+				class="setup-tabs q-mt-lg"
+				active-color="primary"
+				indicator-color="primary"
+				align="left"
+				no-caps
+				inline-label
+				mobile-arrows
+				outside-arrows
+			>
+				<q-tab v-for="tab in pageTabs"
+					:key="tab.name"
+					:name="tab.name"
+					:icon="tab.icon"
+					:label="tab.label"
+				/>
+			</q-tabs>
 
-				<div v-if="isBusinessPage || isCommunityPage" class="feature-toggle-row">
-					<button
-						v-if="isBusinessPage"
-						type="button"
-						class="feature-toggle"
-						:class="{ 'feature-toggle--active': isStoreEnabled }"
-						:aria-label="t('businessFeatures.toggleStore')"
-						:aria-pressed="isStoreEnabled"
-						:title="t('businessFeatures.toggleStore')"
-						:disabled="saving"
-						@click="togglePageFeature('store')"
-					>
-						<span class="feature-toggle__dot" aria-hidden="true" />
-						<span>{{ t('businessFeatures.store') }}</span>
-					</button>
-					<button
-						v-if="isBusinessPage"
-						type="button"
-						class="feature-toggle"
-						:class="{ 'feature-toggle--active': isServicesEnabled }"
-						:aria-label="t('businessFeatures.toggleServices')"
-						:aria-pressed="isServicesEnabled"
-						:title="t('businessFeatures.toggleServices')"
-						:disabled="saving"
-						@click="togglePageFeature('services')"
-					>
-						<span class="feature-toggle__dot" aria-hidden="true" />
-						<span>{{ t('businessFeatures.services') }}</span>
-					</button>
-					<button
-						v-if="isCommunityPage"
-						type="button"
-						class="feature-toggle"
-						:class="{ 'feature-toggle--active': isEventsEnabled }"
-						:aria-label="t('businessFeatures.toggleEvents')"
-						:aria-pressed="isEventsEnabled"
-						:title="t('businessFeatures.toggleEvents')"
-						:disabled="saving"
-						@click="togglePageFeature('events')"
-					>
-						<span class="feature-toggle__dot" aria-hidden="true" />
-						<span>{{ t('businessFeatures.events') }}</span>
-					</button>
-				</div>
+			<q-tab-panels v-model="activeTab" animated class="setup-panels">
+				<q-tab-panel name="preview" class="setup-panel">
+					<section class="soz-section-card panel">
+						<div v-if="loading" class="row justify-center q-pa-lg">
+							<q-spinner color="primary" />
+						</div>
+						<PagePreview v-else
+							:page="previewPage"
+							:palette="selectedPalette"
+							:has-after-info="hasPreviewPlaceholders"
+							:share-url="previewShareUrl"
+							@show-ratings="ratingsDialogOpen = true"
+						>
+							<template #afterInfo>
+								<div class="preview-placeholder-list">
+									<div v-for="placeholder in previewContentPlaceholders"
+										:key="placeholder.key"
+										class="preview-placeholder-segment"
+									>
+										<a
+											class="preview-placeholder-heading"
+											:href="`#${placeholder.targetId}`"
+											@click.prevent="openSetupTab(placeholder.tabName, placeholder.targetId)"
+										>
+											<span class="preview-placeholder-heading__icon">
+												<q-icon :name="placeholder.icon" size="22px" />
+											</span>
+											<span>{{ placeholder.label }}</span>
+											<q-icon name="south" class="preview-placeholder-heading__arrow" />
+										</a>
+										<div class="preview-placeholder-card-grid" :class="{ 'preview-placeholder-card-grid--two': placeholder.cardCount === 2 }">
+											<div v-for="index in placeholder.cardCount"
+												:key="`${placeholder.key}-${index}`"
+												class="preview-placeholder-card"
+											>
+												<span class="preview-placeholder-card__media" />
+												<span class="preview-placeholder-card__line preview-placeholder-card__line--strong" />
+												<span class="preview-placeholder-card__line" />
+												<span class="preview-placeholder-card__line preview-placeholder-card__line--short" />
+											</div>
+										</div>
+									</div>
+								</div>
+							</template>
+						</PagePreview>
+					</section>
+				</q-tab-panel>
 
-				<div v-if="loading" class="row justify-center q-pa-lg">
-					<q-spinner color="primary" />
-				</div>
-				<PagePreview v-else
-					class="q-mt-lg"
-					:page="previewPage"
-					:palette="selectedPalette"
-					:has-after-info="hasPreviewPlaceholders"
-					@show-ratings="ratingsDialogOpen = true"
-				>
-					<template #afterInfo>
-						<div class="preview-placeholder-list">
-							<div v-for="placeholder in previewContentPlaceholders"
-								:key="placeholder.key"
-								class="preview-placeholder-segment"
-							>
-								<a
-									class="preview-placeholder-heading"
-									:href="`#${placeholder.targetId}`"
-									@click.prevent="scrollToSetupBlock(placeholder.targetId)"
+				<q-tab-panel name="settings" class="setup-panel">
+					<div class="settings-grid">
+						<section class="soz-section-card panel">
+							<div class="panel-head panel-head--compact">
+								<h2>{{ t('pages.modules') }}</h2>
+							</div>
+
+							<div v-if="isBusinessPage || isCommunityPage" class="feature-toggle-row">
+								<button
+									v-if="isBusinessPage"
+									type="button"
+									class="feature-toggle"
+									:class="{ 'feature-toggle--active': isStoreEnabled }"
+									:aria-label="t('businessFeatures.toggleStore')"
+									:aria-pressed="isStoreEnabled"
+									:title="t('businessFeatures.toggleStore')"
+									:disabled="saving"
+									@click="togglePageFeature('store')"
 								>
-									<q-icon :name="placeholder.icon" />
-									<span>{{ placeholder.label }}</span>
-									<q-icon name="south" class="preview-placeholder-heading__arrow" />
-								</a>
-								<div class="preview-placeholder-card-grid" :class="{ 'preview-placeholder-card-grid--two': placeholder.cardCount === 2 }">
-									<div v-for="index in placeholder.cardCount"
-										:key="`${placeholder.key}-${index}`"
-										class="preview-placeholder-card"
-									>
-										<span class="preview-placeholder-card__media" />
-										<span class="preview-placeholder-card__line preview-placeholder-card__line--strong" />
-										<span class="preview-placeholder-card__line" />
-										<span class="preview-placeholder-card__line preview-placeholder-card__line--short" />
+									<span class="feature-toggle__dot" aria-hidden="true" />
+									<span>{{ t('businessFeatures.store') }}</span>
+								</button>
+								<button
+									v-if="isBusinessPage"
+									type="button"
+									class="feature-toggle"
+									:class="{ 'feature-toggle--active': isServicesEnabled }"
+									:aria-label="t('businessFeatures.toggleServices')"
+									:aria-pressed="isServicesEnabled"
+									:title="t('businessFeatures.toggleServices')"
+									:disabled="saving"
+									@click="togglePageFeature('services')"
+								>
+									<span class="feature-toggle__dot" aria-hidden="true" />
+									<span>{{ t('businessFeatures.services') }}</span>
+								</button>
+								<button
+									v-if="isCommunityPage"
+									type="button"
+									class="feature-toggle"
+									:class="{ 'feature-toggle--active': isEventsEnabled }"
+									:aria-label="t('businessFeatures.toggleEvents')"
+									:aria-pressed="isEventsEnabled"
+									:title="t('businessFeatures.toggleEvents')"
+									:disabled="saving"
+									@click="togglePageFeature('events')"
+								>
+									<span class="feature-toggle__dot" aria-hidden="true" />
+									<span>{{ t('businessFeatures.events') }}</span>
+								</button>
+							</div>
+						</section>
+
+						<section class="soz-section-card panel">
+							<div class="panel-head">
+								<h2>{{ t('pages.tabs.settings') }}</h2>
+								<q-btn rounded
+									unelevated
+									color="negative"
+									class="page-delete-btn"
+									icon="delete"
+									:disable="!page"
+									:loading="deleting"
+									:label="t('actions.deletePage')"
+									@click="confirmDeletePage"
+								/>
+							</div>
+
+							<div class="presence-grid">
+								<div class="presence-editor">
+									<q-form v-if="!loading" ref="formRef" greedy class="column q-gutter-md" @submit.prevent="save()">
+										<q-input v-model="form.name" outlined :label="requiredLabel('pages.name')" :rules="[requiredRule]" />
+										<q-input
+											v-model="form.public_description"
+											outlined
+											type="textarea"
+											autogrow
+											:input-style="{ minHeight: '150px' }"
+											:label="t('pages.description')"
+										/>
+										<CatalogCategorySelect
+											v-model="form.category_key"
+											:groups="catalogGroups"
+											:scope="pageCatalogScope"
+											required
+											:label="requiredLabel('catalog.category')"
+										/>
+
+										<section class="presence-segment">
+											<div class="presence-segment__title">{{ t('pages.sections.contact') }}</div>
+											<div class="row q-col-gutter-md">
+												<div class="col-12 col-md-4">
+													<q-input v-model="form.phone" outlined :label="requiredLabel('pages.tel')" :rules="[requiredRule]" />
+												</div>
+												<div class="col-12 col-md-4">
+													<q-input v-model="form.contact_email" outlined type="email" :label="requiredLabel('pages.email')" :rules="[requiredRule]" />
+												</div>
+												<div class="col-12 col-md-4">
+													<q-input v-model="form.whatsapp" outlined :label="t('pages.whatsapp')" />
+												</div>
+											</div>
+										</section>
+
+										<section class="presence-segment">
+											<div class="presence-segment__title">{{ t('pages.sections.address') }}</div>
+											<div class="row q-col-gutter-md">
+												<div class="col-12 col-md-4">
+													<q-input
+														v-model="form.address.street"
+														outlined
+														:label="requiredLabel('pages.street')"
+														:rules="[requiredRule]"
+													/>
+												</div>
+												<div class="col-12 col-md-2">
+													<q-input
+														v-model="form.address.number"
+														outlined
+														:label="requiredLabel('pages.number')"
+														:rules="[requiredRule]"
+													/>
+												</div>
+												<div class="col-12 col-md-3">
+													<q-select v-model="form.address.city"
+														outlined
+														clearable
+														emit-value
+														map-options
+														use-input
+														hide-selected
+														fill-input
+														input-debounce="0"
+														new-value-mode="add-unique"
+														:options="citySelectOptions"
+														:label="requiredLabel('pages.city')"
+														:rules="[requiredRule]"
+														@filter="filterCityOptions"
+														@new-value="addOption"
+													/>
+												</div>
+												<div class="col-12 col-md-3">
+													<q-select v-model="form.address.neighborhood"
+														outlined
+														clearable
+														emit-value
+														map-options
+														use-input
+														hide-selected
+														fill-input
+														input-debounce="0"
+														new-value-mode="add-unique"
+														:options="neighborhoodSelectOptions"
+														:label="t('auth.neighborhood')"
+														:disable="!form.address.city"
+														@filter="filterNeighborhoodOptions"
+														@new-value="addOption"
+													/>
+												</div>
+											</div>
+										</section>
+
+										<section class="presence-segment">
+											<div class="presence-segment__title">{{ t('pages.sections.openingHours') }}</div>
+											<div class="hours-grid">
+												<div v-for="item in form.opening_hours" :key="item.weekday" class="hours-row">
+													<div class="hours-row__day text-body2 text-weight-medium">{{ dayLabel(item.weekday) }}</div>
+													<q-toggle v-model="item.is_open" :label="item.is_open ? t('pages.open') : t('pages.closed')" color="primary" />
+													<q-input v-model="item.opens_at" outlined type="time" :disable="!item.is_open" :label="t('pages.opensAt')" />
+													<q-input v-model="item.closes_at" outlined type="time" :disable="!item.is_open" :label="t('pages.closesAt')" />
+												</div>
+											</div>
+										</section>
+
+										<div class="upload-group q-mt-md">
+											<div class="upload-row">
+												<q-file v-model="form.logo"
+													outlined
+													clearable
+													:accept="IMAGE_ACCEPT"
+													:display-value="logoDisplayName"
+													:label="t('pages.logo')"
+												>
+													<template #append>
+														<q-btn
+															v-if="hasStoredLogo"
+															flat
+															round
+															dense
+															color="negative"
+															icon="delete"
+															:aria-label="t('actions.delete')"
+															@click.stop.prevent="removeStoredLogo"
+														>
+															<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
+														</q-btn>
+													</template>
+												</q-file>
+												<q-btn type="button"
+													rounded
+													outline
+													color="dark"
+													:loading="logoUploading"
+													:label="t('pages.uploadLogo')"
+													@click="uploadLogo"
+												/>
+											</div>
+
+											<div class="upload-row">
+												<q-file v-model="form.banner"
+													outlined
+													clearable
+													:accept="IMAGE_ACCEPT"
+													:display-value="bannerDisplayName"
+													:label="t('pages.banner')"
+												>
+													<template #append>
+														<q-btn
+															v-if="hasStoredBanner"
+															flat
+															round
+															dense
+															color="negative"
+															icon="delete"
+															:aria-label="t('actions.delete')"
+															@click.stop.prevent="removeStoredBanner"
+														>
+															<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
+														</q-btn>
+													</template>
+												</q-file>
+												<q-btn type="button"
+													rounded
+													outline
+													color="dark"
+													:loading="bannerUploading"
+													:label="t('pages.uploadBanner')"
+													@click="uploadBanner"
+												/>
+											</div>
+										</div>
+
+										<div class="section-label">{{ t('pages.palette') }}</div>
+										<div class="palette-grid">
+											<button
+												v-for="palette in presencePalettes"
+												:key="palette.key"
+												type="button"
+												class="palette-card"
+												:class="{ 'palette-card--active': palette.key === form.palette_key }"
+												:aria-pressed="palette.key === form.palette_key"
+												@click="form.palette_key = palette.key"
+											>
+												<q-icon v-if="palette.key === form.palette_key" name="check_circle" class="palette-card__check" />
+												<span class="palette-card__swatch" :style="{ background: palette.hero }" />
+												<span class="palette-card__name">{{ t(palette.nameKey) }}</span>
+											</button>
+										</div>
+
+										<div class="row items-center q-col-gutter-sm q-mt-md">
+											<div class="col-auto">
+												<q-btn rounded
+													unelevated
+													color="primary"
+													type="button"
+													:loading="saving"
+													:label="t('pages.saveSettings')"
+													@click="save"
+												/>
+											</div>
+										</div>
+									</q-form>
+									<div v-else class="row justify-center q-pa-lg">
+										<q-spinner color="primary" />
 									</div>
 								</div>
 							</div>
+						</section>
+					</div>
+				</q-tab-panel>
+
+				<q-tab-panel v-if="isBusinessPage && isStoreEnabled" name="store" class="setup-panel">
+					<section id="page-products-section" class="soz-section-card panel">
+						<div class="panel-head">
+							<h2>{{ t('products.storeTitle') }}</h2>
+							<q-btn rounded
+								unelevated
+								color="primary"
+								icon="add_shopping_cart"
+								:disable="!page"
+								:label="t('actions.addProduct')"
+								@click="openCreateProduct"
+							/>
 						</div>
-					</template>
-				</PagePreview>
-			</section>
+						<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
+						<div v-else-if="visibleProducts.length === 0" class="empty-state">{{ t('products.empty') }}</div>
+						<div v-else class="product-grid">
+							<ProductCard v-for="product in visibleProducts"
+								:key="product.id"
+								:product="product"
+								editable
+								@edit="openEditProduct"
+								@delete="removeProduct"
+							/>
+						</div>
+					</section>
+				</q-tab-panel>
 
-			<section v-if="isBusinessPage && isStoreEnabled" id="page-products-section" class="soz-section-card panel q-mt-lg">
-				<div class="panel-head">
-					<h2>{{ t('products.storeTitle') }}</h2>
-					<q-btn rounded
-						unelevated
-						color="primary"
-						icon="add_shopping_cart"
-						:disable="!page"
-						:label="t('actions.addProduct')"
-						@click="openCreateProduct"
-					/>
-				</div>
-				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
-				<div v-else-if="visibleProducts.length === 0" class="empty-state">{{ t('products.empty') }}</div>
-				<div v-else class="product-grid">
-					<ProductCard v-for="product in visibleProducts"
-						:key="product.id"
-						:product="product"
-						editable
-						@edit="openEditProduct"
-						@delete="removeProduct"
-					/>
-				</div>
-			</section>
+				<q-tab-panel v-if="isBusinessPage && isServicesEnabled" name="services" class="setup-panel">
+					<section id="page-services-section" class="soz-section-card panel">
+						<div class="panel-head">
+							<h2>{{ t('businessServices.title') }}</h2>
+							<q-btn rounded
+								unelevated
+								color="primary"
+								icon="design_services"
+								:disable="!page"
+								:label="t('businessServices.addService')"
+								@click="openCreateService"
+							/>
+						</div>
+						<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
+						<div v-else-if="visibleServices.length === 0" class="empty-state">{{ t('businessServices.empty') }}</div>
+						<div v-else class="service-list">
+							<ServiceCard v-for="service in visibleServices"
+								:key="service.id"
+								:service="service"
+								editable
+								@edit="openEditService"
+								@delete="removeService"
+							/>
+						</div>
+					</section>
+				</q-tab-panel>
 
-			<section v-if="isBusinessPage && isServicesEnabled" id="page-services-section" class="soz-section-card panel q-mt-lg">
-				<div class="panel-head">
-					<h2>{{ t('businessServices.title') }}</h2>
-					<q-btn rounded
-						unelevated
-						color="primary"
-						icon="design_services"
-						:disable="!page"
-						:label="t('businessServices.addService')"
-						@click="openCreateService"
-					/>
-				</div>
-				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
-				<div v-else-if="visibleServices.length === 0" class="empty-state">{{ t('businessServices.empty') }}</div>
-				<div v-else class="service-list">
-					<ServiceCard v-for="service in visibleServices"
-						:key="service.id"
-						:service="service"
-						editable
-						@edit="openEditService"
-						@delete="removeService"
-					/>
-				</div>
-			</section>
+				<q-tab-panel v-if="isCommunityPage && isEventsEnabled" name="events" class="setup-panel">
+					<section id="page-events-section" class="soz-section-card panel">
+						<div class="panel-head">
+							<h2>{{ t('events.eventsTitle') }}</h2>
+							<q-btn rounded
+								unelevated
+								color="primary"
+								icon="event"
+								:disable="!page"
+								:label="t('actions.addEvent')"
+								@click="openCreateEvent"
+							/>
+						</div>
+						<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
+						<div v-else-if="visibleEvents.length === 0" class="empty-state">{{ t('events.empty') }}</div>
+						<div v-else class="event-grid">
+							<EventCard v-for="event in visibleEvents"
+								:key="event.id"
+								:event="event"
+								editable
+								@edit="openEditEvent"
+								@delete="removeEvent"
+							/>
+						</div>
+					</section>
+				</q-tab-panel>
 
-			<section v-if="isCommunityPage && isEventsEnabled" id="page-events-section" class="soz-section-card panel q-mt-lg">
-				<div class="panel-head">
-					<h2>{{ t('events.eventsTitle') }}</h2>
-					<q-btn rounded
-						unelevated
-						color="primary"
-						icon="event"
-						:disable="!page"
-						:label="t('actions.addEvent')"
-						@click="openCreateEvent"
-					/>
-				</div>
-				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
-				<div v-else-if="visibleEvents.length === 0" class="empty-state">{{ t('events.empty') }}</div>
-				<div v-else class="event-grid">
-					<EventCard v-for="event in visibleEvents"
-						:key="event.id"
-						:event="event"
-						editable
-						@edit="openEditEvent"
-						@delete="removeEvent"
-					/>
-				</div>
-			</section>
-
-			<section class="soz-section-card panel q-mt-lg">
-				<div class="panel-head">
-					<h2>{{ t('ads.listTitle') }}</h2>
-					<q-btn rounded
-						unelevated
-						color="primary"
-						icon="add"
-						:disable="!page"
-						:label="t('actions.createAd')"
-						@click="openCreateAd"
-					/>
-				</div>
-				<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
-				<div v-else-if="visibleAds.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
-				<div v-else class="listing-grid">
-					<AdCard v-for="ad in visibleAds"
-						:key="ad.id"
-						:ad="ad"
-						editable
-						@edit="openEditAd"
-						@delete="removeAd"
-					/>
-				</div>
-			</section>
+				<q-tab-panel name="ads" class="setup-panel">
+					<section class="soz-section-card panel">
+						<div class="panel-head">
+							<h2>{{ t('ads.listTitle') }}</h2>
+							<q-btn rounded
+								unelevated
+								color="primary"
+								icon="add"
+								:disable="!page"
+								:label="t('actions.createAd')"
+								@click="openCreateAd"
+							/>
+						</div>
+						<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
+						<div v-else-if="visibleAds.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
+						<div v-else class="listing-grid">
+							<AdCard v-for="ad in visibleAds"
+								:key="ad.id"
+								:ad="ad"
+								editable
+								@edit="openEditAd"
+								@delete="removeAd"
+							/>
+						</div>
+					</section>
+				</q-tab-panel>
+			</q-tab-panels>
 		</div>
-
-		<q-dialog v-model="setupDialogOpen">
-			<q-card class="setup-dialog">
-				<q-card-section class="dialog-head">
-					<div>
-						<div class="text-h6">{{ t('pages.setup') }}</div>
-					</div>
-					<q-btn flat round icon="close" color="dark" v-close-popup />
-				</q-card-section>
-
-				<q-card-section class="setup-dialog__body">
-					<div class="presence-grid">
-						<div class="presence-editor">
-							<q-form v-if="!loading" ref="formRef" greedy class="column q-gutter-md" @submit.prevent="save()">
-								<q-input v-model="form.name" outlined :label="requiredLabel('pages.name')" :rules="[requiredRule]" />
-								<q-input
-									v-model="form.public_description"
-									outlined
-									type="textarea"
-									autogrow
-									:input-style="{ minHeight: '150px' }"
-									:label="t('pages.description')"
-								/>
-								<CatalogCategorySelect
-									v-model="form.category_key"
-									:groups="catalogGroups"
-									:scope="pageCatalogScope"
-									required
-									:label="requiredLabel('catalog.category')"
-								/>
-
-								<section class="presence-segment">
-									<div class="presence-segment__title">{{ t('pages.sections.contact') }}</div>
-									<div class="row q-col-gutter-md">
-										<div class="col-12 col-md-4">
-											<q-input v-model="form.phone" outlined :label="requiredLabel('pages.tel')" :rules="[requiredRule]" />
-										</div>
-										<div class="col-12 col-md-4">
-											<q-input v-model="form.contact_email" outlined type="email" :label="requiredLabel('pages.email')" :rules="[requiredRule]" />
-										</div>
-										<div class="col-12 col-md-4">
-											<q-input v-model="form.whatsapp" outlined :label="t('pages.whatsapp')" />
-										</div>
-									</div>
-								</section>
-
-								<section class="presence-segment">
-									<div class="presence-segment__title">{{ t('pages.sections.address') }}</div>
-									<div class="row q-col-gutter-md">
-										<div class="col-12 col-md-4">
-											<q-input
-												v-model="form.address.street"
-												outlined
-												:label="requiredLabel('pages.street')"
-												:rules="[requiredRule]"
-											/>
-										</div>
-										<div class="col-12 col-md-2">
-											<q-input
-												v-model="form.address.number"
-												outlined
-												:label="requiredLabel('pages.number')"
-												:rules="[requiredRule]"
-											/>
-										</div>
-										<div class="col-12 col-md-3">
-											<q-select v-model="form.address.city"
-												outlined
-												clearable
-												emit-value
-												map-options
-												use-input
-												hide-selected
-												fill-input
-												input-debounce="0"
-												new-value-mode="add-unique"
-												:options="citySelectOptions"
-												:label="requiredLabel('pages.city')"
-												:rules="[requiredRule]"
-												@filter="filterCityOptions"
-												@new-value="addOption"
-											/>
-										</div>
-										<div class="col-12 col-md-3">
-											<q-select v-model="form.address.neighborhood"
-												outlined
-												clearable
-												emit-value
-												map-options
-												use-input
-												hide-selected
-												fill-input
-												input-debounce="0"
-												new-value-mode="add-unique"
-												:options="neighborhoodSelectOptions"
-												:label="t('auth.neighborhood')"
-												:disable="!form.address.city"
-												@filter="filterNeighborhoodOptions"
-												@new-value="addOption"
-											/>
-										</div>
-									</div>
-								</section>
-
-								<section class="presence-segment">
-									<div class="presence-segment__title">{{ t('pages.sections.openingHours') }}</div>
-									<div class="hours-grid">
-										<div v-for="item in form.opening_hours" :key="item.weekday" class="hours-row">
-											<div class="text-body2 text-weight-medium">{{ dayLabel(item.weekday) }}</div>
-											<q-toggle v-model="item.is_open" :label="item.is_open ? t('pages.open') : t('pages.closed')" color="primary" />
-											<q-input v-model="item.opens_at" outlined type="time" :disable="!item.is_open" :label="t('pages.opensAt')" />
-											<q-input v-model="item.closes_at" outlined type="time" :disable="!item.is_open" :label="t('pages.closesAt')" />
-										</div>
-									</div>
-								</section>
-
-								<div class="upload-group q-mt-md">
-									<div class="upload-row">
-										<q-file v-model="form.logo"
-											outlined
-											clearable
-											:accept="IMAGE_ACCEPT"
-											:display-value="logoDisplayName"
-											:label="t('pages.logo')"
-										>
-											<template #append>
-												<q-btn
-													v-if="hasStoredLogo"
-													flat
-													round
-													dense
-													color="negative"
-													icon="delete"
-													:aria-label="t('actions.delete')"
-													@click.stop.prevent="removeStoredLogo"
-												>
-													<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
-												</q-btn>
-											</template>
-										</q-file>
-										<q-btn type="button"
-											rounded
-											outline
-											color="dark"
-											:loading="logoUploading"
-											:label="t('pages.uploadLogo')"
-											@click="uploadLogo"
-										/>
-									</div>
-
-									<div class="upload-row">
-										<q-file v-model="form.banner"
-											outlined
-											clearable
-											:accept="IMAGE_ACCEPT"
-											:display-value="bannerDisplayName"
-											:label="t('pages.banner')"
-										>
-											<template #append>
-												<q-btn
-													v-if="hasStoredBanner"
-													flat
-													round
-													dense
-													color="negative"
-													icon="delete"
-													:aria-label="t('actions.delete')"
-													@click.stop.prevent="removeStoredBanner"
-												>
-													<q-tooltip>{{ t('actions.delete') }}</q-tooltip>
-												</q-btn>
-											</template>
-										</q-file>
-										<q-btn type="button"
-											rounded
-											outline
-											color="dark"
-											:loading="bannerUploading"
-											:label="t('pages.uploadBanner')"
-											@click="uploadBanner"
-										/>
-									</div>
-								</div>
-
-								<div class="section-label">{{ t('pages.palette') }}</div>
-								<div class="palette-grid">
-									<button
-										v-for="palette in presencePalettes"
-										:key="palette.key"
-										type="button"
-										class="palette-card"
-										:class="{ 'palette-card--active': palette.key === form.palette_key }"
-										:aria-pressed="palette.key === form.palette_key"
-										@click="form.palette_key = palette.key"
-									>
-										<q-icon v-if="palette.key === form.palette_key" name="check_circle" class="palette-card__check" />
-										<span class="palette-card__swatch" :style="{ background: palette.hero }" />
-										<span class="palette-card__name">{{ t(palette.nameKey) }}</span>
-									</button>
-								</div>
-
-								<div class="row items-center q-col-gutter-sm q-mt-md">
-									<div class="col-auto">
-										<q-btn rounded
-											unelevated
-											color="primary"
-											type="button"
-											:loading="saving"
-											:label="t('pages.saveSettings')"
-											@click="save"
-										/>
-									</div>
-								</div>
-							</q-form>
-							<div v-else class="row justify-center q-pa-lg">
-								<q-spinner color="primary" />
-							</div>
-						</div>
-					</div>
-				</q-card-section>
-			</q-card>
-		</q-dialog>
 		<q-dialog v-model="adDialogOpen">
 			<q-card class="listing-dialog">
 				<q-card-section class="dialog-head">
@@ -1273,18 +1358,6 @@
   margin: 0;
 }
 
-.preview-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 18px;
-  align-items: start;
-}
-
-.preview-head h2 {
-  font-size: clamp(1.42rem, 1.75vw, 1.88rem);
-  line-height: 1.18;
-}
-
 .panel-head {
   display: flex;
   align-items: center;
@@ -1298,16 +1371,90 @@
   line-height: 1.18;
 }
 
-.page-setup-btn.q-btn.bg-primary {
-  background: var(--soz-action-gradient) !important;
-  box-shadow: 0 14px 28px rgba(245, 66, 145, 0.22) !important;
+.panel-head--compact {
+  margin-bottom: 0;
 }
 
-.page-toolbar-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
+.setup-tabs {
+  padding: 8px 14px;
+  border: 1px solid var(--soz-line);
+  border-radius: 30px;
+  background: var(--soz-soft-white);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 18px 40px rgba(33, 18, 8, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.setup-tabs :deep(.q-tabs__content) {
+  gap: 18px;
+}
+
+.setup-tabs :deep(.q-tabs__indicator),
+.setup-tabs :deep(.q-tab__indicator) {
+  display: none;
+}
+
+.setup-tabs :deep(.q-tab) {
+  min-height: 54px;
+  padding: 0 20px;
+  border-radius: 999px;
+  color: var(--soz-muted);
+  transition:
+    background-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+}
+
+.setup-tabs :deep(.q-tab:hover) {
+  background: var(--soz-primary-tint);
+}
+
+.setup-tabs :deep(.q-tab--active),
+.setup-tabs :deep(.q-tab--active:hover) {
+  background: var(--soz-menu-gradient);
+  color: #ffffff !important;
+}
+
+.setup-tabs :deep(.q-tab--active .q-focus-helper) {
+  opacity: 0 !important;
+}
+
+.setup-tabs :deep(.q-tab--active .q-icon),
+.setup-tabs :deep(.q-tab--active .q-tab__label) {
+  color: #ffffff !important;
+}
+
+.setup-tabs :deep(.q-tab__content) {
+  gap: 8px;
+}
+
+.setup-tabs :deep(.q-tab__label) {
+  font-size: 1.2rem;
+}
+
+.setup-panels {
+  margin: 18px -34px 0;
+  padding: 4px 34px 58px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.setup-panel {
+  padding: 0 0 52px;
+  overflow: hidden;
+}
+
+.setup-panels :deep(.q-panel) {
+  width: calc(100% + 68px);
+  margin-inline: -34px;
+  padding-inline: 34px;
+  overflow: hidden;
+}
+
+.settings-grid {
+  display: grid;
+  gap: 18px;
 }
 
 .feature-toggle-row {
@@ -1395,16 +1542,21 @@
   text-decoration: none;
 }
 
-.preview-placeholder-heading > .q-icon:first-child {
+.preview-placeholder-heading__icon {
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
+  flex: 0 0 44px;
   border-radius: 999px;
   background: var(--soz-action-gradient);
   color: #fff;
-  font-size: 24px;
   box-shadow: 0 12px 24px rgba(245, 66, 145, 0.22);
+}
+
+.preview-placeholder-heading__icon :deep(.q-icon) {
+  font-size: 22px !important;
+  line-height: 1 !important;
 }
 
 .preview-placeholder-heading__arrow {
@@ -1498,7 +1650,7 @@
 
 .palette-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1610,16 +1762,6 @@
   color: rgba(17, 34, 45, 0.62);
 }
 
-.setup-dialog {
-  display: flex;
-  flex-direction: column;
-  width: min(1080px, calc(100vw - 24px));
-  max-width: 1080px;
-  max-height: calc(100vh - 32px);
-  border-radius: 30px;
-  background: #f9f2eb;
-}
-
 .listing-dialog,
 .product-dialog,
 .service-dialog,
@@ -1637,13 +1779,7 @@
   gap: 16px;
 }
 
-.setup-dialog__body {
-  overflow-y: auto;
-  padding-top: 0;
-}
-
 @media (max-width: 1100px) {
-  .preview-head,
   .listing-grid {
     grid-template-columns: 1fr;
   }
@@ -1653,15 +1789,25 @@
   }
 
   .palette-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 800px) {
-  .palette-grid,
-  .hours-row,
+  .palette-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .upload-row {
     grid-template-columns: 1fr;
+  }
+
+  .hours-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .hours-row .q-field {
+    grid-column: 1 / -1;
   }
 }
 
@@ -1682,31 +1828,58 @@
     padding: 20px;
   }
 
+  .setup-tabs {
+    border-radius: 22px;
+    padding: 6px 38px;
+  }
+
+  .setup-tabs :deep(.q-tabs__content) {
+    gap: 4px;
+  }
+
+  .setup-tabs :deep(.q-tab) {
+    min-height: 40px;
+    padding: 0 8px;
+  }
+
+  .setup-tabs :deep(.q-icon) {
+    font-size: 18px;
+  }
+
+  .setup-tabs :deep(.q-tab__label) {
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .setup-tabs :deep(.q-tabs__arrow) {
+    z-index: 2;
+    min-width: 30px;
+    color: var(--soz-ink);
+    text-shadow: none;
+  }
+
+  .setup-tabs :deep(.q-tabs__arrow--left) {
+    inset-inline-start: 4px;
+  }
+
+  .setup-tabs :deep(.q-tabs__arrow--right) {
+    inset-inline-end: 4px;
+  }
+
   .panel-head {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .preview-head {
-    grid-template-columns: 1fr;
-  }
-
-  .page-toolbar-actions,
-  .page-toolbar-actions .q-btn,
   .panel-head .q-btn,
   .feature-toggle {
     width: 100%;
-  }
-
-  .page-toolbar-actions {
-    justify-content: stretch;
   }
 
   .panel-head {
     align-items: stretch;
   }
 
-  .setup-dialog,
   .listing-dialog,
   .product-dialog,
   .service-dialog,
@@ -1716,17 +1889,16 @@
     border-radius: 20px;
   }
 
-  .setup-dialog__body {
-    padding-inline: 14px;
-  }
-
   .dialog-head {
     align-items: flex-start;
   }
 
   .presence-segment {
-    padding: 14px;
-    border-radius: 16px;
+    gap: 10px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
 
   .palette-card {
