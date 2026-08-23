@@ -159,6 +159,7 @@
 							unelevated
 							rounded
 							icon="person_add"
+							class="landing-register-cta"
 							:label="t('nav.register')"
 							:to="{ name: 'register' }"
 						/>
@@ -243,6 +244,15 @@
 					<div class="section-kicker">{{ t('landing.businessKicker') }}</div>
 					<h2>{{ t('landing.businessTitle') }}</h2>
 					<p>{{ t('landing.businessBody') }}</p>
+					<q-btn
+						unelevated
+						rounded
+						color="primary"
+						class="audience-panel__link"
+						icon="visibility"
+						:label="t('promoLanding.examplePageCta')"
+						:to="{ name: 'business-example-page' }"
+					/>
 				</div>
 
 				<div class="audience-benefit-grid">
@@ -269,6 +279,15 @@
 					<div class="section-kicker">{{ t('landing.communityKicker') }}</div>
 					<h2>{{ t('landing.communityTitle') }}</h2>
 					<p>{{ t('landing.communityBody') }}</p>
+					<q-btn
+						unelevated
+						rounded
+						color="primary"
+						class="audience-panel__link"
+						icon="visibility"
+						:label="t('promoLanding.examplePageCta')"
+						:to="{ name: 'community-example-page' }"
+					/>
 				</div>
 
 				<div class="audience-benefit-grid">
@@ -427,7 +446,7 @@
   grid-template-columns: minmax(0, 0.88fr) minmax(420px, 1.12fr);
   gap: clamp(28px, 5vw, 72px);
   align-items: center;
-  max-width: 1240px;
+  max-width: 1280px;
   min-height: clamp(540px, 52vw, 650px);
   margin: 0 auto;
   padding: clamp(42px, 7vw, 84px) 24px clamp(34px, 6vw, 72px);
@@ -442,6 +461,9 @@
 
 .landing-kicker-chip {
   margin-bottom: 20px;
+  padding-inline: 0;
+  background: transparent !important;
+  box-shadow: none !important;
   font-weight: 800;
 }
 
@@ -473,6 +495,25 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.landing-register-cta.q-btn.bg-primary {
+  animation: landingCtaPulse 2.15s ease-in-out infinite;
+  box-shadow: 0 16px 34px rgba(245, 66, 145, 0.28) !important;
+  font-weight: 900;
+}
+
+@keyframes landingCtaPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 rgba(245, 66, 145, 0));
+  }
+
+  50% {
+    transform: scale(1.035);
+    filter: drop-shadow(0 10px 18px rgba(245, 66, 145, 0.28));
+  }
 }
 
 .landing-hero__search-btn.q-btn.bg-primary {
@@ -529,7 +570,7 @@
 }
 
 .landing-section {
-  max-width: 1240px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 54px 24px 0;
 }
@@ -822,6 +863,15 @@
   color: rgba(21, 31, 59, 0.72);
   font-size: 17px;
   line-height: 1.72;
+}
+
+.audience-panel__link.q-btn.bg-primary {
+  justify-self: start;
+  margin-top: 4px;
+  background: var(--soz-menu-gradient) !important;
+  box-shadow: 0 12px 24px rgba(123, 63, 242, 0.22) !important;
+  color: #ffffff !important;
+  font-weight: 850;
 }
 
 .audience-benefit-grid {
@@ -1327,19 +1377,6 @@
     margin: 24px var(--landing-mobile-gutter) 0;
     font-size: 17px;
     line-height: 1.68;
-    filter:
-      drop-shadow(0 0 14px #ffffff)
-      drop-shadow(0 0 34px #ffffff)
-      drop-shadow(0 0 62px rgba(255, 255, 255, 0.98));
-    text-shadow:
-      0 1px 0 #ffffff,
-      0 2px 0 #ffffff,
-      0 0 4px #ffffff,
-      0 0 10px #ffffff,
-      0 8px 20px #ffffff,
-      0 16px 38px #ffffff,
-      0 28px 68px rgba(255, 255, 255, 0.98),
-      0 0 96px rgba(255, 255, 255, 0.98);
   }
 
   .landing-hero__subtitle {

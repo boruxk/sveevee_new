@@ -1054,7 +1054,7 @@
 										</section>
 
 										<section class="presence-segment">
-											<div class="presence-segment__title">Socials</div>
+											<div class="presence-segment__title">{{ t('pages.sections.socials') }}</div>
 											<div class="row q-col-gutter-md">
 												<div class="col-12 col-md-3">
 													<q-input v-model="form.socials.facebook" outlined label="Facebook" />

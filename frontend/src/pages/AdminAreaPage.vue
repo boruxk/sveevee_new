@@ -18,12 +18,32 @@
 	const selectedConversationId = ref(null)
 	const activeSupportConversation = ref(null)
 	const supportMessage = ref('')
+	const userSearch = ref('')
+	const appliedUserSearch = ref('')
 	const messagesEl = ref(null)
 	const tablePagination = ref({
 		page: 1,
 		rowsPerPage: 50,
 		rowsNumber: 0
 	})
+	const landingPages = computed(() => [
+		{
+			key: 'businesses',
+			icon: 'storefront',
+			title: t('admin.landingPageBusinessTitle'),
+			description: t('admin.landingPageBusinessDescription'),
+			routeName: 'businesses-landing',
+			exampleRouteName: 'business-example-page'
+		},
+		{
+			key: 'communities',
+			icon: 'diversity_3',
+			title: t('admin.landingPageCommunityTitle'),
+			description: t('admin.landingPageCommunityDescription'),
+			routeName: 'communities-landing',
+			exampleRouteName: 'community-example-page'
+		}
+	])
 	const supportMessages = computed(() => activeSupportConversation.value?.messages || [])
 	const selectedSupportConversation = computed(() =>
 		supportConversations.value.find((conversation) => conversation.id === selectedConversationId.value) || activeSupportConversation.value || null
@@ -143,7 +163,10 @@
 	async function loadUserTable(page = tablePagination.value.page) {
 		tableLoading.value = true
 		try {
-			const { data } = await fetchAdminUserTable({ page })
+			const { data } = await fetchAdminUserTable({
+				page,
+				q: appliedUserSearch.value || undefined
+			})
 			const payload = data.data || {}
 			const pagination = payload.pagination || {}
 
@@ -156,6 +179,16 @@
 		} finally {
 			tableLoading.value = false
 		}
+	}
+
+	async function applyUserSearch() {
+		appliedUserSearch.value = String(userSearch.value || '').trim()
+		await loadUserTable(1)
+	}
+
+	async function clearUserSearch() {
+		userSearch.value = ''
+		await applyUserSearch()
 	}
 
 	async function reloadAfterModeration() {
@@ -216,12 +249,14 @@
 				active-color="primary"
 				indicator-color="primary"
 				align="left"
-				dense
+				no-caps
+				inline-label
 				mobile-arrows
 				outside-arrows
 			>
 				<q-tab name="communication" icon="forum" :label="t('admin.communication')" />
 				<q-tab name="users" icon="manage_accounts" :label="t('admin.userTable')" />
+				<q-tab name="landing-pages" icon="dashboard" :label="t('admin.landingPages')" />
 			</q-tabs>
 
 			<q-tab-panels v-model="activeTab" animated class="admin-panels">
@@ -319,9 +354,30 @@
 
 				<q-tab-panel name="users" class="admin-panel">
 					<section class="soz-section-card table-panel">
+						<div class="user-table-tools">
+							<q-input
+								v-model="userSearch"
+								outlined
+								dense
+								rounded
+								clearable
+								debounce="300"
+								class="user-search"
+								:label="t('admin.userSearch')"
+								:placeholder="t('admin.userSearchPlaceholder')"
+								@keyup.enter="applyUserSearch"
+								@update:model-value="applyUserSearch"
+								@clear="clearUserSearch"
+							>
+								<template #prepend>
+									<q-icon name="search" />
+								</template>
+							</q-input>
+						</div>
 						<q-table
 							v-model:pagination="tablePagination"
 							flat
+							class="user-table"
 							:rows="userRows"
 							:columns="userColumns"
 							row-key="id"
@@ -383,6 +439,47 @@
 						</q-table>
 					</section>
 				</q-tab-panel>
+
+				<q-tab-panel name="landing-pages" class="admin-panel">
+					<section class="soz-section-card landing-pages-panel">
+						<div class="landing-pages-panel__head">
+							<div>
+								<h2>{{ t('admin.landingPages') }}</h2>
+								<p>{{ t('admin.landingPagesIntro') }}</p>
+							</div>
+							<q-chip color="primary" text-color="white">{{ t('promoLanding.freeBadge') }}</q-chip>
+						</div>
+
+						<div class="landing-page-list">
+							<article v-for="page in landingPages" :key="page.key" class="landing-page-row">
+								<span class="landing-page-row__icon">
+									<q-icon :name="page.icon" size="30px" />
+								</span>
+								<div class="landing-page-row__copy">
+									<strong>{{ page.title }}</strong>
+									<p>{{ page.description }}</p>
+								</div>
+								<q-btn
+									color="primary"
+									unelevated
+									rounded
+									icon="open_in_new"
+									:label="t('admin.openLandingPage')"
+									:to="{ name: page.routeName }"
+								/>
+								<q-btn
+									color="primary"
+									unelevated
+									rounded
+									class="landing-page-row__example-btn"
+									icon="visibility"
+									:label="t('promoLanding.examplePageCta')"
+									:to="{ name: page.exampleRouteName }"
+								/>
+							</article>
+						</div>
+					</section>
+				</q-tab-panel>
 			</q-tab-panels>
 		</div>
 	</q-page>
@@ -405,9 +502,61 @@
 }
 
 .admin-tabs {
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 14px 34px rgba(123, 63, 242, 0.08);
+  padding: 8px 14px;
+  border: 1px solid var(--soz-line);
+  border-radius: 30px;
+  background: var(--soz-soft-white);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 18px 40px rgba(33, 18, 8, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.admin-tabs :deep(.q-tabs__content) {
+  gap: 18px;
+}
+
+.admin-tabs :deep(.q-tabs__indicator),
+.admin-tabs :deep(.q-tab__indicator) {
+  display: none;
+}
+
+.admin-tabs :deep(.q-tab) {
+  min-height: 54px;
+  padding: 0 20px;
+  border-radius: 999px;
+  color: var(--soz-muted);
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.admin-tabs :deep(.q-tab:hover) {
+  background: var(--soz-primary-tint);
+}
+
+.admin-tabs :deep(.q-tab--active),
+.admin-tabs :deep(.q-tab--active:hover) {
+  background: var(--soz-menu-gradient);
+  color: #ffffff !important;
+}
+
+.admin-tabs :deep(.q-tab--active .q-focus-helper) {
+  opacity: 0 !important;
+}
+
+.admin-tabs :deep(.q-tab--active .q-icon),
+.admin-tabs :deep(.q-tab--active .q-tab__label) {
+  color: #ffffff !important;
+}
+
+.admin-tabs :deep(.q-tab__content) {
+  gap: 8px;
+}
+
+.admin-tabs :deep(.q-tab__label) {
+  font-size: 1.08rem;
+  font-weight: 760;
 }
 
 .admin-panels {
@@ -419,8 +568,116 @@
 }
 
 .table-panel {
-  padding: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  overflow: visible;
+}
+
+.user-table-tools {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.user-search {
+  width: min(100%, 460px);
+}
+
+.user-table {
   overflow: hidden;
+  border: 1px solid rgba(17, 34, 45, 0.08);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 14px 32px rgba(17, 34, 45, 0.05);
+}
+
+.user-table :deep(.q-table__top),
+.user-table :deep(.q-table__bottom),
+.user-table :deep(thead tr),
+.user-table :deep(tbody tr) {
+  background: transparent;
+}
+
+.user-table :deep(.q-table__middle) {
+  border-radius: 22px;
+}
+
+.landing-pages-panel {
+  display: grid;
+  gap: 18px;
+  padding: 26px;
+}
+
+.landing-pages-panel__head {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.landing-pages-panel__head h2 {
+  margin: 0 0 6px;
+  color: var(--soz-ink);
+  font-size: 26px;
+  line-height: 1.16;
+}
+
+.landing-pages-panel__head p {
+  max-width: 720px;
+  margin: 0;
+  color: rgba(17, 34, 45, 0.62);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.landing-page-list {
+  display: grid;
+  gap: 12px;
+}
+
+.landing-page-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid rgba(17, 34, 45, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.66);
+  box-shadow: 0 12px 28px rgba(17, 34, 45, 0.05);
+}
+
+.landing-page-row__example-btn.q-btn.bg-primary {
+  background: var(--soz-menu-gradient) !important;
+}
+
+.landing-page-row__icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  background: var(--soz-menu-gradient);
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(123, 63, 242, 0.18);
+}
+
+.landing-page-row__copy {
+  min-width: 0;
+}
+
+.landing-page-row__copy strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--soz-ink);
+  font-size: 18px;
+  line-height: 1.24;
+}
+
+.landing-page-row__copy p {
+  margin: 0;
+  color: rgba(17, 34, 45, 0.62);
+  line-height: 1.56;
 }
 
 .table-name {
@@ -614,6 +871,7 @@
   }
 
   .admin-tabs {
+    border-radius: 22px;
     padding: 6px 38px;
   }
 
@@ -622,7 +880,7 @@
   }
 
   .admin-tabs :deep(.q-tab) {
-    min-height: 38px;
+    min-height: 40px;
     padding: 0 8px;
   }
 
@@ -663,6 +921,32 @@
   }
 
   .support-compose .q-btn {
+    width: 100%;
+  }
+
+  .table-panel {
+    padding: 18px;
+  }
+
+  .user-search {
+    width: 100%;
+  }
+
+  .landing-pages-panel {
+    padding: 20px;
+  }
+
+  .landing-pages-panel__head,
+  .landing-page-row {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .landing-pages-panel__head {
+    flex-direction: column;
+  }
+
+  .landing-page-row .q-btn {
     width: 100%;
   }
 }

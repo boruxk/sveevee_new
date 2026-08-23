@@ -32,6 +32,8 @@ export default {
 		explore: 'Explore',
 		marketplace: 'Marketplace',
 		community: 'Community',
+		forBusinesses: 'For businesses',
+		forCommunities: 'For communities',
 		businesses: 'Businesses',
 		communities: 'Communities',
 		products: 'Products',
@@ -520,7 +522,16 @@ export default {
 		messageSent: 'Message sent.',
 		messageFailed: 'Message could not be sent.',
 		supportInbox: 'Support inbox',
-		noSupportChats: 'No support chats yet.'
+		noSupportChats: 'No support chats yet.',
+		landingPages: 'Landing pages',
+		landingPagesIntro: 'Public advertising pages for the free business and community page offers.',
+		landingPageBusinessTitle: 'Businesses landing page',
+		landingPageBusinessDescription: 'Promotes the free business page with store, services, ads, ratings, contact links, and SEO-ready local content.',
+		landingPageCommunityTitle: 'Communities landing page',
+		landingPageCommunityDescription: 'Promotes the free community page with events, announcements, ratings, contact links, and local discovery.',
+		openLandingPage: 'Open page',
+		userSearch: 'User search',
+		userSearchPlaceholder: 'Search by name, email, or login'
 	},
 	search: {
 		title: 'Search',
@@ -576,6 +587,12 @@ export default {
 		defaultDescription: 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.',
 		landingTitle: 'Find businesses, professionals, products, and local ads near you',
 		landingDescription: 'Find businesses, professionals, products, services, community pages, events, and ads by city and neighborhood. Buy, sell, build pages, and chat directly.',
+		businessLandingTitle: 'Free business page for local advertising',
+		businessLandingDescription: 'Create a free business page on Sveevee with products, services, local ads, ratings, contact links, and SEO-ready text for your city and neighborhood.',
+		communityLandingTitle: 'Free community page for events and announcements',
+		communityLandingDescription: 'Create a free community page on Sveevee with events, announcements, local ads, ratings, social links, and direct contact for your neighborhood.',
+		examplePageTitle: 'Example page with all Sveevee modules',
+		examplePageDescription: 'Preview a filled Sveevee example page with products, services, events, ads, ratings, address, opening hours, social links, chat, WhatsApp, and maps.',
 		searchTitle: 'Search local ads, pages, and people',
 		searchDescription: 'Search users, business pages, community pages, and local ads near you on sveevee.',
 		catalogTitle: 'Local catalog',
@@ -618,6 +635,72 @@ export default {
 		pageFallbackTitle: 'sveevee page',
 		pageFallbackDescription: 'View a public business or community page on sveevee.',
 		pageDescription: 'View {name}, a public {type} page on sveevee.'
+	},
+	promoLanding: {
+		freeBadge: 'Free on Sveevee',
+		freeTitle: 'No monthly fee. No setup fee.',
+		functionsKicker: 'Everything included',
+		benefitsKicker: 'Why it helps',
+		registerToStart: 'Register to start',
+		examplePageCta: 'Example page',
+		business: {
+			eyebrow: 'Business pages for local advertising',
+			title: 'Advertise your business locally for free',
+			subtitle: 'Create a public business page with products, services, ads, ratings, contact options, social links, and local SEO text for your city and neighborhood.',
+			primaryCta: 'Create business page',
+			secondaryCta: 'Browse businesses',
+			descriptionKicker: 'For local businesses',
+			descriptionTitle: 'One free page for your public business presence',
+			descriptionBody: 'Sveevee gives small businesses a clear local page that can be shared, found in search, and connected to products, services, offers, ratings, address, opening hours, WhatsApp, maps, socials, and chat.',
+			freeBody: 'Start with a free page and use the full business toolset. You can add content step by step as your business grows.',
+			functionsTitle: 'All business functions in one page',
+			functions: [
+				{ icon: 'storefront', title: 'Public business page', body: 'Logo, banner, description, category, city, neighborhood, address, opening hours, and contact details.' },
+				{ icon: 'inventory_2', title: 'Products and store', body: 'Show products with image, price, description, availability, and a link to buy on your own website.' },
+				{ icon: 'design_services', title: 'Services', body: 'List services with clear descriptions so customers understand what you offer before they contact you.' },
+				{ icon: 'campaign', title: 'Business ads', body: 'Publish local offers and announcements that point back to your business page and appear in local discovery.' },
+				{ icon: 'reviews', title: 'Ratings and trust', body: 'Collect public ratings and reviews so visitors see a stronger trust signal.' },
+				{ icon: 'forum', title: 'Direct contact', body: 'Let visitors reach you by chat, WhatsApp, phone, email, maps, and social links from one place.' }
+			],
+			benefitsTitle: 'Made for being found nearby',
+			benefits: [
+				{ title: 'Better local SEO', body: 'City, neighborhood, category, services, products, and visible page text help search engines understand your business.' },
+				{ title: 'More useful than a short ad', body: 'An ad can bring attention, while the business page gives visitors the details they need to decide.' },
+				{ title: 'Easy sharing', body: 'Share the direct page link, QR code, WhatsApp, Telegram, Facebook, Instagram, or TikTok from the page.' },
+				{ title: 'Built for small businesses', body: 'Start simple, then add products, services, ads, ratings, and social links when you are ready.' }
+			],
+			ctaTitle: 'Create your business page today',
+			ctaBody: 'It is free, public, and ready for local customers who search by city, neighborhood, and category.'
+		},
+		community: {
+			eyebrow: 'Community pages for local visibility',
+			title: 'Promote your community for free',
+			subtitle: 'Create a public community page with events, announcements, ads, ratings, contact options, social links, and a clear local identity.',
+			primaryCta: 'Create community page',
+			secondaryCta: 'Browse communities',
+			descriptionKicker: 'For local communities',
+			descriptionTitle: 'One free page for groups, events, and announcements',
+			descriptionBody: 'Sveevee helps communities show who they are, publish events, share updates, collect ratings, link socials, and let people contact organizers from one public local page.',
+			freeBody: 'Use the full community page for free: public profile, events, announcements, ads, ratings, contact links, and social links.',
+			functionsTitle: 'All community functions in one page',
+			functions: [
+				{ icon: 'diversity_3', title: 'Public community page', body: 'Logo, banner, description, city, neighborhood, contact details, and social links in one public place.' },
+				{ icon: 'event', title: 'Events', body: 'Publish events with image, date, start time, end time, description, and a map-ready address.' },
+				{ icon: 'campaign', title: 'Community ads', body: 'Share announcements and local notices with a community badge and clear page owner context.' },
+				{ icon: 'place', title: 'Map-ready address', body: 'Let people open the event or community address in maps with one tap.' },
+				{ icon: 'reviews', title: 'Ratings', body: 'Show public ratings and reviews so people can quickly understand community trust.' },
+				{ icon: 'forum', title: 'Direct contact', body: 'Start conversations by chat, WhatsApp, phone, email, and social links without scattering contact details.' }
+			],
+			benefitsTitle: 'Made for local community life',
+			benefits: [
+				{ title: 'Easier to discover', body: 'People can find groups, events, notices, and organizers by city, neighborhood, and topic.' },
+				{ title: 'One source of truth', body: 'Events, announcements, contacts, address details, ratings, and socials stay together on one page.' },
+				{ title: 'Useful before registration', body: 'Visitors can understand the community and its events before creating an account.' },
+				{ title: 'Ready to share', body: 'Send the direct page link or QR code and bring people straight to the community page.' }
+			],
+			ctaTitle: 'Create your community page today',
+			ctaBody: 'It is free, public, and ready for people who look for local groups, events, and announcements.'
+		}
 	},
 	landing: {
 		eyebrow: 'Local ads, local businesses.',

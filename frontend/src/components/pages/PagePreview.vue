@@ -3,6 +3,7 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import RatingStars from '@/components/ratings/RatingStars.vue'
+	import { useAppStore } from '@/stores/app'
 	import { qrSvg } from '@/utils/qrCode'
 
 	const props = defineProps({
@@ -39,6 +40,7 @@
 	const emit = defineEmits(['show-ratings', 'rate'])
 	const { t } = useI18n()
 	const $q = useQuasar()
+	const appStore = useAppStore()
 	const qrOpen = ref(false)
 	const SOCIAL_LABELS = {
 		facebook: 'Facebook',
@@ -171,9 +173,13 @@
 		'--presence-shadow': props.palette.dark ? 'rgba(0, 0, 0, 0.34)' : 'rgba(17, 34, 45, 0.14)'
 	}))
 	const previewClasses = computed(() => ({
-		'page-preview--dark': Boolean(props.palette.dark)
+		'page-preview--dark': Boolean(props.palette.dark),
+		'page-preview--rtl': appStore.isRtl,
+		'page-preview--has-banner': Boolean(previewBannerUrl.value)
 	}))
 	const shareTargetUrl = computed(() => props.shareUrl.trim())
+	const shareMenuAnchor = computed(() => (appStore.isRtl ? 'top left' : 'top right'))
+	const shareMenuSelf = computed(() => (appStore.isRtl ? 'bottom left' : 'bottom right'))
 	const shareText = computed(() => [previewTitle.value, shareTargetUrl.value].filter(Boolean).join(' '))
 	const whatsappShareUrl = computed(() => `https://wa.me/?text=${encodeURIComponent(shareText.value)}`)
 	const facebookShareUrl = computed(() => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareTargetUrl.value)}`)
@@ -305,7 +311,7 @@
 						<path d="M8.7 10.7 15.3 7M8.7 13.3l6.6 3.7" />
 					</svg>
 					<q-tooltip>{{ t('share.title') }}</q-tooltip>
-					<q-menu anchor="top right" self="bottom right" class="page-share-menu" :offset="[0, 12]">
+					<q-menu :anchor="shareMenuAnchor" :self="shareMenuSelf" class="page-share-menu" :offset="[0, 12]">
 						<div class="page-share-menu__content">
 							<button type="button" class="page-share-menu__button" aria-label="WhatsApp" @click="openShareUrl(whatsappShareUrl)" v-close-popup>
 								<svg class="page-share-icon page-share-icon--whatsapp" viewBox="0 0 24 24" aria-hidden="true">
@@ -427,7 +433,7 @@
 					</div>
 
 					<div v-if="previewSocials.length" class="page-preview__detail-card">
-						<div class="page-preview__section-title">Socials</div>
+						<div class="page-preview__section-title">{{ t('pages.sections.socials') }}</div>
 						<div class="page-preview__social-list">
 							<a v-for="item in previewSocials"
 								:key="item.platform"
@@ -562,6 +568,11 @@
 }
 
 :global([dir="rtl"]) .page-preview__share {
+  right: auto;
+  left: 24px;
+}
+
+.page-preview--rtl .page-preview__share {
   right: auto;
   left: 24px;
 }
@@ -753,6 +764,44 @@
   font-size: clamp(2.2rem, 4vw, 3.6rem);
   line-height: 1;
   overflow-wrap: anywhere;
+}
+
+.page-preview--has-banner .page-preview__title,
+.page-preview--has-banner .page-preview__description {
+  display: table;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--presence-accent) 22%, var(--presence-banner-border));
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.54);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--presence-card) 62%, transparent),
+      color-mix(in srgb, var(--presence-surface) 46%, transparent)
+    );
+  backdrop-filter: blur(14px);
+  box-shadow: 0 16px 36px rgba(17, 34, 45, 0.16);
+}
+
+.page-preview--has-banner .page-preview__title {
+  padding: 10px 16px 12px;
+}
+
+.page-preview--has-banner .page-preview__description {
+  padding: 10px 14px;
+}
+
+.page-preview--dark.page-preview--has-banner .page-preview__title,
+.page-preview--dark.page-preview--has-banner .page-preview__description {
+  background: rgba(9, 14, 24, 0.52);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--presence-card) 54%, transparent),
+      rgba(9, 14, 24, 0.48)
+    );
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
 }
 
 .page-preview__description {
@@ -1029,6 +1078,11 @@
   }
 
   :global([dir="rtl"]) .page-preview__share {
+    right: auto;
+    left: 16px;
+  }
+
+  .page-preview--rtl .page-preview__share {
     right: auto;
     left: 16px;
   }

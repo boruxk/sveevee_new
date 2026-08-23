@@ -5,6 +5,8 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 const catalogPage = () => import('@/pages/CatalogPage.vue')
 const marketPage = () => import('@/pages/MarketPage.vue')
 const pageDetailPage = () => import('@/pages/PageDetailPage.vue')
+const pageExamplePage = () => import('@/pages/PageExamplePage.vue')
+const pagePromoLandingPage = () => import('@/pages/PagePromoLandingPage.vue')
 const productDetailPage = () => import('@/pages/ProductDetailPage.vue')
 const legalPage = () => import('@/pages/PrivacyPolicyPage.vue')
 const catalogSeo = { titleKey: 'seo.catalogTitle', descriptionKey: 'seo.catalogDescription' }
@@ -31,6 +33,11 @@ export default [
 			{ path: 'privacy', name: 'privacy', component: legalPage, meta: { legalDocument: 'privacy', seo: { titleKey: 'seo.privacyTitle', descriptionKey: 'seo.privacyDescription' } } },
 			{ path: 'terms', name: 'terms', component: legalPage, meta: { legalDocument: 'terms' } },
 			{ path: 'disclaimer', name: 'disclaimer', component: legalPage, meta: { legalDocument: 'disclaimer' } },
+			{ path: 'businesses', name: 'businesses-landing', component: pagePromoLandingPage, meta: { promoType: 'business', seo: { titleKey: 'seo.businessLandingTitle', descriptionKey: 'seo.businessLandingDescription', image: '/assets/landing/promo-business-hero-1360.v3.webp' } } },
+			{ path: 'communities', name: 'communities-landing', component: pagePromoLandingPage, meta: { promoType: 'community', seo: { titleKey: 'seo.communityLandingTitle', descriptionKey: 'seo.communityLandingDescription', image: '/assets/landing/promo-community-hero-1360.v3.webp' } } },
+			{ path: 'business-example-page', name: 'business-example-page', component: pageExamplePage, meta: { exampleType: 'business', seo: { titleKey: 'seo.examplePageTitle', descriptionKey: 'seo.examplePageDescription', image: '/assets/landing/example-business-banner-1440.v1.webp' } } },
+			{ path: 'community-example-page', name: 'community-example-page', component: pageExamplePage, meta: { exampleType: 'community', seo: { titleKey: 'seo.examplePageTitle', descriptionKey: 'seo.examplePageDescription', image: '/assets/landing/example-community-banner-1440.v1.webp' } } },
+			{ path: 'example-page', redirect: { name: 'business-example-page' } },
 			{ path: 'catalog', redirect: { name: 'catalog-businesses' } },
 			...catalogHubRoutes,
 			{ path: ':locale(he|en|ru|fr)/market/:citySlug', name: 'localized-market-city', component: marketPage, meta: { seo: marketSeo } },

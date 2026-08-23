@@ -16,6 +16,7 @@
 		const canonical = route.path
 		const legalDocument = route.meta.legalDocument ? getLegalDocument(route.meta.legalDocument, locale.value) : null
 		const title = legalDocument?.title || (seo.titleKey ? t(seo.titleKey) : t('seo.defaultTitle'))
+		const image = seo.image || (isLanding ? heroSeoImage : undefined)
 
 		return {
 			title,
@@ -24,7 +25,7 @@
 			robots: seo.robots || (requiresAuth ? 'noindex,nofollow' : 'index,follow'),
 			type: seo.type || 'website',
 			canonical,
-			image: isLanding ? heroSeoImage : undefined,
+			image,
 			jsonLd: isLanding ? [
 				{
 					'@context': 'https://schema.org',

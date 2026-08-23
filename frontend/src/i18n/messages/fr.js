@@ -31,6 +31,8 @@ export default {
 		explore: 'Explorer',
 		marketplace: 'Marche local',
 		community: 'Communaute',
+		forBusinesses: 'Pour entreprises',
+		forCommunities: 'Pour communautes',
 		businesses: 'Entreprises',
 		communities: 'Communautes',
 		products: 'Produits',
@@ -457,7 +459,7 @@ export default {
 		sections: {
 			contact: 'Contact',
 			address: 'Adresse',
-			socials: 'Socials',
+			socials: 'Réseaux sociaux',
 			openingHours: 'Horaires'
 		},
 		previewFallbacks: {
@@ -520,7 +522,16 @@ export default {
 		messageSent: 'Message envoyé.',
 		messageFailed: 'Le message n’a pas pu être envoyé.',
 		supportInbox: 'Boîte support',
-		noSupportChats: 'Aucun chat support pour le moment.'
+		noSupportChats: 'Aucun chat support pour le moment.',
+		landingPages: 'Pages de destination',
+		landingPagesIntro: 'Pages publiques de promotion pour les pages entreprise et communaute gratuites.',
+		landingPageBusinessTitle: 'Page de destination entreprises',
+		landingPageBusinessDescription: 'Presente la page entreprise gratuite avec boutique, services, annonces, avis, liens de contact et contenu local SEO.',
+		landingPageCommunityTitle: 'Page de destination communautes',
+		landingPageCommunityDescription: 'Presente la page communaute gratuite avec evenements, annonces, avis, liens de contact et decouverte locale.',
+		openLandingPage: 'Ouvrir la page',
+		userSearch: 'Recherche utilisateurs',
+		userSearchPlaceholder: 'Rechercher par nom, e-mail ou login'
 	},
 	search: {
 		title: 'Recherche',
@@ -576,6 +587,12 @@ export default {
 		defaultDescription: 'Annonces locales, pages entreprise, pages communaute, produits, evenements, avis et chat direct pour votre quartier.',
 		landingTitle: 'Entreprises, professionnels, produits et annonces pres de vous',
 		landingDescription: 'Trouvez entreprises, pros, produits, services, pages communaute, evenements et annonces par ville et quartier. Achetez, vendez et contactez directement.',
+		businessLandingTitle: 'Page entreprise gratuite pour publicite locale',
+		businessLandingDescription: 'Creez une page entreprise gratuite sur Sveevee avec produits, services, annonces locales, avis, liens de contact et texte SEO par ville et quartier.',
+		communityLandingTitle: 'Page communaute gratuite pour evenements et annonces',
+		communityLandingDescription: 'Creez une page communaute gratuite sur Sveevee avec evenements, annonces, avis, liens sociaux et contact direct pour votre quartier.',
+		examplePageTitle: 'Page exemple avec tous les modules Sveevee',
+		examplePageDescription: 'Visualisez une page exemple Sveevee complete avec produits, services, evenements, annonces, avis, adresse, horaires, liens sociaux, chat, WhatsApp et cartes.',
 		searchTitle: 'Recherche annonces locales, pages et personnes',
 		searchDescription: 'Recherchez utilisateurs, pages entreprise, pages communaute et annonces locales pres de vous sur sveevee.',
 		catalogTitle: 'Catalogue local',
@@ -618,6 +635,72 @@ export default {
 		pageFallbackTitle: 'Page sveevee',
 		pageFallbackDescription: 'Consultez une page entreprise ou communaute publique sur sveevee.',
 		pageDescription: 'Consultez {name}, une page publique {type} sur sveevee.'
+	},
+	promoLanding: {
+		freeBadge: 'Gratuit sur Sveevee',
+		freeTitle: 'Sans abonnement. Sans frais de creation.',
+		functionsKicker: 'Tout est inclus',
+		benefitsKicker: 'Pourquoi c est utile',
+		registerToStart: 'S inscrire pour commencer',
+		examplePageCta: 'Page exemple',
+		business: {
+			eyebrow: 'Pages entreprise pour publicite locale',
+			title: 'Faites connaitre votre entreprise localement gratuitement',
+			subtitle: 'Creez une page publique avec produits, services, annonces, avis, contacts, liens sociaux et texte local SEO pour votre ville et quartier.',
+			primaryCta: 'Creer une page entreprise',
+			secondaryCta: 'Voir les entreprises',
+			descriptionKicker: 'Pour entreprises locales',
+			descriptionTitle: 'Une page gratuite pour votre presence publique',
+			descriptionBody: 'Sveevee donne aux petites entreprises une page locale claire, partageable et visible, avec produits, services, offres, avis, adresse, horaires, WhatsApp, cartes, reseaux sociaux et chat.',
+			freeBody: 'Commencez avec une page gratuite et utilisez tous les outils entreprise. Ajoutez du contenu etape par etape.',
+			functionsTitle: 'Toutes les fonctions entreprise au meme endroit',
+			functions: [
+				{ icon: 'storefront', title: 'Page entreprise publique', body: 'Logo, banniere, description, categorie, ville, quartier, adresse, horaires et contacts.' },
+				{ icon: 'inventory_2', title: 'Produits et boutique', body: 'Montrez produits, images, prix, description, disponibilite et lien d achat vers votre site.' },
+				{ icon: 'design_services', title: 'Services', body: 'Listez vos services avec des descriptions claires avant le premier contact client.' },
+				{ icon: 'campaign', title: 'Annonces entreprise', body: 'Publiez offres et annonces locales qui renvoient vers votre page entreprise.' },
+				{ icon: 'reviews', title: 'Avis et confiance', body: 'Recevez des notes et avis publics pour renforcer la confiance des visiteurs.' },
+				{ icon: 'forum', title: 'Contact direct', body: 'Chat, WhatsApp, telephone, e-mail, carte et reseaux sociaux depuis un seul endroit.' }
+			],
+			benefitsTitle: 'Fait pour etre trouve pres de chez vous',
+			benefits: [
+				{ title: 'Meilleur SEO local', body: 'Ville, quartier, categorie, services, produits et texte visible aident les moteurs de recherche.' },
+				{ title: 'Plus utile qu une annonce courte', body: 'L annonce attire l attention, la page donne les details pour decider.' },
+				{ title: 'Partage facile', body: 'Partagez lien direct, QR, WhatsApp, Telegram, Facebook, Instagram ou TikTok.' },
+				{ title: 'Pour petites entreprises', body: 'Commencez simplement puis ajoutez produits, services, annonces, avis et liens sociaux.' }
+			],
+			ctaTitle: 'Creez votre page entreprise aujourd hui',
+			ctaBody: 'C est gratuit, public et pret pour les clients qui cherchent par ville, quartier et categorie.'
+		},
+		community: {
+			eyebrow: 'Pages communaute pour visibilite locale',
+			title: 'Promouvez votre communaute gratuitement',
+			subtitle: 'Creez une page publique avec evenements, annonces, avis, contacts, liens sociaux et identite locale claire.',
+			primaryCta: 'Creer une page communaute',
+			secondaryCta: 'Voir les communautes',
+			descriptionKicker: 'Pour communautes locales',
+			descriptionTitle: 'Une page gratuite pour groupes, evenements et annonces',
+			descriptionBody: 'Sveevee aide les communautes a se presenter, publier des evenements, partager des nouvelles, recevoir des avis, lier les reseaux sociaux et etre contactees depuis une page locale publique.',
+			freeBody: 'Utilisez toute la page communaute gratuitement: profil public, evenements, annonces, avis, contacts et liens sociaux.',
+			functionsTitle: 'Toutes les fonctions communaute au meme endroit',
+			functions: [
+				{ icon: 'diversity_3', title: 'Page communaute publique', body: 'Logo, banniere, description, ville, quartier, contacts et liens sociaux.' },
+				{ icon: 'event', title: 'Evenements', body: 'Publiez image, date, heure, fin, description et adresse ouvrable sur la carte.' },
+				{ icon: 'campaign', title: 'Annonces communaute', body: 'Partagez annonces locales avec badge communaute et contexte du proprietaire.' },
+				{ icon: 'place', title: 'Adresse sur carte', body: 'Ouvrez l adresse d un evenement ou de la communaute en un clic.' },
+				{ icon: 'reviews', title: 'Avis', body: 'Affichez notes et avis publics pour montrer rapidement la confiance.' },
+				{ icon: 'forum', title: 'Contact direct', body: 'Chat, WhatsApp, telephone, e-mail et reseaux sociaux sans disperser les contacts.' }
+			],
+			benefitsTitle: 'Fait pour la vie locale',
+			benefits: [
+				{ title: 'Plus facile a trouver', body: 'Les gens trouvent groupes, evenements, annonces et organisateurs par ville, quartier et sujet.' },
+				{ title: 'Une seule source claire', body: 'Evenements, annonces, contacts, adresse, avis et reseaux sociaux restent ensemble.' },
+				{ title: 'Utile avant inscription', body: 'Les visiteurs comprennent la communaute et ses evenements avant de creer un compte.' },
+				{ title: 'Pret a partager', body: 'Envoyez le lien direct ou le QR code vers la page communaute.' }
+			],
+			ctaTitle: 'Creez votre page communaute aujourd hui',
+			ctaBody: 'C est gratuit, public et pret pour les personnes qui cherchent groupes, evenements et annonces locales.'
+		}
 	},
 	landing: {
 		eyebrow: 'Annonces locales, entreprises locales.',

@@ -21,6 +21,10 @@ class SitemapController extends Controller
     {
         $entries = collect([
             $this->entry('/', now(), 'daily', '1.0'),
+            $this->entry('/businesses', now(), 'monthly', '0.85'),
+            $this->entry('/communities', now(), 'monthly', '0.85'),
+            $this->entry('/business-example-page', now(), 'monthly', '0.75'),
+            $this->entry('/community-example-page', now(), 'monthly', '0.75'),
             $this->entry('/search', now(), 'daily', '0.8'),
             $this->entry('/privacy', now(), 'monthly', '0.3'),
             $this->entry('/terms', now(), 'monthly', '0.3'),

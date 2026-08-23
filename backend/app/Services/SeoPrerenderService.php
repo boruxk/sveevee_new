@@ -127,9 +127,15 @@ class SeoPrerenderService
         $this->cleanPreviousFiles($dist);
 
         $files = [];
+        $marketingPages = 0;
         $catalogHubs = 0;
         $businessPages = 0;
         $productPages = 0;
+
+        collect($this->marketingPages())->each(function (array $page) use ($dist, $indexHtml, &$files, &$marketingPages): void {
+            $marketingPages++;
+            $files[] = $this->writePage($dist, $page['path'], $this->marketingHtml($indexHtml, $page));
+        });
 
         collect(CatalogTopics::scopeHubs())->each(function (array $hub) use ($dist, $indexHtml, &$files, &$catalogHubs): void {
             $catalogHubs++;
@@ -191,6 +197,7 @@ class SeoPrerenderService
 
         return [
             'dist' => $dist,
+            'marketing_pages' => $marketingPages,
             'catalog_hubs' => $catalogHubs,
             'business_pages' => $businessPages,
             'product_pages' => $productPages,
@@ -227,6 +234,174 @@ class SeoPrerenderService
             $this->catalogHubItemListSchema($hub, $locale),
             $this->breadcrumbSchema($meta['breadcrumbs']),
         ]);
+    }
+
+    private function marketingPages(): array
+    {
+        return [
+            [
+                'path' => '/businesses',
+                'label' => 'עמוד עסק חינמי',
+                'title' => 'עמוד עסק חינמי לפרסום מקומי | Sveevee',
+                'description' => 'צרו עמוד עסק חינמי ב-Sveevee עם מוצרים, שירותים, מודעות מקומיות, דירוגים, קישורי קשר וטקסט מוכן ל-SEO לפי עיר ושכונה.',
+                'image' => '/assets/landing/promo-business-hero-1360.v3.webp',
+                'free' => 'חינם ב-Sveevee, ללא תשלום חודשי וללא דמי הקמה.',
+                'sections' => [
+                    [
+                        'title' => 'מה כולל עמוד עסק',
+                        'items' => [
+                            'עמוד ציבורי עם לוגו, באנר, תיאור, קטגוריה, עיר, שכונה, כתובת ושעות פתיחה.',
+                            'מוצרים עם תמונה, מחיר, תיאור, זמינות וקישור לקנייה באתר העסק.',
+                            'שירותים, מודעות עסק, דירוגים, ביקורות, WhatsApp, טלפון, אימייל, מפות וקישורים חברתיים.',
+                        ],
+                    ],
+                    [
+                        'title' => 'למה זה טוב לפרסום מקומי',
+                        'items' => [
+                            'העמוד עוזר ללקוחות להבין את העסק מעבר למודעה קצרה.',
+                            'טקסט גלוי, קטגוריה ומיקום עוזרים למנועי חיפוש להבין את העסק.',
+                            'אפשר לשתף קישור ישיר או QR ולהביא לקוחות לעמוד אחד ברור.',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/communities',
+                'label' => 'עמוד קהילה חינמי',
+                'title' => 'עמוד קהילה חינמי לאירועים ועדכונים | Sveevee',
+                'description' => 'צרו עמוד קהילה חינמי ב-Sveevee עם אירועים, עדכונים, מודעות מקומיות, דירוגים, קישורים חברתיים ויצירת קשר ישירה.',
+                'image' => '/assets/landing/promo-community-hero-1360.v3.webp',
+                'free' => 'חינם ב-Sveevee, כולל כל פונקציות הקהילה.',
+                'sections' => [
+                    [
+                        'title' => 'מה כולל עמוד קהילה',
+                        'items' => [
+                            'עמוד ציבורי עם לוגו, באנר, תיאור, עיר, שכונה, פרטי קשר וקישורים חברתיים.',
+                            'אירועים עם תמונה, תאריך, שעת התחלה, שעת סיום, תיאור וכתובת שנפתחת במפה.',
+                            'מודעות קהילה, עדכונים, דירוגים, ביקורות, WhatsApp, טלפון, אימייל וצאט.',
+                        ],
+                    ],
+                    [
+                        'title' => 'למה זה טוב לקהילות',
+                        'items' => [
+                            'אנשים יכולים למצוא קבוצות, אירועים ועדכונים לפי עיר, שכונה ונושא.',
+                            'כל המידע הציבורי נשאר במקום אחד שקל לשתף.',
+                            'מבקרים יכולים להבין את הקהילה לפני הרשמה וליצור קשר כשזה מתאים.',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/business-example-page',
+                'label' => 'עמוד דוגמה לעסק',
+                'title' => 'עמוד דוגמה לעסק עם חנות, שירותים ומודעות | Sveevee',
+                'description' => 'צפו בעמוד דוגמה לעסק ב-Sveevee עם מוצרים, שירותים, מודעות, דירוגים, כתובת, שעות פתיחה, רשתות חברתיות, צאט, WhatsApp ומפות.',
+                'image' => '/assets/landing/example-business-banner-1440.v1.webp',
+                'free' => 'דוגמה סטטית לעמוד עסק חינמי עם חנות, שירותים ומודעות פעילים.',
+                'sections' => [
+                    [
+                        'title' => 'מה מופיע בעמוד העסק לדוגמה',
+                        'items' => [
+                            'פרופיל ציבורי מלא עם לוגו, באנר, תיאור, עיר, שכונה, כתובת, שעות פתיחה ופרטי קשר.',
+                            'מודולי מוצרים, שירותים ומודעות פעילים באותו עמוד.',
+                            'דירוגים, קישורים חברתיים, WhatsApp, מפות, צאט ושיתוף קישור או QR.',
+                        ],
+                    ],
+                    [
+                        'title' => 'למה זה שימושי לפני הרשמה',
+                        'items' => [
+                            'מבקרים יכולים לראות מראש איך עמוד מלא נראה בפועל.',
+                            'עסקים וקהילות מבינים אילו שדות כדאי למלא כדי שהעמוד יהיה ברור וחזק יותר.',
+                            'העמוד הציבורי מסביר את הערך של Sveevee גם בלי כניסה לחשבון.',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'path' => '/community-example-page',
+                'label' => 'עמוד דוגמה לקהילה',
+                'title' => 'עמוד דוגמה לקהילה עם אירועים ומודעות | Sveevee',
+                'description' => 'צפו בעמוד דוגמה לקהילה ב-Sveevee עם אירועים, מודעות, דירוגים, כתובת, שעות פעילות, רשתות חברתיות, צאט, WhatsApp ומפות.',
+                'image' => '/assets/landing/example-community-banner-1440.v1.webp',
+                'free' => 'דוגמה סטטית לעמוד קהילה חינמי עם אירועים ומודעות פעילים.',
+                'sections' => [
+                    [
+                        'title' => 'מה מופיע בעמוד הקהילה לדוגמה',
+                        'items' => [
+                            'פרופיל ציבורי מלא עם לוגו, באנר, תיאור, עיר, שכונה, כתובת, שעות פעילות ופרטי קשר.',
+                            'אירועים עם תמונה, תאריך, שעה, תיאור וכתובת שנפתחת במפה.',
+                            'מודעות קהילה, דירוגים, קישורים חברתיים, WhatsApp, צאט ושיתוף קישור או QR.',
+                        ],
+                    ],
+                    [
+                        'title' => 'למה זה שימושי לפני הרשמה',
+                        'items' => [
+                            'מבקרים יכולים לראות מראש איך עמוד קהילה מלא נראה בפועל.',
+                            'קהילות מבינות אילו שדות כדאי למלא כדי שהעמוד יהיה ברור וחזק יותר.',
+                            'העמוד הציבורי מסביר את הערך של Sveevee גם בלי כניסה לחשבון.',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    private function marketingHtml(string $indexHtml, array $page): string
+    {
+        $meta = $this->marketingMeta($page);
+
+        return $this->decorateIndex($indexHtml, $meta, $this->marketingBody($page, $meta), [
+            $this->marketingSchema($meta),
+            $this->breadcrumbSchema($meta['breadcrumbs']),
+        ]);
+    }
+
+    private function marketingMeta(array $page): array
+    {
+        return [
+            'locale' => 'he',
+            'dir' => 'rtl',
+            'type' => 'website',
+            'title' => $page['title'],
+            'description' => $this->truncate($page['description']),
+            'canonical' => $this->absoluteUrl($page['path']),
+            'image' => $this->absoluteUrl($page['image']),
+            'alternates' => [],
+            'label' => $page['label'],
+            'path' => $page['path'],
+            'breadcrumbs' => [
+                [
+                    'label' => 'Sveevee',
+                    'path' => '/',
+                ],
+                [
+                    'label' => $page['label'],
+                    'path' => $page['path'],
+                ],
+            ],
+        ];
+    }
+
+    private function marketingBody(array $page, array $meta): string
+    {
+        $sections = collect($page['sections'] ?? [])
+            ->map(function (array $section): string {
+                $items = collect($section['items'] ?? [])
+                    ->map(fn (string $item): string => '<li>'.$this->escape($item).'</li>')
+                    ->implode('');
+
+                return $this->section($section['title'] ?? '', '<ul>'.$items.'</ul>');
+            })
+            ->implode('');
+
+        return '<main class="sveevee-prerender"><article class="sveevee-prerender__card">'
+            .$this->brand()
+            .$this->breadcrumbHtml($meta['breadcrumbs'])
+            .'<h1>'.$this->escape($meta['label']).'</h1>'
+            .'<p class="sveevee-prerender__lead">'.$this->escape($meta['description']).'</p>'
+            .'<p><strong>'.$this->escape($page['free']).'</strong></p>'
+            .$sections
+            .'</article></main>';
     }
 
     private function catalogHubMeta(array $hub, string $locale): array
@@ -502,6 +677,18 @@ class SeoPrerenderService
             'name' => $meta['label'],
             'description' => $meta['description'],
             'url' => $meta['canonical'],
+        ];
+    }
+
+    private function marketingSchema(array $meta): array
+    {
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'WebPage',
+            'name' => $meta['label'],
+            'description' => $meta['description'],
+            'url' => $meta['canonical'],
+            'image' => $meta['image'],
         ];
     }
 

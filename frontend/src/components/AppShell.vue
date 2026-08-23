@@ -49,6 +49,8 @@
 			{
 				title: t('footer.explore'),
 				links: [
+					{ label: t('footer.forBusinesses'), name: 'businesses-landing' },
+					{ label: t('footer.forCommunities'), name: 'communities-landing' },
 					{ label: t('footer.businesses'), name: 'catalog-businesses' },
 					{ label: t('footer.communities'), name: 'catalog-communities' },
 					{ label: t('footer.people'), name: 'catalog-people' }

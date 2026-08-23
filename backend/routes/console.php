@@ -20,9 +20,10 @@ Artisan::command('seo:prerender-public-pages {--dist= : Path to the built fronte
     $result = app(SeoPrerenderService::class)->render($this->option('dist'));
 
     $this->info("Prerendered {$result['files']} files in {$result['dist']}.");
+    $this->line("Marketing pages: {$result['marketing_pages']}");
     $this->line("Catalog hubs: {$result['catalog_hubs']}");
     $this->line("Business pages: {$result['business_pages']}");
     $this->line("Product pages: {$result['product_pages']}");
-})->purpose('Generate static HTML for public SEO catalog, business, and product pages');
+})->purpose('Generate static HTML for public SEO marketing, catalog, business, and product pages');
 
 Schedule::command('ads:prune-expired')->hourly();
