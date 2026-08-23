@@ -575,7 +575,7 @@ export default {
 		defaultTitle: 'sveevee',
 		defaultDescription: 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.',
 		landingTitle: 'Find businesses, professionals, products, and local ads near you',
-		landingDescription: 'Find businesses, professionals, stores, products, services, and local ads by city and neighborhood. On sveevee you can discover local businesses, buy and sell, and contact people directly.',
+		landingDescription: 'Find businesses, professionals, products, services, community pages, events, and ads by city and neighborhood. Buy, sell, build pages, and chat directly.',
 		searchTitle: 'Search local ads, pages, and people',
 		searchDescription: 'Search users, business pages, community pages, and local ads near you on sveevee.',
 		catalogTitle: 'Local catalog',
