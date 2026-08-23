@@ -34,6 +34,8 @@
 
 	const featureCards = computed(() => listMessage('landing.features'))
 	const contentBlocks = computed(() => listMessage('landing.contentBlocks'))
+	const businessBenefits = computed(() => listMessage('landing.businessBenefits'))
+	const communityBenefits = computed(() => listMessage('landing.communityBenefits'))
 	const purposeParagraphs = computed(() => listMessage('landing.purposeParagraphs'))
 	const steps = computed(() => listMessage('landing.steps'))
 	const plans = computed(() => listMessage('landing.plans'))
@@ -201,25 +203,6 @@
 			</div>
 		</section>
 
-		<section v-if="popularCatalogTopics.length" class="landing-section landing-catalog-section">
-			<div class="landing-section__head">
-				<div class="section-kicker">{{ t('landing.catalogKicker') }}</div>
-				<h2>{{ t('landing.catalogTitle') }}</h2>
-			</div>
-			<div class="landing-topic-grid">
-				<router-link
-					v-for="topic in popularCatalogTopics"
-					:key="topic.key"
-					class="landing-topic-chip"
-					:to="catalogPath(topic)"
-					:style="{ '--topic-color': topic.color }"
-				>
-					<span class="landing-topic-chip__dot" />
-					<span>{{ topicName(topic) }}</span>
-				</router-link>
-			</div>
-		</section>
-
 		<section class="landing-section landing-section--features">
 			<div class="landing-section__head">
 				<div class="section-kicker">{{ t('landing.featureKicker') }}</div>
@@ -252,6 +235,60 @@
 					<p>{{ item.body }}</p>
 				</article>
 			</div>
+		</section>
+
+		<section class="landing-section audience-section">
+			<article class="audience-panel audience-panel--business">
+				<div class="audience-panel__copy">
+					<div class="section-kicker">{{ t('landing.businessKicker') }}</div>
+					<h2>{{ t('landing.businessTitle') }}</h2>
+					<p>{{ t('landing.businessBody') }}</p>
+				</div>
+
+				<div class="audience-benefit-grid">
+					<article v-for="item in businessBenefits" :key="item.title" class="audience-benefit">
+						<span class="audience-benefit__icon">
+							<svg v-if="item.icon === 'groups'" class="audience-benefit__svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M8.5 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" />
+								<path d="M15.8 10.7a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4Z" />
+								<path d="M3.6 19.2c.5-3.4 2.4-5.1 5-5.1 2.7 0 4.6 1.7 5 5.1" />
+								<path d="M13.2 14.4c.7-.3 1.5-.4 2.5-.4 2.4 0 4.1 1.5 4.6 4.4" />
+							</svg>
+							<q-icon v-else :name="item.icon" size="26px" />
+						</span>
+						<div>
+							<h3>{{ item.title }}</h3>
+							<p>{{ item.body }}</p>
+						</div>
+					</article>
+				</div>
+			</article>
+
+			<article class="audience-panel audience-panel--community">
+				<div class="audience-panel__copy">
+					<div class="section-kicker">{{ t('landing.communityKicker') }}</div>
+					<h2>{{ t('landing.communityTitle') }}</h2>
+					<p>{{ t('landing.communityBody') }}</p>
+				</div>
+
+				<div class="audience-benefit-grid">
+					<article v-for="item in communityBenefits" :key="item.title" class="audience-benefit">
+						<span class="audience-benefit__icon">
+							<svg v-if="item.icon === 'groups'" class="audience-benefit__svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M8.5 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" />
+								<path d="M15.8 10.7a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4Z" />
+								<path d="M3.6 19.2c.5-3.4 2.4-5.1 5-5.1 2.7 0 4.6 1.7 5 5.1" />
+								<path d="M13.2 14.4c.7-.3 1.5-.4 2.5-.4 2.4 0 4.1 1.5 4.6 4.4" />
+							</svg>
+							<q-icon v-else :name="item.icon" size="26px" />
+						</span>
+						<div>
+							<h3>{{ item.title }}</h3>
+							<p>{{ item.body }}</p>
+						</div>
+					</article>
+				</div>
+			</article>
 		</section>
 
 		<section class="landing-section workflow-section">
@@ -349,6 +386,25 @@
 				</article>
 			</div>
 		</section>
+
+		<section v-if="popularCatalogTopics.length" class="landing-section landing-catalog-section">
+			<div class="landing-section__head">
+				<div class="section-kicker">{{ t('landing.catalogKicker') }}</div>
+				<h2>{{ t('landing.catalogTitle') }}</h2>
+			</div>
+			<div class="landing-topic-grid">
+				<router-link
+					v-for="topic in popularCatalogTopics"
+					:key="topic.key"
+					class="landing-topic-chip"
+					:to="catalogPath(topic)"
+					:style="{ '--topic-color': topic.color }"
+				>
+					<span class="landing-topic-chip__dot" />
+					<span>{{ topicName(topic) }}</span>
+				</router-link>
+			</div>
+		</section>
 	</q-page>
 </template>
 
@@ -356,15 +412,13 @@
 .landing-page {
   min-height: 100vh;
   padding-bottom: 72px;
-  background: #fff8fb;
+  background: transparent;
 }
 
 .landing-hero {
   position: relative;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, #ffffff 0%, #fff8fb 100%);
-  border-bottom: 1px solid rgba(123, 63, 242, 0.08);
+  background: transparent;
 }
 
 .landing-hero__inner {
@@ -483,9 +537,7 @@
 .landing-section--features {
   max-width: none;
   padding: 58px 24px 66px;
-  background:
-    radial-gradient(circle at 0 0, rgba(123, 63, 242, 0.12), transparent 22%),
-    linear-gradient(180deg, #fff8fb 0%, #fffaf5 100%);
+  background: transparent;
 }
 
 .landing-section__head {
@@ -732,6 +784,107 @@
   color: rgba(21, 31, 59, 0.72);
   font-size: 17px;
   line-height: 1.76;
+}
+
+.audience-section {
+  display: grid;
+  gap: 10px;
+  padding-top: 64px;
+  padding-bottom: 18px;
+}
+
+.audience-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: start;
+  padding: 34px 0;
+  border-top: 1px solid rgba(123, 63, 242, 0.12);
+}
+
+.audience-panel:last-child {
+  border-bottom: 1px solid rgba(123, 63, 242, 0.12);
+}
+
+.audience-panel__copy {
+  display: grid;
+  gap: 12px;
+  max-width: 430px;
+}
+
+.audience-panel__copy h2 {
+  color: #24145d;
+  font-size: clamp(32px, 3.5vw, 46px);
+}
+
+.audience-panel__copy p {
+  margin: 0;
+  color: rgba(21, 31, 59, 0.72);
+  font-size: 17px;
+  line-height: 1.72;
+}
+
+.audience-benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.audience-benefit {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  min-height: 142px;
+  padding: 18px;
+  border: 1px solid rgba(64, 28, 145, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: 0 16px 34px rgba(21, 31, 59, 0.06);
+}
+
+.audience-benefit__icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
+  color: #ffffff;
+  box-shadow: 0 12px 22px rgba(64, 28, 145, 0.16);
+}
+
+.audience-panel--business .audience-benefit__icon {
+  background: linear-gradient(145deg, #ff8f38 0%, #ef5d15 100%);
+  box-shadow: 0 12px 22px rgba(255, 116, 38, 0.2);
+}
+
+.audience-panel--community .audience-benefit__icon {
+  background: linear-gradient(145deg, #28c7b7 0%, #7b3ff2 100%);
+}
+
+.audience-benefit__svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
+.audience-benefit h3 {
+  margin: 0 0 8px;
+  color: #192443;
+  font-size: 19px;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.audience-benefit p {
+  margin: 0;
+  color: rgba(21, 31, 59, 0.68);
+  font-size: 14px;
+  line-height: 1.58;
 }
 
 .workflow-section {
@@ -1113,6 +1266,7 @@
 @media (max-width: 980px) {
   .landing-hero__inner,
   .workflow-section,
+  .audience-panel,
   .content-grid,
   .pricing-grid {
     grid-template-columns: 1fr;
@@ -1129,6 +1283,10 @@
 
   .workflow-section {
     gap: 30px;
+  }
+
+  .audience-panel__copy {
+    max-width: 720px;
   }
 
   .landing-purpose {
@@ -1277,6 +1435,38 @@
   .workflow-section {
     padding-top: 46px;
     padding-bottom: 46px;
+  }
+
+  .audience-section {
+    padding-top: 44px;
+  }
+
+  .audience-panel {
+    gap: 22px;
+    padding: 28px 0;
+  }
+
+  .audience-panel__copy h2 {
+    font-size: 30px;
+  }
+
+  .audience-panel__copy p {
+    font-size: 16px;
+    line-height: 1.66;
+  }
+
+  .audience-benefit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audience-benefit {
+    min-height: 0;
+    padding: 16px;
+  }
+
+  .audience-benefit__icon {
+    width: 48px;
+    height: 48px;
   }
 
   .workflow-art {

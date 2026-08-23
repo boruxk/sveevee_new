@@ -1,11 +1,10 @@
 <script setup>
-	import { onMounted, reactive, ref, toRef, watch } from 'vue'
+	import { reactive, ref } from 'vue'
 	import { useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
 	import { useAppStore } from '@/stores/app'
-	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import GoogleAuthButton from '@/components/GoogleAuthButton.vue'
 	import PasswordInput from '@/components/PasswordInput.vue'
@@ -16,27 +15,13 @@
 	const authStore = useAuthStore()
 	const appStore = useAppStore()
 	const formRef = ref(null)
-	const citySelectOptions = ref([])
-	const neighborhoodSelectOptions = ref([])
 	const form = reactive({
 		email: '',
 		password: '',
 		password_confirmation: '',
 		given_name: '',
-		family_name: '',
-		phone: '',
-		city: '',
-		neighborhood: ''
+		family_name: ''
 	})
-	const {
-		cityOptions,
-		neighborhoodOptions,
-		loadLocationOptions,
-		rememberLocation,
-		addOption,
-		filterOptions,
-		hasOptionValue
-	} = useLocationOptions(toRef(form, 'city'))
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	async function submit() {
@@ -46,49 +31,11 @@
 
 		try {
 			await authStore.register({ ...form, locale: appStore.locale })
-			rememberLocation(form.city, form.neighborhood)
-			router.push({ name: 'home' })
+			router.replace({ name: 'profile', query: { complete: '1' } })
 		} catch (error) {
 			$q.notify({ type: 'negative', message: error.response?.data?.message || t('auth.registerFailed') })
 		}
 	}
-
-	function filterCityOptions(value, update) {
-		update(() => {
-			citySelectOptions.value = filterOptions(cityOptions.value, value)
-		})
-	}
-
-	function filterNeighborhoodOptions(value, update) {
-		update(() => {
-			neighborhoodSelectOptions.value = filterOptions(neighborhoodOptions.value, value)
-		})
-	}
-
-	watch(cityOptions, (options) => {
-		citySelectOptions.value = options
-	}, { immediate: true })
-
-	watch(neighborhoodOptions, (options) => {
-		neighborhoodSelectOptions.value = options
-	}, { immediate: true })
-
-	watch(() => form.city, () => {
-		if (!form.city) {
-			form.neighborhood = ''
-			return
-		}
-
-		if (form.neighborhood && !hasOptionValue(neighborhoodOptions.value, form.neighborhood)) {
-			form.neighborhood = ''
-		}
-	})
-
-	onMounted(async() => {
-		await loadLocationOptions()
-		citySelectOptions.value = cityOptions.value
-		neighborhoodSelectOptions.value = neighborhoodOptions.value
-	})
 </script>
 
 <template>
@@ -134,43 +81,6 @@
 								autocomplete="new-password"
 								:label="requiredLabel('auth.passwordConfirmation')"
 								:rules="[requiredRule]"
-							/>
-						</div>
-						<div class="register-form__row">
-							<q-input class="col-12 col-md-4" v-model="form.phone" outlined :label="t('auth.phone')" />
-							<q-select class="col-12 col-md-4"
-								v-model="form.city"
-								outlined
-								clearable
-								emit-value
-								map-options
-								use-input
-								hide-selected
-								fill-input
-								input-debounce="0"
-								new-value-mode="add-unique"
-								:options="citySelectOptions"
-								:label="requiredLabel('auth.city')"
-								:rules="[requiredRule]"
-								@filter="filterCityOptions"
-								@new-value="addOption"
-							/>
-							<q-select class="col-12 col-md-4"
-								v-model="form.neighborhood"
-								outlined
-								clearable
-								emit-value
-								map-options
-								use-input
-								hide-selected
-								fill-input
-								input-debounce="0"
-								new-value-mode="add-unique"
-								:options="neighborhoodSelectOptions"
-								:label="t('auth.neighborhood')"
-								:disable="!form.city"
-								@filter="filterNeighborhoodOptions"
-								@new-value="addOption"
 							/>
 						</div>
 						<q-btn class="form-submit"

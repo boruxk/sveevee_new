@@ -416,6 +416,12 @@ export default {
 		email: 'E-mail',
 		tel: 'Tel',
 		whatsapp: 'WhatsApp',
+		socials: {
+			facebook: 'Facebook',
+			instagram: 'Instagram',
+			tiktok: 'TikTok',
+			telegram: 'Telegram'
+		},
 		street: 'Street',
 		number: 'Number',
 		city: 'City',
@@ -451,6 +457,7 @@ export default {
 		sections: {
 			contact: 'Contact',
 			address: 'Address',
+			socials: 'Socials',
 			openingHours: 'Opening hours'
 		},
 		previewFallbacks: {
@@ -654,6 +661,56 @@ export default {
 			{
 				title: 'Direct chat with cleaner local conversations',
 				body: 'Local discovery is more useful when contact is easy but not noisy. sveevee keeps direct chat close to the profile and limits repeated first messages, so conversations can start naturally without turning the platform into a spam channel. This gives neighbors, businesses, and community organizers a calmer way to move from a search result or public page into a real conversation.'
+			}
+		],
+		businessKicker: 'For businesses',
+		businessTitle: 'A local business page that works harder than a short ad',
+		businessBody: 'Business owners get one clear place for local search, public trust, store content, and direct contact. The page can grow from simple contact details into products, services, ratings, social links, ads, and SEO-ready text.',
+		businessBenefits: [
+			{
+				icon: 'storefront',
+				title: 'Public page for Google and visitors',
+				body: 'Name, category, city, neighborhood, address, opening hours, photos, description, ratings, and structured page content all sit together.'
+			},
+			{
+				icon: 'inventory_2',
+				title: 'Store and services in one place',
+				body: 'Show products with price and images, list services, and keep buyers close to the business page instead of scattering information.'
+			},
+			{
+				icon: 'campaign',
+				title: 'Local ads with business context',
+				body: 'Publish offers and announcements that point back to the business, with the right badge and area context.'
+			},
+			{
+				icon: 'forum',
+				title: 'Direct contact without noise',
+				body: 'Visitors can open chat, WhatsApp, phone, email, maps, and social links from the same public page.'
+			}
+		],
+		communityKicker: 'For communities',
+		communityTitle: 'A public home for local groups, events, and announcements',
+		communityBody: 'Communities can present what they do, publish local events, share announcements, and help people find the right group by city, neighborhood, and topic.',
+		communityBenefits: [
+			{
+				icon: 'diversity_3',
+				title: 'Clear community identity',
+				body: 'Logo, banner, description, contacts, social links, ratings, and local context make the group easier to understand and trust.'
+			},
+			{
+				icon: 'event',
+				title: 'Events with real details',
+				body: 'Add date, time, end time, image, description, and a map-ready address so people know exactly where and when to come.'
+			},
+			{
+				icon: 'campaign',
+				title: 'Announcements near the right people',
+				body: 'Community ads can appear in local search with a community badge, city, neighborhood, and page owner context.'
+			},
+			{
+				icon: 'groups',
+				title: 'Better discovery for local life',
+				body: 'People can find groups, events, notices, and organizers without registering first, then connect when they are ready.'
 			}
 		],
 		features: [

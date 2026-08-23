@@ -191,15 +191,6 @@
 
 					<h1>{{ product.name }}</h1>
 					<div class="product-detail__price">{{ product.price_label }}</div>
-					<p class="product-detail__description">{{ product.description }}</p>
-
-					<div v-if="seller" class="product-detail__seller">
-						<div>
-							<span>{{ t('market.viewSeller') }}</span>
-							<router-link :to="sellerPath">{{ seller.name }}</router-link>
-						</div>
-						<q-icon name="storefront" size="28px" />
-					</div>
 
 					<div class="product-detail__actions">
 						<q-btn
@@ -224,6 +215,8 @@
 						/>
 					</div>
 				</div>
+
+				<p class="product-detail__description">{{ product.description }}</p>
 			</section>
 		</div>
 		<div v-else-if="loading" class="row justify-center q-pa-xl">
@@ -238,7 +231,7 @@
 }
 
 .product-detail-shell {
-  max-width: 1180px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
@@ -265,9 +258,12 @@
 .product-detail {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.78fr);
+  grid-template-areas:
+    "media body"
+    "description description";
   overflow: hidden;
   border: 1px solid rgba(17, 34, 45, 0.08);
-  border-radius: 8px;
+  border-radius: 28px;
   background: rgba(255, 255, 255, 0.82);
   box-shadow: 0 20px 44px rgba(245, 66, 145, 0.1);
 }
@@ -275,18 +271,27 @@
 .product-detail__media {
   display: grid;
   place-items: center;
-  min-height: 520px;
-  background: linear-gradient(135deg, rgba(255, 116, 38, 0.14), rgba(245, 66, 145, 0.12), rgba(123, 63, 242, 0.1));
+  grid-area: media;
+  max-height: 420px;
+  min-height: 280px;
+  align-items: start;
+  justify-items: start;
+  padding: 20px;
+  overflow: hidden;
+  background: transparent;
   color: var(--soz-primary-deep);
 }
 
 .product-detail__media img {
+  max-height: 380px;
   width: 100%;
-  height: 100%;
+  height: auto;
   object-fit: cover;
+  border-radius: 24px;
 }
 
 .product-detail__body {
+  grid-area: body;
   display: grid;
   align-content: start;
   gap: 18px;
@@ -335,35 +340,13 @@
 }
 
 .product-detail__description {
-  margin: 0;
+  grid-area: description;
+  padding: 0 34px 34px;
+  margin: 32px 0 0;
   color: rgba(17, 34, 45, 0.72);
-  font-size: 1.04rem;
+  font-size: 1.14rem;
   line-height: 1.7;
   white-space: pre-line;
-}
-
-.product-detail__seller {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border: 1px solid rgba(123, 63, 242, 0.12);
-  border-radius: 8px;
-  background: rgba(123, 63, 242, 0.06);
-  color: rgba(17, 34, 45, 0.68);
-}
-
-.product-detail__seller div {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.product-detail__seller a {
-  color: var(--soz-primary-deep);
-  font-size: 1.05rem;
-  font-weight: 840;
 }
 
 .product-detail__actions {
@@ -381,10 +364,32 @@
 @media (max-width: 860px) {
   .product-detail {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "media"
+      "body"
+      "description";
   }
 
   .product-detail__media {
-    min-height: 340px;
+    min-height: 260px;
+    max-height: 340px;
+    padding: 16px;
+  }
+
+  .product-detail__body,
+  .product-detail__description {
+    padding-inline: 22px;
+  }
+
+  .product-detail__body {
+    border-right: none;
+    border-bottom: none;
+  }
+
+  .product-detail__media img {
+    max-height: 308px;
+    width: 100%;
+    border-radius: 22px;
   }
 }
 

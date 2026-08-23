@@ -279,6 +279,16 @@
   background: rgba(255, 255, 255, 0.76);
 }
 
+.listing-card--with-category {
+  border-color: color-mix(in srgb, var(--ad-category-color) 10%, rgba(17, 34, 45, 0.08));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ad-category-color) 4%, rgba(255, 255, 255, 0.78)) 0%,
+      color-mix(in srgb, var(--ad-category-color) 2%, rgba(255, 255, 255, 0.76)) 100%
+    );
+}
+
 .listing-card--expanded {
   height: auto;
   min-height: 350px;
@@ -323,8 +333,17 @@
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(ellipse 52% 72% at var(--ad-category-x, 100%) 100%, var(--ad-category-soft, transparent) 0%, rgba(255, 255, 255, 0) 76%),
-    radial-gradient(ellipse 38% 54% at var(--ad-category-x, 100%) 100%, var(--ad-category-soft, transparent) 0%, rgba(255, 255, 255, 0) 68%);
+    radial-gradient(
+      ellipse 118% 112% at var(--ad-category-x, 100%) 100%,
+      color-mix(in srgb, var(--ad-category-color) 5%, transparent) 0%,
+      color-mix(in srgb, var(--ad-category-color) 2.8%, transparent) 54%,
+      transparent 92%
+    ),
+    radial-gradient(
+      ellipse 82% 84% at var(--ad-category-x, 100%) 100%,
+      color-mix(in srgb, var(--ad-category-color) 4%, transparent) 0%,
+      transparent 88%
+    );
   content: "";
   opacity: 0;
   pointer-events: none;

@@ -204,7 +204,7 @@
 
 			<section class="soz-section-card profile-panel q-mt-lg">
 				<div v-if="route.query.complete === '1'" class="profile-completion-banner">
-					<q-icon name="task_alt" size="24px" />
+					<q-icon name="error_outline" size="34px" />
 					<div>
 						<h2>{{ t('profile.completeTitle') }}</h2>
 						<p>{{ t('profile.completeBody') }}</p>
@@ -422,28 +422,36 @@
 
 .profile-completion-banner {
   display: flex;
-  gap: 14px;
+  gap: 18px;
   align-items: flex-start;
-  margin-bottom: 20px;
-  padding: 18px 20px;
+  margin-bottom: 28px;
+  padding: 24px 26px;
+  border: 1px solid rgba(218, 36, 77, 0.26);
   border-radius: 24px;
-  color: #402050;
+  color: #7f1239;
   background:
-    radial-gradient(circle at top left, rgba(255, 116, 38, 0.15), transparent 42%),
-    linear-gradient(135deg, rgba(255, 116, 38, 0.14), rgba(245, 66, 145, 0.13));
-  box-shadow: 0 18px 36px rgba(245, 66, 145, 0.12);
+    radial-gradient(circle at top left, rgba(255, 116, 38, 0.2), transparent 38%),
+    linear-gradient(135deg, rgba(218, 36, 77, 0.18), rgba(245, 66, 145, 0.16));
+  box-shadow: 0 22px 44px rgba(218, 36, 77, 0.16);
+}
+
+.profile-completion-banner .q-icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
 }
 
 .profile-completion-banner h2 {
-  margin: 0 0 6px;
-  font-size: 1.18rem;
+  margin: 0 0 8px;
+  font-size: 1.38rem;
   line-height: 1.25;
 }
 
 .profile-completion-banner p {
   margin: 0;
-  color: rgba(17, 34, 45, 0.7);
-  line-height: 1.5;
+  color: rgba(80, 20, 48, 0.82);
+  font-size: 1.06rem;
+  font-weight: 650;
+  line-height: 1.58;
 }
 
 .profile-password-gap {

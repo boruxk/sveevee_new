@@ -214,6 +214,7 @@ class PageController extends Controller
 
         $contact = is_array($decoded['contact'] ?? null) ? $decoded['contact'] : [];
         $address = is_array($decoded['address'] ?? null) ? $decoded['address'] : [];
+        $socials = is_array($decoded['socials'] ?? null) ? $decoded['socials'] : [];
         $features = is_array($decoded['features'] ?? null) ? $decoded['features'] : [];
         $services = is_array($decoded['services'] ?? null) ? $decoded['services'] : [];
 
@@ -228,6 +229,12 @@ class PageController extends Controller
                 'number' => $this->nullableString($address['number'] ?? null),
                 'city' => $this->nullableString($address['city'] ?? null),
                 'neighborhood' => $this->nullableString($address['neighborhood'] ?? null),
+            ],
+            'socials' => [
+                'facebook' => $this->nullableString($socials['facebook'] ?? null),
+                'instagram' => $this->nullableString($socials['instagram'] ?? null),
+                'tiktok' => $this->nullableString($socials['tiktok'] ?? null),
+                'telegram' => $this->nullableString($socials['telegram'] ?? null),
             ],
             'opening_hours' => $this->normalizedOpeningHours($decoded['opening_hours'] ?? []),
             'features' => [

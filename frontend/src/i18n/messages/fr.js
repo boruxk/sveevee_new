@@ -416,6 +416,12 @@ export default {
 		email: 'E-mail',
 		tel: 'Téléphone',
 		whatsapp: 'WhatsApp',
+		socials: {
+			facebook: 'Facebook',
+			instagram: 'Instagram',
+			tiktok: 'TikTok',
+			telegram: 'Telegram'
+		},
 		street: 'Rue',
 		number: 'Numéro',
 		city: 'Ville',
@@ -451,6 +457,7 @@ export default {
 		sections: {
 			contact: 'Contact',
 			address: 'Adresse',
+			socials: 'Socials',
 			openingHours: 'Horaires'
 		},
 		previewFallbacks: {
@@ -654,6 +661,56 @@ export default {
 			{
 				title: 'Chat direct avec moins de bruit',
 				body: 'La decouverte locale fonctionne mieux quand le contact est simple sans devenir envahissant. sveevee garde le chat proche du profil et limite les premiers messages repetes, pour que les conversations commencent naturellement sans transformer la plateforme en canal de spam. Voisins, entreprises et organisateurs de communautes peuvent passer plus calmement d un resultat de recherche ou d une page publique a une vraie conversation.'
+			}
+		],
+		businessKicker: 'Pour les entreprises',
+		businessTitle: 'Une page locale plus forte qu une simple annonce',
+		businessBody: 'Les entreprises ont un endroit clair pour la recherche locale, la confiance publique, les produits, les services et le contact direct. La page peut evoluer de simples coordonnees vers boutique, services, avis, liens sociaux, annonces et texte pret pour le SEO.',
+		businessBenefits: [
+			{
+				icon: 'storefront',
+				title: 'Page publique pour Google et les visiteurs',
+				body: 'Nom, categorie, ville, quartier, adresse, horaires, photos, description, avis et contenu structure sont reunis.'
+			},
+			{
+				icon: 'inventory_2',
+				title: 'Boutique et services au meme endroit',
+				body: 'Presentez les produits avec prix et images, listez les services et gardez les acheteurs pres de la page entreprise.'
+			},
+			{
+				icon: 'campaign',
+				title: 'Annonces locales avec contexte entreprise',
+				body: 'Publiez offres et nouvelles qui reviennent vers l entreprise, avec badge correct et contexte de zone.'
+			},
+			{
+				icon: 'forum',
+				title: 'Contact direct sans bruit',
+				body: 'Les visiteurs peuvent ouvrir chat, WhatsApp, telephone, e-mail, carte et liens sociaux depuis la meme page publique.'
+			}
+		],
+		communityKicker: 'Pour les communautes',
+		communityTitle: 'Une maison publique pour groupes, evenements et annonces locales',
+		communityBody: 'Les communautes peuvent presenter leur activite, publier des evenements, partager des annonces et aider les personnes a trouver le bon groupe par ville, quartier et sujet.',
+		communityBenefits: [
+			{
+				icon: 'diversity_3',
+				title: 'Identite communautaire claire',
+				body: 'Logo, banniere, description, contacts, liens sociaux, avis et contexte local rendent le groupe plus comprehensible.'
+			},
+			{
+				icon: 'event',
+				title: 'Evenements avec vrais details',
+				body: 'Ajoutez date, heure, fin, image, description et adresse ouvrable sur la carte pour que chacun sache ou et quand venir.'
+			},
+			{
+				icon: 'campaign',
+				title: 'Annonces pres des bonnes personnes',
+				body: 'Les annonces communaute peuvent apparaitre dans la recherche locale avec badge, ville, quartier et contexte du proprietaire.'
+			},
+			{
+				icon: 'groups',
+				title: 'Meilleure decouverte locale',
+				body: 'Les visiteurs trouvent groupes, evenements, infos et organisateurs sans inscription, puis se connectent quand c est utile.'
 			}
 		],
 		features: [

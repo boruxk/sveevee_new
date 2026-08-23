@@ -79,6 +79,7 @@ class PayloadService
         $setup = $page->setup ?? [];
         $contact = $this->pageContact($page, $setup);
         $addressDetails = $this->pageAddress($setup);
+        $socials = $this->pageSocials($setup);
         $page->loadMissing(['products', 'services', 'events']);
 
         $payload = [
@@ -95,6 +96,7 @@ class PayloadService
             'category_key' => $page->category_key,
             'contact' => $contact,
             'address_details' => $addressDetails,
+            'socials' => $socials,
             'opening_hours' => $this->normalizedOpeningHours($setup['opening_hours'] ?? []),
             'features' => $this->pageFeatures($setup),
             'palette_key' => $page->palette_key,
@@ -333,6 +335,18 @@ class PayloadService
             'number' => $address['number'] ?? null,
             'city' => $address['city'] ?? null,
             'neighborhood' => $address['neighborhood'] ?? null,
+        ];
+    }
+
+    private function pageSocials(array $setup): array
+    {
+        $socials = is_array($setup['socials'] ?? null) ? $setup['socials'] : [];
+
+        return [
+            'facebook' => $socials['facebook'] ?? null,
+            'instagram' => $socials['instagram'] ?? null,
+            'tiktok' => $socials['tiktok'] ?? null,
+            'telegram' => $socials['telegram'] ?? null,
         ];
     }
 

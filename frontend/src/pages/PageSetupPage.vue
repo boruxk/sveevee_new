@@ -74,6 +74,12 @@
 		contact_email: '',
 		phone: '',
 		whatsapp: '',
+		socials: {
+			facebook: '',
+			instagram: '',
+			tiktok: '',
+			telegram: ''
+		},
 		address: {
 			street: '',
 			number: '',
@@ -175,6 +181,12 @@
 			tel: form.phone,
 			email: form.contact_email,
 			whatsapp: form.whatsapp
+		},
+		socials: {
+			facebook: form.socials.facebook,
+			instagram: form.socials.instagram,
+			tiktok: form.socials.tiktok,
+			telegram: form.socials.telegram
 		},
 		address_details: {
 			street: form.address.street,
@@ -297,6 +309,7 @@
 		const setup = value?.setup || {}
 		const contact = value?.contact || setup.contact || {}
 		const address = value?.address_details || setup.address || {}
+		const socials = value?.socials || setup.socials || {}
 
 		page.value = value
 		form.name = cleanPageText(value?.name)
@@ -304,6 +317,10 @@
 		form.contact_email = contact.email || value?.contact_email || ''
 		form.phone = contact.tel || value?.phone || ''
 		form.whatsapp = contact.whatsapp || ''
+		form.socials.facebook = socials.facebook || ''
+		form.socials.instagram = socials.instagram || ''
+		form.socials.tiktok = socials.tiktok || ''
+		form.socials.telegram = socials.telegram || ''
 		form.address.street = address.street || ''
 		form.address.number = address.number || ''
 		form.address.city = address.city || ''
@@ -334,6 +351,12 @@
 					tel: form.phone.trim() || null,
 					email: form.contact_email.trim() || null,
 					whatsapp: form.whatsapp.trim() || null
+				},
+				socials: {
+					facebook: form.socials.facebook.trim() || null,
+					instagram: form.socials.instagram.trim() || null,
+					tiktok: form.socials.tiktok.trim() || null,
+					telegram: form.socials.telegram.trim() || null
 				},
 				address: {
 					street: form.address.street.trim() || null,
@@ -1026,6 +1049,24 @@
 														@filter="filterNeighborhoodOptions"
 														@new-value="addOption"
 													/>
+												</div>
+											</div>
+										</section>
+
+										<section class="presence-segment">
+											<div class="presence-segment__title">Socials</div>
+											<div class="row q-col-gutter-md">
+												<div class="col-12 col-md-3">
+													<q-input v-model="form.socials.facebook" outlined label="Facebook" />
+												</div>
+												<div class="col-12 col-md-3">
+													<q-input v-model="form.socials.instagram" outlined label="Instagram" />
+												</div>
+												<div class="col-12 col-md-3">
+													<q-input v-model="form.socials.tiktok" outlined label="TikTok" />
+												</div>
+												<div class="col-12 col-md-3">
+													<q-input v-model="form.socials.telegram" outlined label="Telegram" />
 												</div>
 											</div>
 										</section>

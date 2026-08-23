@@ -5,17 +5,6 @@ export async function authGuard(to) {
 
 	await authStore.initialize()
 
-	if (!to.meta.requiresAuth) {
-		return true
-	}
-
-	if (!authStore.isAuthenticated) {
-		return {
-			name: 'login',
-			query: { redirect: to.fullPath }
-		}
-	}
-
 	if (authStore.needsProfileCompletion && to.name !== 'profile') {
 		return {
 			name: 'profile',
@@ -27,6 +16,17 @@ export async function authGuard(to) {
 		return {
 			name: 'profile',
 			query: { ...to.query, complete: '1' }
+		}
+	}
+
+	if (!to.meta.requiresAuth) {
+		return true
+	}
+
+	if (!authStore.isAuthenticated) {
+		return {
+			name: 'login',
+			query: { redirect: to.fullPath }
 		}
 	}
 
