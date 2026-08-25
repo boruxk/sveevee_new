@@ -3,6 +3,7 @@
 	import { useRoute } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useAppStore } from '@/stores/app'
+	import { landingIconImage } from '@/constants/landingFeatureIcons'
 
 	const route = useRoute()
 	const { t, tm } = useI18n()
@@ -46,46 +47,6 @@
 	const secondaryRoute = computed(() => ({
 		name: promoType.value === 'community' ? 'community-example-page' : 'business-example-page'
 	}))
-	const customSvgIcons = {
-		groups: [
-			'M8.5 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z',
-			'M15.8 10.7a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4Z',
-			'M3.6 19.2c.5-3.4 2.4-5.1 5-5.1 2.7 0 4.6 1.7 5 5.1',
-			'M13.2 14.4c.7-.3 1.5-.4 2.5-.4 2.4 0 4.1 1.5 4.6 4.4'
-		],
-		share: [
-			'M7.2 12a2.7 2.7 0 1 1-5.4 0 2.7 2.7 0 0 1 5.4 0Z',
-			'M20.2 5.4a2.7 2.7 0 1 1-5.4 0 2.7 2.7 0 0 1 5.4 0Z',
-			'M20.2 18.6a2.7 2.7 0 1 1-5.4 0 2.7 2.7 0 0 1 5.4 0Z',
-			'M7 10.8 15 6.7',
-			'M7 13.2 15 17.3'
-		],
-		public: [
-			'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z',
-			'M3.8 9h16.4',
-			'M3.8 15h16.4',
-			'M12 3c2.2 2.5 3.3 5.5 3.3 9s-1.1 6.5-3.3 9',
-			'M12 3c-2.2 2.5-3.3 5.5-3.3 9s1.1 6.5 3.3 9'
-		],
-		location: [
-			'M12 21s6.4-5.7 6.4-11.2A6.4 6.4 0 0 0 5.6 9.8C5.6 15.3 12 21 12 21Z',
-			'M12 12.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8Z'
-		],
-		schedule: [
-			'M6 4v3',
-			'M18 4v3',
-			'M4.5 9h15',
-			'M6.2 5.8h11.6c1.1 0 2 .9 2 2v10.5c0 1.1-.9 2-2 2H6.2c-1.1 0-2-.9-2-2V7.8c0-1.1.9-2 2-2Z',
-			'M12 12v3.2l2.4 1.3'
-		],
-		palette: [
-			'M12 20.5a8.5 8.5 0 1 1 7.6-4.7c-.5 1-1.5 1.2-2.4 1.2h-1.1c-.9 0-1.6.7-1.6 1.6 0 1.1-.9 1.9-2.5 1.9Z',
-			'M7.8 11.2h.1',
-			'M10.2 7.9h.1',
-			'M14.2 7.9h.1',
-			'M16.7 11.2h.1'
-		]
-	}
 
 	function copyKey(key) {
 		return `${copyBase.value}.${key}`
@@ -94,10 +55,6 @@
 	function listMessage(key) {
 		const value = tm(copyKey(key))
 		return Array.isArray(value) ? value : []
-	}
-
-	function customSvg(icon) {
-		return customSvgIcons[icon] || null
 	}
 
 	const functions = computed(() => listMessage('functions'))
@@ -211,11 +168,16 @@
 				<article v-for="(item, index) in functions" :key="item.title" class="promo-function">
 					<span class="promo-function__marker">{{ String(index + 1).padStart(2, '0') }}</span>
 					<header class="promo-function__head">
-						<span class="promo-function__icon">
-							<svg v-if="customSvg(item.icon)" class="promo-function__svg" viewBox="0 0 24 24" aria-hidden="true">
-								<path v-for="path in customSvg(item.icon)" :key="path" :d="path" />
-							</svg>
-							<q-icon v-else :name="item.icon" size="28px" />
+						<span class="promo-function__icon" aria-hidden="true">
+							<img
+								class="promo-function__image"
+								:src="landingIconImage(item.icon)"
+								alt=""
+								width="320"
+								height="320"
+								loading="lazy"
+								decoding="async"
+							/>
 						</span>
 						<h3>{{ item.title }}</h3>
 					</header>
@@ -525,29 +487,17 @@
 }
 
 .promo-function__icon {
-  display: grid;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  border-radius: 8px;
-  background: linear-gradient(145deg, #ff8f38 0%, #ef5d15 100%);
-  color: #ffffff;
-  box-shadow: 0 12px 24px rgba(255, 116, 38, 0.22);
+  display: block;
+  width: 72px;
+  height: 72px;
 }
 
-.promo-page--community .promo-function__icon {
-  background: linear-gradient(145deg, #28c7b7 0%, #7b3ff2 100%);
-  box-shadow: 0 12px 24px rgba(123, 63, 242, 0.2);
-}
-
-.promo-function__svg {
-  width: 28px;
-  height: 28px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.9;
+.promo-function__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 18px rgba(64, 28, 145, 0.15));
 }
 
 .promo-function h3,
@@ -592,7 +542,7 @@
 }
 
 .promo-page--community .promo-function li .q-icon {
-  color: #0e8f93;
+  color: #7b3ff2;
 }
 
 .promo-benefits {

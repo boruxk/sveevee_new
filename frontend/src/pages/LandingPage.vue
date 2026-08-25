@@ -4,6 +4,7 @@
 	import { useAppStore } from '@/stores/app'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { catalogLabel, catalogPath } from '@/constants/catalogTopics'
+	import { landingFeatureIconImage, landingIconImage, landingStepIconImage } from '@/constants/landingFeatureIcons'
 
 	const { t, tm, locale } = useI18n()
 	const appStore = useAppStore()
@@ -14,18 +15,18 @@
 	const mobileHeroSizes = '(max-width: 520px) 100vw, 520px'
 	const mobileHeroAvifSrcSet = '/assets/landing/hero-mobile-480.v1.avif 480w, /assets/landing/hero-mobile-640.v1.avif 640w, /assets/landing/hero-mobile-720.v1.avif 720w, /assets/landing/hero-mobile-800.v1.avif 800w'
 	const mobileHeroWebpSrcSet = '/assets/landing/hero-mobile-480.v1.webp 480w, /assets/landing/hero-mobile-640.v1.webp 640w, /assets/landing/hero-mobile-720.v1.webp 720w, /assets/landing/hero-mobile-800.v1.webp 800w'
-	const pricingBusinessSrc = '/assets/landing/pricing-business-280.v1.webp'
-	const pricingPrivateSrc = '/assets/landing/pricing-private-220.v1.webp'
-	const pricingBusinessAvifSrcSet = '/assets/landing/pricing-business-280.v1.avif 280w, /assets/landing/pricing-business-520.v1.avif 520w'
-	const pricingBusinessWebpSrcSet = '/assets/landing/pricing-business-280.v1.webp 280w, /assets/landing/pricing-business-520.v1.webp 520w'
-	const pricingPrivateAvifSrcSet = '/assets/landing/pricing-private-220.v1.avif 220w, /assets/landing/pricing-private-360.v1.avif 360w'
-	const pricingPrivateWebpSrcSet = '/assets/landing/pricing-private-220.v1.webp 220w, /assets/landing/pricing-private-360.v1.webp 360w'
+	const pricingBusinessSrc = '/assets/landing/pricing-business-280.v2.webp'
+	const pricingPrivateSrc = '/assets/landing/pricing-private-220.v2.webp'
+	const pricingBusinessAvifSrcSet = '/assets/landing/pricing-business-280.v2.avif 280w, /assets/landing/pricing-business-520.v2.avif 520w'
+	const pricingBusinessWebpSrcSet = '/assets/landing/pricing-business-280.v2.webp 280w, /assets/landing/pricing-business-520.v2.webp 520w'
+	const pricingPrivateAvifSrcSet = '/assets/landing/pricing-private-220.v2.avif 220w, /assets/landing/pricing-private-360.v2.avif 360w'
+	const pricingPrivateWebpSrcSet = '/assets/landing/pricing-private-220.v2.webp 220w, /assets/landing/pricing-private-360.v2.webp 360w'
 	const logoSrc = '/assets/landing/sveevee-logo-640.v1.webp'
 	const logoAvifSrcSet = '/assets/landing/sveevee-logo-320.v1.avif 320w, /assets/landing/sveevee-logo-640.v1.avif 640w'
 	const logoWebpSrcSet = '/assets/landing/sveevee-logo-320.v1.webp 320w, /assets/landing/sveevee-logo-640.v1.webp 640w'
-	const workflowHouseSrc = '/assets/landing/workflow-house-420.v1.webp'
-	const workflowHouseAvifSrcSet = '/assets/landing/workflow-house-420.v1.avif 420w, /assets/landing/workflow-house-720.v1.avif 720w'
-	const workflowHouseWebpSrcSet = '/assets/landing/workflow-house-420.v1.webp 420w, /assets/landing/workflow-house-720.v1.webp 720w'
+	const workflowHouseSrc = '/assets/landing/workflow-house-420.v2.webp'
+	const workflowHouseAvifSrcSet = '/assets/landing/workflow-house-420.v2.avif 420w, /assets/landing/workflow-house-720.v2.avif 720w'
+	const workflowHouseWebpSrcSet = '/assets/landing/workflow-house-420.v2.webp 420w, /assets/landing/workflow-house-720.v2.webp 720w'
 
 	function listMessage(key) {
 		const value = tm(key)
@@ -89,18 +90,6 @@
 
 	function planTone(plan) {
 		return plan.featured ? 'business' : 'private'
-	}
-
-	function planIcon(plan) {
-		return plan.featured ? 'storefront' : 'person'
-	}
-
-	function featureIcon(item, index) {
-		return ['campaign', 'storefront', 'inventory_2', 'event', 'star', 'chat_bubble'][index] ?? item.icon
-	}
-
-	function stepIcon(index) {
-		return ['person', 'edit', 'search', 'verified'][index] ?? 'check'
 	}
 
 	function topicName(topic) {
@@ -215,8 +204,16 @@
 
 			<div class="feature-grid">
 				<article v-for="(item, index) in featureCards" :key="item.title" class="feature-card" :class="`feature-card--${index + 1}`">
-					<span class="feature-card__icon">
-						<q-icon :name="featureIcon(item, index)" size="42px" />
+					<span class="feature-card__icon" aria-hidden="true">
+						<img
+							class="landing-image-icon"
+							:src="landingFeatureIconImage(item, index)"
+							alt=""
+							width="320"
+							height="320"
+							loading="lazy"
+							decoding="async"
+						/>
 					</span>
 					<h3>{{ item.title }}</h3>
 					<p>{{ item.body }}</p>
@@ -274,14 +271,16 @@
 
 				<div class="audience-benefit-grid">
 					<article v-for="item in businessBenefits" :key="item.title" class="audience-benefit">
-						<span class="audience-benefit__icon">
-							<svg v-if="item.icon === 'groups'" class="audience-benefit__svg" viewBox="0 0 24 24" aria-hidden="true">
-								<path d="M8.5 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" />
-								<path d="M15.8 10.7a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4Z" />
-								<path d="M3.6 19.2c.5-3.4 2.4-5.1 5-5.1 2.7 0 4.6 1.7 5 5.1" />
-								<path d="M13.2 14.4c.7-.3 1.5-.4 2.5-.4 2.4 0 4.1 1.5 4.6 4.4" />
-							</svg>
-							<q-icon v-else :name="item.icon" size="26px" />
+						<span class="audience-benefit__icon" aria-hidden="true">
+							<img
+								class="landing-image-icon"
+								:src="landingIconImage(item.icon)"
+								alt=""
+								width="320"
+								height="320"
+								loading="lazy"
+								decoding="async"
+							/>
 						</span>
 						<div>
 							<h3>{{ item.title }}</h3>
@@ -326,14 +325,16 @@
 
 				<div class="audience-benefit-grid">
 					<article v-for="item in communityBenefits" :key="item.title" class="audience-benefit">
-						<span class="audience-benefit__icon">
-							<svg v-if="item.icon === 'groups'" class="audience-benefit__svg" viewBox="0 0 24 24" aria-hidden="true">
-								<path d="M8.5 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" />
-								<path d="M15.8 10.7a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4Z" />
-								<path d="M3.6 19.2c.5-3.4 2.4-5.1 5-5.1 2.7 0 4.6 1.7 5 5.1" />
-								<path d="M13.2 14.4c.7-.3 1.5-.4 2.5-.4 2.4 0 4.1 1.5 4.6 4.4" />
-							</svg>
-							<q-icon v-else :name="item.icon" size="26px" />
+						<span class="audience-benefit__icon" aria-hidden="true">
+							<img
+								class="landing-image-icon"
+								:src="landingIconImage(item.icon)"
+								alt=""
+								width="320"
+								height="320"
+								loading="lazy"
+								decoding="async"
+							/>
 						</span>
 						<div>
 							<h3>{{ item.title }}</h3>
@@ -365,9 +366,16 @@
 
 			<div class="step-list">
 				<article v-for="(item, index) in steps" :key="item.title" class="step-item" :class="`step-item--${index + 1}`">
-					<span class="step-item__number">{{ index + 1 }}</span>
-					<span class="step-item__icon">
-						<q-icon :name="stepIcon(index)" size="30px" />
+					<span class="step-item__icon" aria-hidden="true">
+						<img
+							class="landing-image-icon"
+							:src="landingStepIconImage(index)"
+							alt=""
+							width="320"
+							height="320"
+							loading="lazy"
+							decoding="async"
+						/>
 					</span>
 					<div class="step-item__copy">
 						<h3>{{ item.title }}</h3>
@@ -389,9 +397,6 @@
 			<div class="pricing-grid">
 				<article v-for="plan in plans" :key="plan.title" class="pricing-card" :class="[`pricing-card--${planTone(plan)}`, { 'pricing-card--featured': plan.featured }]">
 					<div class="pricing-card__top">
-						<span class="pricing-card__icon">
-							<q-icon :name="planIcon(plan)" size="28px" />
-						</span>
 						<div class="pricing-card__intro">
 							<div class="pricing-card__name">{{ plan.title }}</div>
 							<p>{{ plan.subtitle }}</p>
@@ -751,42 +756,17 @@
 }
 
 .feature-card__icon {
-  display: grid;
-  place-items: center;
-  width: 76px;
-  height: 76px;
-  border-radius: 8px;
-  color: #ffffff;
-  box-shadow: 0 14px 26px rgba(64, 28, 145, 0.24);
+  display: block;
+  width: 90px;
+  height: 90px;
 }
 
-.feature-card--1 .feature-card__icon {
-  background: linear-gradient(145deg, #a968ff 0%, #6e2de6 100%);
-}
-
-.feature-card--2 .feature-card__icon {
-  background: linear-gradient(145deg, #ff8f38 0%, #ef5d15 100%);
-  box-shadow: 0 14px 26px rgba(255, 116, 38, 0.26);
-}
-
-.feature-card--3 .feature-card__icon {
-  background: linear-gradient(145deg, #ff6ca6 0%, #e31869 100%);
-  box-shadow: 0 14px 26px rgba(245, 66, 145, 0.26);
-}
-
-.feature-card--4 .feature-card__icon {
-  background: linear-gradient(145deg, #28c7b7 0%, #0e8f93 100%);
-  box-shadow: 0 14px 26px rgba(14, 143, 147, 0.22);
-}
-
-.feature-card--5 .feature-card__icon {
-  background: linear-gradient(145deg, #ffc44d 0%, #f07f17 100%);
-  box-shadow: 0 14px 26px rgba(240, 127, 23, 0.22);
-}
-
-.feature-card--6 .feature-card__icon {
-  background: linear-gradient(145deg, #6f8cff 0%, #4f38d6 100%);
-  box-shadow: 0 14px 26px rgba(79, 56, 214, 0.22);
+.landing-image-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 18px rgba(64, 28, 145, 0.16));
 }
 
 .feature-card h3,
@@ -961,32 +941,9 @@
 }
 
 .audience-benefit__icon {
-  display: grid;
-  place-items: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 8px;
-  color: #ffffff;
-  box-shadow: 0 12px 22px rgba(64, 28, 145, 0.16);
-}
-
-.audience-panel--business .audience-benefit__icon {
-  background: linear-gradient(145deg, #ff8f38 0%, #ef5d15 100%);
-  box-shadow: 0 12px 22px rgba(255, 116, 38, 0.2);
-}
-
-.audience-panel--community .audience-benefit__icon {
-  background: linear-gradient(145deg, #28c7b7 0%, #7b3ff2 100%);
-}
-
-.audience-benefit__svg {
-  width: 26px;
-  height: 26px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.9;
+  display: block;
+  width: 66px;
+  height: 66px;
 }
 
 .audience-benefit h3 {
@@ -1058,7 +1015,7 @@
 
 .step-item {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 22px;
   align-items: center;
   min-height: 124px;
@@ -1067,26 +1024,10 @@
   box-shadow: 0 18px 40px rgba(21, 31, 59, 0.09);
 }
 
-.step-item__number {
-  display: grid;
-  place-items: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 999px;
-  color: #ffffff;
-  font-size: 26px;
-  font-weight: 900;
-  box-shadow: 0 10px 22px rgba(64, 28, 145, 0.18);
-}
-
 .step-item__icon {
-  display: grid;
-  place-items: center;
-  width: 68px;
-  height: 68px;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 12px 28px rgba(64, 28, 145, 0.12);
+  display: block;
+  width: 76px;
+  height: 76px;
 }
 
 .step-item__copy h3 {
@@ -1100,45 +1041,6 @@
   max-width: 470px;
   font-size: 15px;
   line-height: 1.45;
-}
-
-.step-item--1 .step-item__number {
-  background: linear-gradient(145deg, #8e5bff 0%, #5f28d5 100%);
-}
-
-.step-item--1 .step-item__icon {
-  color: #7b3ff2;
-  background: linear-gradient(180deg, #f4edff 0%, #ffffff 100%);
-}
-
-.step-item--2 .step-item__number {
-  background: linear-gradient(145deg, #ff8f38 0%, #ef5d15 100%);
-  box-shadow: 0 10px 22px rgba(255, 116, 38, 0.22);
-}
-
-.step-item--2 .step-item__icon {
-  color: #ff7426;
-  background: linear-gradient(180deg, #fff0e7 0%, #ffffff 100%);
-}
-
-.step-item--3 .step-item__number {
-  background: linear-gradient(145deg, #ff6ca6 0%, #e31869 100%);
-  box-shadow: 0 10px 22px rgba(245, 66, 145, 0.22);
-}
-
-.step-item--3 .step-item__icon {
-  color: #f54291;
-  background: linear-gradient(180deg, #fff0f8 0%, #ffffff 100%);
-}
-
-.step-item--4 .step-item__number {
-  background: linear-gradient(145deg, #28c7b7 0%, #0e8f93 100%);
-  box-shadow: 0 10px 22px rgba(14, 143, 147, 0.22);
-}
-
-.step-item--4 .step-item__icon {
-  color: #0e8f93;
-  background: linear-gradient(180deg, #e8fbf8 0%, #ffffff 100%);
 }
 
 .pricing-head {
@@ -1211,33 +1113,11 @@
 .pricing-card__top {
   position: relative;
   z-index: 1;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.pricing-card__icon {
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 8px;
-  box-shadow: 0 10px 26px rgba(64, 28, 145, 0.14);
-}
-
-.pricing-card--private .pricing-card__icon {
-  color: #7b3ff2;
-  background: linear-gradient(180deg, #f4edff 0%, #ffffff 100%);
-}
-
-.pricing-card--business .pricing-card__icon {
-  color: #ff7426;
-  background: linear-gradient(180deg, #fff0e7 0%, #ffffff 100%);
+  display: block;
 }
 
 .pricing-card__intro {
-  max-width: 285px;
+  max-width: 340px;
 }
 
 .pricing-card__name {
@@ -1355,8 +1235,10 @@
 }
 
 .pricing-card--business .pricing-card__art-wrap {
+  align-self: flex-end;
   width: min(100%, 280px);
   max-height: 260px;
+  transform: translateY(20px);
 }
 
 .pricing-card__button {
@@ -1584,18 +1466,14 @@
 
   .step-item__icon {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 1;
     width: 54px;
     height: 54px;
   }
 
   .step-item__copy {
     grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-
-  .pricing-card__price strong {
-    font-size: 54px;
+    grid-row: 1;
   }
 
   .pricing-card__content {
@@ -1607,8 +1485,8 @@
     display: none;
   }
 
-  .pricing-card__top {
-    grid-template-columns: auto minmax(0, 1fr);
+  .pricing-card__price strong {
+    font-size: 54px;
   }
 
   .landing-hero__actions {
