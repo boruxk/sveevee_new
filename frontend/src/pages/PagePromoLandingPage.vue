@@ -46,6 +46,46 @@
 	const secondaryRoute = computed(() => ({
 		name: promoType.value === 'community' ? 'community-example-page' : 'business-example-page'
 	}))
+	const customSvgIcons = {
+		groups: [
+			'M8.5 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z',
+			'M15.8 10.7a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4Z',
+			'M3.6 19.2c.5-3.4 2.4-5.1 5-5.1 2.7 0 4.6 1.7 5 5.1',
+			'M13.2 14.4c.7-.3 1.5-.4 2.5-.4 2.4 0 4.1 1.5 4.6 4.4'
+		],
+		share: [
+			'M7.2 12a2.7 2.7 0 1 1-5.4 0 2.7 2.7 0 0 1 5.4 0Z',
+			'M20.2 5.4a2.7 2.7 0 1 1-5.4 0 2.7 2.7 0 0 1 5.4 0Z',
+			'M20.2 18.6a2.7 2.7 0 1 1-5.4 0 2.7 2.7 0 0 1 5.4 0Z',
+			'M7 10.8 15 6.7',
+			'M7 13.2 15 17.3'
+		],
+		public: [
+			'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z',
+			'M3.8 9h16.4',
+			'M3.8 15h16.4',
+			'M12 3c2.2 2.5 3.3 5.5 3.3 9s-1.1 6.5-3.3 9',
+			'M12 3c-2.2 2.5-3.3 5.5-3.3 9s1.1 6.5 3.3 9'
+		],
+		location: [
+			'M12 21s6.4-5.7 6.4-11.2A6.4 6.4 0 0 0 5.6 9.8C5.6 15.3 12 21 12 21Z',
+			'M12 12.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8Z'
+		],
+		schedule: [
+			'M6 4v3',
+			'M18 4v3',
+			'M4.5 9h15',
+			'M6.2 5.8h11.6c1.1 0 2 .9 2 2v10.5c0 1.1-.9 2-2 2H6.2c-1.1 0-2-.9-2-2V7.8c0-1.1.9-2 2-2Z',
+			'M12 12v3.2l2.4 1.3'
+		],
+		palette: [
+			'M12 20.5a8.5 8.5 0 1 1 7.6-4.7c-.5 1-1.5 1.2-2.4 1.2h-1.1c-.9 0-1.6.7-1.6 1.6 0 1.1-.9 1.9-2.5 1.9Z',
+			'M7.8 11.2h.1',
+			'M10.2 7.9h.1',
+			'M14.2 7.9h.1',
+			'M16.7 11.2h.1'
+		]
+	}
 
 	function copyKey(key) {
 		return `${copyBase.value}.${key}`
@@ -54,6 +94,10 @@
 	function listMessage(key) {
 		const value = tm(copyKey(key))
 		return Array.isArray(value) ? value : []
+	}
+
+	function customSvg(icon) {
+		return customSvgIcons[icon] || null
 	}
 
 	const functions = computed(() => listMessage('functions'))
@@ -140,23 +184,6 @@
 			</div>
 		</section>
 
-		<section class="promo-section">
-			<div class="promo-section__head">
-				<div class="section-kicker">{{ t('promoLanding.functionsKicker') }}</div>
-				<h2>{{ t(copyKey('functionsTitle')) }}</h2>
-			</div>
-
-			<div class="promo-function-grid">
-				<article v-for="item in functions" :key="item.title" class="promo-function">
-					<span class="promo-function__icon">
-						<q-icon :name="item.icon" size="28px" />
-					</span>
-					<h3>{{ item.title }}</h3>
-					<p>{{ item.body }}</p>
-				</article>
-			</div>
-		</section>
-
 		<section class="promo-section promo-benefits">
 			<div class="promo-section__head">
 				<div class="section-kicker">{{ t('promoLanding.benefitsKicker') }}</div>
@@ -170,6 +197,35 @@
 						<h3>{{ item.title }}</h3>
 						<p>{{ item.body }}</p>
 					</div>
+				</article>
+			</div>
+		</section>
+
+		<section class="promo-section">
+			<div class="promo-section__head">
+				<div class="section-kicker">{{ t('promoLanding.functionsKicker') }}</div>
+				<h2>{{ t(copyKey('functionsTitle')) }}</h2>
+			</div>
+
+			<div class="promo-function-grid">
+				<article v-for="(item, index) in functions" :key="item.title" class="promo-function">
+					<span class="promo-function__marker">{{ String(index + 1).padStart(2, '0') }}</span>
+					<header class="promo-function__head">
+						<span class="promo-function__icon">
+							<svg v-if="customSvg(item.icon)" class="promo-function__svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path v-for="path in customSvg(item.icon)" :key="path" :d="path" />
+							</svg>
+							<q-icon v-else :name="item.icon" size="28px" />
+						</span>
+						<h3>{{ item.title }}</h3>
+					</header>
+					<p v-if="item.body">{{ item.body }}</p>
+					<ul v-if="item.items?.length">
+						<li v-for="point in item.items" :key="point">
+							<q-icon name="check_circle" size="18px" />
+							<span>{{ point }}</span>
+						</li>
+					</ul>
 				</article>
 			</div>
 		</section>
@@ -417,18 +473,55 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+  counter-reset: promoFunctions;
 }
 
 .promo-function {
+  position: relative;
   display: grid;
-  gap: 12px;
+  gap: 14px;
   align-content: start;
-  min-height: 218px;
-  padding: 24px;
+  min-height: 286px;
+  padding: 26px 24px 24px;
   border: 1px solid rgba(64, 28, 145, 0.08);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.66);
-  box-shadow: 0 18px 42px rgba(21, 31, 59, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7)),
+    radial-gradient(circle at 100% 0%, rgba(255, 116, 38, 0.13), transparent 38%);
+  box-shadow: 0 18px 42px rgba(21, 31, 59, 0.075);
+}
+
+.promo-page--community .promo-function {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7)),
+    radial-gradient(circle at 100% 0%, rgba(40, 199, 183, 0.13), transparent 38%);
+}
+
+.promo-function__marker {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  color: rgba(36, 20, 93, 0.14);
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.promo-page--rtl .promo-function__marker {
+  right: auto;
+  left: 20px;
+}
+
+.promo-function__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding-inline-end: 44px;
+}
+
+.promo-page--rtl .promo-function__head {
+  padding-inline: 44px 0;
 }
 
 .promo-function__icon {
@@ -447,6 +540,16 @@
   box-shadow: 0 12px 24px rgba(123, 63, 242, 0.2);
 }
 
+.promo-function__svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
 .promo-function h3,
 .promo-benefit h3 {
   margin: 0;
@@ -462,6 +565,34 @@
   color: rgba(21, 31, 59, 0.68);
   font-size: 15px;
   line-height: 1.62;
+}
+
+.promo-function ul {
+  display: grid;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.promo-function li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  color: rgba(21, 31, 59, 0.78);
+  font-size: 14px;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
+.promo-function li .q-icon {
+  margin-top: 1px;
+  color: #ff7426;
+}
+
+.promo-page--community .promo-function li .q-icon {
+  color: #0e8f93;
 }
 
 .promo-benefits {
@@ -528,9 +659,12 @@
   }
 
   .promo-description,
-  .promo-function-grid,
   .promo-benefit-list {
     grid-template-columns: 1fr;
+  }
+
+  .promo-function-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .promo-function {
@@ -626,6 +760,10 @@
 
   .promo-section {
     padding: 44px 16px 0;
+  }
+
+  .promo-function-grid {
+    grid-template-columns: 1fr;
   }
 
   .promo-description {

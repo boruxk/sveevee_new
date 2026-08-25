@@ -32,6 +32,7 @@ export default {
 		explore: 'Explore',
 		marketplace: 'Marketplace',
 		community: 'Community',
+		contact: 'Contact',
 		forBusinesses: 'For businesses',
 		forCommunities: 'For communities',
 		businesses: 'Businesses',
@@ -643,6 +644,7 @@ export default {
 		benefitsKicker: 'Why it helps',
 		registerToStart: 'Register to start',
 		examplePageCta: 'Example page',
+		moreCta: 'More',
 		business: {
 			eyebrow: 'Business pages for local advertising',
 			title: 'Advertise your business locally for free',
@@ -655,12 +657,18 @@ export default {
 			freeBody: 'Start with a free page and use the full business toolset. You can add content step by step as your business grows.',
 			functionsTitle: 'All business functions in one page',
 			functions: [
-				{ icon: 'storefront', title: 'Public business page', body: 'Logo, banner, description, category, city, neighborhood, address, opening hours, and contact details.' },
-				{ icon: 'inventory_2', title: 'Products and store', body: 'Show products with image, price, description, availability, and a link to buy on your own website.' },
-				{ icon: 'design_services', title: 'Services', body: 'List services with clear descriptions so customers understand what you offer before they contact you.' },
-				{ icon: 'campaign', title: 'Business ads', body: 'Publish local offers and announcements that point back to your business page and appear in local discovery.' },
-				{ icon: 'reviews', title: 'Ratings and trust', body: 'Collect public ratings and reviews so visitors see a stronger trust signal.' },
-				{ icon: 'forum', title: 'Direct contact', body: 'Let visitors reach you by chat, WhatsApp, phone, email, maps, and social links from one place.' }
+				{ icon: 'storefront', title: 'Public business page', body: 'A complete local profile for the business.', items: ['Logo and banner', 'Business description', 'Category, city, and neighborhood', 'Address and opening hours'] },
+				{ icon: 'inventory_2', title: 'Products and store', body: 'A visible store layer inside the page.', items: ['Product images and descriptions', 'Prices and availability', 'Public product detail pages', 'Link to your own website'] },
+				{ icon: 'design_services', title: 'Services', body: 'Clear service presentation before contact.', items: ['Service names and details', 'Local category context', 'Visible services tab', 'Easy browsing from the page'] },
+				{ icon: 'campaign', title: 'Business ads', body: 'Local offers connected to the business.', items: ['Offers and announcements', 'Business badge on ad cards', 'Local discovery feed', 'Links back to the page'] },
+				{ icon: 'reviews', title: 'Ratings and trust', body: 'Public proof for new visitors.', items: ['Star ratings', 'Written reviews', 'Visible trust block'] },
+				{ icon: 'forum', title: 'Direct contact', body: 'All contact paths in one place.', items: ['Sveevee chat', 'WhatsApp, phone, and email', 'Maps and social links'] },
+				{ icon: 'location', title: 'Address and maps', body: 'Help customers understand where you are.', items: ['Street address', 'City and neighborhood context', 'One-tap maps link', 'Visible location block'] },
+				{ icon: 'schedule', title: 'Opening hours', body: 'Show when the business is available.', items: ['Weekday rows', 'Open and closed switches', 'Time ranges', 'Visible opening-hours section'] },
+				{ icon: 'palette', title: 'Brand look', body: 'Make the page feel like your business.', items: ['Eight color palettes', 'Logo and banner visuals', 'Rounded page cards', 'Consistent theme colors'] },
+				{ icon: 'share', title: 'Sharing tools', body: 'Fast sharing for every public page.', items: ['Local share popup', 'Copy link and QR code', 'WhatsApp and Telegram', 'Facebook, Instagram, and TikTok'] },
+				{ icon: 'search', title: 'Local SEO structure', body: 'Content Google and visitors can understand.', items: ['SEO-ready page text', 'City and neighborhood signals', 'Public business URLs', 'Sitemap-friendly links'] },
+				{ icon: 'tune', title: 'Page controls', body: 'Simple controls for how the page grows.', items: ['Store and services modules', 'Preview and settings tabs', 'Disabled example page view', 'Settings in one place'] }
 			],
 			benefitsTitle: 'Made for being found nearby',
 			benefits: [
@@ -684,12 +692,18 @@ export default {
 			freeBody: 'Use the full community page for free: public profile, events, announcements, ads, ratings, contact links, and social links.',
 			functionsTitle: 'All community functions in one page',
 			functions: [
-				{ icon: 'diversity_3', title: 'Public community page', body: 'Logo, banner, description, city, neighborhood, contact details, and social links in one public place.' },
-				{ icon: 'event', title: 'Events', body: 'Publish events with image, date, start time, end time, description, and a map-ready address.' },
-				{ icon: 'campaign', title: 'Community ads', body: 'Share announcements and local notices with a community badge and clear page owner context.' },
-				{ icon: 'place', title: 'Map-ready address', body: 'Let people open the event or community address in maps with one tap.' },
-				{ icon: 'reviews', title: 'Ratings', body: 'Show public ratings and reviews so people can quickly understand community trust.' },
-				{ icon: 'forum', title: 'Direct contact', body: 'Start conversations by chat, WhatsApp, phone, email, and social links without scattering contact details.' }
+				{ icon: 'groups', title: 'Public community page', body: 'A clear home for a local group or initiative.', items: ['Logo and banner', 'Community description', 'City and neighborhood', 'Organizer contact details'] },
+				{ icon: 'event', title: 'Events', body: 'Promote real local activity.', items: ['Image, date, and time', 'End time and description', 'Map-ready address', 'Visible events tab'] },
+				{ icon: 'campaign', title: 'Community ads', body: 'Announcements with page context.', items: ['Local notices and updates', 'Community badge on ad cards', 'Local discovery feed', 'Links back to the page'] },
+				{ icon: 'reviews', title: 'Ratings and trust', body: 'Public feedback for the community.', items: ['Star ratings', 'Written reviews', 'Visible trust block'] },
+				{ icon: 'forum', title: 'Direct contact', body: 'Let people reach organizers quickly.', items: ['Sveevee chat', 'WhatsApp, phone, and email', 'Social links'] },
+				{ icon: 'location', title: 'Address and maps', body: 'Make local places easier to reach.', items: ['Community address', 'Event address support', 'One-tap maps link', 'City and neighborhood context'] },
+				{ icon: 'schedule', title: 'Opening hours', body: 'Show contact or organizer availability.', items: ['Weekday rows', 'Open and closed switches', 'Time ranges', 'Visible opening-hours section'] },
+				{ icon: 'palette', title: 'Community look', body: 'Give the page a recognizable identity.', items: ['Eight color palettes', 'Logo and banner visuals', 'Rounded page cards', 'Consistent theme colors'] },
+				{ icon: 'share', title: 'Sharing tools', body: 'Send people straight to the community.', items: ['Local share popup', 'Copy link and QR code', 'WhatsApp and Telegram', 'Facebook, Instagram, and TikTok'] },
+				{ icon: 'search', title: 'Local SEO structure', body: 'Useful public text for discovery.', items: ['SEO-ready page text', 'City and neighborhood signals', 'Public community URLs', 'Sitemap-friendly links'] },
+				{ icon: 'tune', title: 'Page controls', body: 'Manage what the community shows.', items: ['Events module', 'Preview and settings tabs', 'Disabled example page view', 'Settings in one place'] },
+				{ icon: 'public', title: 'Visitor-ready flow', body: 'Helpful before and after registration.', items: ['Readable without an account', 'Register to connect', 'Direct link sharing', 'Consistent mobile and desktop view'] }
 			],
 			benefitsTitle: 'Made for local community life',
 			benefits: [

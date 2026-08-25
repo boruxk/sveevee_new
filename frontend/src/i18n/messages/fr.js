@@ -31,6 +31,7 @@ export default {
 		explore: 'Explorer',
 		marketplace: 'Marche local',
 		community: 'Communaute',
+		contact: 'Contact',
 		forBusinesses: 'Pour entreprises',
 		forCommunities: 'Pour communautes',
 		businesses: 'Entreprises',
@@ -643,6 +644,7 @@ export default {
 		benefitsKicker: 'Pourquoi c est utile',
 		registerToStart: 'S inscrire pour commencer',
 		examplePageCta: 'Page exemple',
+		moreCta: 'Plus',
 		business: {
 			eyebrow: 'Pages entreprise pour publicite locale',
 			title: 'Faites connaitre votre entreprise localement gratuitement',
@@ -655,12 +657,18 @@ export default {
 			freeBody: 'Commencez avec une page gratuite et utilisez tous les outils entreprise. Ajoutez du contenu etape par etape.',
 			functionsTitle: 'Toutes les fonctions entreprise au meme endroit',
 			functions: [
-				{ icon: 'storefront', title: 'Page entreprise publique', body: 'Logo, banniere, description, categorie, ville, quartier, adresse, horaires et contacts.' },
-				{ icon: 'inventory_2', title: 'Produits et boutique', body: 'Montrez produits, images, prix, description, disponibilite et lien d achat vers votre site.' },
-				{ icon: 'design_services', title: 'Services', body: 'Listez vos services avec des descriptions claires avant le premier contact client.' },
-				{ icon: 'campaign', title: 'Annonces entreprise', body: 'Publiez offres et annonces locales qui renvoient vers votre page entreprise.' },
-				{ icon: 'reviews', title: 'Avis et confiance', body: 'Recevez des notes et avis publics pour renforcer la confiance des visiteurs.' },
-				{ icon: 'forum', title: 'Contact direct', body: 'Chat, WhatsApp, telephone, e-mail, carte et reseaux sociaux depuis un seul endroit.' }
+				{ icon: 'storefront', title: 'Page entreprise publique', body: 'Un profil local complet pour l entreprise.', items: ['Logo et banniere', 'Description de l entreprise', 'Categorie, ville et quartier', 'Adresse et horaires'] },
+				{ icon: 'inventory_2', title: 'Produits et boutique', body: 'Une boutique visible dans la page.', items: ['Images et descriptions produit', 'Prix et disponibilite', 'Pages detail produit publiques', 'Lien vers votre site'] },
+				{ icon: 'design_services', title: 'Services', body: 'Des services clairs avant le contact.', items: ['Noms et details des services', 'Contexte local et categorie', 'Onglet services visible', 'Navigation simple depuis la page'] },
+				{ icon: 'campaign', title: 'Annonces entreprise', body: 'Des offres locales reliees a l entreprise.', items: ['Offres et annonces', 'Badge entreprise sur les cartes', 'Fil de decouverte local', 'Liens vers la page'] },
+				{ icon: 'reviews', title: 'Avis et confiance', body: 'Une preuve publique pour les visiteurs.', items: ['Notes en etoiles', 'Avis ecrits', 'Bloc confiance visible'] },
+				{ icon: 'forum', title: 'Contact direct', body: 'Tous les chemins de contact ensemble.', items: ['Chat Sveevee', 'WhatsApp, telephone et e-mail', 'Cartes et liens sociaux'] },
+				{ icon: 'location', title: 'Adresse et cartes', body: 'Aidez les clients a comprendre ou vous etes.', items: ['Adresse complete', 'Contexte ville et quartier', 'Lien carte en un clic', 'Bloc localisation visible'] },
+				{ icon: 'schedule', title: 'Horaires', body: 'Montrez quand l entreprise est disponible.', items: ['Lignes par jour', 'Boutons ouvert et ferme', 'Plages horaires', 'Section horaires visible'] },
+				{ icon: 'palette', title: 'Identite visuelle', body: 'Donnez a la page le style de votre entreprise.', items: ['Huit palettes couleur', 'Logo et banniere', 'Cartes arrondies', 'Couleurs coherentes'] },
+				{ icon: 'share', title: 'Outils de partage', body: 'Partage rapide de chaque page publique.', items: ['Popup de partage locale', 'Copier le lien et QR code', 'WhatsApp et Telegram', 'Facebook, Instagram et TikTok'] },
+				{ icon: 'search', title: 'Structure SEO locale', body: 'Un contenu clair pour Google et les visiteurs.', items: ['Texte pret pour le SEO', 'Signaux ville et quartier', 'URLs publiques entreprise', 'Liens adaptes au sitemap'] },
+				{ icon: 'tune', title: 'Controle de la page', body: 'Des reglages simples pour faire grandir la page.', items: ['Modules boutique et services', 'Onglets apercu et reglages', 'Page exemple desactivee', 'Reglages au meme endroit'] }
 			],
 			benefitsTitle: 'Fait pour etre trouve pres de chez vous',
 			benefits: [
@@ -684,12 +692,18 @@ export default {
 			freeBody: 'Utilisez toute la page communaute gratuitement: profil public, evenements, annonces, avis, contacts et liens sociaux.',
 			functionsTitle: 'Toutes les fonctions communaute au meme endroit',
 			functions: [
-				{ icon: 'diversity_3', title: 'Page communaute publique', body: 'Logo, banniere, description, ville, quartier, contacts et liens sociaux.' },
-				{ icon: 'event', title: 'Evenements', body: 'Publiez image, date, heure, fin, description et adresse ouvrable sur la carte.' },
-				{ icon: 'campaign', title: 'Annonces communaute', body: 'Partagez annonces locales avec badge communaute et contexte du proprietaire.' },
-				{ icon: 'place', title: 'Adresse sur carte', body: 'Ouvrez l adresse d un evenement ou de la communaute en un clic.' },
-				{ icon: 'reviews', title: 'Avis', body: 'Affichez notes et avis publics pour montrer rapidement la confiance.' },
-				{ icon: 'forum', title: 'Contact direct', body: 'Chat, WhatsApp, telephone, e-mail et reseaux sociaux sans disperser les contacts.' }
+				{ icon: 'groups', title: 'Page communaute publique', body: 'Un lieu clair pour un groupe ou une initiative locale.', items: ['Logo et banniere', 'Description de la communaute', 'Ville et quartier', 'Contacts des organisateurs'] },
+				{ icon: 'event', title: 'Evenements', body: 'Mettez en avant l activite locale.', items: ['Image, date et heure', 'Heure de fin et description', 'Adresse ouvrable sur la carte', 'Onglet evenements visible'] },
+				{ icon: 'campaign', title: 'Annonces communaute', body: 'Des annonces avec contexte de page.', items: ['Nouvelles et mises a jour', 'Badge communaute sur les cartes', 'Fil de decouverte local', 'Liens vers la page'] },
+				{ icon: 'reviews', title: 'Avis et confiance', body: 'Des retours publics pour la communaute.', items: ['Notes en etoiles', 'Avis ecrits', 'Bloc confiance visible'] },
+				{ icon: 'forum', title: 'Contact direct', body: 'Contact rapide avec les organisateurs.', items: ['Chat Sveevee', 'WhatsApp, telephone et e-mail', 'Liens sociaux'] },
+				{ icon: 'location', title: 'Adresse et cartes', body: 'Rendez les lieux locaux faciles a rejoindre.', items: ['Adresse de la communaute', 'Adresse pour les evenements', 'Lien carte en un clic', 'Contexte ville et quartier'] },
+				{ icon: 'schedule', title: 'Horaires', body: 'Montrez la disponibilite des organisateurs.', items: ['Lignes par jour', 'Boutons ouvert et ferme', 'Plages horaires', 'Section horaires visible'] },
+				{ icon: 'palette', title: 'Identite communaute', body: 'Donnez a la page une presence reconnaissable.', items: ['Huit palettes couleur', 'Logo et banniere', 'Cartes arrondies', 'Couleurs coherentes'] },
+				{ icon: 'share', title: 'Outils de partage', body: 'Envoyer les visiteurs vers la communaute.', items: ['Popup de partage locale', 'Copier le lien et QR code', 'WhatsApp et Telegram', 'Facebook, Instagram et TikTok'] },
+				{ icon: 'search', title: 'Structure SEO locale', body: 'Du texte public utile pour la decouverte.', items: ['Texte pret pour le SEO', 'Signaux ville et quartier', 'URLs publiques communaute', 'Liens adaptes au sitemap'] },
+				{ icon: 'tune', title: 'Controle de la page', body: 'Gerez ce que la communaute affiche.', items: ['Module evenements', 'Onglets apercu et reglages', 'Page exemple desactivee', 'Reglages au meme endroit'] },
+				{ icon: 'public', title: 'Parcours visiteur', body: 'Utile avant et apres inscription.', items: ['Lisible sans compte', 'Inscription pour contacter', 'Partage par lien direct', 'Vue mobile et desktop coherente'] }
 			],
 			benefitsTitle: 'Fait pour la vie locale',
 			benefits: [

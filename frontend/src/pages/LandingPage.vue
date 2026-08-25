@@ -244,15 +244,32 @@
 					<div class="section-kicker">{{ t('landing.businessKicker') }}</div>
 					<h2>{{ t('landing.businessTitle') }}</h2>
 					<p>{{ t('landing.businessBody') }}</p>
-					<q-btn
-						unelevated
-						rounded
-						color="primary"
-						class="audience-panel__link"
-						icon="visibility"
-						:label="t('promoLanding.examplePageCta')"
-						:to="{ name: 'business-example-page' }"
-					/>
+					<div class="audience-panel__actions">
+						<q-btn
+							unelevated
+							rounded
+							color="primary"
+							class="audience-panel__link"
+							:to="{ name: 'businesses-landing' }"
+						>
+							<span class="audience-panel__button-content">
+								<svg class="audience-panel__button-svg audience-panel__button-svg--more" viewBox="0 0 24 24" aria-hidden="true">
+									<path d="M5 12h12" />
+									<path d="m13 7 5 5-5 5" />
+								</svg>
+								<span>{{ t('promoLanding.moreCta') }}</span>
+							</span>
+						</q-btn>
+						<q-btn
+							unelevated
+							rounded
+							color="primary"
+							class="audience-panel__link audience-panel__link--secondary"
+							icon="visibility"
+							:label="t('promoLanding.examplePageCta')"
+							:to="{ name: 'business-example-page' }"
+						/>
+					</div>
 				</div>
 
 				<div class="audience-benefit-grid">
@@ -279,15 +296,32 @@
 					<div class="section-kicker">{{ t('landing.communityKicker') }}</div>
 					<h2>{{ t('landing.communityTitle') }}</h2>
 					<p>{{ t('landing.communityBody') }}</p>
-					<q-btn
-						unelevated
-						rounded
-						color="primary"
-						class="audience-panel__link"
-						icon="visibility"
-						:label="t('promoLanding.examplePageCta')"
-						:to="{ name: 'community-example-page' }"
-					/>
+					<div class="audience-panel__actions">
+						<q-btn
+							unelevated
+							rounded
+							color="primary"
+							class="audience-panel__link"
+							:to="{ name: 'communities-landing' }"
+						>
+							<span class="audience-panel__button-content">
+								<svg class="audience-panel__button-svg audience-panel__button-svg--more" viewBox="0 0 24 24" aria-hidden="true">
+									<path d="M5 12h12" />
+									<path d="m13 7 5 5-5 5" />
+								</svg>
+								<span>{{ t('promoLanding.moreCta') }}</span>
+							</span>
+						</q-btn>
+						<q-btn
+							unelevated
+							rounded
+							color="primary"
+							class="audience-panel__link audience-panel__link--secondary"
+							icon="visibility"
+							:label="t('promoLanding.examplePageCta')"
+							:to="{ name: 'community-example-page' }"
+						/>
+					</div>
 				</div>
 
 				<div class="audience-benefit-grid">
@@ -865,13 +899,46 @@
   line-height: 1.72;
 }
 
-.audience-panel__link.q-btn.bg-primary {
-  justify-self: start;
+.audience-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
   margin-top: 4px;
+}
+
+.audience-panel__link.q-btn.bg-primary {
   background: var(--soz-menu-gradient) !important;
   box-shadow: 0 12px 24px rgba(123, 63, 242, 0.22) !important;
   color: #ffffff !important;
   font-weight: 850;
+}
+
+.audience-panel__button-content {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.audience-panel__button-svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.landing-page--rtl .audience-panel__button-svg--more {
+  transform: scaleX(-1);
+}
+
+.audience-panel__link--secondary.q-btn.bg-primary {
+  background: rgba(255, 255, 255, 0.76) !important;
+  color: #5b2fd6 !important;
+  box-shadow: 0 10px 22px rgba(64, 28, 145, 0.1) !important;
 }
 
 .audience-benefit-grid {

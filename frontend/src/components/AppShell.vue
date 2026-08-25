@@ -69,6 +69,12 @@
 				links: [
 					{ label: t('footer.events'), name: 'catalog-events' }
 				]
+			},
+			{
+				title: t('footer.contact'),
+				links: [
+					{ label: 'info@sveevee.co.il', href: 'mailto:info@sveevee.co.il' }
+				]
 			}
 		]
 
@@ -323,9 +329,12 @@
 				<nav class="shell-footer__nav" :aria-label="t('footer.label')">
 					<div v-for="column in footerColumns" :key="column.title" class="shell-footer__column">
 						<h2>{{ column.title }}</h2>
-						<router-link v-for="link in column.links" :key="link.name || link.to" :to="footerLinkTo(link)">
-							{{ link.label }}
-						</router-link>
+						<template v-for="link in column.links" :key="link.name || link.to || link.href">
+							<a v-if="link.href" :href="link.href">{{ link.label }}</a>
+							<router-link v-else :to="footerLinkTo(link)">
+								{{ link.label }}
+							</router-link>
+						</template>
 					</div>
 				</nav>
 			</div>
