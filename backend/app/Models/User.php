@@ -26,6 +26,7 @@ class User extends Authenticatable
         'google_id',
         'password',
         'locale',
+        'consented',
         'role',
         'banned_at',
         'banned_reason',
@@ -46,6 +47,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'consented' => 'boolean',
             'banned_at' => 'datetime',
         ];
     }

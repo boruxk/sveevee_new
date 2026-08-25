@@ -109,6 +109,43 @@ class SveeveeApiTest extends TestCase
             && $request['response'] === 'valid-token');
     }
 
+    public function test_registration_requires_explicit_consent(): void
+    {
+        $this->postJson('/api/v1/auth/register', [
+            'email' => 'no-consent@example.test',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'given_name' => 'No',
+            'family_name' => 'Consent',
+            'locale' => 'en',
+            'consented' => false,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['consented']);
+
+        $this->assertDatabaseMissing('users', [
+            'email' => 'no-consent@example.test',
+        ]);
+    }
+
+    public function test_registration_stores_explicit_consent(): void
+    {
+        $this->postJson('/api/v1/auth/register', [
+            'email' => 'consented@example.test',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'given_name' => 'Ada',
+            'family_name' => 'Cohen',
+            'locale' => 'en',
+            'consented' => true,
+        ])->assertCreated()
+            ->assertJsonPath('data.user.email', 'consented@example.test');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'consented@example.test',
+            'consented' => true,
+        ]);
+    }
+
     public function test_google_callback_creates_user_and_marks_missing_city(): void
     {
         config()->set('app.frontend_url', 'https://app.example.test');

@@ -44,6 +44,11 @@ export default {
 		people: 'אנשים',
 		privacy: 'מדיניות פרטיות'
 	},
+	legal: {
+		databaseDocumentTitle: 'מסמך הגדרות מאגר המידע',
+		databaseDocumentBody: 'עיינו בגרסה הציבורית של תיעוד עיבוד המידע ואבטחתו ב-Sveevee.',
+		databaseDocumentAction: 'פתיחת PDF'
+	},
 	validation: {
 		required: '\u05E9\u05D3\u05D4 \u05D7\u05D5\u05D1\u05D4.',
 		requiredFields: '\u05DE\u05DC\u05D0\u05D5 \u05D0\u05EA \u05E9\u05D3\u05D5\u05EA \u05D4\u05D7\u05D5\u05D1\u05D4.',
@@ -138,6 +143,8 @@ export default {
 		loginTitle: 'כניסה לחשבון',
 		registerTitle: 'יצירת חשבון',
 		registerWelcome: 'ברוכים הבאים ל-Sveevee. מכאן מתחילים לגלות ולהתחבר למה שקורה קרוב אליכם.',
+		registerConsent: 'אני מסכים/ה ל{terms} ומאשר/ת שקראתי את {privacy}.',
+		consentRequired: 'יש להסכים לתנאי השימוש ולאשר שקראת את מדיניות הפרטיות.',
 		loginFailed: 'הכניסה נכשלה.',
 		registerFailed: 'ההרשמה נכשלה.',
 		forgotPassword: 'שכחת סיסמה?',

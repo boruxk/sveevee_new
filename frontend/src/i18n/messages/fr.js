@@ -44,6 +44,11 @@ export default {
 		label: 'Liens de pied de page',
 		privacy: 'Politique de confidentialite'
 	},
+	legal: {
+		databaseDocumentTitle: 'Document de définition de la base de données',
+		databaseDocumentBody: 'Consultez la version publique en hébreu du registre Sveevee relatif au traitement et à la sécurité des données.',
+		databaseDocumentAction: 'Ouvrir le PDF'
+	},
 	validation: {
 		required: 'Ce champ est obligatoire.',
 		requiredFields: 'Veuillez remplir les champs obligatoires.',
@@ -138,6 +143,8 @@ export default {
 		loginTitle: 'Connexion',
 		registerTitle: 'Créer un compte',
 		registerWelcome: 'Bienvenue sur Sveevee. C’est ici que vous commencez à découvrir ce qui se passe près de chez vous et à créer des liens.',
+		registerConsent: 'J’accepte les {terms} et reconnais avoir pris connaissance de la {privacy}.',
+		consentRequired: 'Vous devez accepter les Conditions générales et reconnaître avoir pris connaissance de la Politique de confidentialité.',
 		loginFailed: 'La connexion a échoué.',
 		registerFailed: 'L’inscription a échoué.',
 		forgotPassword: 'Mot de passe oublié ?',

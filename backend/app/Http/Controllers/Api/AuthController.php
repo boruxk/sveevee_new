@@ -38,6 +38,7 @@ class AuthController extends Controller
             'city' => ['nullable', 'string', 'max:120'],
             'neighborhood' => ['nullable', 'string', 'max:120'],
             'locale' => ['nullable', 'string', Rule::in(['he', 'en', 'ru', 'fr'])],
+            'consented' => ['required', 'accepted'],
         ]);
 
         if (EmailBan::query()->where('email', $data['email'])->exists()) {
@@ -51,6 +52,7 @@ class AuthController extends Controller
             'email' => $data['email'],
             'password' => $data['password'],
             'locale' => $data['locale'] ?? 'he',
+            'consented' => true,
             'role' => 'user',
         ]);
 

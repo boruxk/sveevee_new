@@ -1,5 +1,5 @@
 <script setup>
-	import { reactive, ref } from 'vue'
+	import { computed, reactive, ref } from 'vue'
 	import { useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
@@ -8,8 +8,9 @@
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import GoogleAuthButton from '@/components/GoogleAuthButton.vue'
 	import PasswordInput from '@/components/PasswordInput.vue'
+	import { getLegalDocument } from '@/constants/legalDocuments'
 
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const $q = useQuasar()
 	const router = useRouter()
 	const authStore = useAuthStore()
@@ -20,9 +21,13 @@
 		password: '',
 		password_confirmation: '',
 		given_name: '',
-		family_name: ''
+		family_name: '',
+		consented: false
 	})
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
+	const termsTitle = computed(() => getLegalDocument('terms', locale.value).title)
+	const privacyTitle = computed(() => getLegalDocument('privacy', locale.value).title)
+	const consentRule = (value) => value === true || t('auth.consentRequired')
 
 	async function submit() {
 		if (!(await validateRequiredForm(formRef))) {
@@ -84,6 +89,31 @@
 								:rules="[requiredRule]"
 							/>
 						</div>
+						<q-field
+							v-model="form.consented"
+							borderless
+							dense
+							class="register-consent-field"
+							:rules="[consentRule]"
+						>
+							<template #control>
+								<div class="register-consent">
+									<q-checkbox
+										v-model="form.consented"
+										color="primary"
+										:aria-label="t('auth.consentRequired')"
+									/>
+									<i18n-t keypath="auth.registerConsent" tag="span" class="register-consent__text">
+										<template #terms>
+											<router-link :to="{ name: 'terms' }" target="_blank" rel="noopener">{{ termsTitle }}</router-link>
+										</template>
+										<template #privacy>
+											<router-link :to="{ name: 'privacy' }" target="_blank" rel="noopener">{{ privacyTitle }}</router-link>
+										</template>
+									</i18n-t>
+								</div>
+							</template>
+						</q-field>
 						<q-btn class="form-submit"
 							color="primary"
 							unelevated
@@ -190,6 +220,43 @@
 .form-submit {
   width: min(220px, 100%);
   margin: 0 auto !important;
+}
+
+.register-consent-field {
+  width: min(760px, 100%);
+  margin: 0 auto;
+}
+
+.register-consent-field :deep(.q-field__control) {
+  min-height: 42px;
+}
+
+.register-consent {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.register-consent :deep(.q-checkbox) {
+  flex: 0 0 auto;
+  margin-top: -7px;
+  margin-inline-start: -10px;
+}
+
+.register-consent__text {
+  color: rgba(17, 34, 45, 0.74);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.register-consent__text a {
+  color: var(--q-primary);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
 }
 
 @media (max-width: 700px) {

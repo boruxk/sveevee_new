@@ -44,6 +44,11 @@ export default {
 		people: 'People',
 		privacy: 'Privacy Policy'
 	},
+	legal: {
+		databaseDocumentTitle: 'Database definition document',
+		databaseDocumentBody: 'View the public Hebrew version of Sveevee’s data-processing and security record.',
+		databaseDocumentAction: 'Open PDF'
+	},
 	validation: {
 		required: 'This field is required.',
 		requiredFields: 'Please fill in the required fields.',
@@ -138,6 +143,8 @@ export default {
 		loginTitle: 'Login',
 		registerTitle: 'Create account',
 		registerWelcome: 'Welcome to Sveevee. This is where you start discovering and connecting with what is happening nearby.',
+		registerConsent: 'I agree to the {terms} and acknowledge the {privacy}.',
+		consentRequired: 'You must agree to the Terms & Conditions and acknowledge the Privacy Policy.',
 		loginFailed: 'Login failed.',
 		registerFailed: 'Registration failed.',
 		forgotPassword: 'Forgot password?',

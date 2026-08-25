@@ -44,6 +44,11 @@ export default {
 		label: 'Ссылки внизу страницы',
 		privacy: 'Политика конфиденциальности'
 	},
+	legal: {
+		databaseDocumentTitle: 'Документ с описанием базы данных',
+		databaseDocumentBody: 'Откройте общедоступную версию документа Sveevee об обработке и защите данных на иврите.',
+		databaseDocumentAction: 'Открыть PDF'
+	},
 	validation: {
 		required: '\u042D\u0442\u043E \u043F\u043E\u043B\u0435 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E.',
 		requiredFields: '\u0417\u0430\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u044B\u0435 \u043F\u043E\u043B\u044F.',
@@ -138,6 +143,8 @@ export default {
 		loginTitle: 'Вход',
 		registerTitle: 'Создать аккаунт',
 		registerWelcome: 'Добро пожаловать в Sveevee. Здесь вы начнете узнавать, что происходит рядом, и общаться с людьми поблизости.',
+		registerConsent: 'Я принимаю {terms} и подтверждаю, что ознакомился(-ась) с документом «{privacy}».',
+		consentRequired: 'Необходимо принять Условия использования и подтвердить ознакомление с Политикой конфиденциальности.',
 		loginFailed: 'Не удалось войти.',
 		registerFailed: 'Не удалось зарегистрироваться.',
 		forgotPassword: 'Забыли пароль?',
