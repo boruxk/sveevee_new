@@ -35,10 +35,14 @@
 		shareUrl: {
 			type: String,
 			default: ''
+		},
+		canChat: {
+			type: Boolean,
+			default: false
 		}
 	})
 
-	const emit = defineEmits(['show-ratings', 'rate'])
+	const emit = defineEmits(['show-ratings', 'rate', 'chat'])
 	const { t } = useI18n()
 	const $q = useQuasar()
 	const appStore = useAppStore()
@@ -323,98 +327,115 @@
 				</div>
 			</div>
 
-			<div v-if="shareTargetUrl" class="page-preview__share">
+			<div v-if="shareTargetUrl || canChat" class="page-preview__hero-actions">
+				<div v-if="shareTargetUrl" class="page-preview__share">
+					<q-btn
+						round
+						unelevated
+						color="primary"
+						class="page-preview__share-button"
+						:aria-label="t('share.title')"
+					>
+						<svg class="page-share-icon page-share-icon--share" viewBox="0 0 24 24" aria-hidden="true">
+							<circle cx="18" cy="5" r="3" />
+							<circle cx="6" cy="12" r="3" />
+							<circle cx="18" cy="19" r="3" />
+							<path d="M8.7 10.7 15.3 7M8.7 13.3l6.6 3.7" />
+						</svg>
+						<q-tooltip>{{ t('share.title') }}</q-tooltip>
+						<q-menu :anchor="shareMenuAnchor" :self="shareMenuSelf" class="page-share-menu" :offset="[0, 12]">
+							<div class="page-share-menu__content">
+								<button type="button" class="page-share-menu__button" aria-label="WhatsApp" @click="openShareUrl(whatsappShareUrl)" v-close-popup>
+									<svg class="page-share-icon page-share-icon--whatsapp" viewBox="0 0 24 24" aria-hidden="true">
+										<path class="page-share-icon__brand-bg" d="M12 3.2a8.8 8.8 0 0 0-7.5 13.4l-.9 3.3 3.4-.9A8.8 8.8 0 1 0 12 3.2Z" />
+										<g class="page-share-icon__brand-inner">
+											<path class="page-share-icon__brand-line" d="M12 5.1a6.9 6.9 0 0 1 5.9 10.5 6.9 6.9 0 0 1-8.1 2.7l-.4-.2-2 .5.5-1.9-.3-.4A6.9 6.9 0 0 1 12 5.1Z" />
+											<path class="page-share-icon__brand-phone" d="M9.6 8.2c-.2 0-.4 0-.6.4-.2.3-.7.9-.7 1.7s.7 1.7.8 1.9c.1.1 1.4 2.2 3.4 3 .5.2.9.3 1.2.4.5.2 1 .1 1.3.1.4-.1 1.1-.5 1.2-.9.2-.4.2-.8.1-.9l-.5-.3-1.3-.6c-.2-.1-.4-.1-.6.1l-.6.7c-.2.2-.3.2-.6.1a5.6 5.6 0 0 1-2.8-2.5c-.1-.3 0-.4.1-.5l.4-.5c.1-.1.1-.3.2-.4 0-.1 0-.3-.1-.4l-.6-1.4c-.1-.3-.3-.3-.5-.3h-.3Z" />
+										</g>
+									</svg>
+									<q-tooltip>WhatsApp</q-tooltip>
+								</button>
+								<button type="button" class="page-share-menu__button" aria-label="Facebook" @click="openShareUrl(facebookShareUrl)" v-close-popup>
+									<svg class="page-share-icon page-share-icon--facebook" viewBox="0 0 24 24" aria-hidden="true">
+										<circle cx="12" cy="12" r="10" />
+										<path d="M13.3 20v-7h2.3l.4-2.7h-2.7V8.6c0-.8.2-1.3 1.3-1.3H16V5c-.2 0-1.1-.1-2-.1-2.1 0-3.6 1.3-3.6 3.6v1.9H8V13h2.4v7h2.9Z" />
+									</svg>
+									<q-tooltip>Facebook</q-tooltip>
+								</button>
+								<button type="button" class="page-share-menu__button" aria-label="Instagram" @click="shareToInstagram" v-close-popup>
+									<svg class="page-share-icon page-share-icon--instagram" viewBox="0 0 24 24" aria-hidden="true">
+										<defs>
+											<linearGradient
+												id="instagramGradient"
+												x1="3"
+												x2="21"
+												y1="21"
+												y2="3"
+												gradientUnits="userSpaceOnUse"
+											>
+												<stop offset="0" stop-color="#feda75" />
+												<stop offset=".35" stop-color="#fa7e1e" />
+												<stop offset=".65" stop-color="#d62976" />
+												<stop offset="1" stop-color="#4f5bd5" />
+											</linearGradient>
+										</defs>
+										<rect x="3" y="3" width="18" height="18" rx="5" />
+										<circle cx="12" cy="12" r="4" />
+										<circle cx="17" cy="7" r="1.2" />
+									</svg>
+									<q-tooltip>Instagram</q-tooltip>
+								</button>
+								<button type="button" class="page-share-menu__button" aria-label="TikTok" @click="shareToTikTok" v-close-popup>
+									<svg class="page-share-icon page-share-icon--tiktok" viewBox="0 0 24 24" aria-hidden="true">
+										<path class="page-share-icon__shadow-a" d="M15.1 3.5c.4 2.5 1.8 4 4.2 4.3v3.1c-1.5 0-2.9-.5-4.2-1.3v5.4a5.4 5.4 0 1 1-5.4-5.4c.3 0 .7 0 1 .1v3.3a2.2 2.2 0 1 0 1.4 2V3.5h3Z" />
+										<path class="page-share-icon__shadow-b" d="M14.1 2.6c.4 2.5 1.8 4 4.2 4.3V10c-1.5 0-2.9-.5-4.2-1.3v5.4a5.4 5.4 0 1 1-5.4-5.4c.3 0 .7 0 1 .1v3.3a2.2 2.2 0 1 0 1.4 2V2.6h3Z" />
+										<path d="M14.6 3c.4 2.5 1.8 4 4.2 4.3v3.1c-1.5 0-2.9-.5-4.2-1.3v5.4a5.4 5.4 0 1 1-5.4-5.4c.3 0 .7 0 1 .1v3.3a2.2 2.2 0 1 0 1.4 2V3h3Z" />
+									</svg>
+									<q-tooltip>TikTok</q-tooltip>
+								</button>
+								<button type="button" class="page-share-menu__button" aria-label="Telegram" @click="openShareUrl(telegramShareUrl)" v-close-popup>
+									<svg class="page-share-icon page-share-icon--telegram" viewBox="0 0 24 24" aria-hidden="true">
+										<circle cx="12" cy="12" r="10" />
+										<path d="m6.2 11.7 10.6-4.1c.5-.2.9.1.7.8l-1.8 8.7c-.1.6-.5.7-1 .4l-2.8-2-1.3 1.3c-.2.2-.3.3-.6.3l.2-2.9 5.3-4.8c.2-.2 0-.4-.3-.2l-6.5 4.1-2.8-.9c-.6-.2-.6-.6.3-.7Z" />
+									</svg>
+									<q-tooltip>Telegram</q-tooltip>
+								</button>
+								<button type="button" class="page-share-menu__button" :aria-label="t('share.copyLink')" @click.stop.prevent="copyShareLink">
+									<svg class="page-share-icon page-share-icon--copy" viewBox="0 0 24 24" aria-hidden="true">
+										<rect x="8" y="8" width="11" height="11" rx="2" />
+										<path d="M5 15V6a1 1 0 0 1 1-1h9" />
+									</svg>
+									<q-tooltip>{{ t('share.copyLink') }}</q-tooltip>
+								</button>
+								<button type="button" class="page-share-menu__button" :aria-label="t('share.qrCode')" @click="qrOpen = !qrOpen">
+									<svg class="page-share-icon page-share-icon--qr" viewBox="0 0 24 24" aria-hidden="true">
+										<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4z" />
+										<path d="M14 14h2v2h-2zM18 14h2v6h-2zM14 18h2v2h-2z" />
+									</svg>
+									<q-tooltip>{{ t('share.qrCode') }}</q-tooltip>
+								</button>
+								<div v-if="qrOpen" class="page-share-menu__qr">
+									<div class="page-share-menu__qr-code" v-html="qrCodeSvg" />
+									<div class="page-share-menu__url">{{ shareTargetUrl }}</div>
+								</div>
+							</div>
+						</q-menu>
+					</q-btn>
+				</div>
 				<q-btn
+					v-if="canChat"
 					round
 					unelevated
 					color="primary"
-					class="page-preview__share-button"
-					:aria-label="t('share.title')"
+					class="page-preview__chat-button"
+					:aria-label="t('chat.title')"
+					@click="emit('chat')"
 				>
-					<svg class="page-share-icon page-share-icon--share" viewBox="0 0 24 24" aria-hidden="true">
-						<circle cx="18" cy="5" r="3" />
-						<circle cx="6" cy="12" r="3" />
-						<circle cx="18" cy="19" r="3" />
-						<path d="M8.7 10.7 15.3 7M8.7 13.3l6.6 3.7" />
+					<svg class="page-chat-icon" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M5.2 5.2h13.6v10.4H10l-4.8 3.2v-3.2Z" />
+						<path d="M8.2 9.2h7.6M8.2 12.2h5.2" />
 					</svg>
-					<q-tooltip>{{ t('share.title') }}</q-tooltip>
-					<q-menu :anchor="shareMenuAnchor" :self="shareMenuSelf" class="page-share-menu" :offset="[0, 12]">
-						<div class="page-share-menu__content">
-							<button type="button" class="page-share-menu__button" aria-label="WhatsApp" @click="openShareUrl(whatsappShareUrl)" v-close-popup>
-								<svg class="page-share-icon page-share-icon--whatsapp" viewBox="0 0 24 24" aria-hidden="true">
-									<path class="page-share-icon__brand-bg" d="M12 3.2a8.8 8.8 0 0 0-7.5 13.4l-.9 3.3 3.4-.9A8.8 8.8 0 1 0 12 3.2Z" />
-									<g class="page-share-icon__brand-inner">
-										<path class="page-share-icon__brand-line" d="M12 5.1a6.9 6.9 0 0 1 5.9 10.5 6.9 6.9 0 0 1-8.1 2.7l-.4-.2-2 .5.5-1.9-.3-.4A6.9 6.9 0 0 1 12 5.1Z" />
-										<path class="page-share-icon__brand-phone" d="M9.6 8.2c-.2 0-.4 0-.6.4-.2.3-.7.9-.7 1.7s.7 1.7.8 1.9c.1.1 1.4 2.2 3.4 3 .5.2.9.3 1.2.4.5.2 1 .1 1.3.1.4-.1 1.1-.5 1.2-.9.2-.4.2-.8.1-.9l-.5-.3-1.3-.6c-.2-.1-.4-.1-.6.1l-.6.7c-.2.2-.3.2-.6.1a5.6 5.6 0 0 1-2.8-2.5c-.1-.3 0-.4.1-.5l.4-.5c.1-.1.1-.3.2-.4 0-.1 0-.3-.1-.4l-.6-1.4c-.1-.3-.3-.3-.5-.3h-.3Z" />
-									</g>
-								</svg>
-								<q-tooltip>WhatsApp</q-tooltip>
-							</button>
-							<button type="button" class="page-share-menu__button" aria-label="Facebook" @click="openShareUrl(facebookShareUrl)" v-close-popup>
-								<svg class="page-share-icon page-share-icon--facebook" viewBox="0 0 24 24" aria-hidden="true">
-									<circle cx="12" cy="12" r="10" />
-									<path d="M13.3 20v-7h2.3l.4-2.7h-2.7V8.6c0-.8.2-1.3 1.3-1.3H16V5c-.2 0-1.1-.1-2-.1-2.1 0-3.6 1.3-3.6 3.6v1.9H8V13h2.4v7h2.9Z" />
-								</svg>
-								<q-tooltip>Facebook</q-tooltip>
-							</button>
-							<button type="button" class="page-share-menu__button" aria-label="Instagram" @click="shareToInstagram" v-close-popup>
-								<svg class="page-share-icon page-share-icon--instagram" viewBox="0 0 24 24" aria-hidden="true">
-									<defs>
-										<linearGradient
-											id="instagramGradient"
-											x1="3"
-											x2="21"
-											y1="21"
-											y2="3"
-											gradientUnits="userSpaceOnUse"
-										>
-											<stop offset="0" stop-color="#feda75" />
-											<stop offset=".35" stop-color="#fa7e1e" />
-											<stop offset=".65" stop-color="#d62976" />
-											<stop offset="1" stop-color="#4f5bd5" />
-										</linearGradient>
-									</defs>
-									<rect x="3" y="3" width="18" height="18" rx="5" />
-									<circle cx="12" cy="12" r="4" />
-									<circle cx="17" cy="7" r="1.2" />
-								</svg>
-								<q-tooltip>Instagram</q-tooltip>
-							</button>
-							<button type="button" class="page-share-menu__button" aria-label="TikTok" @click="shareToTikTok" v-close-popup>
-								<svg class="page-share-icon page-share-icon--tiktok" viewBox="0 0 24 24" aria-hidden="true">
-									<path class="page-share-icon__shadow-a" d="M15.1 3.5c.4 2.5 1.8 4 4.2 4.3v3.1c-1.5 0-2.9-.5-4.2-1.3v5.4a5.4 5.4 0 1 1-5.4-5.4c.3 0 .7 0 1 .1v3.3a2.2 2.2 0 1 0 1.4 2V3.5h3Z" />
-									<path class="page-share-icon__shadow-b" d="M14.1 2.6c.4 2.5 1.8 4 4.2 4.3V10c-1.5 0-2.9-.5-4.2-1.3v5.4a5.4 5.4 0 1 1-5.4-5.4c.3 0 .7 0 1 .1v3.3a2.2 2.2 0 1 0 1.4 2V2.6h3Z" />
-									<path d="M14.6 3c.4 2.5 1.8 4 4.2 4.3v3.1c-1.5 0-2.9-.5-4.2-1.3v5.4a5.4 5.4 0 1 1-5.4-5.4c.3 0 .7 0 1 .1v3.3a2.2 2.2 0 1 0 1.4 2V3h3Z" />
-								</svg>
-								<q-tooltip>TikTok</q-tooltip>
-							</button>
-							<button type="button" class="page-share-menu__button" aria-label="Telegram" @click="openShareUrl(telegramShareUrl)" v-close-popup>
-								<svg class="page-share-icon page-share-icon--telegram" viewBox="0 0 24 24" aria-hidden="true">
-									<circle cx="12" cy="12" r="10" />
-									<path d="m6.2 11.7 10.6-4.1c.5-.2.9.1.7.8l-1.8 8.7c-.1.6-.5.7-1 .4l-2.8-2-1.3 1.3c-.2.2-.3.3-.6.3l.2-2.9 5.3-4.8c.2-.2 0-.4-.3-.2l-6.5 4.1-2.8-.9c-.6-.2-.6-.6.3-.7Z" />
-								</svg>
-								<q-tooltip>Telegram</q-tooltip>
-							</button>
-							<button type="button" class="page-share-menu__button" :aria-label="t('share.copyLink')" @click.stop.prevent="copyShareLink">
-								<svg class="page-share-icon page-share-icon--copy" viewBox="0 0 24 24" aria-hidden="true">
-									<rect x="8" y="8" width="11" height="11" rx="2" />
-									<path d="M5 15V6a1 1 0 0 1 1-1h9" />
-								</svg>
-								<q-tooltip>{{ t('share.copyLink') }}</q-tooltip>
-							</button>
-							<button type="button" class="page-share-menu__button" :aria-label="t('share.qrCode')" @click="qrOpen = !qrOpen">
-								<svg class="page-share-icon page-share-icon--qr" viewBox="0 0 24 24" aria-hidden="true">
-									<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4z" />
-									<path d="M14 14h2v2h-2zM18 14h2v6h-2zM14 18h2v2h-2z" />
-								</svg>
-								<q-tooltip>{{ t('share.qrCode') }}</q-tooltip>
-							</button>
-							<div v-if="qrOpen" class="page-share-menu__qr">
-								<div class="page-share-menu__qr-code" v-html="qrCodeSvg" />
-								<div class="page-share-menu__url">{{ shareTargetUrl }}</div>
-							</div>
-						</div>
-					</q-menu>
+					<q-tooltip>{{ t('chat.title') }}</q-tooltip>
 				</q-btn>
 			</div>
 		</div>
@@ -588,24 +609,28 @@
   padding: 36px;
 }
 
-.page-preview__share {
+.page-preview__hero-actions {
   position: absolute;
   right: 24px;
   bottom: 24px;
   z-index: 2;
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
-:global([dir="rtl"]) .page-preview__share {
+:global([dir="rtl"]) .page-preview__hero-actions {
   right: auto;
   left: 24px;
 }
 
-.page-preview--rtl .page-preview__share {
+.page-preview--rtl .page-preview__hero-actions {
   right: auto;
   left: 24px;
 }
 
-.page-preview__share-button.q-btn.bg-primary {
+.page-preview__share-button.q-btn.bg-primary,
+.page-preview__chat-button.q-btn.bg-primary {
   background: var(--soz-action-gradient) !important;
   box-shadow: 0 16px 34px rgba(245, 66, 145, 0.28) !important;
 }
@@ -614,6 +639,17 @@
   display: block;
   width: 28px;
   height: 28px;
+}
+
+.page-chat-icon {
+  display: block;
+  width: 27px;
+  height: 27px;
+  fill: none;
+  stroke: #ffffff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
 }
 
 .page-share-icon--share {
@@ -1105,17 +1141,17 @@
     padding: 20px;
   }
 
-  .page-preview__share {
+  .page-preview__hero-actions {
     right: 16px;
     bottom: 16px;
   }
 
-  :global([dir="rtl"]) .page-preview__share {
+  :global([dir="rtl"]) .page-preview__hero-actions {
     right: auto;
     left: 16px;
   }
 
-  .page-preview--rtl .page-preview__share {
+  .page-preview--rtl .page-preview__hero-actions {
     right: auto;
     left: 16px;
   }

@@ -203,7 +203,12 @@ class CatalogController extends Controller
     private function productsQuery(string $topicKey, ?string $city, ?string $neighborhood): Builder
     {
         return PageProduct::query()
-            ->with(['page.user.profile'])
+            ->with([
+                'page' => fn ($page) => $page
+                    ->with('user.profile')
+                    ->withCount('ratings')
+                    ->withAvg('ratings', 'rating'),
+            ])
             ->whereIn('category_key', CatalogTopics::keysForTopic($topicKey))
             ->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {
                 $page->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));

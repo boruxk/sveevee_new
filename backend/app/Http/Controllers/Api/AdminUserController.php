@@ -49,6 +49,7 @@ class AdminUserController extends Controller
                     'per_page' => $users->perPage(),
                     'total' => $users->total(),
                 ],
+                'total_users' => User::query()->count(),
             ]);
         }
 
@@ -64,8 +65,18 @@ class AdminUserController extends Controller
     public function show(User $user)
     {
         $user->load(['profile', 'pages.ads']);
+        $payload = $this->payloads->user($user, includePrivate: true);
+        $payload['login'] = $user->login;
+        $payload['email_verified_at'] = $user->email_verified_at?->toISOString();
+        $payload['banned_reason'] = $user->banned_reason;
+        $payload['created_at'] = $user->created_at?->toISOString();
+        $payload['updated_at'] = $user->updated_at?->toISOString();
+        $payload['pages'] = $user->pages
+            ->map(fn ($page) => $this->payloads->page($page, withAds: true))
+            ->values()
+            ->all();
 
-        return ApiResponseService::success($this->payloads->user($user, includePrivate: true));
+        return ApiResponseService::success($payload);
     }
 
     public function ban(Request $request, User $user)

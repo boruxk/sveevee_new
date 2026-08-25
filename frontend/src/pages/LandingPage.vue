@@ -4,6 +4,7 @@
 	import { useAppStore } from '@/stores/app'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { catalogLabel, catalogPath } from '@/constants/catalogTopics'
+	import SocialShareButtons from '@/components/share/SocialShareButtons.vue'
 	import {
 		landingFeatureIconAvifSrcset,
 		landingFeatureIconImage,
@@ -37,6 +38,7 @@
 	const workflowHouseSrc = '/assets/landing/workflow-house-420.v2.webp'
 	const workflowHouseAvifSrcSet = '/assets/landing/workflow-house-420.v2.avif 420w, /assets/landing/workflow-house-720.v2.avif 720w'
 	const workflowHouseWebpSrcSet = '/assets/landing/workflow-house-420.v2.webp 420w, /assets/landing/workflow-house-720.v2.webp 720w'
+	const sveeveeShareUrl = 'https://sveevee.co.il'
 
 	function listMessage(key) {
 		const value = tm(key)
@@ -114,10 +116,6 @@
 		<section class="landing-hero">
 			<div class="landing-hero__inner">
 				<div class="landing-hero__copy">
-					<q-chip dense color="white" text-color="primary" class="landing-kicker-chip">
-						{{ t('landing.eyebrow') }}
-					</q-chip>
-
 					<h1 class="landing-hero__title">
 						<picture>
 							<source :srcset="logoAvifSrcSet" sizes="(max-width: 640px) calc(100vw - 48px), 560px" type="image/avif" />
@@ -152,6 +150,13 @@
 							/>
 						</picture>
 					</div>
+
+					<router-link :to="{ name: 'register' }" class="landing-first-badge">
+						<span class="landing-first-badge__copy">
+							<strong>{{ t('landing.firstBadgeTitle') }}</strong>
+							<span>{{ t('landing.firstBadgeBody') }}</span>
+						</span>
+					</router-link>
 
 					<div class="landing-hero__actions">
 						<q-btn color="primary"
@@ -188,6 +193,19 @@
 							decoding="async"
 						/>
 					</picture>
+				</div>
+			</div>
+		</section>
+
+		<section class="landing-share-section" aria-labelledby="landing-share-title">
+			<div class="landing-share-section__inner">
+				<div class="landing-share-section__copy">
+					<h2 id="landing-share-title">{{ t('landing.shareTitle') }}</h2>
+					<p>{{ t('landing.shareBody') }}</p>
+				</div>
+				<div class="landing-share-section__actions">
+					<strong>{{ t('landing.shareCta') }}</strong>
+					<SocialShareButtons :url="sveeveeShareUrl" title="Sveevee" />
 				</div>
 			</div>
 		</section>
@@ -524,14 +542,6 @@
   max-width: 600px;
 }
 
-.landing-kicker-chip {
-  margin-bottom: 20px;
-  padding-inline: 0;
-  background: transparent !important;
-  box-shadow: none !important;
-  font-weight: 800;
-}
-
 .landing-hero h1 {
   margin: 0;
   line-height: 0.95;
@@ -560,6 +570,66 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.landing-first-badge {
+  display: grid;
+  gap: 4px;
+  width: min(100%, 500px);
+  margin: 0 0 18px;
+  padding: 13px 18px;
+  border: 2px solid transparent;
+  border-radius: 30px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.72)) padding-box,
+    linear-gradient(115deg, #ff7426 0%, #f54291 24%, #7b3ff2 48%, #f54291 72%, #ff7426 100%) border-box;
+  background-size: 100% 100%, 320% 320%;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 26px rgba(92, 47, 126, 0.09);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: box-shadow 180ms ease, transform 180ms ease;
+  animation: landingBadgeBorderWave 4.8s ease-in-out infinite;
+}
+
+.landing-first-badge:hover {
+  box-shadow: 0 13px 30px rgba(92, 47, 126, 0.14);
+  transform: translateY(-1px);
+}
+
+.landing-first-badge:focus-visible {
+  outline: 3px solid rgba(112, 46, 230, 0.34);
+  outline-offset: 3px;
+}
+
+.landing-first-badge__copy {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.landing-first-badge strong {
+  color: #702ee6;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.landing-first-badge__copy > span {
+  color: rgba(21, 31, 59, 0.72);
+  font-size: 14px;
+  line-height: 1.42;
+}
+
+@keyframes landingBadgeBorderWave {
+  0%,
+  100% {
+    background-position: 0 0, 0% 50%;
+  }
+
+  50% {
+    background-position: 0 0, 100% 50%;
+  }
 }
 
 .landing-register-cta.q-btn.bg-primary {
@@ -638,6 +708,47 @@
   max-width: 1280px;
   margin: 0 auto;
   padding: 54px 24px 0;
+}
+
+.landing-share-section {
+  border: 0;
+  background: transparent;
+}
+
+.landing-share-section__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 38px;
+  align-items: center;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 38px 24px;
+}
+
+.landing-share-section h2 {
+  margin: 0;
+  color: var(--soz-ink);
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1.15;
+}
+
+.landing-share-section p {
+  max-width: 760px;
+  margin: 12px 0 0;
+  color: rgba(21, 31, 59, 0.72);
+  font-size: 17px;
+  line-height: 1.68;
+}
+
+.landing-share-section__actions {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.landing-share-section__actions > strong {
+  color: #7f1239;
+  font-size: 17px;
 }
 
 .landing-section--features {
@@ -1327,6 +1438,10 @@
     align-items: start;
   }
 
+  .landing-share-section__inner {
+    grid-template-columns: 1fr;
+  }
+
   .workflow-copy {
     min-height: auto;
   }
@@ -1349,10 +1464,6 @@
     width: auto;
     max-width: 390px;
     margin-inline: var(--landing-mobile-gutter);
-  }
-
-  .landing-kicker-chip {
-    margin: 0 var(--landing-mobile-gutter) 18px;
   }
 
   .landing-hero p {
@@ -1528,8 +1639,37 @@
     position: relative;
     z-index: 2;
     gap: 14px;
-    margin: -20px var(--landing-mobile-gutter) 0;
+    margin: 0 var(--landing-mobile-gutter);
     padding: 0;
+  }
+
+  .landing-first-badge {
+    width: auto;
+    gap: 3px;
+    margin: -20px var(--landing-mobile-gutter) 16px;
+    padding: 11px 15px;
+    border-radius: 24px;
+  }
+
+  .landing-first-badge strong {
+    font-size: 18px;
+  }
+
+  .landing-first-badge__copy > span {
+    font-size: 13px;
+  }
+
+  .landing-share-section__inner {
+    gap: 24px;
+    padding: 32px 16px;
+  }
+
+  .landing-share-section h2 {
+    font-size: 28px;
+  }
+
+  .landing-share-section p {
+    font-size: 16px;
   }
 
   .landing-hero__actions .q-btn {

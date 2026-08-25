@@ -8,11 +8,11 @@ const examplesDir = path.join(root, 'public', 'assets', 'examples')
 const iconsDir = path.join(landingDir, 'icons')
 
 const variants = [
-	{ input: 'hero-mobile.v1.webp', output: 'hero-mobile-480.v1', width: 480, quality: 70 },
-	{ input: 'hero-mobile.v1.webp', output: 'hero-mobile-640.v1', width: 640, quality: 70 },
-	{ input: 'hero-mobile.v1.webp', output: 'hero-mobile-720.v1', width: 720, quality: 70 },
-	{ input: 'hero-mobile.v1.webp', output: 'hero-mobile-800.v1', width: 800, quality: 70 },
-	{ input: 'hero-mobile.v1.webp', output: 'hero-mobile-960.v1', width: 960, quality: 70 },
+	{ input: 'hero-mobile.v1.webp', output: 'hero-mobile-480.v1', width: 480, quality: 60 },
+	{ input: 'hero-mobile.v1.webp', output: 'hero-mobile-640.v1', width: 640, quality: 60 },
+	{ input: 'hero-mobile.v1.webp', output: 'hero-mobile-720.v1', width: 720, quality: 60 },
+	{ input: 'hero-mobile.v1.webp', output: 'hero-mobile-800.v1', width: 800, quality: 60 },
+	{ input: 'hero-mobile.v1.webp', output: 'hero-mobile-960.v1', width: 960, quality: 60 },
 	{ input: 'hero-main.v1.webp', output: 'hero-main-960.v1', width: 960, quality: 74 },
 	{ input: 'hero-main.v1.webp', output: 'hero-main-1360.v1', width: 1360, quality: 76 },
 	{ input: 'sveevee-logo.v1.webp', output: 'sveevee-logo-320.v1', width: 320, quality: 82 },

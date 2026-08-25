@@ -111,7 +111,8 @@ export default {
 		readMore: 'Lire la suite',
 		readLess: 'Réduire',
 		ban: 'Bannir',
-		restore: 'Restaurer'
+		restore: 'Restaurer',
+		close: 'Fermer'
 	},
 	share: {
 		title: 'Partager',
@@ -136,6 +137,7 @@ export default {
 		neighborhood: 'Quartier',
 		loginTitle: 'Connexion',
 		registerTitle: 'Créer un compte',
+		registerWelcome: 'Bienvenue sur Sveevee. C’est ici que vous commencez à découvrir ce qui se passe près de chez vous et à créer des liens.',
 		loginFailed: 'La connexion a échoué.',
 		registerFailed: 'L’inscription a échoué.',
 		forgotPassword: 'Mot de passe oublié ?',
@@ -338,9 +340,18 @@ export default {
 	products: {
 		storeTitle: 'Produits',
 		name: 'Nom',
+		brand: 'Marque',
+		model: 'Modele',
 		description: 'Description',
 		image: 'Image',
 		price: 'Prix',
+		normalPrice: 'Prix normal',
+		offer: 'Offre',
+		offerPrice: 'Prix promotionnel',
+		offerStart: 'Debut',
+		offerEnd: 'Fin',
+		offerMustBeLower: 'Le prix promotionnel doit etre inferieur au prix normal.',
+		offerEndAfterStart: 'L offre doit se terminer apres son debut.',
 		link: 'Lien du produit',
 		linkHint: 'Lien vers le produit sur le site du vendeur.',
 		open: 'Voir le produit',
@@ -348,15 +359,34 @@ export default {
 		empty: 'Aucun produit pour le moment.',
 		created: 'Produit créé.',
 		saveFailed: 'Le produit n’a pas pu être enregistré.',
-		deleteFailed: 'Le produit n\u2019a pas pu \u00EAtre supprim\u00E9.'
+		deleteFailed: 'Le produit n\u2019a pas pu \u00EAtre supprim\u00E9.',
+		labels: {
+			new: 'Nouveau',
+			price_dropped: 'Prix baisse',
+			popular: 'Populaire',
+			highly_rated: 'Tres bien note',
+			offer: 'Offre'
+		}
+	},
+	priceList: {
+		title: 'Liste de prix',
+		add: 'Ajouter un prix',
+		name: 'Nom',
+		price: 'Prix',
+		empty: 'Aucun prix pour le moment.',
+		saved: 'Prix enregistre.',
+		saveFailed: 'Le prix n a pas pu etre enregistre.',
+		deleteFailed: 'Le prix n a pas pu etre supprime.'
 	},
 	businessFeatures: {
 		store: 'Boutique',
 		services: 'Services',
 		events: '\u00C9v\u00E9nements',
+		priceList: 'Liste de prix',
 		toggleStore: 'Activer ou désactiver la boutique',
 		toggleServices: 'Activer ou désactiver les services',
-		toggleEvents: 'Activer ou d\u00E9sactiver les \u00E9v\u00E9nements'
+		toggleEvents: 'Activer ou d\u00E9sactiver les \u00E9v\u00E9nements',
+		togglePriceList: 'Activer ou desactiver la liste de prix'
 	},
 	businessServices: {
 		title: 'Services',
@@ -399,6 +429,7 @@ export default {
 		supportIntro: 'Écrivez à l’équipe sveevee.',
 		supportUnavailable: 'Le chat support n’est pas disponible pour le moment.',
 		pendingReply: 'Vous pourrez écrire à nouveau après la réponse de cette personne à votre premier message.',
+		pagePendingReply: 'Vous pourrez écrire à nouveau après la réponse de cette page.',
 		dailyLimit: 'Vous pouvez contacter seulement 10 nouveaux utilisateurs par jour.',
 		noMessages: 'Aucun message pour le moment.',
 		backToList: 'Retour aux chats',
@@ -532,7 +563,20 @@ export default {
 		landingPageCommunityDescription: 'Presente la page communaute gratuite avec evenements, annonces, avis, liens de contact et decouverte locale.',
 		openLandingPage: 'Ouvrir la page',
 		userSearch: 'Recherche utilisateurs',
-		userSearchPlaceholder: 'Rechercher par nom, e-mail ou login'
+		userSearchPlaceholder: 'Rechercher par nom, e-mail ou login',
+		totalUsers: 'Total des utilisateurs',
+		userDetails: 'Details de l utilisateur',
+		userDetailsFailed: 'Les details de l utilisateur n ont pas pu etre charges.',
+		accountDetails: 'Details du compte',
+		login: 'Login',
+		role: 'Role',
+		locale: 'Langue',
+		registeredAt: 'Inscription',
+		emailVerified: 'E-mail verifie',
+		banReason: 'Motif du blocage',
+		userPages: 'Pages',
+		noUserPages: 'Cet utilisateur n a aucune page.',
+		pageContentCounts: '{products} produits, {services} services, {events} evenements, {ads} annonces'
 	},
 	search: {
 		title: 'Recherche',
@@ -719,6 +763,11 @@ export default {
 	landing: {
 		eyebrow: 'Annonces locales, entreprises locales.',
 		title: 'sveevee',
+		firstBadgeTitle: 'Arrivez en premier. Soyez visible en premier.',
+		firstBadgeBody: 'Rejoignez Sveevee aujourd hui et faites partie des premiers dans votre ville et votre quartier.',
+		shareTitle: 'Les bonnes choses sont encore meilleures quand on les partage.',
+		shareBody: 'Vous connaissez une excellente entreprise locale, un prestataire ou une communaute ? Parlez-leur de Sveevee et aidez a rendre votre quartier plus facile a decouvrir.',
+		shareCta: 'Partager Sveevee',
 		purposeKicker: '',
 		purposeTitle: 'A propos de sveevee',
 		purposeParagraphs: [

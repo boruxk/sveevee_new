@@ -35,6 +35,7 @@
 	const latestAds = computed(() => visibleAds.value.slice(0, 4))
 	const recentConversations = computed(() => chatsStore.conversations.filter((conversation) => conversation.latest_message).slice(0, 5))
 	const chatTargetUserId = computed(() => route.query.chatWith || null)
+	const chatTargetPageConversationId = computed(() => route.query.pageConversation || null)
 	const meTabs = computed(() => [
 		{ name: 'overview', label: t('mePage.overview'), icon: 'dashboard' },
 		{ name: 'ads', label: t('mePage.ads'), icon: 'campaign' },
@@ -114,9 +115,10 @@
 	}
 
 	function clearChatQuery() {
-		if (route.query.chatWith) {
+		if (route.query.chatWith || route.query.pageConversation) {
 			const query = { ...route.query }
 			delete query.chatWith
+			delete query.pageConversation
 			router.replace({ name: 'me', query })
 		}
 	}
@@ -133,13 +135,28 @@
 	}
 
 	function openRecentConversation(conversation) {
+		openingChatFromQuery.value = true
+		activeTab.value = 'messages'
+		const query = { ...route.query }
+
+		if (conversation.is_page_chat) {
+			delete query.chatWith
+			query.pageConversation = conversation.id
+			router.push({ name: 'me', query })
+			return
+		}
+
 		const userId = conversation.other_user?.id
 
-		activeTab.value = 'messages'
-
 		if (userId) {
-			router.push({ name: 'me', query: { ...route.query, chatWith: userId } })
+			delete query.pageConversation
+			query.chatWith = userId
+			router.push({ name: 'me', query })
 		}
+	}
+
+	function conversationKey(conversation) {
+		return `${conversation?.is_page_chat ? 'page' : 'person'}-${conversation?.id}`
 	}
 
 	function adLocation(ad) {
@@ -171,8 +188,8 @@
 		}
 	})
 
-	watch(() => route.query.chatWith, (value) => {
-		if (value) {
+	watch(() => [route.query.chatWith, route.query.pageConversation], ([userId, pageConversationId]) => {
+		if (userId || pageConversationId) {
 			openingChatFromQuery.value = true
 			activeTab.value = 'messages'
 		}
@@ -246,7 +263,7 @@
 							<div v-else class="overview-list">
 								<button
 									v-for="conversation in recentConversations"
-									:key="conversation.id"
+									:key="conversationKey(conversation)"
 									type="button"
 									class="overview-list__item"
 									@click="openRecentConversation(conversation)"
@@ -350,7 +367,12 @@
 				<q-tab-panel name="messages" class="me-panel">
 					<section class="soz-section-card panel panel--chat">
 						<h2>{{ t('mePage.messages') }}</h2>
-						<ChatBlock class="me-chat-block" :target-user-id="chatTargetUserId" :list-reset-key="messagesListResetKey" />
+						<ChatBlock
+							class="me-chat-block"
+							:target-user-id="chatTargetUserId"
+							:target-page-conversation-id="chatTargetPageConversationId"
+							:list-reset-key="messagesListResetKey"
+						/>
 					</section>
 				</q-tab-panel>
 			</q-tab-panels>

@@ -10,6 +10,8 @@
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
 	import EventCard from '@/components/events/EventCard.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
+	import PriceList from '@/components/prices/PriceList.vue'
+	import PriceListIcon from '@/components/icons/PriceListIcon.vue'
 	import ServiceCard from '@/components/services/ServiceCard.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
 	import { imageObjectForJsonLd, versionedPublicImage } from '@/utils/responsiveImages'
@@ -346,6 +348,7 @@
 		}
 
 		return [
+			{ name: 'price-list', label: t('priceList.title'), icon: null },
 			{ name: 'store', label: copy.value.products, icon: 'inventory_2' },
 			{ name: 'services', label: copy.value.services, icon: 'design_services' }
 		]
@@ -354,6 +357,7 @@
 		{ name: 'preview', label: t('pages.tabs.preview'), icon: 'visibility' },
 		{ name: 'settings', label: t('pages.tabs.settings'), icon: 'settings' },
 		...exampleModules.value,
+		{ name: 'chat', label: t('chat.title'), icon: 'chat' },
 		{ name: 'ads', label: copy.value.ads, icon: 'campaign' }
 	])
 	const openingHours = computed(() => [
@@ -421,7 +425,8 @@
 		features: {
 			store: !isCommunityExample.value,
 			services: !isCommunityExample.value,
-			events: isCommunityExample.value
+			events: isCommunityExample.value,
+			price_list: !isCommunityExample.value
 		},
 		logo_url: logoUrl.value,
 		logo_alt: logoImage.value.image_alt,
@@ -441,6 +446,7 @@
 	}))
 	const shareUrl = computed(() => absoluteUrl(examplePath.value))
 	const placeholderCardCounts = {
+		'price-list': 1,
 		store: 2,
 		services: 1,
 		events: 1,
@@ -453,19 +459,40 @@
 		tabName: module.name,
 		cardCount: placeholderCardCounts[module.name] || 1
 	})))
-	const products = computed(() => copy.value.items.products.map((item, index) => ({
+	const prices = computed(() => copy.value.items.services.map((item, index) => ({
 		id: index + 1,
 		name: item.name,
-		description: item.body,
-		price: Number(item.price.replace(/\D/g, '')) || null,
-		price_label: item.price,
-		link: 'https://sveevee.co.il',
-		...exampleCardImage([
-			'example-product-gift-basket',
-			'example-product-office-shelf',
-			'example-product-event-kit'
-		][index], item.name)
+		price: [180, 240, 75][index],
+		price_label: `\u20AA${[180, 240, 75][index].toFixed(2)}`
 	})))
+	const products = computed(() => copy.value.items.products.map((item, index) => {
+		const price = Number(item.price.replace(/\D/g, '')) || null
+		const labels = [
+			['new', 'offer', 'popular'],
+			['highly_rated'],
+			['price_dropped']
+		][index] || []
+
+		return {
+			id: index + 1,
+			name: item.name,
+			brand: ['Ramot Studio', 'Local Line', 'Gather'][index],
+			model: ['Gift 120', 'Shelf 260', 'Event 90'][index],
+			description: item.body,
+			price,
+			price_label: item.price,
+			normal_price: index === 0 ? 150 : price,
+			normal_price_label: index === 0 ? '\u20AA150' : item.price,
+			offer_active: index === 0,
+			labels,
+			link: 'https://sveevee.co.il',
+			...exampleCardImage([
+				'example-product-gift-basket',
+				'example-product-office-shelf',
+				'example-product-event-kit'
+			][index], item.name)
+		}
+	}))
 	const services = computed(() => copy.value.items.services.map((item, index) => ({
 		id: index + 1,
 		name: item.name,
@@ -583,9 +610,13 @@
 					v-for="tab in tabs"
 					:key="tab.name"
 					:name="tab.name"
-					:icon="tab.icon"
-					:label="tab.label"
-				/>
+				>
+					<span class="setup-tab-content">
+						<PriceListIcon v-if="tab.name === 'price-list'" :size="21" />
+						<q-icon v-else :name="tab.icon" />
+						<span>{{ tab.label }}</span>
+					</span>
+				</q-tab>
 			</q-tabs>
 
 			<q-tab-panels v-model="activeTab" animated class="setup-panels">
@@ -596,7 +627,9 @@
 							:palette="palette"
 							:has-after-info="true"
 							:share-url="shareUrl"
+							:can-chat="true"
 							title-tag="h1"
+							@chat="openTab('chat')"
 						>
 							<template #afterInfo>
 								<div class="preview-placeholder-list">
@@ -611,7 +644,8 @@
 											@click="openTab(placeholder.tabName)"
 										>
 											<span class="preview-placeholder-heading__icon">
-												<q-icon :name="placeholder.icon" size="22px" />
+												<PriceListIcon v-if="placeholder.key === 'price-list'" :size="22" />
+												<q-icon v-else :name="placeholder.icon" size="22px" />
 											</span>
 											<span>{{ placeholder.label }}</span>
 											<q-icon name="south" class="preview-placeholder-heading__arrow" />
@@ -844,6 +878,22 @@
 					</div>
 				</q-tab-panel>
 
+				<q-tab-panel v-if="!isCommunityExample" name="price-list" class="setup-panel">
+					<section class="soz-section-card panel">
+						<div class="panel-head">
+							<h2>{{ t('priceList.title') }}</h2>
+							<q-btn rounded
+								unelevated
+								color="primary"
+								icon="add"
+								disable
+								:label="t('priceList.add')"
+							/>
+						</div>
+						<PriceList :items="prices" editable disabled class="example-disabled-zone" />
+					</section>
+				</q-tab-panel>
+
 				<q-tab-panel v-if="!isCommunityExample" name="store" class="setup-panel">
 					<section class="soz-section-card panel">
 						<div class="panel-head">
@@ -912,6 +962,37 @@
 								:palette="palette"
 								editable
 							/>
+						</div>
+					</section>
+				</q-tab-panel>
+
+				<q-tab-panel name="chat" class="setup-panel">
+					<section class="soz-section-card panel">
+						<div class="panel-head">
+							<h2>{{ t('chat.title') }}</h2>
+						</div>
+						<div class="example-chat" aria-disabled="true">
+							<aside class="example-chat__list">
+								<button v-for="index in 3" :key="index" type="button" disabled class="example-chat__person">
+									<q-avatar color="primary" text-color="white" size="40px">{{ index }}</q-avatar>
+									<span><strong>{{ typedCopy.pageName }}</strong><small>{{ t('chat.noMessages') }}</small></span>
+								</button>
+							</aside>
+							<div class="example-chat__thread">
+								<div class="example-chat__messages">
+									<div class="example-chat__bubble">{{ typedCopy.pageDescription }}</div>
+								</div>
+								<div class="example-chat__composer">
+									<q-input outlined disable :label="t('chat.placeholder')" />
+									<q-btn round
+										unelevated
+										color="primary"
+										icon="send"
+										disable
+										:aria-label="t('chat.placeholder')"
+									/>
+								</div>
+							</div>
 						</div>
 					</section>
 				</q-tab-panel>
@@ -1086,6 +1167,14 @@
 
 .setup-tabs :deep(.q-tab__content) {
   gap: 8px;
+}
+
+.setup-tab-content {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 1.2rem;
+  line-height: 1;
 }
 
 .setup-tabs :deep(.q-tab__label) {
@@ -1293,6 +1382,77 @@
   opacity: 0.58;
 }
 
+.example-chat {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 430px;
+  overflow: hidden;
+  border: 1px solid rgba(17, 34, 45, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  opacity: 0.82;
+}
+
+.example-chat__list {
+  display: grid;
+  align-content: start;
+  border-inline-end: 1px solid rgba(17, 34, 45, 0.1);
+  background: rgba(255, 248, 251, 0.72);
+}
+
+.example-chat__person {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 0;
+  border-bottom: 1px solid rgba(17, 34, 45, 0.08);
+  background: transparent;
+  color: var(--soz-ink);
+  text-align: start;
+}
+
+.example-chat__person span {
+  display: grid;
+  min-width: 0;
+}
+
+.example-chat__person small {
+  overflow: hidden;
+  color: var(--soz-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.example-chat__thread {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.example-chat__messages {
+  display: flex;
+  align-items: flex-end;
+  padding: 22px;
+}
+
+.example-chat__bubble {
+  max-width: min(78%, 520px);
+  padding: 12px 15px;
+  border-radius: 18px 18px 4px 18px;
+  background: rgba(123, 63, 242, 0.11);
+  color: var(--soz-ink);
+}
+
+.example-chat__composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-top: 1px solid rgba(17, 34, 45, 0.1);
+}
+
 .preview-placeholder-list {
   display: grid;
   gap: 18px;
@@ -1437,6 +1597,18 @@
 }
 
 @media (max-width: 700px) {
+  .example-chat {
+    grid-template-columns: 1fr;
+  }
+
+  .example-chat__thread {
+    display: none;
+  }
+
+  .example-chat__list {
+    border-inline-end: 0;
+  }
+
   .setup-page {
     padding-inline: 10px;
   }
@@ -1469,6 +1641,12 @@
   }
 
   .setup-tabs :deep(.q-tab__label) {
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .setup-tab-content {
+    gap: 5px;
     font-size: 0.82rem;
     font-weight: 700;
   }

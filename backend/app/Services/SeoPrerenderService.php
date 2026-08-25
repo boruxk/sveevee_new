@@ -38,9 +38,13 @@ class SeoPrerenderService
             'openingHours' => 'שעות פעילות',
             'rating' => 'ביקורות',
             'products' => 'מוצרים',
+            'priceList' => 'מחירון',
             'services' => 'שירותים',
             'seller' => 'מוכר',
             'price' => 'מחיר',
+            'normalPrice' => 'מחיר רגיל',
+            'brand' => 'מותג',
+            'model' => 'דגם',
             'availability' => 'זמינות',
             'available' => 'זמין',
             'description' => 'תיאור',
@@ -60,9 +64,13 @@ class SeoPrerenderService
             'openingHours' => 'Opening hours',
             'rating' => 'Reviews',
             'products' => 'Products',
+            'priceList' => 'Price list',
             'services' => 'Services',
             'seller' => 'Seller',
             'price' => 'Price',
+            'normalPrice' => 'Normal price',
+            'brand' => 'Brand',
+            'model' => 'Model',
             'availability' => 'Availability',
             'available' => 'Available',
             'description' => 'Description',
@@ -82,9 +90,13 @@ class SeoPrerenderService
             'openingHours' => 'Часы работы',
             'rating' => 'Отзывы',
             'products' => 'Товары',
+            'priceList' => 'Прайс-лист',
             'services' => 'Услуги',
             'seller' => 'Продавец',
             'price' => 'Цена',
+            'normalPrice' => 'Обычная цена',
+            'brand' => 'Бренд',
+            'model' => 'Модель',
             'availability' => 'Наличие',
             'available' => 'Доступно',
             'description' => 'Описание',
@@ -104,9 +116,13 @@ class SeoPrerenderService
             'openingHours' => 'Horaires',
             'rating' => 'Avis',
             'products' => 'Produits',
+            'priceList' => 'Liste de prix',
             'services' => 'Services',
             'seller' => 'Vendeur',
             'price' => 'Prix',
+            'normalPrice' => 'Prix normal',
+            'brand' => 'Marque',
+            'model' => 'Modele',
             'availability' => 'Disponibilite',
             'available' => 'Disponible',
             'description' => 'Description',
@@ -143,7 +159,7 @@ class SeoPrerenderService
         });
 
         Page::query()
-            ->with(['products', 'services', 'user.profile'])
+            ->with(['prices', 'products', 'services', 'user.profile'])
             ->withCount('ratings')
             ->withAvg('ratings', 'rating')
             ->where('type', Page::TYPE_BUSINESS)
@@ -567,17 +583,22 @@ class SeoPrerenderService
             $this->ratingText($page, $locale) ? [$copy['rating'], $this->ratingText($page, $locale)] : null,
         ];
         $hours = $this->openingHoursText($page, $locale);
-        $products = $page->products->take(8)->map(fn (PageProduct $product): string => sprintf(
+        $prices = data_get($page->setup, 'features.price_list', false) ? $page->prices->take(12)->map(fn ($price): string => sprintf(
+            '<li><strong>%s</strong><span>%s</span></li>',
+            $this->escape($price->name),
+            $this->escape('₪'.number_format((float) $price->price, 2))
+        ))->implode('') : '';
+        $products = data_get($page->setup, 'features.store', false) ? $page->products->take(8)->map(fn (PageProduct $product): string => sprintf(
             '<li><a href="%s">%s</a> <span>%s</span></li>',
             $this->escapeAttribute($this->productPath($product, $locale)),
             $this->escape($product->name),
             $this->escape($this->priceLabel($product))
-        ))->implode('');
-        $services = $page->services->take(8)->map(fn ($service): string => sprintf(
+        ))->implode('') : '';
+        $services = data_get($page->setup, 'features.services', false) ? $page->services->take(8)->map(fn ($service): string => sprintf(
             '<li><strong>%s</strong><span>%s</span></li>',
             $this->escape($service->name),
             $this->escape($this->truncate($service->description, 110))
-        ))->implode('');
+        ))->implode('') : '';
 
         return '<main class="sveevee-prerender"><article class="sveevee-prerender__card">'
             .$this->brand()
@@ -588,6 +609,7 @@ class SeoPrerenderService
             .$this->definitionList($detailRows)
             .$this->section($copy['contact'], $this->definitionList($contactRows))
             .($hours ? $this->section($copy['openingHours'], '<p>'.$this->escape($hours).'</p>') : '')
+            .($prices ? $this->section($copy['priceList'], '<ul>'.$prices.'</ul>') : '')
             .($products ? $this->section($copy['products'], '<ul>'.$products.'</ul>') : '')
             .($services ? $this->section($copy['services'], '<ul>'.$services.'</ul>') : '')
             .'</article></main>';
@@ -599,6 +621,9 @@ class SeoPrerenderService
         $page = $product->page;
         $rows = [
             [$copy['price'], $this->priceLabel($product)],
+            $product->hasActiveOffer() ? [$copy['normalPrice'], '₪'.number_format((float) $product->price, 2)] : null,
+            $product->brand ? [$copy['brand'], $product->brand] : null,
+            $product->model ? [$copy['model'], $product->model] : null,
             $meta['category'] ? [$copy['category'], $meta['category']] : null,
             $meta['location'] ? [$copy['location'], $meta['location']] : null,
             [$copy['availability'], $copy['available']],
@@ -682,11 +707,18 @@ class SeoPrerenderService
             'image' => $product->image_url ? $this->absoluteUrl($product->image_url) : null,
             'url' => $meta['canonical'],
             'category' => $meta['category'],
+            'brand' => $product->brand ? [
+                '@type' => 'Brand',
+                'name' => $product->brand,
+            ] : null,
+            'model' => $product->model,
             'offers' => [
                 '@type' => 'Offer',
-                'price' => (float) $product->price,
+                'price' => $product->currentPrice(),
                 'priceCurrency' => 'ILS',
                 'availability' => 'https://schema.org/InStock',
+                'validFrom' => $product->hasActiveOffer() ? $product->offer_starts_at?->toISOString() : null,
+                'priceValidUntil' => $product->hasActiveOffer() ? $product->offer_ends_at?->toISOString() : null,
                 'url' => $meta['canonical'],
                 'seller' => [
                     '@type' => 'Organization',
@@ -1028,7 +1060,7 @@ HTML;
 
     private function priceLabel(PageProduct $product): string
     {
-        return '₪'.number_format((float) $product->price, 2);
+        return '₪'.number_format($product->currentPrice(), 2);
     }
 
     private function businessPath(Page $page, string $locale): string

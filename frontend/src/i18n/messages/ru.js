@@ -111,7 +111,8 @@ export default {
 		readMore: 'Читать дальше',
 		readLess: 'Свернуть',
 		ban: 'Забанить',
-		restore: 'Восстановить'
+		restore: 'Восстановить',
+		close: 'Закрыть'
 	},
 	share: {
 		title: '\u041f\u043e\u0434\u0435\u043b\u0438\u0442\u044c\u0441\u044f',
@@ -136,6 +137,7 @@ export default {
 		neighborhood: 'Район',
 		loginTitle: 'Вход',
 		registerTitle: 'Создать аккаунт',
+		registerWelcome: 'Добро пожаловать в Sveevee. Здесь вы начнете узнавать, что происходит рядом, и общаться с людьми поблизости.',
 		loginFailed: 'Не удалось войти.',
 		registerFailed: 'Не удалось зарегистрироваться.',
 		forgotPassword: 'Забыли пароль?',
@@ -338,9 +340,18 @@ export default {
 	products: {
 		storeTitle: 'Товары',
 		name: 'Название',
+		brand: '\u0411\u0440\u0435\u043D\u0434',
+		model: '\u041C\u043E\u0434\u0435\u043B\u044C',
 		description: 'Описание',
 		image: 'Изображение',
 		price: 'Цена',
+		normalPrice: '\u041E\u0431\u044B\u0447\u043D\u0430\u044F \u0446\u0435\u043D\u0430',
+		offer: '\u0410\u043A\u0446\u0438\u044F',
+		offerPrice: '\u0426\u0435\u043D\u0430 \u043F\u043E \u0430\u043A\u0446\u0438\u0438',
+		offerStart: '\u041D\u0430\u0447\u0430\u043B\u043E',
+		offerEnd: '\u041E\u043A\u043E\u043D\u0447\u0430\u043D\u0438\u0435',
+		offerMustBeLower: '\u0426\u0435\u043D\u0430 \u043F\u043E \u0430\u043A\u0446\u0438\u0438 \u0434\u043E\u043B\u0436\u043D\u0430 \u0431\u044B\u0442\u044C \u043D\u0438\u0436\u0435 \u043E\u0431\u044B\u0447\u043D\u043E\u0439.',
+		offerEndAfterStart: '\u0410\u043A\u0446\u0438\u044F \u0434\u043E\u043B\u0436\u043D\u0430 \u0437\u0430\u043A\u0430\u043D\u0447\u0438\u0432\u0430\u0442\u044C\u0441\u044F \u043F\u043E\u0441\u043B\u0435 \u043D\u0430\u0447\u0430\u043B\u0430.',
 		link: 'Ссылка на продукт',
 		linkHint: 'Ссылка на продукт на сайте продавца.',
 		open: 'Открыть продукт',
@@ -348,15 +359,34 @@ export default {
 		empty: 'Продуктов пока нет.',
 		created: 'Продукт создан.',
 		saveFailed: 'Не удалось сохранить продукт.',
-		deleteFailed: '\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0443\u0434\u0430\u043B\u0438\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442.'
+		deleteFailed: '\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0443\u0434\u0430\u043B\u0438\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442.',
+		labels: {
+			new: '\u041D\u043E\u0432\u0438\u043D\u043A\u0430',
+			price_dropped: '\u0426\u0435\u043D\u0430 \u0441\u043D\u0438\u0436\u0435\u043D\u0430',
+			popular: '\u041F\u043E\u043F\u0443\u043B\u044F\u0440\u043D\u043E',
+			highly_rated: '\u0412\u044B\u0441\u043E\u043A\u0430\u044F \u043E\u0446\u0435\u043D\u043A\u0430',
+			offer: '\u0410\u043A\u0446\u0438\u044F'
+		}
+	},
+	priceList: {
+		title: '\u041F\u0440\u0430\u0439\u0441-\u043B\u0438\u0441\u0442',
+		add: '\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0446\u0435\u043D\u0443',
+		name: '\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435',
+		price: '\u0426\u0435\u043D\u0430',
+		empty: '\u0426\u0435\u043D \u043F\u043E\u043A\u0430 \u043D\u0435\u0442.',
+		saved: '\u0426\u0435\u043D\u0430 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0430.',
+		saveFailed: '\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0446\u0435\u043D\u0443.',
+		deleteFailed: '\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0443\u0434\u0430\u043B\u0438\u0442\u044C \u0446\u0435\u043D\u0443.'
 	},
 	businessFeatures: {
 		store: 'Магазин',
 		services: 'Услуги',
 		events: '\u0421\u043E\u0431\u044B\u0442\u0438\u044F',
+		priceList: '\u041F\u0440\u0430\u0439\u0441-\u043B\u0438\u0441\u0442',
 		toggleStore: 'Включить или выключить магазин',
 		toggleServices: 'Включить или выключить услуги',
-		toggleEvents: '\u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0438\u043B\u0438 \u0432\u044B\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0441\u043E\u0431\u044B\u0442\u0438\u044F'
+		toggleEvents: '\u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0438\u043B\u0438 \u0432\u044B\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0441\u043E\u0431\u044B\u0442\u0438\u044F',
+		togglePriceList: '\u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0438\u043B\u0438 \u0432\u044B\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u043F\u0440\u0430\u0439\u0441-\u043B\u0438\u0441\u0442'
 	},
 	businessServices: {
 		title: 'Услуги',
@@ -399,6 +429,7 @@ export default {
 		supportIntro: '\u041D\u0430\u043F\u0438\u0448\u0438\u0442\u0435 \u043A\u043E\u043C\u0430\u043D\u0434\u0435 sveevee.',
 		supportUnavailable: '\u0427\u0430\u0442 \u0441 \u043F\u043E\u0434\u0434\u0435\u0440\u0436\u043A\u043E\u0439 \u0441\u0435\u0439\u0447\u0430\u0441 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D.',
 		pendingReply: 'Вы сможете написать снова после того, как этот пользователь ответит на ваше первое сообщение.',
+		pagePendingReply: 'Вы сможете написать снова после ответа этой страницы.',
 		dailyLimit: 'Можно написать только 10 новым пользователям в день.',
 		noMessages: 'Сообщений пока нет.',
 		backToList: 'Back to chats',
@@ -532,7 +563,20 @@ export default {
 		landingPageCommunityDescription: 'Продвигает бесплатную страницу сообщества с событиями, объявлениями, рейтингами, контактами и локальным поиском.',
 		openLandingPage: 'Открыть страницу',
 		userSearch: 'Поиск пользователей',
-		userSearchPlaceholder: 'Искать по имени, e-mail или логину'
+		userSearchPlaceholder: 'Искать по имени, e-mail или логину',
+		totalUsers: 'Всего пользователей',
+		userDetails: 'Данные пользователя',
+		userDetailsFailed: 'Не удалось загрузить данные пользователя.',
+		accountDetails: 'Данные аккаунта',
+		login: 'Логин',
+		role: 'Роль',
+		locale: 'Язык',
+		registeredAt: 'Дата регистрации',
+		emailVerified: 'E-mail подтвержден',
+		banReason: 'Причина блокировки',
+		userPages: 'Страницы',
+		noUserPages: 'У этого пользователя нет страниц.',
+		pageContentCounts: '{products} товаров, {services} услуг, {events} событий, {ads} объявлений'
 	},
 	search: {
 		title: 'Поиск',
@@ -720,6 +764,11 @@ export default {
 	landing: {
 		eyebrow: 'Местные объявления, местный бизнес.',
 		title: 'sveevee',
+		firstBadgeTitle: 'Будьте первыми. Станьте заметнее первыми.',
+		firstBadgeBody: 'Присоединяйтесь к Sveevee сегодня и станьте одними из первых в своем городе и районе.',
+		shareTitle: 'Хорошее становится еще лучше, когда им делятся.',
+		shareBody: 'Знаете отличный местный бизнес, специалиста или сообщество? Расскажите им о Sveevee и помогите сделать ваш район удобнее для поиска.',
+		shareCta: 'Поделиться Sveevee',
 		purposeKicker: '',
 		purposeTitle: 'О sveevee',
 		purposeParagraphs: [

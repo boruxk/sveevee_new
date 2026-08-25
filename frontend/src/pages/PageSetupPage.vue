@@ -11,6 +11,7 @@
 	import { deleteEvent } from '@/services/api/events'
 	import { deletePage, fetchMyPage, saveMyPage, updatePageFeatures } from '@/services/api/pages'
 	import { deleteProduct } from '@/services/api/products'
+	import { deletePrice } from '@/services/api/prices'
 	import { deleteService } from '@/services/api/services'
 	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
 	import { CATALOG_SCOPES, publicPagePath } from '@/constants/catalogTopics'
@@ -24,10 +25,14 @@
 	import EventComposer from '@/components/events/EventComposer.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
 	import ProductComposer from '@/components/products/ProductComposer.vue'
+	import PriceComposer from '@/components/prices/PriceComposer.vue'
+	import PriceList from '@/components/prices/PriceList.vue'
 	import ServiceCard from '@/components/services/ServiceCard.vue'
 	import ServiceComposer from '@/components/services/ServiceComposer.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
 	import PageRatingsDialog from '@/components/ratings/PageRatingsDialog.vue'
+	import ChatBlock from '@/components/ChatBlock.vue'
+	import PriceListIcon from '@/components/icons/PriceListIcon.vue'
 
 	const DEFAULT_OPENING_HOURS = [
 		{ weekday: 'sunday', is_open: false, opens_at: null, closes_at: null },
@@ -52,12 +57,14 @@
 	const formRef = ref(null)
 	const adDialogOpen = ref(false)
 	const productDialogOpen = ref(false)
+	const priceDialogOpen = ref(false)
 	const serviceDialogOpen = ref(false)
 	const eventDialogOpen = ref(false)
 	const ratingsDialogOpen = ref(false)
 	const activeTab = ref('preview')
 	const editingAd = ref(null)
 	const editingProduct = ref(null)
+	const editingPrice = ref(null)
 	const editingService = ref(null)
 	const editingEvent = ref(null)
 	const page = ref(null)
@@ -90,7 +97,8 @@
 		features: {
 			store: false,
 			services: false,
-			events: false
+			events: false,
+			price_list: false
 		},
 		category_key: '',
 		palette_key: presencePalettes[0].key,
@@ -108,18 +116,21 @@
 	const selectedPalette = computed(() => findPresencePalette(form.palette_key))
 	const adDialogTitle = computed(() => (editingAd.value ? t('actions.update') : t('actions.createAd')))
 	const productDialogTitle = computed(() => (editingProduct.value ? t('actions.update') : t('actions.addProduct')))
+	const priceDialogTitle = computed(() => (editingPrice.value ? t('actions.update') : t('priceList.add')))
 	const serviceDialogTitle = computed(() => (editingService.value ? t('actions.update') : t('businessServices.addService')))
 	const eventDialogTitle = computed(() => (editingEvent.value ? t('actions.update') : t('actions.addEvent')))
 	const visibleAds = computed(() => (Array.isArray(page.value?.ads) ? page.value.ads.filter((ad) => ad?.id) : []))
 	const visibleProducts = computed(() => (Array.isArray(page.value?.products) ? page.value.products.filter((product) => product?.id) : []))
+	const visiblePrices = computed(() => (Array.isArray(page.value?.prices) ? page.value.prices.filter((price) => price?.id) : []))
 	const visibleServices = computed(() => (Array.isArray(page.value?.services) ? page.value.services.filter((service) => service?.id) : []))
 	const visibleEvents = computed(() => (Array.isArray(page.value?.events) ? page.value.events.filter((event) => event?.id) : []))
 	const isStoreEnabled = computed(() => Boolean(form.features.store))
 	const isServicesEnabled = computed(() => Boolean(form.features.services))
 	const isEventsEnabled = computed(() => Boolean(form.features.events))
+	const isPriceListEnabled = computed(() => Boolean(form.features.price_list))
 	const pageFeatureKeys = computed(() => {
 		if (isBusinessPage.value) {
-			return ['store', 'services']
+			return ['price_list', 'store', 'services']
 		}
 
 		if (isCommunityPage.value) {
@@ -131,6 +142,11 @@
 	const pageTabs = computed(() => [
 		{ name: 'preview', label: t('pages.tabs.preview'), icon: 'visibility' },
 		{ name: 'settings', label: t('pages.tabs.settings'), icon: 'settings' },
+		isBusinessPage.value && isPriceListEnabled.value ? {
+			name: 'price-list',
+			label: t('priceList.title'),
+			icon: null
+		} : null,
 		isBusinessPage.value && isStoreEnabled.value ? {
 			name: 'store',
 			label: t('businessFeatures.store'),
@@ -146,6 +162,7 @@
 			label: t('businessFeatures.events'),
 			icon: 'event'
 		} : null,
+		{ name: 'chat', label: t('chat.title'), icon: 'chat' },
 		{ name: 'ads', label: t('ads.listTitle'), icon: 'campaign' }
 	].filter(Boolean))
 	const hasStoredLogo = computed(() => Boolean(page.value?.logo_url) && !form.logo && !logoRemoved.value)
@@ -198,7 +215,8 @@
 		features: {
 			store: form.features.store,
 			services: form.features.services,
-			events: form.features.events
+			events: form.features.events,
+			price_list: form.features.price_list
 		},
 		category_key: form.category_key || null,
 		palette_key: form.palette_key,
@@ -220,6 +238,14 @@
 	const previewContentPlaceholders = computed(() => {
 		if (isBusinessPage.value) {
 			return [
+				isPriceListEnabled.value ? {
+					key: 'price-list',
+					icon: null,
+					label: t('priceList.title'),
+					targetId: 'page-prices-section',
+					tabName: 'price-list',
+					cardCount: 1
+				} : null,
 				isStoreEnabled.value ? {
 					key: 'store',
 					icon: 'inventory_2',
@@ -261,6 +287,12 @@
 			behavior: 'smooth',
 			block: 'start'
 		})
+	}
+
+	function openPageChatTab() {
+		if (page.value) {
+			activeTab.value = 'chat'
+		}
 	}
 
 	function normalizedOpeningHours(value) {
@@ -329,6 +361,7 @@
 		form.features.store = featureFlag(value, 'store', false)
 		form.features.services = featureFlag(value, 'services', false)
 		form.features.events = featureFlag(value, 'events', false)
+		form.features.price_list = featureFlag(value, 'price_list', false)
 		form.category_key = value?.category_key || ''
 		form.palette_key = findPresencePalette(value?.palette_key || setup.palette_key).key
 		form.logo = null
@@ -373,7 +406,8 @@
 				features: {
 					store: form.features.store,
 					services: form.features.services,
-					events: form.features.events
+					events: form.features.events,
+					price_list: form.features.price_list
 				}
 			},
 			logo: form.logo,
@@ -449,10 +483,12 @@
 			form.features.store = featureFlag(page.value, 'store', false)
 			form.features.services = featureFlag(page.value, 'services', false)
 			form.features.events = featureFlag(page.value, 'events', false)
+			form.features.price_list = featureFlag(page.value, 'price_list', false)
 		} catch (error) {
 			form.features.store = previousFeatures.store
 			form.features.services = previousFeatures.services
 			form.features.events = previousFeatures.events
+			form.features.price_list = previousFeatures.price_list
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('pages.saveFailed')) })
 		} finally {
 			saving.value = false
@@ -551,6 +587,16 @@
 		productDialogOpen.value = true
 	}
 
+	function openCreatePrice() {
+		editingPrice.value = null
+		priceDialogOpen.value = true
+	}
+
+	function openEditPrice(price) {
+		editingPrice.value = price
+		priceDialogOpen.value = true
+	}
+
 	function openCreateService() {
 		editingService.value = null
 		serviceDialogOpen.value = true
@@ -567,6 +613,15 @@
 			await load()
 		} catch (error) {
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('products.deleteFailed')) })
+		}
+	}
+
+	async function removePrice(price) {
+		try {
+			await deletePrice(price.id)
+			await load()
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('priceList.deleteFailed')) })
 		}
 	}
 
@@ -615,6 +670,18 @@
 			...page.value,
 			products: nextProducts
 		}
+	}
+
+	function mergeSavedPrice(savedPrice) {
+		if (!page.value?.id || !savedPrice?.id || savedPrice.page_id !== page.value.id) {
+			return
+		}
+
+		const prices = Array.isArray(page.value.prices) ? page.value.prices : []
+		const existingIndex = prices.findIndex((price) => price.id === savedPrice.id)
+		const nextPrices = existingIndex === -1 ? [savedPrice, ...prices] : prices.map((price) => (price.id === savedPrice.id ? savedPrice : price))
+
+		page.value = { ...page.value, prices: nextPrices }
 	}
 
 	function mergeSavedService(savedService) {
@@ -708,6 +775,14 @@
 		mergeSavedProduct(savedProduct)
 	}
 
+	async function handlePriceSaved(savedPrice) {
+		priceDialogOpen.value = false
+		editingPrice.value = null
+		mergeSavedPrice(savedPrice)
+		await load()
+		mergeSavedPrice(savedPrice)
+	}
+
 	async function handleServiceSaved(savedService) {
 		serviceDialogOpen.value = false
 		editingService.value = null
@@ -775,6 +850,11 @@
 			activeTab.value = 'settings'
 		}
 	})
+	watch(() => route.query.tab, (requestedTab) => {
+		if (requestedTab && pageTabs.value.some((tab) => tab.name === requestedTab)) {
+			activeTab.value = requestedTab
+		}
+	}, { immediate: true })
 	watch(cityOptions, (options) => {
 		citySelectOptions.value = options
 	}, { immediate: true })
@@ -839,9 +919,13 @@
 				<q-tab v-for="tab in pageTabs"
 					:key="tab.name"
 					:name="tab.name"
-					:icon="tab.icon"
-					:label="tab.label"
-				/>
+				>
+					<span class="setup-tab-content">
+						<PriceListIcon v-if="tab.name === 'price-list'" :size="21" />
+						<q-icon v-else :name="tab.icon" />
+						<span>{{ tab.label }}</span>
+					</span>
+				</q-tab>
 			</q-tabs>
 
 			<q-tab-panels v-model="activeTab" animated class="setup-panels">
@@ -855,7 +939,9 @@
 							:palette="selectedPalette"
 							:has-after-info="hasPreviewPlaceholders"
 							:share-url="previewShareUrl"
+							:can-chat="Boolean(page)"
 							@show-ratings="ratingsDialogOpen = true"
+							@chat="openPageChatTab"
 						>
 							<template #afterInfo>
 								<div class="preview-placeholder-list">
@@ -869,7 +955,8 @@
 											@click.prevent="openSetupTab(placeholder.tabName, placeholder.targetId)"
 										>
 											<span class="preview-placeholder-heading__icon">
-												<q-icon :name="placeholder.icon" size="22px" />
+												<PriceListIcon v-if="placeholder.key === 'price-list'" :size="22" />
+												<q-icon v-else :name="placeholder.icon" size="22px" />
 											</span>
 											<span>{{ placeholder.label }}</span>
 											<q-icon name="south" class="preview-placeholder-heading__arrow" />
@@ -900,6 +987,20 @@
 							</div>
 
 							<div v-if="isBusinessPage || isCommunityPage" class="feature-toggle-row">
+								<button
+									v-if="isBusinessPage"
+									type="button"
+									class="feature-toggle"
+									:class="{ 'feature-toggle--active': isPriceListEnabled }"
+									:aria-label="t('businessFeatures.togglePriceList')"
+									:aria-pressed="isPriceListEnabled"
+									:title="t('businessFeatures.togglePriceList')"
+									:disabled="saving"
+									@click="togglePageFeature('price_list')"
+								>
+									<span class="feature-toggle__dot" aria-hidden="true" />
+									<span>{{ t('businessFeatures.priceList') }}</span>
+								</button>
 								<button
 									v-if="isBusinessPage"
 									type="button"
@@ -1190,6 +1291,31 @@
 					</div>
 				</q-tab-panel>
 
+				<q-tab-panel v-if="isBusinessPage && isPriceListEnabled" name="price-list" class="setup-panel">
+					<section id="page-prices-section" class="soz-section-card panel">
+						<div class="panel-head">
+							<h2>{{ t('priceList.title') }}</h2>
+							<q-btn
+								rounded
+								unelevated
+								color="primary"
+								icon="add"
+								:disable="!page"
+								:label="t('priceList.add')"
+								@click="openCreatePrice"
+							/>
+						</div>
+						<div v-if="!page" class="empty-state">{{ t('pages.saveFirst') }}</div>
+						<PriceList
+							v-else
+							:items="visiblePrices"
+							editable
+							@edit="openEditPrice"
+							@delete="removePrice"
+						/>
+					</section>
+				</q-tab-panel>
+
 				<q-tab-panel v-if="isBusinessPage && isStoreEnabled" name="store" class="setup-panel">
 					<section id="page-products-section" class="soz-section-card panel">
 						<div class="panel-head">
@@ -1271,6 +1397,16 @@
 					</section>
 				</q-tab-panel>
 
+				<q-tab-panel name="chat" class="setup-panel">
+					<section class="soz-section-card panel page-chat-panel">
+						<div class="panel-head">
+							<h2>{{ t('chat.title') }}</h2>
+						</div>
+						<ChatBlock v-if="page" :page-id="page.id" page-owner />
+						<div v-else class="empty-state">{{ t('pages.saveFirst') }}</div>
+					</section>
+				</q-tab-panel>
+
 				<q-tab-panel name="ads" class="setup-panel">
 					<section class="soz-section-card panel">
 						<div class="panel-head">
@@ -1307,6 +1443,22 @@
 				</q-card-section>
 				<q-card-section>
 					<AdComposer :page-id="page?.id" :ad="editingAd" :disabled="!page" @saved="handleAdSaved" />
+				</q-card-section>
+			</q-card>
+		</q-dialog>
+		<q-dialog v-model="priceDialogOpen">
+			<q-card class="price-dialog">
+				<q-card-section class="dialog-head">
+					<div class="text-h6">{{ priceDialogTitle }}</div>
+					<q-btn flat round icon="close" color="dark" v-close-popup />
+				</q-card-section>
+				<q-card-section>
+					<PriceComposer
+						v-if="page?.id"
+						:page-id="page.id"
+						:price="editingPrice"
+						@saved="handlePriceSaved"
+					/>
 				</q-card-section>
 			</q-card>
 		</q-dialog>
@@ -1468,6 +1620,14 @@
 
 .setup-tabs :deep(.q-tab__content) {
   gap: 8px;
+}
+
+.setup-tab-content {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 1.2rem;
+  line-height: 1;
 }
 
 .setup-tabs :deep(.q-tab__label) {
@@ -1804,6 +1964,7 @@
 }
 
 .listing-dialog,
+.price-dialog,
 .product-dialog,
 .service-dialog,
 .event-dialog {
@@ -1892,6 +2053,12 @@
     font-weight: 700;
   }
 
+  .setup-tab-content {
+    gap: 5px;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
   .setup-tabs :deep(.q-tabs__arrow) {
     z-index: 2;
     min-width: 30px;
@@ -1922,6 +2089,7 @@
   }
 
   .listing-dialog,
+  .price-dialog,
   .product-dialog,
   .service-dialog,
   .event-dialog {

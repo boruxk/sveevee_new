@@ -4,8 +4,9 @@
 	import { useI18n } from 'vue-i18n'
 	import { setLocale } from '@/i18n'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
-	import { fetchProduct } from '@/services/api/products'
+	import { fetchProduct, recordProductContact } from '@/services/api/products'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
+	import ProductLabels from '@/components/products/ProductLabels.vue'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
 	import { catalogLabel, catalogPath, catalogTopicByKey, productPath, publicPagePath } from '@/constants/catalogTopics'
 	import { locationLabel } from '@/utils/locationLabels'
@@ -27,6 +28,7 @@
 	const topic = computed(() => catalogTopicByKey(catalogGroups.value, product.value?.category_key))
 	const topicLabel = computed(() => catalogLabel(topic.value?.labels, locale.value))
 	const productImageAlt = computed(() => product.value?.image_alt || product.value?.name || '')
+	const productIdentity = computed(() => [product.value?.brand, product.value?.model].filter(Boolean).join(' '))
 	const canonicalPath = computed(() => (product.value ? productPath(product.value, routeLocale.value || locale.value) : route.path))
 	const sellerPath = computed(() => (seller.value ? publicPagePath(seller.value, routeLocale.value || locale.value) : ''))
 	const localizedAlternates = computed(() => {
@@ -101,11 +103,18 @@
 			image: product.value.image_url ? absoluteUrl(product.value.image_url) : undefined,
 			url: absoluteUrl(canonicalPath.value),
 			category: topicLabel.value || undefined,
+			brand: product.value.brand ? {
+				'@type': 'Brand',
+				name: product.value.brand
+			} : undefined,
+			model: product.value.model || undefined,
 			offers: product.value.price !== null && product.value.price !== undefined ? {
 				'@type': 'Offer',
 				price: product.value.price,
 				priceCurrency: 'ILS',
 				availability: 'https://schema.org/InStock',
+				validFrom: product.value.offer_active ? product.value.offer_starts_at : undefined,
+				priceValidUntil: product.value.offer_active ? product.value.offer_ends_at : undefined,
 				url: absoluteUrl(canonicalPath.value),
 				seller: seller.value ? {
 					'@type': 'Organization',
@@ -161,6 +170,22 @@
 		return [cityLabel.value, neighborhoodLabel.value].filter(Boolean).join(' / ')
 	}
 
+	function formatOfferDate(value) {
+		if (!value) {
+			return ''
+		}
+
+		const date = new Date(value)
+
+		return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+	}
+
+	function trackContact() {
+		if (product.value?.id) {
+			recordProductContact(product.value.id).catch(() => {})
+		}
+	}
+
 	watch(() => route.fullPath, load)
 	onMounted(async() => {
 		await Promise.all([load(), loadCatalogTopics()])
@@ -206,8 +231,17 @@
 						</span>
 					</div>
 
+					<ProductLabels :labels="product.labels" />
 					<h1>{{ product.name }}</h1>
-					<div class="product-detail__price">{{ product.price_label }}</div>
+					<div v-if="productIdentity" class="product-detail__identity">{{ productIdentity }}</div>
+					<div class="product-detail__prices" :class="{ 'product-detail__prices--offer': product.offer_active }">
+						<del v-if="product.offer_active">{{ product.normal_price_label }}</del>
+						<div class="product-detail__price" :class="{ 'product-detail__price--offer': product.offer_active }">{{ product.price_label }}</div>
+					</div>
+					<div v-if="product.offer_active" class="product-detail__offer-period">
+						<q-icon name="schedule" size="18px" />
+						<span>{{ formatOfferDate(product.offer_starts_at) }} - {{ formatOfferDate(product.offer_ends_at) }}</span>
+					</div>
 
 					<div class="product-detail__actions">
 						<q-btn
@@ -220,6 +254,7 @@
 							target="_blank"
 							rel="noopener noreferrer"
 							:label="t('products.buy')"
+							@click="trackContact"
 						/>
 						<q-btn
 							v-if="seller"
@@ -229,6 +264,7 @@
 							icon="storefront"
 							:to="sellerPath"
 							:label="t('market.viewSeller')"
+							@click="trackContact"
 						/>
 					</div>
 				</div>
@@ -351,10 +387,63 @@
   overflow-wrap: anywhere;
 }
 
+.product-detail__body :deep(.product-labels) {
+  margin-bottom: -6px;
+}
+
+.product-detail__identity {
+  margin-top: -10px;
+  color: rgba(17, 34, 45, 0.64);
+  font-size: 1rem;
+  font-weight: 720;
+}
+
+.product-detail__prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.product-detail__prices del {
+  color: rgba(128, 34, 77, 0.68);
+  font-size: 1.08rem;
+  text-decoration-color: #b51f60;
+  text-decoration-thickness: 2px;
+}
+
 .product-detail__price {
   color: var(--soz-ink);
   font-size: clamp(1.6rem, 2.5vw, 2.4rem);
   font-weight: 880;
+}
+
+.product-detail__prices--offer {
+  display: inline-grid;
+  justify-items: start;
+  gap: 2px;
+  width: fit-content;
+  padding: 11px 16px;
+  border: 1px solid rgba(235, 52, 130, 0.22);
+  border-radius: 16px;
+  background: rgba(255, 240, 247, 0.8);
+  box-shadow: 0 8px 22px rgba(174, 35, 100, 0.09);
+}
+
+.product-detail__price--offer {
+  color: #b51f60;
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.product-detail__offer-period {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin-top: -8px;
+  color: rgba(17, 34, 45, 0.64);
+  font-size: 0.9rem;
 }
 
 .product-detail__description {

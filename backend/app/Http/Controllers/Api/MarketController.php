@@ -76,7 +76,12 @@ class MarketController extends Controller
     private function productsQuery(string $city, ?array $topic = null): Builder
     {
         $query = PageProduct::query()
-            ->with(['page.user.profile'])
+            ->with([
+                'page' => fn ($page) => $page
+                    ->with('user.profile')
+                    ->withCount('ratings')
+                    ->withAvg('ratings', 'rating'),
+            ])
             ->whereHas('page', function (Builder $page) use ($city): void {
                 $page->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
                 $this->inPageCity($page, $city);

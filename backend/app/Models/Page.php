@@ -53,6 +53,11 @@ class Page extends Model
         return $this->hasMany(PageProduct::class)->latest();
     }
 
+    public function prices(): HasMany
+    {
+        return $this->hasMany(PagePrice::class)->latest();
+    }
+
     public function services(): HasMany
     {
         return $this->hasMany(PageService::class)->latest();
@@ -66,6 +71,11 @@ class Page extends Model
     public function ratings(): HasMany
     {
         return $this->hasMany(PageRating::class)->latest();
+    }
+
+    public function chatConversations(): HasMany
+    {
+        return $this->hasMany(PageConversation::class)->latest('last_message_at');
     }
 
     protected function logoUrl(): Attribute

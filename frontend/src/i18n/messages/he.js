@@ -111,7 +111,8 @@ export default {
 		readMore: 'קראו עוד',
 		readLess: 'הציגו פחות',
 		ban: 'חסימה',
-		restore: 'שחזור'
+		restore: 'שחזור',
+		close: 'סגירה'
 	},
 	share: {
 		title: '\u05e9\u05d9\u05ea\u05d5\u05e3',
@@ -136,6 +137,7 @@ export default {
 		neighborhood: 'שכונה',
 		loginTitle: 'כניסה לחשבון',
 		registerTitle: 'יצירת חשבון',
+		registerWelcome: 'ברוכים הבאים ל-Sveevee. מכאן מתחילים לגלות ולהתחבר למה שקורה קרוב אליכם.',
 		loginFailed: 'הכניסה נכשלה.',
 		registerFailed: 'ההרשמה נכשלה.',
 		forgotPassword: 'שכחת סיסמה?',
@@ -338,9 +340,18 @@ export default {
 	products: {
 		storeTitle: '\u05DE\u05D5\u05E6\u05E8\u05D9\u05DD',
 		name: '\u05E9\u05DD',
+		brand: '\u05DE\u05D5\u05EA\u05D2',
+		model: '\u05D3\u05D2\u05DD',
 		description: '\u05EA\u05D9\u05D0\u05D5\u05E8',
 		image: '\u05EA\u05DE\u05D5\u05E0\u05D4',
 		price: '\u05DE\u05D7\u05D9\u05E8',
+		normalPrice: '\u05DE\u05D7\u05D9\u05E8 \u05E8\u05D2\u05D9\u05DC',
+		offer: '\u05DE\u05D1\u05E6\u05E2',
+		offerPrice: '\u05DE\u05D7\u05D9\u05E8 \u05DE\u05D1\u05E6\u05E2',
+		offerStart: '\u05EA\u05D7\u05D9\u05DC\u05EA \u05D4\u05DE\u05D1\u05E6\u05E2',
+		offerEnd: '\u05E1\u05D9\u05D5\u05DD \u05D4\u05DE\u05D1\u05E6\u05E2',
+		offerMustBeLower: '\u05DE\u05D7\u05D9\u05E8 \u05D4\u05DE\u05D1\u05E6\u05E2 \u05D7\u05D9\u05D9\u05D1 \u05DC\u05D4\u05D9\u05D5\u05EA \u05E0\u05DE\u05D5\u05DA \u05DE\u05D4\u05DE\u05D7\u05D9\u05E8 \u05D4\u05E8\u05D2\u05D9\u05DC.',
+		offerEndAfterStart: '\u05D4\u05DE\u05D1\u05E6\u05E2 \u05D7\u05D9\u05D9\u05D1 \u05DC\u05D4\u05E1\u05EA\u05D9\u05D9\u05DD \u05DC\u05D0\u05D7\u05E8 \u05E9\u05D4\u05D5\u05D0 \u05DE\u05EA\u05D7\u05D9\u05DC.',
 		link: '\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05DE\u05D5\u05E6\u05E8',
 		linkHint: '\u05E7\u05D9\u05E9\u05D5\u05E8 \u05DC\u05DE\u05D5\u05E6\u05E8 \u05D1\u05D0\u05EA\u05E8 \u05E9\u05DC \u05D4\u05DE\u05D5\u05DB\u05E8.',
 		open: '\u05DC\u05E6\u05E4\u05D9\u05D9\u05D4 \u05D1\u05DE\u05D5\u05E6\u05E8',
@@ -348,15 +359,34 @@ export default {
 		empty: '\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05DE\u05D5\u05E6\u05E8\u05D9\u05DD.',
 		created: '\u05D4\u05DE\u05D5\u05E6\u05E8 \u05E0\u05D5\u05E6\u05E8.',
 		saveFailed: '\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05E9\u05DE\u05D5\u05E8 \u05D0\u05EA \u05D4\u05DE\u05D5\u05E6\u05E8.',
-		deleteFailed: '\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05DE\u05D7\u05D5\u05E7 \u05D0\u05EA \u05D4\u05DE\u05D5\u05E6\u05E8.'
+		deleteFailed: '\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05DE\u05D7\u05D5\u05E7 \u05D0\u05EA \u05D4\u05DE\u05D5\u05E6\u05E8.',
+		labels: {
+			new: '\u05D7\u05D3\u05E9',
+			price_dropped: '\u05D4\u05DE\u05D7\u05D9\u05E8 \u05D9\u05E8\u05D3',
+			popular: '\u05E4\u05D5\u05E4\u05D5\u05DC\u05E8\u05D9',
+			highly_rated: '\u05D3\u05D9\u05E8\u05D5\u05D2 \u05D2\u05D1\u05D5\u05D4',
+			offer: '\u05DE\u05D1\u05E6\u05E2'
+		}
+	},
+	priceList: {
+		title: '\u05DE\u05D7\u05D9\u05E8\u05D5\u05DF',
+		add: '\u05D4\u05D5\u05E1\u05E4\u05EA \u05DE\u05D7\u05D9\u05E8',
+		name: '\u05E9\u05DD',
+		price: '\u05DE\u05D7\u05D9\u05E8',
+		empty: '\u05D0\u05D9\u05DF \u05E2\u05D3\u05D9\u05D9\u05DF \u05DE\u05D7\u05D9\u05E8\u05D9\u05DD.',
+		saved: '\u05D4\u05DE\u05D7\u05D9\u05E8 \u05E0\u05E9\u05DE\u05E8.',
+		saveFailed: '\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05E9\u05DE\u05D5\u05E8 \u05D0\u05EA \u05D4\u05DE\u05D7\u05D9\u05E8.',
+		deleteFailed: '\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05DE\u05D7\u05D5\u05E7 \u05D0\u05EA \u05D4\u05DE\u05D7\u05D9\u05E8.'
 	},
 	businessFeatures: {
 		store: '\u05D7\u05E0\u05D5\u05EA',
 		services: '\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD',
 		events: '\u05D0\u05D9\u05E8\u05D5\u05E2\u05D9\u05DD',
+		priceList: '\u05DE\u05D7\u05D9\u05E8\u05D5\u05DF',
 		toggleStore: '\u05D4\u05E4\u05E2\u05DC\u05D4 \u05D0\u05D5 \u05DB\u05D9\u05D1\u05D5\u05D9 \u05E9\u05DC \u05D4\u05D7\u05E0\u05D5\u05EA',
 		toggleServices: '\u05D4\u05E4\u05E2\u05DC\u05D4 \u05D0\u05D5 \u05DB\u05D9\u05D1\u05D5\u05D9 \u05E9\u05DC \u05D4\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD',
-		toggleEvents: '\u05D4\u05E4\u05E2\u05DC\u05D4 \u05D0\u05D5 \u05DB\u05D9\u05D1\u05D5\u05D9 \u05E9\u05DC \u05D4\u05D0\u05D9\u05E8\u05D5\u05E2\u05D9\u05DD'
+		toggleEvents: '\u05D4\u05E4\u05E2\u05DC\u05D4 \u05D0\u05D5 \u05DB\u05D9\u05D1\u05D5\u05D9 \u05E9\u05DC \u05D4\u05D0\u05D9\u05E8\u05D5\u05E2\u05D9\u05DD',
+		togglePriceList: '\u05D4\u05E4\u05E2\u05DC\u05D4 \u05D0\u05D5 \u05DB\u05D9\u05D1\u05D5\u05D9 \u05E9\u05DC \u05D4\u05DE\u05D7\u05D9\u05E8\u05D5\u05DF'
 	},
 	businessServices: {
 		title: '\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD',
@@ -399,6 +429,7 @@ export default {
 		supportIntro: '\u05DB\u05EA\u05D1\u05D5 \u05DC\u05E6\u05D5\u05D5\u05EA sveevee.',
 		supportUnavailable: '\u05E6\u05F3\u05D0\u05D8 \u05D4\u05EA\u05DE\u05D9\u05DB\u05D4 \u05DC\u05D0 \u05D6\u05DE\u05D9\u05DF \u05DB\u05E8\u05D2\u05E2.',
 		pendingReply: 'אפשר לשלוח הודעה נוספת רק אחרי שהמשתמש השני ענה להודעה הראשונה.',
+		pagePendingReply: 'אפשר לכתוב שוב לאחר שהעמוד ישיב להודעה הראשונה שלך.',
 		dailyLimit: 'אפשר לפנות עד 10 משתמשים חדשים ביום.',
 		noMessages: 'אין עדיין הודעות.',
 		backToList: 'Back to chats',
@@ -532,7 +563,20 @@ export default {
 		landingPageCommunityDescription: 'מציג עמוד קהילה חינמי עם אירועים, עדכונים, דירוגים, קישורי קשר וגילוי מקומי.',
 		openLandingPage: 'פתח עמוד',
 		userSearch: 'חיפוש משתמשים',
-		userSearchPlaceholder: 'חיפוש לפי שם, אימייל או לוגין'
+		userSearchPlaceholder: 'חיפוש לפי שם, אימייל או לוגין',
+		totalUsers: 'סך כל המשתמשים',
+		userDetails: 'פרטי משתמש',
+		userDetailsFailed: 'לא ניתן לטעון את פרטי המשתמש.',
+		accountDetails: 'פרטי חשבון',
+		login: 'לוגין',
+		role: 'תפקיד',
+		locale: 'שפה',
+		registeredAt: 'תאריך הרשמה',
+		emailVerified: 'אימייל מאומת',
+		banReason: 'סיבת חסימה',
+		userPages: 'עמודים',
+		noUserPages: 'למשתמש הזה אין עמודים.',
+		pageContentCounts: '{products} מוצרים, {services} שירותים, {events} אירועים, {ads} מודעות'
 	},
 	search: {
 		title: 'חיפוש',
@@ -719,6 +763,11 @@ export default {
 	landing: {
 		eyebrow: 'מודעות מקומיות, עסקים מקומיים.',
 		title: 'sveevee',
+		firstBadgeTitle: 'הגיעו ראשונים. בלטו ראשונים.',
+		firstBadgeBody: 'הצטרפו ל-Sveevee עוד היום והיו בין הראשונים בעיר ובשכונה שלכם.',
+		shareTitle: 'דברים טובים טובים יותר כשמשתפים אותם.',
+		shareBody: 'מכירים עסק מקומי מצוין, נותן שירות או קהילה? ספרו להם על Sveevee ועזרו להפוך את האזור שלכם לקל יותר לגילוי.',
+		shareCta: 'שתפו את Sveevee',
 		purposeKicker: '',
 		purposeTitle: 'על sveevee',
 		purposeParagraphs: [

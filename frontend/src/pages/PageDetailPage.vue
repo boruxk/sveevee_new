@@ -1,6 +1,6 @@
 <script setup>
 	import { computed, onMounted, ref, watch } from 'vue'
-	import { useRoute } from 'vue-router'
+	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { setLocale } from '@/i18n'
 	import { useAuthStore } from '@/stores/auth'
@@ -12,12 +12,15 @@
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
 	import EventCard from '@/components/events/EventCard.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
+	import PriceList from '@/components/prices/PriceList.vue'
 	import ServiceCard from '@/components/services/ServiceCard.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
 	import PageRatingsDialog from '@/components/ratings/PageRatingsDialog.vue'
 	import PageReviewDialog from '@/components/ratings/PageReviewDialog.vue'
+	import ChatBlock from '@/components/ChatBlock.vue'
 
 	const route = useRoute()
+	const router = useRouter()
 	const { t, locale } = useI18n()
 	const authStore = useAuthStore()
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
@@ -35,8 +38,11 @@
 	const loading = ref(false)
 	const ratingsDialogOpen = ref(false)
 	const reviewDialogOpen = ref(false)
+	const pageChatDialogOpen = ref(false)
 	const selectedPalette = computed(() => findPresencePalette(page.value?.palette_key))
 	const canRate = computed(() => authStore.isAuthenticated && page.value?.user_id !== authStore.user?.id)
+	const showChatAction = computed(() => Boolean(page.value?.id))
+	const isPageOwner = computed(() => authStore.isAuthenticated && page.value?.user_id === authStore.user?.id)
 	const featureFlags = computed(() => page.value?.features || page.value?.setup?.features || {})
 	const featureFlag = (key, fallback) => {
 		const value = featureFlags.value[key] ?? fallback
@@ -46,6 +52,8 @@
 	const isStoreEnabled = computed(() => featureFlag('store', false))
 	const isServicesEnabled = computed(() => featureFlag('services', false))
 	const isEventsEnabled = computed(() => featureFlag('events', false))
+	const isPriceListEnabled = computed(() => featureFlag('price_list', false))
+	const hasPriceList = computed(() => page.value?.type === 'business' && isPriceListEnabled.value && page.value?.prices?.length > 0)
 	const visibleServices = computed(() => (Array.isArray(page.value?.services) ? page.value.services.filter((service) => service?.id) : []))
 	const hasStoreProducts = computed(() => page.value?.type === 'business' && isStoreEnabled.value && page.value?.products?.length > 0)
 	const hasBusinessServices = computed(() => (
@@ -54,7 +62,7 @@
 		visibleServices.value.length > 0
 	))
 	const hasCommunityEvents = computed(() => page.value?.type === 'community' && isEventsEnabled.value && page.value?.events?.length > 0)
-	const hasPreviewContent = computed(() => hasStoreProducts.value || hasBusinessServices.value || hasCommunityEvents.value)
+	const hasPreviewContent = computed(() => hasPriceList.value || hasStoreProducts.value || hasBusinessServices.value || hasCommunityEvents.value)
 	const routeLocale = computed(() => String(route.params.locale || ''))
 	const isBusinessPage = computed(() => page.value?.type === 'business')
 	const pageTypeLabel = computed(() => t(`pages.kinds.${page.value?.type || 'business'}`))
@@ -263,7 +271,34 @@
 		syncRatingSummary(payload.summary)
 	}
 
+	function openChat() {
+		if (!page.value?.id) {
+			return
+		}
+
+		if (!authStore.isAuthenticated) {
+			const chatTarget = router.resolve({
+				path: route.path,
+				query: { ...route.query, pageChat: '1' }
+			}).fullPath
+			router.push({ name: 'login', query: { redirect: chatTarget } })
+			return
+		}
+
+		if (isPageOwner.value) {
+			router.push({ name: page.value.type, query: { tab: 'chat' } })
+			return
+		}
+
+		pageChatDialogOpen.value = true
+	}
+
 	watch(() => route.fullPath, load)
+	watch([page, () => route.query.pageChat, () => authStore.isAuthenticated], () => {
+		if (page.value && route.query.pageChat === '1' && authStore.isAuthenticated && !isPageOwner.value) {
+			pageChatDialogOpen.value = true
+		}
+	})
 
 	onMounted(async() => {
 		await Promise.all([load(), loadCatalogTopics()])
@@ -283,14 +318,20 @@
 				:page="page"
 				:palette="selectedPalette"
 				:can-rate="canRate"
+				:can-chat="showChatAction"
 				:has-after-info="hasPreviewContent"
 				:title-tag="isBusinessPage ? 'h1' : 'h2'"
 				:description-fallback="businessSeoDescription"
 				:share-url="shareUrl"
 				@show-ratings="ratingsDialogOpen = true"
 				@rate="reviewDialogOpen = true"
+				@chat="openChat"
 			>
 				<template #afterInfo>
+					<section v-if="hasPriceList" class="preview-section">
+						<h2>{{ t('priceList.title') }}</h2>
+						<PriceList :items="page.prices" class="preview-price-list" />
+					</section>
 					<section v-if="hasStoreProducts" class="preview-section">
 						<h2>{{ t('products.storeTitle') }}</h2>
 						<div class="product-grid">
@@ -323,6 +364,26 @@
 					</section>
 				</template>
 			</PagePreview>
+
+			<q-dialog v-model="pageChatDialogOpen" transition-show="slide-up" transition-hide="slide-down">
+				<q-card class="page-chat-dialog-card">
+					<header class="page-chat-dialog-head">
+						<div>
+							<strong>{{ page.name }}</strong>
+							<span>{{ t('chat.title') }}</span>
+						</div>
+						<q-btn
+							flat
+							round
+							dense
+							icon="close"
+							:aria-label="t('actions.close')"
+							v-close-popup
+						/>
+					</header>
+					<ChatBlock :page-id="page.id" compact class="page-public-chat" />
+				</q-card>
+			</q-dialog>
 
 			<PageRatingsDialog
 				v-model="ratingsDialogOpen"
@@ -389,6 +450,10 @@
   margin-top: 28px;
 }
 
+.preview-price-list {
+  margin-top: 18px;
+}
+
 .preview-section :deep(.product-card),
 .preview-section :deep(.service-card),
 .preview-section :deep(.event-card) {
@@ -434,6 +499,48 @@
   margin-top: 18px;
 }
 
+.page-chat-dialog-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(760px, calc(100vw - 32px));
+  max-width: 760px;
+  height: min(720px, calc(100vh - 48px));
+  max-height: 720px;
+  border-radius: 24px !important;
+  background: #fff8fb;
+  overflow: hidden;
+}
+
+.page-chat-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(17, 34, 45, 0.1);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.page-chat-dialog-head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.page-chat-dialog-head strong {
+  color: var(--soz-ink);
+  font-size: 18px;
+}
+
+.page-chat-dialog-head span {
+  color: var(--soz-muted);
+  font-size: 13px;
+}
+
+.page-public-chat {
+  min-height: 0;
+  height: 100%;
+}
+
 @media (max-width: 760px) {
   .product-grid {
     grid-template-columns: 1fr;
@@ -443,6 +550,13 @@
 @media (max-width: 700px) {
   .detail-page {
     padding-inline: 10px;
+  }
+
+  .page-chat-dialog-card {
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0 !important;
   }
 }
 </style>

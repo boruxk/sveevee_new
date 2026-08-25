@@ -3,6 +3,8 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
+	import ProductLabels from '@/components/products/ProductLabels.vue'
+	import { recordProductContact } from '@/services/api/products'
 
 	const props = defineProps({
 		product: {
@@ -27,6 +29,7 @@
 	const productDetailPath = computed(() => props.product?.public_path || '')
 	const productImageAlt = computed(() => props.product?.image_alt || props.product?.name || '')
 	const productImageSizes = computed(() => props.product?.image_sizes || '(max-width: 700px) calc(100vw - 36px), 340px')
+	const productIdentity = computed(() => [props.product?.brand, props.product?.model].filter(Boolean).join(' '))
 	const themeStyle = computed(() => {
 		if (!props.palette) {
 			return null
@@ -47,6 +50,12 @@
 			detailOpen.value = true
 		}
 	}
+
+	function trackContact() {
+		if (props.product?.id) {
+			recordProductContact(props.product.id).catch(() => {})
+		}
+	}
 </script>
 
 <template>
@@ -64,11 +73,16 @@
 		/>
 		<div class="product-card__body">
 			<div class="product-card__copy">
+				<ProductLabels :labels="product.labels" />
 				<h3 class="product-card__title">{{ product.name }}</h3>
+				<div v-if="productIdentity" class="product-card__identity">{{ productIdentity }}</div>
 				<p class="product-card__description">{{ product.description }}</p>
 			</div>
 			<div class="product-card__footer">
-				<div class="product-card__price">{{ product.price_label }}</div>
+				<div class="product-card__prices" :class="{ 'product-card__prices--offer': product.offer_active }">
+					<del v-if="product.offer_active" class="product-card__normal-price">{{ product.normal_price_label }}</del>
+					<div class="product-card__price" :class="{ 'product-card__price--offer': product.offer_active }">{{ product.price_label }}</div>
+				</div>
 				<div class="product-card__actions">
 					<q-btn
 						class="product-card__view-btn"
@@ -124,8 +138,13 @@
 			<q-card-section class="product-detail-dialog__body">
 				<div class="product-detail-dialog__head">
 					<div>
+						<ProductLabels :labels="product.labels" />
 						<h3>{{ product.name }}</h3>
-						<div class="product-detail-dialog__price">{{ product.price_label }}</div>
+						<div v-if="productIdentity" class="product-detail-dialog__identity">{{ productIdentity }}</div>
+						<div class="product-detail-dialog__prices" :class="{ 'product-detail-dialog__prices--offer': product.offer_active }">
+							<del v-if="product.offer_active">{{ product.normal_price_label }}</del>
+							<div class="product-detail-dialog__price" :class="{ 'product-detail-dialog__price--offer': product.offer_active }">{{ product.price_label }}</div>
+						</div>
 					</div>
 					<q-btn flat round icon="close" class="product-detail-dialog__close" v-close-popup />
 				</div>
@@ -140,6 +159,7 @@
 						target="_blank"
 						rel="noopener noreferrer"
 						:label="t('products.buy')"
+						@click="trackContact"
 					/>
 				</div>
 			</q-card-section>
@@ -189,6 +209,18 @@
   overflow-wrap: anywhere;
 }
 
+.product-card__copy :deep(.product-labels) {
+  margin-bottom: 9px;
+}
+
+.product-card__identity,
+.product-detail-dialog__identity {
+  margin: -3px 0 8px;
+  color: var(--presence-muted, rgba(17, 34, 45, 0.65));
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 .product-card__description {
   display: -webkit-box;
   overflow: hidden;
@@ -216,6 +248,49 @@
   color: var(--presence-ink, #151f2d);
   font-size: 22px;
   font-weight: 800;
+}
+
+.product-card__prices,
+.product-detail-dialog__prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.product-card__prices--offer,
+.product-detail-dialog__prices--offer {
+  display: inline-grid;
+  justify-items: start;
+  gap: 1px;
+  width: fit-content;
+  padding: 7px 11px;
+  border: 1px solid rgba(235, 52, 130, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 240, 247, 0.78);
+  box-shadow: 0 6px 16px rgba(174, 35, 100, 0.08);
+}
+
+.product-card__price--offer {
+  color: #b51f60;
+  font-size: 27px;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.product-detail-dialog__price--offer {
+  color: #b51f60;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1.08;
+}
+
+.product-card__normal-price,
+.product-detail-dialog__prices del {
+  color: rgba(128, 34, 77, 0.68);
+  font-size: 0.9rem;
+  text-decoration-color: #b51f60;
+  text-decoration-thickness: 2px;
 }
 
 .product-card__actions {
@@ -271,6 +346,10 @@
   color: var(--presence-ink, #151f2d);
   font-size: 28px;
   line-height: 1.2;
+}
+
+.product-detail-dialog__head :deep(.product-labels) {
+  margin-bottom: 9px;
 }
 
 .product-detail-dialog__price {

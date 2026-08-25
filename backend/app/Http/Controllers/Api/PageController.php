@@ -36,7 +36,7 @@ class PageController extends Controller
         $page = Page::query()
             ->where('user_id', $request->user()->id)
             ->where('type', $type)
-            ->with(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'services', 'events'])
+            ->with(['user.profile', 'ads.user.profile', 'ads.page', 'prices', 'products', 'services', 'events'])
             ->withCount('ratings')
             ->withAvg('ratings', 'rating')
             ->first();
@@ -66,6 +66,12 @@ class PageController extends Controller
         ]);
 
         $setup = $this->normalizedSetup($request->input('setup'));
+        $setup['features'] = [
+            'store' => $type === Page::TYPE_BUSINESS ? $setup['features']['store'] : false,
+            'services' => $type === Page::TYPE_BUSINESS ? $setup['features']['services'] : false,
+            'events' => $type === Page::TYPE_COMMUNITY ? $setup['features']['events'] : false,
+            'price_list' => $type === Page::TYPE_BUSINESS ? $setup['features']['price_list'] : false,
+        ];
         $contact = $setup['contact'] ?? [];
         $addressDetails = $setup['address'] ?? [];
 
@@ -115,7 +121,7 @@ class PageController extends Controller
             'neighborhood' => $addressDetails['neighborhood'] ?? null,
         ]);
 
-        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'services', 'events'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
+        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'prices', 'products', 'services', 'events'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
     }
 
     public function updateFeatures(Request $request, string $type)
@@ -127,6 +133,7 @@ class PageController extends Controller
             'features.store' => ['nullable', 'boolean'],
             'features.services' => ['nullable', 'boolean'],
             'features.events' => ['nullable', 'boolean'],
+            'features.price_list' => ['nullable', 'boolean'],
         ]);
 
         $page = Page::query()
@@ -140,12 +147,13 @@ class PageController extends Controller
             'store' => $type === Page::TYPE_BUSINESS ? $this->booleanValue($features['store'] ?? null, false) : false,
             'services' => $type === Page::TYPE_BUSINESS ? $this->booleanValue($features['services'] ?? null, false) : false,
             'events' => $type === Page::TYPE_COMMUNITY ? $this->booleanValue($features['events'] ?? null, false) : false,
+            'price_list' => $type === Page::TYPE_BUSINESS ? $this->booleanValue($features['price_list'] ?? null, false) : false,
         ];
 
         $page->setup = $this->normalizedSetup($setup);
         $page->save();
 
-        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'services', 'events'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
+        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'prices', 'products', 'services', 'events'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
     }
 
     public function show(Page $page)
@@ -154,7 +162,7 @@ class PageController extends Controller
             return ApiResponseService::error('Resource not found.', status: 404);
         }
 
-        $page->load(['user.profile', 'ads.user.profile', 'ads.page', 'products', 'services', 'events'])
+        $page->load(['user.profile', 'ads.user.profile', 'ads.page', 'prices', 'products', 'services', 'events'])
             ->loadCount('ratings')
             ->loadAvg('ratings', 'rating');
 
@@ -241,6 +249,7 @@ class PageController extends Controller
                 'store' => $this->booleanValue($features['store'] ?? null, false),
                 'services' => $this->booleanValue($features['services'] ?? null, false),
                 'events' => $this->booleanValue($features['events'] ?? null, false),
+                'price_list' => $this->booleanValue($features['price_list'] ?? null, false),
             ],
             'services' => [
                 'title' => $this->nullableString($services['title'] ?? null),

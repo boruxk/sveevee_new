@@ -130,7 +130,12 @@ class SearchController extends Controller
             ->values() : collect();
 
         $products = $this->shouldSearch('products', $resultScope) ? PageProduct::query()
-            ->with(['page.user.profile'])
+            ->with([
+                'page' => fn ($page) => $page
+                    ->with('user.profile')
+                    ->withCount('ratings')
+                    ->withAvg('ratings', 'rating'),
+            ])
             ->when($topicKey, fn (Builder $query) => $query->whereIn('category_key', $topicKeys))
             ->when($term !== '', fn (Builder $query) => $this->whereListingText($query, $like))
             ->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {

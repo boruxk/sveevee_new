@@ -5,8 +5,11 @@ namespace App\Services;
 use App\Models\Ad;
 use App\Models\Conversation;
 use App\Models\Page;
+use App\Models\PageChatMessage;
+use App\Models\PageConversation;
 use App\Models\PageEvent;
 use App\Models\PageProduct;
+use App\Models\PagePrice;
 use App\Models\PageRating;
 use App\Models\PageService;
 use App\Models\User;
@@ -82,7 +85,8 @@ class PayloadService
         $contact = $this->pageContact($page, $setup);
         $addressDetails = $this->pageAddress($setup);
         $socials = $this->pageSocials($setup);
-        $page->loadMissing(['products', 'services', 'events']);
+        $page->loadMissing(['prices', 'products', 'services', 'events']);
+        $page->products->each(fn (PageProduct $product) => $product->setRelation('page', $page));
 
         $payload = [
             'id' => $page->id,
@@ -109,6 +113,7 @@ class PayloadService
             ...$this->publicImageMeta('banner', $page->banner_path, $page->name, '(max-width: 700px) calc(100vw - 28px), 1180px'),
             'banner_name' => $page->banner_original_name,
             'rating_summary' => $this->pageRatingSummary($page),
+            'prices' => $page->prices->map(fn (PagePrice $price) => $this->price($price))->values()->all(),
             'products' => $page->products->map(fn (PageProduct $product) => $this->product($product))->values()->all(),
             'services' => $page->services->map(fn (PageService $service) => $this->service($service))->values()->all(),
             'events' => $page->events->map(fn (PageEvent $event) => $this->event($event))->values()->all(),
@@ -132,6 +137,11 @@ class PayloadService
     public function product(PageProduct $product): array
     {
         $product->loadMissing('page');
+        if ($product->page && ! array_key_exists('ratings_count', $product->page->getAttributes())) {
+            $product->page->loadCount('ratings')->loadAvg('ratings', 'rating');
+        }
+        $activeOffer = $product->hasActiveOffer();
+        $currentPrice = $product->currentPrice();
 
         return [
             'id' => $product->id,
@@ -139,16 +149,43 @@ class PayloadService
             'public_path' => '/product/'.$product->public_slug,
             'page_id' => $product->page_id,
             'name' => $product->name,
+            'brand' => $product->brand,
+            'model' => $product->model,
             'description' => $product->description,
             'category_key' => $product->category_key,
             'image_url' => $product->image_url,
             ...$this->publicImageMeta('image', $product->image_path, $product->name, '(max-width: 700px) calc(100vw - 36px), 340px'),
             'image_name' => $product->image_original_name,
-            'price' => (float) $product->price,
-            'price_label' => '₪'.number_format((float) $product->price, 2),
+            'price' => $currentPrice,
+            'price_label' => $this->moneyLabel($currentPrice),
+            'normal_price' => (float) $product->price,
+            'normal_price_label' => $this->moneyLabel((float) $product->price),
+            'offer_enabled' => (bool) $product->offer_enabled,
+            'offer_active' => $activeOffer,
+            'offer_price' => $product->offer_price !== null ? (float) $product->offer_price : null,
+            'offer_price_label' => $product->offer_price !== null ? $this->moneyLabel((float) $product->offer_price) : null,
+            'offer_starts_at' => $product->offer_starts_at?->toISOString(),
+            'offer_ends_at' => $product->offer_ends_at?->toISOString(),
+            'previous_price' => $product->previous_price !== null ? (float) $product->previous_price : null,
+            'views_count' => (int) $product->views_count,
+            'contacts_count' => (int) $product->contacts_count,
+            'labels' => $this->productLabels($product, $activeOffer),
             'link' => $product->link,
             'created_at' => $product->created_at?->toISOString(),
             'updated_at' => $product->updated_at?->toISOString(),
+        ];
+    }
+
+    public function price(PagePrice $price): array
+    {
+        return [
+            'id' => $price->id,
+            'page_id' => $price->page_id,
+            'name' => $price->name,
+            'price' => (float) $price->price,
+            'price_label' => $this->moneyLabel((float) $price->price),
+            'created_at' => $price->created_at?->toISOString(),
+            'updated_at' => $price->updated_at?->toISOString(),
         ];
     }
 
@@ -289,9 +326,98 @@ class PayloadService
         ];
     }
 
+    public function pageConversation(PageConversation $conversation, User $viewer, array $composerState, bool $withMessages = false): array
+    {
+        $conversation->loadMissing(['page', 'visitor.profile', 'messages.sender.profile']);
+        $viewerIsOwner = $conversation->page->user_id === $viewer->id;
+        $latest = $conversation->messages
+            ->sortBy(fn ($message): string => sprintf('%020s%020d', $message->created_at?->format('Uu') ?? '0', $message->id))
+            ->last();
+
+        $payload = [
+            'id' => $conversation->id,
+            'page' => $this->pageChatIdentity($conversation->page),
+            'other_user' => $viewerIsOwner
+                ? $this->user($conversation->visitor)
+                : $this->pageChatIdentity($conversation->page, asChatUser: true),
+            'is_page_chat' => true,
+            'last_message_at' => $conversation->last_message_at?->toISOString(),
+            'latest_message' => $latest ? $this->pageChatMessage($latest, $conversation->page) : null,
+            'unread_count' => $conversation->messages
+                ->where('sender_id', '!=', $viewer->id)
+                ->whereNull('read_at')
+                ->count(),
+            'composer_state' => $composerState,
+        ];
+
+        if ($withMessages) {
+            $payload['messages'] = $conversation->messages
+                ->sortBy('created_at')
+                ->map(fn (PageChatMessage $message) => $this->pageChatMessage($message, $conversation->page))
+                ->values()
+                ->all();
+        }
+
+        return $payload;
+    }
+
+    public function pageChatMessage(PageChatMessage $message, Page $page): array
+    {
+        return [
+            'id' => $message->id,
+            'conversation_id' => $message->page_conversation_id,
+            'sender_id' => $message->sender_id,
+            'sender_as_page' => (bool) $message->sender_as_page,
+            'body' => $message->body,
+            'read_at' => $message->read_at?->toISOString(),
+            'created_at' => $message->created_at?->toISOString(),
+            'sender' => $message->sender_as_page
+                ? $this->pageChatIdentity($page, asChatUser: true)
+                : ($message->relationLoaded('sender') ? $this->user($message->sender) : null),
+        ];
+    }
+
+    private function pageChatIdentity(Page $page, bool $asChatUser = false): array
+    {
+        $identity = [
+            'id' => $asChatUser ? 'page-'.$page->id : $page->id,
+            'page_id' => $page->id,
+            'display_name' => $page->name,
+            'name' => $page->name,
+            'type' => $page->type,
+            'public_path' => '/pages/'.$page->public_slug,
+            'logo_url' => $page->logo_url,
+            ...$this->publicImageMeta('logo', $page->logo_path, $page->name.' logo', '40px'),
+        ];
+
+        if ($asChatUser) {
+            $identity['is_page'] = true;
+            $identity['profile'] = [
+                'photo_url' => $identity['logo_url'],
+                'photo_alt' => $identity['logo_alt'],
+                'photo_width' => $identity['logo_width'],
+                'photo_height' => $identity['logo_height'],
+                'photo_sizes' => $identity['logo_sizes'],
+                'photo_webp_srcset' => $identity['logo_webp_srcset'],
+                'photo_avif_srcset' => $identity['logo_avif_srcset'],
+            ];
+        }
+
+        return $identity;
+    }
+
     public function unreadMessageCount(User $user): int
     {
-        return $user->receivedUnreadMessages()->count();
+        $privateUnread = $user->receivedUnreadMessages()->count();
+        $pageUnread = PageChatMessage::query()
+            ->whereHas('conversation', fn ($query) => $query
+                ->where('visitor_id', $user->id)
+                ->whereHas('page.user', fn ($ownerQuery) => $ownerQuery->whereNull('banned_at')))
+            ->where('sender_as_page', true)
+            ->whereNull('read_at')
+            ->count();
+
+        return $privateUnread + $pageUnread;
     }
 
     private function firstPageOfType(User $user, string $type): ?array
@@ -366,7 +492,42 @@ class PayloadService
             'store' => $this->booleanValue($features['store'] ?? null, false),
             'services' => $this->booleanValue($features['services'] ?? null, false),
             'events' => $this->booleanValue($features['events'] ?? null, false),
+            'price_list' => $this->booleanValue($features['price_list'] ?? null, false),
         ];
+    }
+
+    private function productLabels(PageProduct $product, bool $activeOffer): array
+    {
+        $labels = [];
+        $ratingAverage = (float) ($product->page?->getAttribute('ratings_avg_rating') ?? 0);
+        $ratingCount = (int) ($product->page?->getAttribute('ratings_count') ?? 0);
+
+        if ($product->created_at?->greaterThanOrEqualTo(now()->subDays(3))) {
+            $labels[] = 'new';
+        }
+
+        if ($product->previous_price !== null && (float) $product->previous_price > (float) $product->price) {
+            $labels[] = 'price_dropped';
+        }
+
+        if ((int) $product->views_count >= 100 || (int) $product->contacts_count >= 10) {
+            $labels[] = 'popular';
+        }
+
+        if ($ratingCount >= 3 && $ratingAverage >= 4.7) {
+            $labels[] = 'highly_rated';
+        }
+
+        if ($activeOffer) {
+            $labels[] = 'offer';
+        }
+
+        return $labels;
+    }
+
+    private function moneyLabel(float $price): string
+    {
+        return "\u{20AA}".number_format($price, 2);
     }
 
     private function booleanValue(mixed $value, bool $default): bool

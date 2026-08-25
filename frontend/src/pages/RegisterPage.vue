@@ -44,6 +44,7 @@
 			<section class="soz-section-card auth-panel">
 				<div class="auth-panel__inner">
 					<h1 class="soz-page-title">{{ t('auth.registerTitle') }}</h1>
+					<p class="auth-welcome">{{ t('auth.registerWelcome') }}</p>
 					<GoogleAuthButton class="auth-google" />
 					<div class="auth-divider">{{ t('auth.or') }}</div>
 					<q-form ref="formRef" greedy class="register-form" @submit.prevent="submit()">
@@ -123,7 +124,15 @@
 }
 
 .auth-panel__inner h1 {
-  margin-bottom: 24px;
+  margin-bottom: 7px;
+}
+
+.auth-welcome {
+  max-width: 620px;
+  margin: 0 0 22px;
+  color: rgba(17, 34, 45, 0.66);
+  font-size: 0.98rem;
+  line-height: 1.55;
 }
 
 .auth-google {

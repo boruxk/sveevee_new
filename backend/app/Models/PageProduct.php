@@ -10,14 +10,25 @@ use Illuminate\Support\Facades\Storage;
 
 class PageProduct extends Model
 {
+    protected $touches = ['page'];
+
     protected $fillable = [
         'page_id',
         'name',
+        'brand',
+        'model',
         'description',
         'category_key',
         'image_path',
         'image_original_name',
         'price',
+        'offer_enabled',
+        'offer_price',
+        'offer_starts_at',
+        'offer_ends_at',
+        'previous_price',
+        'views_count',
+        'contacts_count',
         'link',
     ];
 
@@ -25,7 +36,28 @@ class PageProduct extends Model
     {
         return [
             'price' => 'decimal:2',
+            'offer_enabled' => 'boolean',
+            'offer_price' => 'decimal:2',
+            'offer_starts_at' => 'datetime',
+            'offer_ends_at' => 'datetime',
+            'previous_price' => 'decimal:2',
+            'views_count' => 'integer',
+            'contacts_count' => 'integer',
         ];
+    }
+
+    public function hasActiveOffer(): bool
+    {
+        if (! $this->offer_enabled || $this->offer_price === null || ! $this->offer_starts_at || ! $this->offer_ends_at) {
+            return false;
+        }
+
+        return now()->betweenIncluded($this->offer_starts_at, $this->offer_ends_at);
+    }
+
+    public function currentPrice(): float
+    {
+        return (float) ($this->hasActiveOffer() ? $this->offer_price : $this->price);
     }
 
     public function page(): BelongsTo

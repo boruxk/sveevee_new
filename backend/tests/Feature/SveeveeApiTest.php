@@ -6,7 +6,9 @@ use App\Models\Ad;
 use App\Models\EmailBan;
 use App\Models\Page;
 use App\Models\PageEvent;
+use App\Models\PageConversation;
 use App\Models\PageProduct;
+use App\Models\PageRating;
 use App\Models\PageService;
 use App\Models\User;
 use App\Notifications\PasswordChangedNotification;
@@ -297,6 +299,107 @@ class SveeveeApiTest extends TestCase
         $this->postJson("/api/v1/chats/users/{$recipient->id}/messages", [
             'body' => 'Danke',
         ])->assertCreated();
+    }
+
+    public function test_page_chat_is_separate_from_private_chat_and_replies_as_page(): void
+    {
+        $owner = User::factory()->create();
+        $visitor = User::factory()->create();
+        $businessPage = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Miri Studio',
+        ]);
+        $communityPage = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_COMMUNITY,
+            'name' => 'Ramot Community',
+        ]);
+
+        Sanctum::actingAs($visitor);
+
+        $created = $this->postJson("/api/v1/pages/{$businessPage->id}/chat/messages", [
+            'body' => 'Is this product available?',
+        ])->assertCreated()
+            ->assertJsonPath('data.is_page_chat', true)
+            ->assertJsonPath('data.other_user.is_page', true)
+            ->assertJsonPath('data.other_user.display_name', 'Miri Studio')
+            ->assertJsonPath('data.messages.0.sender_as_page', false)
+            ->assertJsonPath('data.composer_state.reason', 'page_pending_reply');
+
+        $conversationId = $created->json('data.id');
+
+        $this->getJson('/api/v1/chats')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.conversations');
+
+        $this->getJson('/api/v1/page-chats')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.conversations')
+            ->assertJsonPath('data.conversations.0.id', $conversationId)
+            ->assertJsonPath('data.conversations.0.other_user.display_name', 'Miri Studio')
+            ->assertJsonPath('data.unread_count', 0);
+
+        $this->postJson("/api/v1/pages/{$businessPage->id}/chat/messages", [
+            'body' => 'Second message',
+        ])->assertStatus(409)
+            ->assertJsonPath('errors.reason', 'page_pending_reply');
+
+        $this->postJson("/api/v1/pages/{$communityPage->id}/chat/messages", [
+            'body' => 'When is the next event?',
+        ])->assertCreated()
+            ->assertJsonPath('data.page.type', Page::TYPE_COMMUNITY);
+
+        Sanctum::actingAs($owner);
+
+        $this->getJson("/api/v1/pages/{$businessPage->id}/chats")
+            ->assertOk()
+            ->assertJsonPath('data.conversations.0.id', $conversationId)
+            ->assertJsonPath('data.conversations.0.other_user.id', $visitor->id)
+            ->assertJsonPath('data.conversations.0.latest_message.body', 'Is this product available?');
+
+        $this->postJson("/api/v1/page-chats/{$conversationId}/messages", [
+            'body' => 'Yes, it is available.',
+        ])->assertCreated()
+            ->assertJsonPath('data.messages.1.sender_as_page', true)
+            ->assertJsonPath('data.messages.1.sender.display_name', 'Miri Studio');
+
+        $this->getJson('/api/v1/chats')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.conversations');
+
+        Sanctum::actingAs($visitor);
+
+        $visitorInbox = $this->getJson('/api/v1/page-chats')
+            ->assertOk()
+            ->assertJsonCount(2, 'data.conversations')
+            ->assertJsonPath('data.unread_count', 1);
+        $businessConversation = collect($visitorInbox->json('data.conversations'))->firstWhere('id', $conversationId);
+        $this->assertSame('Yes, it is available.', $businessConversation['latest_message']['body']);
+        $this->assertSame(1, $businessConversation['unread_count']);
+
+        $this->getJson('/api/v1/chats')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.conversations')
+            ->assertJsonPath('data.unread_count', 1);
+
+        $this->getJson("/api/v1/pages/{$businessPage->id}/chat")
+            ->assertOk()
+            ->assertJsonPath('data.messages.1.body', 'Yes, it is available.')
+            ->assertJsonPath('data.composer_state.can_send', true);
+
+        $readInbox = $this->getJson('/api/v1/page-chats')
+            ->assertOk()
+            ->assertJsonPath('data.unread_count', 0);
+        $readBusinessConversation = collect($readInbox->json('data.conversations'))->firstWhere('id', $conversationId);
+        $this->assertSame(0, $readBusinessConversation['unread_count']);
+
+        $this->assertDatabaseHas('page_chat_messages', [
+            'page_conversation_id' => $conversationId,
+            'sender_id' => $owner->id,
+            'sender_as_page' => true,
+        ]);
+        $this->assertSame(2, PageConversation::query()->count());
     }
 
     public function test_user_can_contact_only_ten_new_users_per_day(): void
@@ -1748,6 +1851,151 @@ HTML);
         ], ['Accept' => 'application/json'])->assertStatus(422);
     }
 
+    public function test_business_page_owner_can_manage_price_list(): void
+    {
+        $owner = User::factory()->create();
+        $businessPage = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Miri Studio',
+            'setup' => ['features' => ['price_list' => true]],
+        ]);
+        $communityPage = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_COMMUNITY,
+            'name' => 'Miri Community',
+        ]);
+
+        Sanctum::actingAs($owner);
+
+        $created = $this->postJson("/api/v1/pages/{$businessPage->id}/prices", [
+            'name' => 'Consultation',
+            'price' => 180,
+        ])->assertCreated()
+            ->assertJsonPath('data.name', 'Consultation')
+            ->assertJsonPath('data.price', 180)
+            ->assertJsonPath('data.price_label', '₪180.00');
+
+        $priceId = $created->json('data.id');
+
+        $this->putJson("/api/v1/page-prices/{$priceId}", [
+            'name' => 'Initial consultation',
+            'price' => 210.5,
+        ])->assertOk()
+            ->assertJsonPath('data.name', 'Initial consultation')
+            ->assertJsonPath('data.price_label', '₪210.50');
+
+        $this->getJson("/api/v1/pages/{$businessPage->id}")
+            ->assertOk()
+            ->assertJsonPath('data.features.price_list', true)
+            ->assertJsonPath('data.prices.0.name', 'Initial consultation');
+
+        $this->postJson("/api/v1/pages/{$communityPage->id}/prices", [
+            'name' => 'Not allowed',
+            'price' => 10,
+        ])->assertStatus(422);
+
+        $this->deleteJson("/api/v1/page-prices/{$priceId}")->assertOk();
+        $this->assertDatabaseMissing('page_prices', ['id' => $priceId]);
+    }
+
+    public function test_product_offers_and_automatic_labels_are_computed(): void
+    {
+        Storage::fake('public');
+        Carbon::setTestNow('2026-08-25 12:00:00');
+
+        try {
+            $owner = User::factory()->create();
+            $businessPage = Page::query()->create([
+                'user_id' => $owner->id,
+                'type' => Page::TYPE_BUSINESS,
+                'name' => 'Miri Studio',
+            ]);
+
+            foreach (User::factory()->count(3)->create() as $reviewer) {
+                PageRating::query()->create([
+                    'page_id' => $businessPage->id,
+                    'user_id' => $reviewer->id,
+                    'rating' => 5,
+                ]);
+            }
+
+            Sanctum::actingAs($owner);
+
+            $created = $this->post("/api/v1/pages/{$businessPage->id}/products", [
+                'name' => 'Studio lamp',
+                'brand' => 'Light Co',
+                'model' => 'L-20',
+                'description' => 'A bright desk lamp.',
+                'category_key' => 'products.home_garden.home_decor',
+                'image' => UploadedFile::fake()->image('lamp.jpg'),
+                'price' => '100.00',
+                'offer_enabled' => '1',
+                'offer_price' => '80.00',
+                'offer_starts_at' => '2026-08-24 12:00:00',
+                'offer_ends_at' => '2026-08-26 12:00:00',
+                'link' => 'https://seller.example/products/lamp',
+            ], ['Accept' => 'application/json'])->assertCreated()
+                ->assertJsonPath('data.brand', 'Light Co')
+                ->assertJsonPath('data.model', 'L-20')
+                ->assertJsonPath('data.normal_price', 100)
+                ->assertJsonPath('data.price', 80)
+                ->assertJsonPath('data.offer_active', true)
+                ->assertJsonPath('data.labels', ['new', 'highly_rated', 'offer']);
+
+            $productId = $created->json('data.id');
+
+            $this->post("/api/v1/products/{$productId}", [
+                '_method' => 'PUT',
+                'name' => 'Studio lamp',
+                'brand' => 'Light Co',
+                'model' => 'L-20',
+                'description' => 'A bright desk lamp.',
+                'category_key' => 'products.home_garden.home_decor',
+                'price' => '90.00',
+                'offer_enabled' => '1',
+                'offer_price' => '80.00',
+                'offer_starts_at' => '2026-08-24 12:00:00',
+                'offer_ends_at' => '2026-08-26 12:00:00',
+                'link' => 'https://seller.example/products/lamp',
+            ], ['Accept' => 'application/json'])->assertOk()
+                ->assertJsonPath('data.previous_price', 100)
+                ->assertJsonPath('data.labels', ['new', 'price_dropped', 'highly_rated', 'offer']);
+
+            PageProduct::query()->whereKey($productId)->update([
+                'views_count' => 99,
+                'contacts_count' => 9,
+            ]);
+
+            $this->getJson("/api/v1/products/{$productId}")
+                ->assertOk()
+                ->assertJsonPath('data.views_count', 100)
+                ->assertJsonPath('data.labels', ['new', 'price_dropped', 'popular', 'highly_rated', 'offer']);
+
+            $this->postJson("/api/v1/products/{$productId}/contact")->assertOk();
+            $this->assertDatabaseHas('page_products', [
+                'id' => $productId,
+                'contacts_count' => 10,
+            ]);
+
+            $this->post("/api/v1/pages/{$businessPage->id}/products", [
+                'name' => 'Invalid offer',
+                'description' => 'Offer price is too high.',
+                'category_key' => 'products.home_garden.home_decor',
+                'image' => UploadedFile::fake()->image('invalid.jpg'),
+                'price' => '100.00',
+                'offer_enabled' => '1',
+                'offer_price' => '110.00',
+                'offer_starts_at' => '2026-08-24 12:00:00',
+                'offer_ends_at' => '2026-08-26 12:00:00',
+                'link' => 'https://seller.example/products/invalid',
+            ], ['Accept' => 'application/json'])->assertStatus(422)
+                ->assertJsonValidationErrors('offer_price');
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
     public function test_business_page_owner_can_add_service(): void
     {
         Storage::fake('public');
@@ -2057,6 +2305,31 @@ HTML);
             ->assertJsonCount(50, 'data.items')
             ->assertJsonPath('data.pagination.per_page', 50)
             ->assertJsonPath('data.pagination.total', $total)
+			->assertJsonPath('data.total_users', $total)
             ->assertJsonPath('data.items.0.email', fn ($value) => filled($value));
+    }
+
+    public function test_admin_can_open_complete_user_details_with_pages(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create([
+            'login' => 'miri-studio',
+            'locale' => 'he',
+        ]);
+        $page = Page::query()->create([
+            'user_id' => $user->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Miri Studio',
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson("/api/v1/admin/users/{$user->id}")
+            ->assertOk()
+            ->assertJsonPath('data.login', 'miri-studio')
+            ->assertJsonPath('data.locale', 'he')
+            ->assertJsonPath('data.pages.0.id', $page->id)
+            ->assertJsonPath('data.pages.0.name', 'Miri Studio')
+            ->assertJsonPath('data.pages.0.type', Page::TYPE_BUSINESS);
     }
 }

@@ -9,8 +9,10 @@ use App\Http\Controllers\Api\HomeFeedController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MarketController;
 use App\Http\Controllers\Api\PageController;
+use App\Http\Controllers\Api\PageChatController;
 use App\Http\Controllers\Api\PageEventController;
 use App\Http\Controllers\Api\PageProductController;
+use App\Http\Controllers\Api\PagePriceController;
 use App\Http\Controllers\Api\PageRatingController;
 use App\Http\Controllers\Api\PageServiceController;
 use App\Http\Controllers\Api\ProfileController;
@@ -30,6 +32,9 @@ Route::prefix('v1')->middleware('recaptcha')->group(function () {
     Route::get('/users/{user}', [PublicUserController::class, 'show']);
     Route::get('/ads/{ad}', [AdController::class, 'show']);
     Route::get('/products/{product}', [PageProductController::class, 'show']);
+    Route::post('/products/{product}/contact', [PageProductController::class, 'recordContact'])
+        ->withoutMiddleware('recaptcha')
+        ->middleware('throttle:120,1');
     Route::get('/pages/{page}/ratings', [PageRatingController::class, 'index']);
     Route::get('/pages/{page}', [PageController::class, 'show']);
 
@@ -61,6 +66,9 @@ Route::prefix('v1')->middleware('recaptcha')->group(function () {
         Route::post('/pages/{page}/products', [PageProductController::class, 'store']);
         Route::put('/products/{product}', [PageProductController::class, 'update']);
         Route::delete('/products/{product}', [PageProductController::class, 'destroy']);
+        Route::post('/pages/{page}/prices', [PagePriceController::class, 'store']);
+        Route::put('/page-prices/{price}', [PagePriceController::class, 'update']);
+        Route::delete('/page-prices/{price}', [PagePriceController::class, 'destroy']);
         Route::post('/pages/{page}/services', [PageServiceController::class, 'store']);
         Route::put('/services/{service}', [PageServiceController::class, 'update']);
         Route::delete('/services/{service}', [PageServiceController::class, 'destroy']);
@@ -68,6 +76,14 @@ Route::prefix('v1')->middleware('recaptcha')->group(function () {
         Route::put('/events/{event}', [PageEventController::class, 'update']);
         Route::delete('/events/{event}', [PageEventController::class, 'destroy']);
         Route::put('/pages/{page}/ratings/me', [PageRatingController::class, 'store']);
+
+        Route::get('/pages/{page}/chat', [PageChatController::class, 'visitorShow']);
+        Route::post('/pages/{page}/chat/messages', [PageChatController::class, 'sendToPage'])->middleware('throttle:chat-send');
+        Route::get('/pages/{page}/chats', [PageChatController::class, 'ownerIndex']);
+        Route::get('/page-chats', [PageChatController::class, 'visitorIndex']);
+        Route::get('/page-chats/{pageConversation}', [PageChatController::class, 'show']);
+        Route::post('/page-chats/{pageConversation}/messages', [PageChatController::class, 'send'])->middleware('throttle:chat-send');
+        Route::patch('/page-chats/{pageConversation}/read', [PageChatController::class, 'markAsRead']);
 
         Route::get('/ads', [AdController::class, 'index']);
         Route::post('/ads', [AdController::class, 'store']);

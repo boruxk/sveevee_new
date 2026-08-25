@@ -2,7 +2,7 @@
 	import { computed, nextTick, onMounted, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
-	import { banAdminUser, fetchAdminSupportChats, fetchAdminUserTable, restoreAdminUser } from '@/services/api/admin'
+	import { banAdminUser, fetchAdminSupportChats, fetchAdminUser, fetchAdminUserTable, restoreAdminUser } from '@/services/api/admin'
 	import { fetchChat, sendChatMessage } from '@/services/api/chats'
 	import { useAuthStore } from '@/stores/auth'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
@@ -16,6 +16,10 @@
 	const activeTab = ref('communication')
 	const supportConversations = ref([])
 	const userRows = ref([])
+	const totalUsers = ref(0)
+	const selectedUser = ref(null)
+	const userDetailsOpen = ref(false)
+	const userDetailsLoading = ref(false)
 	const selectedConversationId = ref(null)
 	const activeSupportConversation = ref(null)
 	const supportMessage = ref('')
@@ -113,6 +117,23 @@
 		}).format(date)
 	}
 
+	function formatDateTime(value) {
+		if (!value) {
+			return '-'
+		}
+
+		const date = new Date(value)
+
+		if (Number.isNaN(date.getTime())) {
+			return '-'
+		}
+
+		return new Intl.DateTimeFormat(intlLocale.value, {
+			dateStyle: 'medium',
+			timeStyle: 'short'
+		}).format(date)
+	}
+
 	function isOwn(message) {
 		return message.sender_id === authStore.user?.id
 	}
@@ -172,6 +193,7 @@
 			const pagination = payload.pagination || {}
 
 			userRows.value = payload.items || []
+			totalUsers.value = Number(payload.total_users || pagination.total || userRows.value.length)
 			tablePagination.value = {
 				page: pagination.current_page || page,
 				rowsPerPage: pagination.per_page || 50,
@@ -179,6 +201,25 @@
 			}
 		} finally {
 			tableLoading.value = false
+		}
+	}
+
+	async function openUserDetails(_, row) {
+		if (!row?.id) {
+			return
+		}
+
+		selectedUser.value = row
+		userDetailsOpen.value = true
+		userDetailsLoading.value = true
+
+		try {
+			const { data } = await fetchAdminUser(row.id)
+			selectedUser.value = data.data
+		} catch (error) {
+			$q.notify({ type: 'negative', message: error.response?.data?.message || t('admin.userDetailsFailed') })
+		} finally {
+			userDetailsLoading.value = false
 		}
 	}
 
@@ -384,17 +425,22 @@
 									<q-icon name="search" />
 								</template>
 							</q-input>
+							<div class="user-total" aria-live="polite">
+								<strong>{{ totalUsers.toLocaleString(intlLocale) }}</strong>
+								<span>{{ t('admin.totalUsers') }}</span>
+							</div>
 						</div>
 						<q-table
 							v-model:pagination="tablePagination"
 							flat
-							class="user-table"
 							:rows="userRows"
 							:columns="userColumns"
 							row-key="id"
 							:loading="tableLoading"
 							:rows-per-page-options="[50]"
 							binary-state-sort
+							class="user-table user-table--clickable"
+							@row-click="openUserDetails"
 							@request="onTableRequest"
 						>
 							<template #body-cell-name="props">
@@ -432,7 +478,7 @@
 										:label="t('actions.ban')"
 										:disable="props.row.role === 'admin'"
 										class="moderation-btn"
-										@click="ban(props.row)"
+										@click.stop="ban(props.row)"
 									/>
 									<q-btn v-else
 										color="positive"
@@ -443,7 +489,7 @@
 										icon="restart_alt"
 										:label="t('admin.unban')"
 										class="moderation-btn"
-										@click="restore(props.row)"
+										@click.stop="restore(props.row)"
 									/>
 								</q-td>
 							</template>
@@ -492,6 +538,71 @@
 					</section>
 				</q-tab-panel>
 			</q-tab-panels>
+
+			<q-dialog v-model="userDetailsOpen">
+				<q-card class="user-detail-dialog">
+					<header class="user-detail-head">
+						<div>
+							<h2>{{ selectedUser?.display_name || t('admin.userDetails') }}</h2>
+							<p>{{ selectedUser?.email || '-' }}</p>
+						</div>
+						<q-btn
+							flat
+							round
+							dense
+							icon="close"
+							:aria-label="t('actions.close')"
+							v-close-popup
+						/>
+					</header>
+
+					<div class="user-detail-body">
+						<q-inner-loading :showing="userDetailsLoading" />
+						<template v-if="selectedUser">
+							<section class="user-detail-section">
+								<h3>{{ t('admin.accountDetails') }}</h3>
+								<dl class="user-detail-grid">
+									<div><dt>ID</dt><dd>{{ selectedUser.id }}</dd></div>
+									<div><dt>{{ t('admin.name') }}</dt><dd>{{ selectedUser.display_name || selectedUser.name || '-' }}</dd></div>
+									<div><dt>{{ t('auth.email') }}</dt><dd>{{ selectedUser.email || '-' }}</dd></div>
+									<div><dt>{{ t('admin.login') }}</dt><dd>{{ selectedUser.login || '-' }}</dd></div>
+									<div><dt>{{ t('admin.role') }}</dt><dd>{{ selectedUser.role || '-' }}</dd></div>
+									<div><dt>{{ t('admin.locale') }}</dt><dd>{{ selectedUser.locale || '-' }}</dd></div>
+									<div><dt>{{ t('auth.phone') }}</dt><dd>{{ selectedUser.profile?.phone || '-' }}</dd></div>
+									<div><dt>{{ t('auth.city') }}</dt><dd>{{ selectedUser.profile?.city || '-' }}</dd></div>
+									<div><dt>{{ t('auth.neighborhood') }}</dt><dd>{{ selectedUser.profile?.neighborhood || '-' }}</dd></div>
+									<div><dt>{{ t('admin.registeredAt') }}</dt><dd>{{ formatDateTime(selectedUser.created_at) }}</dd></div>
+									<div><dt>{{ t('admin.emailVerified') }}</dt><dd>{{ formatDateTime(selectedUser.email_verified_at) }}</dd></div>
+									<div><dt>{{ t('admin.status') }}</dt><dd>{{ selectedUser.banned_at ? t('admin.banned') : t('admin.active') }}</dd></div>
+									<div v-if="selectedUser.banned_reason" class="user-detail-grid__wide"><dt>{{ t('admin.banReason') }}</dt><dd>{{ selectedUser.banned_reason }}</dd></div>
+								</dl>
+							</section>
+
+							<section class="user-detail-section">
+								<h3>{{ t('admin.userPages') }}</h3>
+								<div v-if="selectedUser.pages?.length" class="user-page-list">
+									<article v-for="userPage in selectedUser.pages" :key="userPage.id" class="user-page-row">
+										<div>
+											<strong>{{ userPage.name || t(`pages.kinds.${userPage.type}`) }}</strong>
+											<span>{{ t(`pages.kinds.${userPage.type}`) }} - {{ userPage.address_details?.city || '-' }}</span>
+											<small>
+												{{ t('admin.pageContentCounts', {
+													products: userPage.products?.length || 0,
+													services: userPage.services?.length || 0,
+													events: userPage.events?.length || 0,
+													ads: userPage.ads?.length || 0
+												}) }}
+											</small>
+										</div>
+										<q-btn flat round icon="open_in_new" :aria-label="t('admin.openLandingPage')" :to="userPage.public_path" />
+									</article>
+								</div>
+								<div v-else class="support-empty user-pages-empty">{{ t('admin.noUserPages') }}</div>
+							</section>
+						</template>
+					</div>
+				</q-card>
+			</q-dialog>
 		</div>
 	</q-page>
 </template>
@@ -587,11 +698,27 @@
 
 .user-table-tools {
   display: flex;
-  justify-content: flex-start;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .user-search {
   width: min(100%, 460px);
+}
+
+.user-total {
+  display: flex;
+  gap: 9px;
+  align-items: baseline;
+  color: var(--soz-muted);
+  white-space: nowrap;
+}
+
+.user-total strong {
+  color: var(--soz-ink);
+  font-size: 1.5rem;
+  line-height: 1;
 }
 
 .user-table {
@@ -611,6 +738,124 @@
 
 .user-table :deep(.q-table__middle) {
   border-radius: 22px;
+}
+
+.user-table--clickable :deep(tbody tr) {
+  cursor: pointer;
+}
+
+.user-table--clickable :deep(tbody tr:hover) {
+  background: rgba(123, 63, 242, 0.06);
+}
+
+.user-detail-dialog {
+  width: min(900px, calc(100vw - 32px));
+  max-width: 900px;
+  max-height: min(820px, calc(100vh - 48px));
+  border-radius: 24px !important;
+  background: #fff8fb;
+  overflow: hidden;
+}
+
+.user-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  border-bottom: 1px solid rgba(17, 34, 45, 0.1);
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.user-detail-head h2,
+.user-detail-head p,
+.user-detail-section h3 {
+  margin: 0;
+}
+
+.user-detail-head h2 {
+  font-size: 24px;
+}
+
+.user-detail-head p {
+  margin-top: 4px;
+  color: var(--soz-muted);
+}
+
+.user-detail-body {
+  position: relative;
+  display: grid;
+  gap: 20px;
+  max-height: calc(min(820px, 100vh - 48px) - 92px);
+  padding: 22px 24px 28px;
+  overflow-y: auto;
+}
+
+.user-detail-section {
+  display: grid;
+  gap: 14px;
+}
+
+.user-detail-section h3 {
+  font-size: 19px;
+}
+
+.user-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.user-detail-grid > div,
+.user-page-row {
+  padding: 13px 14px;
+  border: 1px solid rgba(17, 34, 45, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.user-detail-grid__wide {
+  grid-column: 1 / -1;
+}
+
+.user-detail-grid dt {
+  color: var(--soz-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.user-detail-grid dd {
+  margin: 4px 0 0;
+  color: var(--soz-ink);
+  overflow-wrap: anywhere;
+}
+
+.user-page-list {
+  display: grid;
+  gap: 10px;
+}
+
+.user-page-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.user-page-row > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.user-page-row span,
+.user-page-row small {
+  color: var(--soz-muted);
+}
+
+.user-pages-empty {
+  min-height: 90px;
 }
 
 .landing-pages-panel {
@@ -947,6 +1192,34 @@
 
   .user-search {
     width: 100%;
+  }
+
+  .user-table-tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .user-total {
+    justify-content: flex-end;
+  }
+
+  .user-detail-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 18px !important;
+  }
+
+  .user-detail-head,
+  .user-detail-body {
+    padding-inline: 18px;
+  }
+
+  .user-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .user-detail-grid__wide {
+    grid-column: auto;
   }
 
   .landing-pages-panel {

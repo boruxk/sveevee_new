@@ -7,7 +7,19 @@ import {
 	sendChatMessageToUser,
 	startChat
 } from '@/services/api/chats'
+import {
+	fetchPageConversation,
+	fetchVisitorPageChats,
+	markPageChatRead,
+	sendPageChatMessage
+} from '@/services/api/pageChats'
 import { useAuthStore } from '@/stores/auth'
+
+function conversationTimestamp(conversation) {
+	const timestamp = new Date(conversation?.last_message_at || 0).getTime()
+
+	return Number.isNaN(timestamp) ? 0 : timestamp
+}
 
 export const useChatsStore = defineStore('chats', {
 	state: () => ({
@@ -31,16 +43,34 @@ export const useChatsStore = defineStore('chats', {
 			this.loading = true
 
 			try {
-				const { data } = await fetchChats()
-				this.conversations = data.data?.conversations || []
-				this.syncUnread(data.data?.unread_count || 0)
+				const [privateResponse, pageResponse] = await Promise.all([
+					fetchChats(),
+					fetchVisitorPageChats()
+				])
+				const privatePayload = privateResponse.data?.data || {}
+				const pagePayload = pageResponse.data?.data || {}
+
+				this.conversations = [
+					...(privatePayload.conversations || []),
+					...(pagePayload.conversations || [])
+				].sort((left, right) => conversationTimestamp(right) - conversationTimestamp(left))
+				this.syncUnread(privatePayload.unread_count ?? pagePayload.unread_count ?? 0)
 				return this.conversations
 			} finally {
 				this.loading = false
 			}
 		},
-		async openConversation(id) {
-			const { data } = await fetchChat(id)
+		async openConversation(conversationOrId, kind = null) {
+			const suppliedConversation = typeof conversationOrId === 'object' ? conversationOrId : null
+			const id = suppliedConversation?.id ?? conversationOrId
+			const listedConversation = suppliedConversation || this.conversations.find((conversation) => (
+				String(conversation.id) === String(id) &&
+				(kind === 'page' ? conversation.is_page_chat : !conversation.is_page_chat)
+			))
+			const opensPageChat = kind === 'page' || Boolean(listedConversation?.is_page_chat)
+			const response = opensPageChat ? await fetchPageConversation(id) : await fetchChat(id)
+			const { data } = response
+
 			this.activeConversation = data.data
 			await this.loadConversations()
 			return this.activeConversation
@@ -59,7 +89,17 @@ export const useChatsStore = defineStore('chats', {
 			this.sending = true
 
 			try {
-				const { data } = this.activeConversation?.id ? await sendChatMessage(this.activeConversation.id, body) : await sendChatMessageToUser(userId, body)
+				let response
+
+				if (this.activeConversation?.is_page_chat) {
+					response = await sendPageChatMessage(this.activeConversation.id, body)
+				} else if (this.activeConversation?.id) {
+					response = await sendChatMessage(this.activeConversation.id, body)
+				} else {
+					response = await sendChatMessageToUser(userId, body)
+				}
+
+				const { data } = response
 				this.activeConversation = data.data
 				await this.loadConversations()
 				return this.activeConversation
@@ -67,9 +107,13 @@ export const useChatsStore = defineStore('chats', {
 				this.sending = false
 			}
 		},
-		async markRead(id) {
-			const { data } = await markChatRead(id)
-			this.syncUnread(data.data?.unread_count || 0)
+		async markRead(id, kind = null) {
+			const pageChat = kind === 'page' || (this.activeConversation?.id === id && this.activeConversation?.is_page_chat)
+			const { data } = pageChat ? await markPageChatRead(id) : await markChatRead(id)
+
+			if (!pageChat) {
+				this.syncUnread(data.data?.unread_count || 0)
+			}
 			await this.loadConversations()
 		},
 		clearActive() {

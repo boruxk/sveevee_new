@@ -111,7 +111,8 @@ export default {
 		readMore: 'Read more',
 		readLess: 'Show less',
 		ban: 'Ban',
-		restore: 'Restore'
+		restore: 'Restore',
+		close: 'Close'
 	},
 	share: {
 		title: 'Share',
@@ -136,6 +137,7 @@ export default {
 		neighborhood: 'Neighborhood',
 		loginTitle: 'Login',
 		registerTitle: 'Create account',
+		registerWelcome: 'Welcome to Sveevee. This is where you start discovering and connecting with what is happening nearby.',
 		loginFailed: 'Login failed.',
 		registerFailed: 'Registration failed.',
 		forgotPassword: 'Forgot password?',
@@ -338,9 +340,18 @@ export default {
 	products: {
 		storeTitle: 'Products',
 		name: 'Name',
+		brand: 'Brand',
+		model: 'Model',
 		description: 'Description',
 		image: 'Image',
 		price: 'Price',
+		normalPrice: 'Normal price',
+		offer: 'Offer',
+		offerPrice: 'Offer price',
+		offerStart: 'Start',
+		offerEnd: 'End',
+		offerMustBeLower: 'The offer price must be lower than the normal price.',
+		offerEndAfterStart: 'The offer must end after it starts.',
 		link: 'Product link',
 		linkHint: "Link to the product on the seller's website.",
 		open: 'View product',
@@ -348,15 +359,34 @@ export default {
 		empty: 'No products yet.',
 		created: 'Product created.',
 		saveFailed: 'Product could not be saved.',
-		deleteFailed: 'Product could not be deleted.'
+		deleteFailed: 'Product could not be deleted.',
+		labels: {
+			new: 'New',
+			price_dropped: 'Price dropped',
+			popular: 'Popular',
+			highly_rated: 'Highly rated',
+			offer: 'Offer'
+		}
+	},
+	priceList: {
+		title: 'Price list',
+		add: 'Add price',
+		name: 'Name',
+		price: 'Price',
+		empty: 'No prices yet.',
+		saved: 'Price saved.',
+		saveFailed: 'Price could not be saved.',
+		deleteFailed: 'Price could not be deleted.'
 	},
 	businessFeatures: {
 		store: 'Store',
 		services: 'Services',
 		events: 'Events',
+		priceList: 'Price list',
 		toggleStore: 'Enable or disable Store',
 		toggleServices: 'Enable or disable Services',
-		toggleEvents: 'Enable or disable Events'
+		toggleEvents: 'Enable or disable Events',
+		togglePriceList: 'Enable or disable Price list'
 	},
 	businessServices: {
 		title: 'Services',
@@ -399,6 +429,7 @@ export default {
 		supportIntro: 'Write to the sveevee team.',
 		supportUnavailable: 'Support chat is not available right now.',
 		pendingReply: 'You can write again after this person replies to your first message.',
+		pagePendingReply: 'You can write again after this page replies to your first message.',
 		dailyLimit: 'You can contact only 10 new users per day.',
 		noMessages: 'No messages yet.',
 		sendFailed: 'Message could not be sent.',
@@ -532,7 +563,20 @@ export default {
 		landingPageCommunityDescription: 'Promotes the free community page with events, announcements, ratings, contact links, and local discovery.',
 		openLandingPage: 'Open page',
 		userSearch: 'User search',
-		userSearchPlaceholder: 'Search by name, email, or login'
+		userSearchPlaceholder: 'Search by name, email, or login',
+		totalUsers: 'Total users',
+		userDetails: 'User details',
+		userDetailsFailed: 'User details could not be loaded.',
+		accountDetails: 'Account details',
+		login: 'Login',
+		role: 'Role',
+		locale: 'Language',
+		registeredAt: 'Registered',
+		emailVerified: 'Email verified',
+		banReason: 'Ban reason',
+		userPages: 'Pages',
+		noUserPages: 'This user has no pages.',
+		pageContentCounts: '{products} products, {services} services, {events} events, {ads} ads'
 	},
 	search: {
 		title: 'Search',
@@ -719,6 +763,11 @@ export default {
 	landing: {
 		eyebrow: 'Local ads, local businesses.',
 		title: 'sveevee',
+		firstBadgeTitle: 'Get there first. Be seen first.',
+		firstBadgeBody: 'Join Sveevee today and be among the first in your city and neighborhood.',
+		shareTitle: 'Good things are better when shared.',
+		shareBody: 'Know a great local business, service provider or community? Tell them about Sveevee and help make your local area easier to discover.',
+		shareCta: 'Share Sveevee',
 		purposeKicker: '',
 		purposeTitle: 'About sveevee',
 		purposeParagraphs: [

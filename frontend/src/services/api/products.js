@@ -4,9 +4,15 @@ import { appendImageFile } from '@/utils/imageFiles'
 async function toProductFormData(payload) {
 	const formData = new FormData()
 	formData.append('name', payload.name || '')
+	formData.append('brand', payload.brand || '')
+	formData.append('model', payload.model || '')
 	formData.append('description', payload.description || '')
 	formData.append('category_key', payload.category_key || '')
-	formData.append('price', payload.price || '')
+	formData.append('price', payload.price ?? '')
+	formData.append('offer_enabled', payload.offer_enabled ? '1' : '0')
+	formData.append('offer_price', payload.offer_enabled ? payload.offer_price ?? '' : '')
+	formData.append('offer_starts_at', payload.offer_enabled ? payload.offer_starts_at || '' : '')
+	formData.append('offer_ends_at', payload.offer_enabled ? payload.offer_ends_at || '' : '')
 	formData.append('link', payload.link || '')
 
 	if (payload.image_remove) {
@@ -33,6 +39,10 @@ export async function updateProduct(id, payload) {
 
 export function fetchProduct(id) {
 	return apiClient.get(`/products/${id}`)
+}
+
+export function recordProductContact(id) {
+	return apiClient.post(`/products/${id}/contact`)
 }
 
 export function deleteProduct(id) {

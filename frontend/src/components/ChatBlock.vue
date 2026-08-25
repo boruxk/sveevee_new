@@ -4,6 +4,13 @@
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
+	import {
+		fetchPageChat,
+		fetchPageChats,
+		fetchPageConversation,
+		sendPageChatMessage,
+		sendPageChatMessageToPage
+	} from '@/services/api/pageChats'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
@@ -21,6 +28,18 @@
 		listResetKey: {
 			type: [Number, String],
 			default: 0
+		},
+		pageId: {
+			type: [Number, String],
+			default: null
+		},
+		pageOwner: {
+			type: Boolean,
+			default: false
+		},
+		targetPageConversationId: {
+			type: [Number, String],
+			default: null
 		}
 	})
 
@@ -32,11 +51,22 @@
 	const messagesEl = ref(null)
 	const mobileThreadOpen = ref(false)
 	const visibleMessageCount = ref(MESSAGE_BATCH_SIZE)
+	const pageConversations = ref([])
+	const pageActiveConversation = ref(null)
+	const pageSending = ref(false)
 
-	const conversations = computed(() => chatsStore.conversations)
-	const active = computed(() => chatsStore.activeConversation)
-	const messages = computed(() => chatsStore.activeMessages)
-	const threadPanelName = computed(() => (active.value?.id ? `thread-${active.value.id}` : 'thread-empty'))
+	const isPageChat = computed(() => Boolean(props.pageId))
+	const conversations = computed(() => (isPageChat.value ? pageConversations.value : chatsStore.conversations))
+	const active = computed(() => (isPageChat.value ? pageActiveConversation.value : chatsStore.activeConversation))
+	const messages = computed(() => active.value?.messages || [])
+	const chatSending = computed(() => (isPageChat.value ? pageSending.value : chatsStore.sending))
+	const threadPanelName = computed(() => {
+		if (!active.value?.id) {
+			return 'thread-empty'
+		}
+
+		return `thread-${active.value.is_page_chat ? 'page' : 'person'}-${active.value.id}`
+	})
 	const isMobileChat = computed(() => $q.screen.width <= 760)
 	const mobilePanel = computed({
 		get: () => (mobileThreadOpen.value ? 'thread' : 'list'),
@@ -45,7 +75,7 @@
 		}
 	})
 	const showMobileBack = computed(() => isMobileChat.value && !props.compact && mobileThreadOpen.value)
-	const composerState = computed(() => chatsStore.composerState)
+	const composerState = computed(() => active.value?.composer_state || { can_send: true, reason: null, message: null })
 	const composerBlocked = computed(() => !composerState.value.can_send)
 	const composerMessage = computed(() => localizedChatLimit(composerState.value.reason, composerState.value.message) || t('chat.placeholder'))
 	const composerHint = computed(() => (composerBlocked.value ? '' : characterLimitHint(draft.value, CHAT_MAX_LENGTH, t)))
@@ -71,6 +101,7 @@
 
 	const chatLimitMessageKeys = {
 		pending_reply: 'chat.pendingReply',
+		page_pending_reply: 'chat.pagePendingReply',
 		daily_limit: 'chat.dailyLimit'
 	}
 	const intlLocale = computed(() => ({
@@ -106,6 +137,15 @@
 
 	function isOwn(message) {
 		return message.sender_id === authStore.user?.id
+	}
+
+	function conversationKey(conversation) {
+		return `${conversation?.is_page_chat ? 'page' : 'person'}-${conversation?.id}`
+	}
+
+	function isActiveConversation(conversation) {
+		return Boolean(active.value) &&
+			conversationKey(active.value) === conversationKey(conversation)
 	}
 
 	function currentMessagesEl() {
@@ -152,24 +192,76 @@
 		scrollToBottom()
 	}
 
-	async function openConversation(id) {
-		await chatsStore.openConversation(id)
+	async function openConversation(conversation) {
+		const id = conversation?.id ?? conversation
+
+		if (isPageChat.value) {
+			const { data } = await fetchPageConversation(id)
+			pageActiveConversation.value = data.data
+			if (props.pageOwner) {
+				await refreshPageConversations()
+			}
+		} else {
+			await chatsStore.openConversation(conversation)
+		}
+
 		if (isMobileChat.value) {
 			mobileThreadOpen.value = true
 		}
 		await scrollToBottom()
 	}
 
+	async function refreshPageConversations() {
+		const { data } = await fetchPageChats(props.pageId)
+		pageConversations.value = data.data?.conversations || []
+	}
+
+	async function loadPageChat() {
+		pageActiveConversation.value = null
+		pageConversations.value = []
+
+		if (props.pageOwner) {
+			await refreshPageConversations()
+			if (isMobileChat.value && !props.compact) {
+				mobileThreadOpen.value = false
+			} else if (pageConversations.value[0]) {
+				await openConversation(pageConversations.value[0].id)
+			}
+		} else {
+			const { data } = await fetchPageChat(props.pageId)
+			pageActiveConversation.value = data.data
+			mobileThreadOpen.value = true
+			await chatsStore.loadConversations()
+		}
+	}
+
 	async function load() {
+		if (isPageChat.value) {
+			await loadPageChat()
+			await scrollToBottom()
+			return
+		}
+
 		if (props.targetUserId) {
 			await chatsStore.openWithUser(props.targetUserId)
 			mobileThreadOpen.value = true
+		} else if (props.targetPageConversationId) {
+			await chatsStore.loadConversations()
+			const target = chatsStore.conversations.find((conversation) => (
+				conversation.is_page_chat &&
+				String(conversation.id) === String(props.targetPageConversationId)
+			))
+
+			if (target) {
+				await chatsStore.openConversation(target)
+				mobileThreadOpen.value = true
+			}
 		} else {
 			await chatsStore.loadConversations()
 			if (isMobileChat.value && !props.compact) {
 				mobileThreadOpen.value = false
 			} else if (!active.value && conversations.value[0]) {
-				await chatsStore.openConversation(conversations.value[0].id)
+				await chatsStore.openConversation(conversations.value[0])
 			}
 		}
 
@@ -188,17 +280,38 @@
 		}
 
 		try {
-			await chatsStore.send(body, props.targetUserId)
+			if (isPageChat.value) {
+				pageSending.value = true
+				let response
+				if (active.value?.id) {
+					response = await sendPageChatMessage(active.value.id, body)
+				} else {
+					response = await sendPageChatMessageToPage(props.pageId, body)
+				}
+				const { data } = response
+				pageActiveConversation.value = data.data
+				if (props.pageOwner) {
+					await refreshPageConversations()
+				} else {
+					await chatsStore.loadConversations()
+				}
+			} else {
+				await chatsStore.send(body, props.targetUserId)
+			}
 			draft.value = ''
 			await scrollToBottom()
 		} catch (error) {
 			const reason = error.response?.data?.errors?.reason
 			$q.notify({ type: 'negative', message: localizedChatLimit(reason, error.response?.data?.message) || t('chat.sendFailed') })
+		} finally {
+			pageSending.value = false
 		}
 	}
 
 	onMounted(load)
 	watch(() => props.targetUserId, load)
+	watch(() => props.targetPageConversationId, load)
+	watch(() => [props.pageId, props.pageOwner], load)
 	watch(() => active.value?.id, () => {
 		visibleMessageCount.value = MESSAGE_BATCH_SIZE
 	})
@@ -213,7 +326,7 @@
 		}
 
 		if (!mobile && !active.value && conversations.value[0]) {
-			await chatsStore.openConversation(conversations.value[0].id)
+			await openConversation(conversations.value[0])
 			await scrollToBottom()
 		}
 	})
@@ -236,11 +349,11 @@
 				<aside class="chat-list">
 					<button
 						v-for="conversation in conversations"
-						:key="conversation.id"
+						:key="conversationKey(conversation)"
 						type="button"
 						class="chat-list__item"
-						:class="{ 'chat-list__item--active': active?.id === conversation.id }"
-						@click="openConversation(conversation.id)"
+						:class="{ 'chat-list__item--active': isActiveConversation(conversation) }"
+						@click="openConversation(conversation)"
 					>
 						<q-avatar size="40px" color="primary" text-color="white">
 							<ResponsiveImage
@@ -318,7 +431,7 @@
 								type="textarea"
 								autogrow
 								:readonly="composerBlocked"
-								:disable="!active || chatsStore.sending"
+								:disable="!active || chatSending"
 								:class="['chat-composer', composerClass]"
 								:placeholder="t('chat.placeholder')"
 								:maxlength="CHAT_MAX_LENGTH"
@@ -331,7 +444,7 @@
 								unelevated
 								color="primary"
 								icon="send"
-								:loading="chatsStore.sending"
+								:loading="chatSending"
 								:disable="!active || composerBlocked || !draft.trim()"
 								@click="send"
 							>
@@ -347,11 +460,11 @@
 			<aside v-if="!compact" class="chat-list">
 				<button
 					v-for="conversation in conversations"
-					:key="conversation.id"
+					:key="conversationKey(conversation)"
 					type="button"
 					class="chat-list__item"
-					:class="{ 'chat-list__item--active': active?.id === conversation.id }"
-					@click="openConversation(conversation.id)"
+					:class="{ 'chat-list__item--active': isActiveConversation(conversation) }"
+					@click="openConversation(conversation)"
 				>
 					<q-avatar size="40px" color="primary" text-color="white">
 						<ResponsiveImage
@@ -428,7 +541,7 @@
 								type="textarea"
 								autogrow
 								:readonly="composerBlocked"
-								:disable="!active || chatsStore.sending"
+								:disable="!active || chatSending"
 								:class="['chat-composer', composerClass]"
 								:placeholder="t('chat.placeholder')"
 								:maxlength="CHAT_MAX_LENGTH"
@@ -441,7 +554,7 @@
 								unelevated
 								color="primary"
 								icon="send"
-								:loading="chatsStore.sending"
+								:loading="chatSending"
 								:disable="!active || composerBlocked || !draft.trim()"
 								@click="send"
 							>

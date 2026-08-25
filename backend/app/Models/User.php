@@ -85,6 +85,16 @@ class User extends Authenticatable
         return $this->hasMany(ChatMessage::class, 'sender_id');
     }
 
+    public function pageConversationsAsVisitor(): HasMany
+    {
+        return $this->hasMany(PageConversation::class, 'visitor_id');
+    }
+
+    public function sentPageMessages(): HasMany
+    {
+        return $this->hasMany(PageChatMessage::class, 'sender_id');
+    }
+
     public function receivedUnreadMessages()
     {
         return ChatMessage::query()
