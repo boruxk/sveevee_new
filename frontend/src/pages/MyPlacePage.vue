@@ -298,7 +298,7 @@
 								>
 									<ResponsiveImage
 										v-if="ad.image_url"
-										class="overview-ad-thumb"
+										class="overview-listing-thumb"
 										:src="ad.image_url"
 										:alt="ad.image_alt || ad.title"
 										:avif-srcset="ad.image_avif_srcset || ''"
@@ -307,7 +307,7 @@
 										:width="ad.image_width || 768"
 										:height="ad.image_height || 576"
 									/>
-									<q-icon v-else name="campaign" size="28px" color="primary" class="overview-ad-icon" />
+									<q-icon v-else name="campaign" size="28px" color="primary" class="overview-listing-icon" />
 									<span class="overview-list__copy">
 										<strong>{{ ad.title }}</strong>
 										<small>{{ adLocation(ad) || ad.text }}</small>
@@ -563,20 +563,20 @@
   color: rgba(17, 34, 45, 0.58);
 }
 
-.overview-ad-thumb,
-.overview-ad-icon {
+.overview-listing-thumb,
+.overview-listing-icon {
   width: 46px;
   height: 46px;
   border-radius: 8px;
 }
 
-.overview-ad-thumb {
+.overview-listing-thumb {
   display: block;
   --responsive-image-fit: cover;
   --responsive-image-position: center;
 }
 
-.overview-ad-icon {
+.overview-listing-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;

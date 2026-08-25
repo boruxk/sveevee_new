@@ -90,7 +90,7 @@ class AdController extends Controller
             'title' => $data['title'],
             'text' => $data['text'],
             'category' => $data['category'] ?? null,
-            'image_path' => $image ? $this->storePublicWebp($image, 'ads', 'image') : null,
+            'image_path' => $image ? $this->storePublicWebp($image, Ad::IMAGE_DIRECTORY, 'image') : null,
             'image_original_name' => $image ? $this->originalUploadName($request, 'image', $image) : null,
             'status' => 'active',
             'expires_at' => now()->addWeek(),
@@ -136,7 +136,7 @@ class AdController extends Controller
 
         if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $ad->image_path = $this->storePublicWebp($image, 'ads', 'image');
+            $ad->image_path = $this->storePublicWebp($image, Ad::IMAGE_DIRECTORY, 'image');
             $ad->image_original_name = $this->originalUploadName($request, 'image', $image);
         }
 

@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Storage;
 
 class Ad extends Model
 {
+    public const IMAGE_DIRECTORY = 'media/listings';
+
     public const TYPE_PRIVATE = 'private_ad';
     public const TYPE_BUSINESS = 'business_ad';
     public const TYPE_COMMUNITY = 'community_ad';

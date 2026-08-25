@@ -1459,10 +1459,14 @@ HTML);
             'image' => UploadedFile::fake()->image('ad.png'),
         ], ['Accept' => 'application/json'])->assertCreated()
             ->assertJsonPath('data.category', 'shopping_retail.gifts')
-            ->assertJsonPath('data.image_name', 'ad.png');
+            ->assertJsonPath('data.image_name', 'ad.png')
+            ->assertJsonPath('data.image_url', fn ($value) => is_string($value)
+                && str_contains($value, '/storage/media/listings/')
+                && ! str_contains($value, '/storage/ads/'));
 
         $adId = $created->json('data.id');
         $oldImagePath = Ad::query()->findOrFail($adId)->image_path;
+        $this->assertStringStartsWith(Ad::IMAGE_DIRECTORY.'/', $oldImagePath);
         $this->assertTrue(Storage::disk('public')->exists($oldImagePath));
 
         $this->post("/api/v1/ads/{$adId}", [

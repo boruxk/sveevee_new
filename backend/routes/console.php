@@ -37,7 +37,7 @@ Artisan::command('images:generate-variants {--force : Recreate existing variants
 
     $disk = Storage::disk('public');
     $paths = collect($disk->allFiles())
-        ->filter(fn (string $path): bool => preg_match('#^(ads|events|products|services|profiles|pages/logos|pages/banners)/#', $path) === 1)
+        ->filter(fn (string $path): bool => preg_match('#^(media/listings|ads|events|products|services|profiles|pages/logos|pages/banners)/#', $path) === 1)
         ->filter(fn (string $path): bool => preg_match('/\.webp$/i', $path) === 1)
         ->filter(fn (string $path): bool => preg_match('/-\d+\.webp$/i', $path) !== 1)
         ->values();

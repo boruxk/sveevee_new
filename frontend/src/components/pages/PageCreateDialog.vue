@@ -3,11 +3,14 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
+	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { saveMyPage } from '@/services/api/pages'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
+	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
+	import { CATALOG_SCOPES } from '@/constants/catalogTopics'
 
 	const DEFAULT_OPENING_HOURS = [
 		{ weekday: 'sunday', is_open: false, opens_at: null, closes_at: null },
@@ -38,6 +41,7 @@
 	const formRef = ref(null)
 	const citySelectOptions = ref([])
 	const neighborhoodSelectOptions = ref([])
+	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const form = reactive({
 		name: '',
 		public_description: '',
@@ -51,6 +55,7 @@
 			neighborhood: ''
 		},
 		opening_hours: DEFAULT_OPENING_HOURS.map((item) => ({ ...item })),
+		category_key: '',
 		palette_key: 'amber-dawn',
 		logo: null,
 		banner: null
@@ -60,6 +65,9 @@
 		set: (value) => emit('update:modelValue', value)
 	})
 	const title = computed(() => (props.type === 'business' ? t('pages.businessTitle') : t('pages.communityTitle')))
+	const pageCatalogScope = computed(() => (
+		props.type === 'community' ? CATALOG_SCOPES.COMMUNITY_PAGES : CATALOG_SCOPES.BUSINESS_PAGES
+	))
 	const logoDisplayName = computed(() => imageUploadDisplayName(form.logo))
 	const bannerDisplayName = computed(() => imageUploadDisplayName(form.banner))
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
@@ -88,6 +96,7 @@
 		form.address.city = authStore.user?.profile?.city || ''
 		form.address.neighborhood = authStore.user?.profile?.neighborhood || ''
 		form.opening_hours = DEFAULT_OPENING_HOURS.map((item) => ({ ...item }))
+		form.category_key = ''
 		form.palette_key = 'amber-dawn'
 		form.logo = null
 		form.banner = null
@@ -100,6 +109,7 @@
 			contact_email: form.contact_email.trim(),
 			phone: form.phone.trim(),
 			address: addressLine(form.address),
+			category_key: form.category_key || null,
 			palette_key: form.palette_key,
 			setup: {
 				contact: {
@@ -163,7 +173,7 @@
 		}
 
 		resetForm()
-		await loadLocationOptions()
+		await Promise.all([loadLocationOptions(), loadCatalogTopics()])
 		citySelectOptions.value = cityOptions.value
 		neighborhoodSelectOptions.value = neighborhoodOptions.value
 	})
@@ -208,6 +218,13 @@
 						type="textarea"
 						autogrow
 						:label="t('pages.description')"
+					/>
+					<CatalogCategorySelect
+						v-model="form.category_key"
+						:groups="catalogGroups"
+						:scope="pageCatalogScope"
+						required
+						:label="requiredLabel('catalog.category')"
 					/>
 
 					<section class="presence-segment">

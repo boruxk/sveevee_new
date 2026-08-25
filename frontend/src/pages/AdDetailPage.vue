@@ -88,9 +88,9 @@
 </script>
 
 <template>
-	<q-page padding class="ad-detail-page">
+	<q-page padding class="listing-detail-page">
 		<div class="page-shell">
-			<div v-if="ad" class="ad-detail-card">
+			<div v-if="ad" class="listing-detail-card">
 				<nav v-if="adCatalogLinks.length" class="detail-catalog-links" aria-label="Catalog">
 					<router-link v-for="link in adCatalogLinks" :key="link.to" :to="link.to">
 						{{ link.label }}
@@ -106,7 +106,7 @@
 </template>
 
 <style scoped lang="scss">
-.ad-detail-page {
+.listing-detail-page {
   padding: 0 20px 36px;
 }
 
@@ -135,13 +135,13 @@
   content: "/";
 }
 
-.ad-detail-card :deep(.listing-card) {
+.listing-detail-card :deep(.listing-card) {
   min-height: 420px;
   height: auto;
 }
 
 @media (max-width: 700px) {
-  .ad-detail-page {
+  .listing-detail-page {
     padding-inline: 10px;
   }
 }

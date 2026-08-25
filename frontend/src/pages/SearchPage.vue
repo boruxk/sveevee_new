@@ -337,7 +337,7 @@
 							</div>
 						</router-link>
 
-						<div v-else class="result-ad-link">
+						<div v-else class="result-listing-wrap">
 							<AdCard :ad="item.value" />
 						</div>
 					</template>
@@ -513,7 +513,7 @@
   --responsive-image-fit: cover;
 }
 
-.result-ad-link {
+.result-listing-wrap {
   color: inherit;
   text-decoration: none;
 }
