@@ -9,6 +9,7 @@
 	import AdCard from '@/components/AdCard.vue'
 	import AdComposer from '@/components/AdComposer.vue'
 	import ChatBlock from '@/components/ChatBlock.vue'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import PageCreateDialog from '@/components/pages/PageCreateDialog.vue'
 	import { adRoute } from '@/constants/catalogTopics'
 
@@ -141,10 +142,6 @@
 		}
 	}
 
-	function adImageStyle(ad) {
-		return ad?.image_url ? { backgroundImage: `url("${ad.image_url}")` } : null
-	}
-
 	function adLocation(ad) {
 		return [ad?.city, ad?.neighborhood].filter(Boolean).join(', ')
 	}
@@ -255,7 +252,17 @@
 									@click="openRecentConversation(conversation)"
 								>
 									<q-avatar size="42px" color="primary" text-color="white">
-										<img v-if="conversation.other_user?.profile?.photo_url" :src="conversation.other_user.profile.photo_url" alt="" />
+										<ResponsiveImage
+											v-if="conversation.other_user?.profile?.photo_url"
+											class="overview-avatar-image"
+											:src="conversation.other_user.profile.photo_url"
+											:alt="conversation.other_user?.display_name || ''"
+											:avif-srcset="conversation.other_user.profile.photo_avif_srcset || ''"
+											:webp-srcset="conversation.other_user.profile.photo_webp_srcset || ''"
+											sizes="42px"
+											:width="conversation.other_user.profile.photo_width || 96"
+											:height="conversation.other_user.profile.photo_height || 96"
+										/>
 										<span v-else>{{ conversation.other_user?.display_name?.slice(0, 1) || 'S' }}</span>
 									</q-avatar>
 									<span class="overview-list__copy">
@@ -289,7 +296,17 @@
 									:to="latestAdRoute(ad)"
 									class="overview-list__item overview-list__item--link"
 								>
-									<span v-if="ad.image_url" class="overview-ad-thumb" :style="adImageStyle(ad)" />
+									<ResponsiveImage
+										v-if="ad.image_url"
+										class="overview-ad-thumb"
+										:src="ad.image_url"
+										:alt="ad.image_alt || ad.title"
+										:avif-srcset="ad.image_avif_srcset || ''"
+										:webp-srcset="ad.image_webp_srcset || ''"
+										sizes="46px"
+										:width="ad.image_width || 768"
+										:height="ad.image_height || 576"
+									/>
 									<q-icon v-else name="campaign" size="28px" color="primary" class="overview-ad-icon" />
 									<span class="overview-list__copy">
 										<strong>{{ ad.title }}</strong>
@@ -519,10 +536,10 @@
   background: rgba(232, 219, 247, 0.94);
 }
 
-.overview-list__item :deep(.q-avatar__content img) {
+.overview-avatar-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  --responsive-image-fit: cover;
 }
 
 .overview-list__item--link {
@@ -555,8 +572,8 @@
 
 .overview-ad-thumb {
   display: block;
-  background-position: center;
-  background-size: cover;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .overview-ad-icon {

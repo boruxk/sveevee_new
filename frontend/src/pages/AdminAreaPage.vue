@@ -5,6 +5,7 @@
 	import { banAdminUser, fetchAdminSupportChats, fetchAdminUserTable, restoreAdminUser } from '@/services/api/admin'
 	import { fetchChat, sendChatMessage } from '@/services/api/chats'
 	import { useAuthStore } from '@/stores/auth'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
 	const { locale, t } = useI18n()
@@ -272,7 +273,17 @@
 								@click="openSupportConversation(conversation.id)"
 							>
 								<q-avatar size="38px" color="primary" text-color="white">
-									<img v-if="conversation.other_user?.profile?.photo_url" :src="conversation.other_user.profile.photo_url" alt="" />
+									<ResponsiveImage
+										v-if="conversation.other_user?.profile?.photo_url"
+										class="support-avatar-image"
+										:src="conversation.other_user.profile.photo_url"
+										:alt="conversation.other_user?.display_name || ''"
+										:avif-srcset="conversation.other_user.profile.photo_avif_srcset || ''"
+										:webp-srcset="conversation.other_user.profile.photo_webp_srcset || ''"
+										sizes="38px"
+										:width="conversation.other_user.profile.photo_width || 96"
+										:height="conversation.other_user.profile.photo_height || 96"
+									/>
 									<span v-else>{{ conversation.other_user?.display_name?.slice(0, 1) || 'S' }}</span>
 								</q-avatar>
 								<span class="support-row__copy">
@@ -726,6 +737,12 @@
 .support-row:hover {
   border-color: rgba(123, 63, 242, 0.38);
   background: rgba(123, 63, 242, 0.08);
+}
+
+.support-avatar-image {
+  width: 100%;
+  height: 100%;
+  --responsive-image-fit: cover;
 }
 
 .support-row__copy {

@@ -3,6 +3,7 @@
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { fetchCatalog } from '@/services/api/catalog'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
@@ -466,6 +467,38 @@
 		return item.image_url || item.logo_url || item.banner_url || item.page?.logo_url || null
 	}
 
+	function itemImageAlt(kind, item) {
+		return item.image_alt || item.logo_alt || item.banner_alt || item.page?.logo_alt || itemTitle(kind, item)
+	}
+
+	function itemImageAvifSrcset(kind, item) {
+		if (kind === 'user') {
+			return item.profile?.photo_avif_srcset || ''
+		}
+
+		return item.image_avif_srcset || item.logo_avif_srcset || item.banner_avif_srcset || item.page?.logo_avif_srcset || ''
+	}
+
+	function itemImageWebpSrcset(kind, item) {
+		if (kind === 'user') {
+			return item.profile?.photo_webp_srcset || ''
+		}
+
+		return item.image_webp_srcset || item.logo_webp_srcset || item.banner_webp_srcset || item.page?.logo_webp_srcset || ''
+	}
+
+	function itemImageSizes(kind, item) {
+		return item.image_sizes || item.logo_sizes || item.banner_sizes || item.page?.logo_sizes || '(max-width: 760px) calc(100vw - 36px), (max-width: 1100px) calc((100vw - 72px) / 2), 390px'
+	}
+
+	function itemImageWidth(kind, item) {
+		return item.image_width || item.logo_width || item.banner_width || item.page?.logo_width || 768
+	}
+
+	function itemImageHeight(kind, item) {
+		return item.image_height || item.logo_height || item.banner_height || item.page?.logo_height || 576
+	}
+
 	function itemOwner(kind, item) {
 		if (kind === 'page') {
 			return [item.address_details?.city, item.address_details?.neighborhood].filter(Boolean).join(', ')
@@ -601,7 +634,19 @@
 							:to="resultTo(segment.kind, item)"
 						>
 							<div class="catalog-result-card__media">
-								<img v-if="itemImage(segment.kind, item)" :src="itemImage(segment.kind, item)" alt="" loading="lazy" decoding="async" />
+								<ResponsiveImage
+									v-if="itemImage(segment.kind, item)"
+									class="catalog-result-card__image"
+									:src="itemImage(segment.kind, item)"
+									:alt="itemImageAlt(segment.kind, item)"
+									:avif-srcset="itemImageAvifSrcset(segment.kind, item)"
+									:webp-srcset="itemImageWebpSrcset(segment.kind, item)"
+									:sizes="itemImageSizes(segment.kind, item)"
+									:width="itemImageWidth(segment.kind, item)"
+									:height="itemImageHeight(segment.kind, item)"
+									loading="lazy"
+									decoding="async"
+								/>
 								<q-icon v-else :name="segment.icon" size="34px" />
 							</div>
 							<div class="catalog-result-card__body">
@@ -676,7 +721,19 @@
 							:to="resultTo(segment.kind, item)"
 						>
 							<div class="catalog-result-card__media">
-								<img v-if="itemImage(segment.kind, item)" :src="itemImage(segment.kind, item)" alt="" loading="lazy" decoding="async" />
+								<ResponsiveImage
+									v-if="itemImage(segment.kind, item)"
+									class="catalog-result-card__image"
+									:src="itemImage(segment.kind, item)"
+									:alt="itemImageAlt(segment.kind, item)"
+									:avif-srcset="itemImageAvifSrcset(segment.kind, item)"
+									:webp-srcset="itemImageWebpSrcset(segment.kind, item)"
+									:sizes="itemImageSizes(segment.kind, item)"
+									:width="itemImageWidth(segment.kind, item)"
+									:height="itemImageHeight(segment.kind, item)"
+									loading="lazy"
+									decoding="async"
+								/>
 								<q-icon v-else :name="segment.icon" size="34px" />
 							</div>
 							<div class="catalog-result-card__body">
@@ -911,10 +968,11 @@
   color: var(--soz-primary-deep);
 }
 
-.catalog-result-card__media img {
+.catalog-result-card__image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .catalog-result-card__body {

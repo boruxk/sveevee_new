@@ -358,6 +358,8 @@ class SeoPrerenderService
 
     private function marketingMeta(array $page): array
     {
+        [$imageWidth, $imageHeight] = $this->staticImageDimensions($page['image'] ?? '');
+
         return [
             'locale' => 'he',
             'dir' => 'rtl',
@@ -366,6 +368,9 @@ class SeoPrerenderService
             'description' => $this->truncate($page['description']),
             'canonical' => $this->absoluteUrl($page['path']),
             'image' => $this->absoluteUrl($page['image']),
+            'image_alt' => $page['label'],
+            'image_width' => $imageWidth,
+            'image_height' => $imageHeight,
             'alternates' => [],
             'label' => $page['label'],
             'path' => $page['path'],
@@ -397,6 +402,7 @@ class SeoPrerenderService
         return '<main class="sveevee-prerender"><article class="sveevee-prerender__card">'
             .$this->brand()
             .$this->breadcrumbHtml($meta['breadcrumbs'])
+            .'<img class="sveevee-prerender__image" src="'.$this->escapeAttribute($meta['image']).'" alt="'.$this->escapeAttribute($meta['image_alt'] ?? $meta['label']).'" />'
             .'<h1>'.$this->escape($meta['label']).'</h1>'
             .'<p class="sveevee-prerender__lead">'.$this->escape($meta['description']).'</p>'
             .'<p><strong>'.$this->escape($page['free']).'</strong></p>'
@@ -418,6 +424,9 @@ class SeoPrerenderService
             'description' => $this->truncate($description),
             'canonical' => $this->absoluteUrl($path),
             'image' => $this->absoluteUrl('/favicon.png'),
+            'image_alt' => 'Sveevee',
+            'image_width' => null,
+            'image_height' => null,
             'alternates' => [],
             'label' => $label,
             'path' => $path,
@@ -460,6 +469,9 @@ class SeoPrerenderService
             'description' => $this->truncate($description),
             'canonical' => $this->absoluteUrl($path),
             'image' => $this->absoluteUrl($page->banner_url ?: $page->logo_url ?: '/favicon.png'),
+            'image_alt' => $page->name,
+            'image_width' => null,
+            'image_height' => null,
             'alternates' => $this->alternates(fn (string $item): string => $this->businessPath($page, $item)),
             'category' => $category,
             'location' => $this->locationText($address),
@@ -495,6 +507,9 @@ class SeoPrerenderService
             'description' => $this->truncate($description),
             'canonical' => $this->absoluteUrl($path),
             'image' => $this->absoluteUrl($product->image_url ?: '/favicon.png'),
+            'image_alt' => $product->name,
+            'image_width' => null,
+            'image_height' => null,
             'alternates' => $this->alternates(fn (string $item): string => $this->productPath($product, $item)),
             'category' => $category,
             'location' => $this->locationText($address),
@@ -515,10 +530,22 @@ class SeoPrerenderService
         $html = $this->setMeta($html, 'property', 'og:type', $meta['type']);
         $html = $this->setMeta($html, 'property', 'og:url', $meta['canonical']);
         $html = $this->setMeta($html, 'property', 'og:image', $meta['image']);
+        if (filled($meta['image_alt'] ?? null)) {
+            $html = $this->setMeta($html, 'property', 'og:image:alt', $meta['image_alt']);
+        }
+        if (filled($meta['image_width'] ?? null)) {
+            $html = $this->setMeta($html, 'property', 'og:image:width', (string) $meta['image_width']);
+        }
+        if (filled($meta['image_height'] ?? null)) {
+            $html = $this->setMeta($html, 'property', 'og:image:height', (string) $meta['image_height']);
+        }
         $html = $this->setMeta($html, 'name', 'twitter:card', 'summary_large_image');
         $html = $this->setMeta($html, 'name', 'twitter:title', $meta['title']);
         $html = $this->setMeta($html, 'name', 'twitter:description', $meta['description']);
         $html = $this->setMeta($html, 'name', 'twitter:image', $meta['image']);
+        if (filled($meta['image_alt'] ?? null)) {
+            $html = $this->setMeta($html, 'name', 'twitter:image:alt', $meta['image_alt']);
+        }
         $html = $this->setCanonical($html, $meta['canonical']);
         $html = $this->removePrerenderHead($html);
         $html = $this->removeNoscriptFallback($html);
@@ -555,6 +582,7 @@ class SeoPrerenderService
         return '<main class="sveevee-prerender"><article class="sveevee-prerender__card">'
             .$this->brand()
             .$this->breadcrumbHtml($meta['breadcrumbs'])
+            .($page->banner_url ? '<img class="sveevee-prerender__image" src="'.$this->escapeAttribute($this->absoluteUrl($page->banner_url)).'" alt="'.$this->escapeAttribute($page->name).'" />' : '')
             .'<h1>'.$this->escape($page->name).'</h1>'
             .'<p class="sveevee-prerender__lead">'.$this->escape($meta['description']).'</p>'
             .$this->definitionList($detailRows)
@@ -689,7 +717,36 @@ class SeoPrerenderService
             'description' => $meta['description'],
             'url' => $meta['canonical'],
             'image' => $meta['image'],
+            'primaryImageOfPage' => $this->imageObject($meta),
         ];
+    }
+
+    private function imageObject(array $meta): array
+    {
+        return $this->withoutEmpty([
+            '@type' => 'ImageObject',
+            'url' => $meta['image'] ?? null,
+            'caption' => $meta['image_alt'] ?? null,
+            'width' => $meta['image_width'] ?? null,
+            'height' => $meta['image_height'] ?? null,
+        ]);
+    }
+
+    private function staticImageDimensions(string $path): array
+    {
+        if (str_contains($path, 'example-') && str_contains($path, '-banner-')) {
+            return [1440, 640];
+        }
+
+        if (str_contains($path, 'hero-main-') || str_contains($path, 'promo-')) {
+            return [1360, 765];
+        }
+
+        if (str_contains($path, 'sveevee-logo-640')) {
+            return [640, 125];
+        }
+
+        return [null, null];
     }
 
     private function catalogHubItemListSchema(array $hub, string $locale): array

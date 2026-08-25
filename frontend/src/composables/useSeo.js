@@ -125,6 +125,9 @@ function applySeo(config = {}) {
 	const fullTitle = config.exactTitle || (title === SITE_NAME ? title : `${title} | ${SITE_NAME}`)
 	const canonical = absoluteUrl(config.canonical || window.location.pathname)
 	const image = absoluteUrl(config.image)
+	const imageAlt = cleanText(config.imageAlt)
+	const imageWidth = config.imageWidth ? String(config.imageWidth) : ''
+	const imageHeight = config.imageHeight ? String(config.imageHeight) : ''
 	const robots = config.robots || 'index,follow'
 	const locale = document.documentElement.lang || 'he'
 	const type = config.type || 'website'
@@ -148,9 +151,30 @@ function applySeo(config = {}) {
 	if (image) {
 		setMeta('property', 'og:image', image)
 		setMeta('name', 'twitter:image', image)
+		if (imageAlt) {
+			setMeta('property', 'og:image:alt', imageAlt)
+			setMeta('name', 'twitter:image:alt', imageAlt)
+		} else {
+			removeMeta('property', 'og:image:alt')
+			removeMeta('name', 'twitter:image:alt')
+		}
+		if (imageWidth) {
+			setMeta('property', 'og:image:width', imageWidth)
+		} else {
+			removeMeta('property', 'og:image:width')
+		}
+		if (imageHeight) {
+			setMeta('property', 'og:image:height', imageHeight)
+		} else {
+			removeMeta('property', 'og:image:height')
+		}
 	} else {
 		removeMeta('property', 'og:image')
 		removeMeta('name', 'twitter:image')
+		removeMeta('property', 'og:image:alt')
+		removeMeta('name', 'twitter:image:alt')
+		removeMeta('property', 'og:image:width')
+		removeMeta('property', 'og:image:height')
 	}
 
 	setJsonLd(config.jsonLd)

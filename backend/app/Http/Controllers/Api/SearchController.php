@@ -281,6 +281,7 @@ class SearchController extends Controller
                 'name' => $page->name,
                 'category_key' => $page->category_key,
                 'logo_url' => $page->logo_url,
+                ...$this->payloads->publicImageMeta('logo', $page->logo_path, $page->name.' logo', '96px'),
                 'address_details' => [
                     'city' => $page->setup['address']['city'] ?? null,
                     'neighborhood' => $page->setup['address']['neighborhood'] ?? null,

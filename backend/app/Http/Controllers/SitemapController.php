@@ -20,11 +20,24 @@ class SitemapController extends Controller
     public function index(): Response
     {
         $entries = collect([
-            $this->entry('/', now(), 'daily', '1.0'),
-            $this->entry('/businesses', now(), 'monthly', '0.85'),
-            $this->entry('/communities', now(), 'monthly', '0.85'),
-            $this->entry('/business-example-page', now(), 'monthly', '0.75'),
-            $this->entry('/community-example-page', now(), 'monthly', '0.75'),
+            $this->entry('/', now(), 'daily', '1.0', [
+                $this->image('/assets/landing/hero-main-1360.v1.webp', 'Sveevee local discovery'),
+                $this->image('/assets/landing/sveevee-logo-640.v1.webp', 'Sveevee logo'),
+            ]),
+            $this->entry('/businesses', now(), 'monthly', '0.85', [
+                $this->image('/assets/landing/promo-business-hero-1360.v3.webp', 'Free business page on Sveevee'),
+            ]),
+            $this->entry('/communities', now(), 'monthly', '0.85', [
+                $this->image('/assets/landing/promo-community-hero-1360.v3.webp', 'Free community page on Sveevee'),
+            ]),
+            $this->entry('/business-example-page', now(), 'monthly', '0.75', [
+                $this->image('/assets/landing/example-business-banner-1440.v1.webp', 'Business example page'),
+                $this->image('/assets/landing/example-business-logo-512.v1.webp', 'Business example logo'),
+            ]),
+            $this->entry('/community-example-page', now(), 'monthly', '0.75', [
+                $this->image('/assets/landing/example-community-banner-1440.v1.webp', 'Community example page'),
+                $this->image('/assets/landing/example-community-logo-512.v1.webp', 'Community example logo'),
+            ]),
             $this->entry('/search', now(), 'daily', '0.8'),
             $this->entry('/privacy', now(), 'monthly', '0.3'),
             $this->entry('/terms', now(), 'monthly', '0.3'),
@@ -36,7 +49,7 @@ class SitemapController extends Controller
         ));
 
         User::query()
-            ->with('profile:id,user_id,city,updated_at')
+            ->with('profile:id,user_id,city,neighborhood,photo_path,updated_at')
             ->whereNull('banned_at')
             ->where('role', 'user')
             ->where(function ($query): void {
@@ -48,7 +61,9 @@ class SitemapController extends Controller
             ->orderBy('id')
             ->get(['id', 'name', 'given_name', 'family_name', 'updated_at'])
             ->each(fn (User $user) => $entries->push(
-                $this->entry("/users/{$user->public_slug}", $this->latestUserTimestamp($user), 'weekly', '0.6')
+                $this->entry("/users/{$user->public_slug}", $this->latestUserTimestamp($user), 'weekly', '0.6', [
+                    $this->image($user->profile?->photo_url, $user->display_name),
+                ])
             ));
 
         Page::query()
@@ -56,17 +71,17 @@ class SitemapController extends Controller
             ->where('name', '!=', '')
             ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
             ->orderBy('id')
-            ->get(['id', 'type', 'name', 'updated_at'])
+            ->get(['id', 'type', 'name', 'logo_path', 'banner_path', 'updated_at'])
             ->each(function (Page $page) use ($entries): void {
                 if ($page->type === Page::TYPE_BUSINESS) {
                     foreach (self::LOCALES as $locale) {
-                        $entries->push($this->entry($this->localizedBusinessPath($page, $locale), $page->updated_at, 'weekly', '0.8'));
+                        $entries->push($this->entry($this->localizedBusinessPath($page, $locale), $page->updated_at, 'weekly', '0.8', $this->pageImages($page)));
                     }
 
                     return;
                 }
 
-                $entries->push($this->entry("/pages/{$page->public_slug}", $page->updated_at, 'weekly', '0.8'));
+                $entries->push($this->entry("/pages/{$page->public_slug}", $page->updated_at, 'weekly', '0.8', $this->pageImages($page)));
             });
 
         PageProduct::query()
@@ -74,10 +89,12 @@ class SitemapController extends Controller
             ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
             ->whereHas('page', fn ($query) => $query->where('type', Page::TYPE_BUSINESS))
             ->orderBy('id')
-            ->get(['id', 'page_id', 'name', 'updated_at'])
+            ->get(['id', 'page_id', 'name', 'image_path', 'updated_at'])
             ->each(function (PageProduct $product) use ($entries): void {
                 foreach (self::LOCALES as $locale) {
-                    $entries->push($this->entry($this->localizedProductPath($product, $locale), $product->updated_at, 'weekly', '0.72'));
+                    $entries->push($this->entry($this->localizedProductPath($product, $locale), $product->updated_at, 'weekly', '0.72', [
+                        $this->image($product->image_url, $product->name),
+                    ]));
                 }
             });
 
@@ -85,9 +102,11 @@ class SitemapController extends Controller
             ->active()
             ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
             ->orderBy('id')
-            ->get(['id', 'title', 'city', 'neighborhood', 'updated_at'])
+            ->get(['id', 'title', 'city', 'neighborhood', 'image_path', 'updated_at'])
             ->each(fn (Ad $ad) => $entries->push(
-                $this->entry("/ads/{$ad->public_slug}", $ad->updated_at, 'daily', '0.7')
+                $this->entry("/ads/{$ad->public_slug}", $ad->updated_at, 'daily', '0.7', [
+                    $this->image($ad->image_url, $ad->title),
+                ])
             ));
 
         $this->catalogEntries()->each(fn (array $entry) => $entries->push($entry));
@@ -277,13 +296,35 @@ class SitemapController extends Controller
         return "/{$locale}/product/{$product->public_slug}";
     }
 
-    private function entry(string $path, ?Carbon $lastModified, string $changeFrequency, string $priority): array
+    private function entry(string $path, ?Carbon $lastModified, string $changeFrequency, string $priority, array $images = []): array
     {
         return [
             'loc' => $this->absoluteUrl($path),
             'lastmod' => ($lastModified ?: now())->toDateString(),
             'changefreq' => $changeFrequency,
             'priority' => $priority,
+            'images' => collect($images)->filter()->values()->all(),
+        ];
+    }
+
+    private function image(?string $path, ?string $title = null, ?string $caption = null): ?array
+    {
+        if (! filled($path)) {
+            return null;
+        }
+
+        return [
+            'loc' => $this->absoluteUrl($path),
+            'title' => $title,
+            'caption' => $caption ?: $title,
+        ];
+    }
+
+    private function pageImages(Page $page): array
+    {
+        return [
+            $this->image($page->banner_url, $page->name),
+            $this->image($page->logo_url, $page->name.' logo'),
         ];
     }
 
@@ -332,15 +373,23 @@ class SitemapController extends Controller
         return $ad->user?->profile?->{$field};
     }
 
-    private function absoluteUrl(string $path): string
+    private function absoluteUrl(?string $path): string
     {
+        if (! filled($path)) {
+            return '';
+        }
+
+        if (preg_match('/^https?:\/\//i', $path)) {
+            return $path;
+        }
+
         return rtrim((string) config('app.url'), '/').'/'.ltrim($path, '/');
     }
 
     private function toXml(array $entries): string
     {
         $xml = ['<?xml version="1.0" encoding="UTF-8"?>'];
-        $xml[] = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+        $xml[] = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">';
 
         foreach ($entries as $entry) {
             $xml[] = '  <url>';
@@ -348,6 +397,20 @@ class SitemapController extends Controller
             $xml[] = '    <lastmod>'.$this->escape($entry['lastmod']).'</lastmod>';
             $xml[] = '    <changefreq>'.$this->escape($entry['changefreq']).'</changefreq>';
             $xml[] = '    <priority>'.$this->escape($entry['priority']).'</priority>';
+            foreach ($entry['images'] ?? [] as $image) {
+                $xml[] = '    <image:image>';
+                $xml[] = '      <image:loc>'.$this->escape($image['loc']).'</image:loc>';
+
+                if (filled($image['title'] ?? null)) {
+                    $xml[] = '      <image:title>'.$this->escape($image['title']).'</image:title>';
+                }
+
+                if (filled($image['caption'] ?? null)) {
+                    $xml[] = '      <image:caption>'.$this->escape($image['caption']).'</image:caption>';
+                }
+
+                $xml[] = '    </image:image>';
+            }
             $xml[] = '  </url>';
         }
 

@@ -2,6 +2,7 @@
 	import { computed, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 
 	const props = defineProps({
 		event: {
@@ -23,6 +24,8 @@
 	const $q = useQuasar()
 	const detailOpen = ref(false)
 	const compactActionButtons = computed(() => $q.screen.width <= 700)
+	const eventImageAlt = computed(() => props.event?.image_alt || props.event?.name || '')
+	const eventImageSizes = computed(() => props.event?.image_sizes || '(max-width: 700px) calc(100vw - 36px), 340px')
 	const intlLocale = computed(() => ({
 		he: 'he-IL',
 		en: 'en-US',
@@ -120,7 +123,17 @@
 
 <template>
 	<article class="event-card" :style="themeStyle">
-		<div v-if="event.image_url" class="event-card__image" :style="{ backgroundImage: `url(${event.image_url})` }" />
+		<ResponsiveImage
+			v-if="event.image_url"
+			class="event-card__image"
+			:src="event.image_url"
+			:alt="eventImageAlt"
+			:avif-srcset="event.image_avif_srcset || ''"
+			:webp-srcset="event.image_webp_srcset || ''"
+			:sizes="eventImageSizes"
+			:width="event.image_width || 768"
+			:height="event.image_height || 576"
+		/>
 		<div class="event-card__body">
 			<div class="event-card__copy">
 				<h3 class="event-card__title">{{ event.name }}</h3>
@@ -181,7 +194,17 @@
 	</article>
 	<q-dialog v-model="detailOpen">
 		<q-card class="event-detail-dialog" :style="themeStyle">
-			<div v-if="event.image_url" class="event-detail-dialog__image" :style="{ backgroundImage: `url(${event.image_url})` }" />
+			<ResponsiveImage
+				v-if="event.image_url"
+				class="event-detail-dialog__image"
+				:src="event.image_url"
+				:alt="eventImageAlt"
+				:avif-srcset="event.image_avif_srcset || ''"
+				:webp-srcset="event.image_webp_srcset || ''"
+				:sizes="eventImageSizes"
+				:width="event.image_width || 768"
+				:height="event.image_height || 576"
+			/>
 			<q-card-section class="event-detail-dialog__body">
 				<div class="event-detail-dialog__head">
 					<div>
@@ -224,8 +247,8 @@
 .event-card__image {
   flex: 0 0 180px;
   min-height: 180px;
-  background-position: center;
-  background-size: cover;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .event-card__body {
@@ -333,8 +356,8 @@
 
 .event-detail-dialog__image {
   min-height: 260px;
-  background-position: center;
-  background-size: cover;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .event-detail-dialog__body {

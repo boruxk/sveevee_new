@@ -5,6 +5,7 @@
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
 	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { getLegalDocument } from '@/constants/legalDocuments'
 	import { marketPath, normalizeCatalogLocale } from '@/constants/catalogTopics'
 
@@ -30,7 +31,9 @@
 	const hasBusinessPage = computed(() => Boolean(authStore.user?.business_page))
 	const hasCommunityPage = computed(() => Boolean(authStore.user?.community_page))
 	const isAdmin = computed(() => authStore.isAdmin || authStore.canAccess(['admin']))
+	const profileAvatar = computed(() => authStore.user?.profile || null)
 	const profileAvatarUrl = computed(() => authStore.user?.profile?.photo_url || null)
+	const profileAvatarAlt = computed(() => authStore.user?.display_name || t('nav.profile'))
 	const profileInitials = computed(() => {
 		const givenName = String(authStore.user?.given_name || '').trim()
 		const familyName = String(authStore.user?.family_name || '').trim()
@@ -141,14 +144,25 @@
 		<q-header class="bg-transparent text-dark shell-header">
 			<q-toolbar class="shell-toolbar">
 				<router-link :to="{ name: homeRouteName }" class="brand-lockup">
-					<img
-						:src="logoSrc"
-						alt="sveevee"
-						class="brand-logo"
-						width="320"
-						height="63"
-						decoding="async"
-					/>
+					<picture class="brand-logo">
+						<source
+							srcset="/assets/landing/sveevee-logo-320.v1.avif 320w, /assets/landing/sveevee-logo-640.v1.avif 640w"
+							sizes="214px"
+							type="image/avif"
+						/>
+						<source
+							srcset="/assets/landing/sveevee-logo-320.v1.webp 320w, /assets/landing/sveevee-logo-640.v1.webp 640w"
+							sizes="214px"
+							type="image/webp"
+						/>
+						<img
+							:src="logoSrc"
+							alt="sveevee"
+							width="320"
+							height="63"
+							decoding="async"
+						/>
+					</picture>
 				</router-link>
 
 				<q-space />
@@ -212,7 +226,17 @@
 						class="profile-menu-trigger"
 					>
 						<q-avatar size="52px" color="primary" text-color="white">
-							<img v-if="profileAvatarUrl" :src="profileAvatarUrl" alt="Profile" />
+							<ResponsiveImage
+								v-if="profileAvatarUrl"
+								class="profile-avatar-image"
+								:src="profileAvatarUrl"
+								:alt="profileAvatarAlt"
+								:avif-srcset="profileAvatar?.photo_avif_srcset || ''"
+								:webp-srcset="profileAvatar?.photo_webp_srcset || ''"
+								sizes="52px"
+								:width="profileAvatar?.photo_width || 96"
+								:height="profileAvatar?.photo_height || 96"
+							/>
 							<span v-else>{{ profileInitials }}</span>
 						</q-avatar>
 						<q-menu anchor="bottom end" self="top end" class="profile-menu">
@@ -369,10 +393,24 @@
 }
 
 .brand-logo {
-  height: 42px;
-  width: auto;
   display: block;
+  width: 214px;
+  height: 42px;
+  overflow: hidden;
   border-radius: 10px;
+}
+
+.brand-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.profile-avatar-image {
+  width: 100%;
+  height: 100%;
+  --responsive-image-fit: cover;
 }
 
 .shell-nav {

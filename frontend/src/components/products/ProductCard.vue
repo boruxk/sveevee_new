@@ -2,6 +2,7 @@
 	import { computed, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 
 	const props = defineProps({
 		product: {
@@ -24,6 +25,8 @@
 	const detailOpen = ref(false)
 	const compactActionButtons = computed(() => $q.screen.width <= 700)
 	const productDetailPath = computed(() => props.product?.public_path || '')
+	const productImageAlt = computed(() => props.product?.image_alt || props.product?.name || '')
+	const productImageSizes = computed(() => props.product?.image_sizes || '(max-width: 700px) calc(100vw - 36px), 340px')
 	const themeStyle = computed(() => {
 		if (!props.palette) {
 			return null
@@ -48,7 +51,17 @@
 
 <template>
 	<article class="product-card" :style="themeStyle">
-		<div v-if="product.image_url" class="product-card__image" :style="{ backgroundImage: `url(${product.image_url})` }" />
+		<ResponsiveImage
+			v-if="product.image_url"
+			class="product-card__image"
+			:src="product.image_url"
+			:alt="productImageAlt"
+			:avif-srcset="product.image_avif_srcset || ''"
+			:webp-srcset="product.image_webp_srcset || ''"
+			:sizes="productImageSizes"
+			:width="product.image_width || 768"
+			:height="product.image_height || 576"
+		/>
 		<div class="product-card__body">
 			<div class="product-card__copy">
 				<h3 class="product-card__title">{{ product.name }}</h3>
@@ -97,7 +110,17 @@
 	</article>
 	<q-dialog v-model="detailOpen">
 		<q-card class="product-detail-dialog" :style="themeStyle">
-			<div v-if="product.image_url" class="product-detail-dialog__image" :style="{ backgroundImage: `url(${product.image_url})` }" />
+			<ResponsiveImage
+				v-if="product.image_url"
+				class="product-detail-dialog__image"
+				:src="product.image_url"
+				:alt="productImageAlt"
+				:avif-srcset="product.image_avif_srcset || ''"
+				:webp-srcset="product.image_webp_srcset || ''"
+				:sizes="productImageSizes"
+				:width="product.image_width || 768"
+				:height="product.image_height || 576"
+			/>
 			<q-card-section class="product-detail-dialog__body">
 				<div class="product-detail-dialog__head">
 					<div>
@@ -139,8 +162,8 @@
 .product-card__image {
   flex: 0 0 180px;
   min-height: 180px;
-  background-position: center;
-  background-size: cover;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .product-card__body {
@@ -227,8 +250,8 @@
 
 .product-detail-dialog__image {
   min-height: 260px;
-  background-position: center;
-  background-size: cover;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .product-detail-dialog__body {

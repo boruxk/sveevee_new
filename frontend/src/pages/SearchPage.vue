@@ -8,6 +8,7 @@
 	import { catalogPath, catalogTopicByKey, catalogTopicMatchesScope, CATALOG_SCOPES, pageRoute, userRoute } from '@/constants/catalogTopics'
 	import AdCard from '@/components/AdCard.vue'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 
 	function queryValue(value) {
 		return Array.isArray(value) ? value[0] || '' : value || ''
@@ -271,7 +272,17 @@
 					<template v-for="item in combinedResults" :key="item.id">
 						<router-link v-if="item.kind === 'user'" :to="userRoute(item.value)" class="result-card">
 							<q-avatar size="54px" color="primary" text-color="white">
-								<img v-if="item.value.profile?.photo_url" :src="item.value.profile.photo_url" alt="" />
+								<ResponsiveImage
+									v-if="item.value.profile?.photo_url"
+									class="result-avatar-image"
+									:src="item.value.profile.photo_url"
+									:alt="item.value.display_name"
+									:avif-srcset="item.value.profile.photo_avif_srcset || ''"
+									:webp-srcset="item.value.profile.photo_webp_srcset || ''"
+									sizes="54px"
+									:width="item.value.profile.photo_width || 96"
+									:height="item.value.profile.photo_height || 96"
+								/>
 								<span v-else>{{ item.value.display_name.slice(0, 1) }}</span>
 							</q-avatar>
 							<div>
@@ -282,7 +293,17 @@
 
 						<router-link v-else-if="item.kind === 'page'" :to="pageRoute(item.value)" class="result-card result-card--page">
 							<q-avatar size="72px" rounded class="page-result-logo" color="primary" text-color="white">
-								<img v-if="item.value.logo_url" :src="item.value.logo_url" alt="" />
+								<ResponsiveImage
+									v-if="item.value.logo_url"
+									class="result-avatar-image"
+									:src="item.value.logo_url"
+									:alt="item.value.logo_alt || `${item.value.name} logo`"
+									:avif-srcset="item.value.logo_avif_srcset || ''"
+									:webp-srcset="item.value.logo_webp_srcset || ''"
+									sizes="72px"
+									:width="item.value.logo_width || 96"
+									:height="item.value.logo_height || 96"
+								/>
 								<q-icon v-else :name="item.value.type === 'business' ? 'storefront' : 'diversity_3'" size="34px" />
 							</q-avatar>
 							<div>
@@ -297,7 +318,17 @@
 							class="result-card result-card--page"
 						>
 							<q-avatar size="72px" rounded class="page-result-logo" color="primary" text-color="white">
-								<img v-if="item.value.image_url" :src="item.value.image_url" alt="" />
+								<ResponsiveImage
+									v-if="item.value.image_url"
+									class="result-avatar-image"
+									:src="item.value.image_url"
+									:alt="item.value.image_alt || item.value.name"
+									:avif-srcset="item.value.image_avif_srcset || ''"
+									:webp-srcset="item.value.image_webp_srcset || ''"
+									sizes="72px"
+									:width="item.value.image_width || 768"
+									:height="item.value.image_height || 576"
+								/>
 								<q-icon v-else :name="item.kind === 'event' ? 'event' : item.kind === 'service' ? 'design_services' : 'inventory_2'" size="34px" />
 							</q-avatar>
 							<div>
@@ -474,6 +505,12 @@
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.76);
   overflow: hidden;
+}
+
+.result-avatar-image {
+  width: 100%;
+  height: 100%;
+  --responsive-image-fit: cover;
 }
 
 .result-ad-link {

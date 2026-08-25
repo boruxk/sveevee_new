@@ -2,9 +2,11 @@
 
 use App\Models\Ad;
 use App\Services\SeoPrerenderService;
+use App\Support\PublicImageVariants;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Storage;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -25,5 +27,30 @@ Artisan::command('seo:prerender-public-pages {--dist= : Path to the built fronte
     $this->line("Business pages: {$result['business_pages']}");
     $this->line("Product pages: {$result['product_pages']}");
 })->purpose('Generate static HTML for public SEO marketing, catalog, business, and product pages');
+
+Artisan::command('images:generate-variants {--force : Recreate existing variants}', function () {
+    if (! PublicImageVariants::canGenerate()) {
+        $this->error('GD WebP image processing is not available.');
+
+        return 1;
+    }
+
+    $disk = Storage::disk('public');
+    $paths = collect($disk->allFiles())
+        ->filter(fn (string $path): bool => preg_match('#^(ads|events|products|services|profiles|pages/logos|pages/banners)/#', $path) === 1)
+        ->filter(fn (string $path): bool => preg_match('/\.webp$/i', $path) === 1)
+        ->filter(fn (string $path): bool => preg_match('/-\d+\.webp$/i', $path) !== 1)
+        ->values();
+
+    $created = 0;
+
+    foreach ($paths as $path) {
+        $created += PublicImageVariants::generateForPath($path, overwrite: (bool) $this->option('force'));
+    }
+
+    $this->info("Generated {$created} responsive variants for {$paths->count()} public uploads.");
+
+    return 0;
+})->purpose('Generate responsive WebP variants for existing public uploads');
 
 Schedule::command('ads:prune-expired')->hourly();

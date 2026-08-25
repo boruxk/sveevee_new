@@ -12,6 +12,7 @@
 	import ProductCard from '@/components/products/ProductCard.vue'
 	import ServiceCard from '@/components/services/ServiceCard.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
+	import { imageObjectForJsonLd, versionedPublicImage } from '@/utils/responsiveImages'
 
 	const { locale, t } = useI18n()
 	const route = useRoute()
@@ -19,8 +20,6 @@
 	const activeTab = ref('preview')
 	const exampleType = computed(() => (route.meta.exampleType === 'community' ? 'community' : 'business'))
 	const isCommunityExample = computed(() => exampleType.value === 'community')
-	const bannerUrl = computed(() => `/assets/landing/example-${exampleType.value}-banner-1440.v1.webp`)
-	const logoUrl = computed(() => `/assets/landing/example-${exampleType.value}-logo-512.v1.webp`)
 	const palette = computed(() => findPresencePalette('orange-violet'))
 	const examplePath = computed(() => (isCommunityExample.value ? '/community-example-page' : '/business-example-page'))
 	const pageCatalogScope = computed(() => (
@@ -32,6 +31,18 @@
 	))
 	const requiredLabel = (key) => `${t(key)} *`
 	const dayLabel = (weekday) => t(`pages.weekdays.${weekday}`)
+	const exampleCardImageSizes = '(max-width: 700px) calc(100vw - 52px), (max-width: 1100px) calc((100vw - 88px) / 2), 380px'
+
+	function exampleCardImage(name, alt) {
+		return versionedPublicImage(`/assets/examples/${name}`, {
+			widths: [384, 576, 768],
+			fallbackWidth: 576,
+			width: 768,
+			height: 576,
+			sizes: exampleCardImageSizes,
+			alt
+		})
+	}
 
 	const typedCopyByLocale = {
 		en: {
@@ -309,6 +320,24 @@
 
 	const copy = computed(() => copyByLocale[locale.value] || copyByLocale.en)
 	const typedCopy = computed(() => typedCopyByLocale[locale.value]?.[exampleType.value] || typedCopyByLocale.en[exampleType.value])
+	const bannerImage = computed(() => versionedPublicImage(`/assets/landing/example-${exampleType.value}-banner`, {
+		widths: [480, 768, 960, 1440],
+		fallbackWidth: 960,
+		width: 1440,
+		height: 640,
+		sizes: '(max-width: 700px) calc(100vw - 20px), 1280px',
+		alt: typedCopy.value.title
+	}))
+	const logoImage = computed(() => versionedPublicImage(`/assets/landing/example-${exampleType.value}-logo`, {
+		widths: [128, 256, 512],
+		fallbackWidth: 256,
+		width: 512,
+		height: 512,
+		sizes: '96px',
+		alt: `${typedCopy.value.pageName} logo`
+	}))
+	const bannerUrl = computed(() => bannerImage.value.image_url)
+	const logoUrl = computed(() => logoImage.value.image_url)
 	const exampleModules = computed(() => {
 		if (isCommunityExample.value) {
 			return [
@@ -395,7 +424,19 @@
 			events: isCommunityExample.value
 		},
 		logo_url: logoUrl.value,
+		logo_alt: logoImage.value.image_alt,
+		logo_width: logoImage.value.image_width,
+		logo_height: logoImage.value.image_height,
+		logo_sizes: logoImage.value.image_sizes,
+		logo_avif_srcset: logoImage.value.image_avif_srcset,
+		logo_webp_srcset: logoImage.value.image_webp_srcset,
 		banner_url: bannerUrl.value,
+		banner_alt: bannerImage.value.image_alt,
+		banner_width: bannerImage.value.image_width,
+		banner_height: bannerImage.value.image_height,
+		banner_sizes: bannerImage.value.image_sizes,
+		banner_avif_srcset: bannerImage.value.image_avif_srcset,
+		banner_webp_srcset: bannerImage.value.image_webp_srcset,
 		rating_summary: { average: 4.8, count: 24 }
 	}))
 	const shareUrl = computed(() => absoluteUrl(examplePath.value))
@@ -419,22 +460,22 @@
 		price: Number(item.price.replace(/\D/g, '')) || null,
 		price_label: item.price,
 		link: 'https://sveevee.co.il',
-		image_url: [
-			'/assets/examples/example-product-gift-basket.v1.webp',
-			'/assets/examples/example-product-office-shelf.v1.webp',
-			'/assets/examples/example-product-event-kit.v1.webp'
-		][index]
+		...exampleCardImage([
+			'example-product-gift-basket',
+			'example-product-office-shelf',
+			'example-product-event-kit'
+		][index], item.name)
 	})))
 	const services = computed(() => copy.value.items.services.map((item, index) => ({
 		id: index + 1,
 		name: item.name,
 		description: item.body,
 		link: 'https://sveevee.co.il',
-		image_url: [
-			'/assets/examples/example-service-page-setup.v1.webp',
-			'/assets/examples/example-service-event-planning.v1.webp',
-			'/assets/examples/example-service-delivery.v1.webp'
-		][index]
+		...exampleCardImage([
+			'example-service-page-setup',
+			'example-service-event-planning',
+			'example-service-delivery'
+		][index], item.name)
 	})))
 	const events = computed(() => copy.value.items.events.map((item, index) => ({
 		id: index + 1,
@@ -444,10 +485,10 @@
 		time: ['10:00', '17:30'][index],
 		end_time: ['12:30', '19:00'][index],
 		address: copy.value.details.address,
-		image_url: [
-			'/assets/examples/example-event-makers-meetup.v1.webp',
-			'/assets/examples/example-event-repair-workshop.v1.webp'
-		][index]
+		...exampleCardImage([
+			'example-event-makers-meetup',
+			'example-event-repair-workshop'
+		][index], item.name)
 	})))
 	const ads = computed(() => copy.value.items.ads
 		.filter((item) => {
@@ -456,9 +497,9 @@
 		})
 		.map((item, index) => {
 			const adImages = {
-				business_ad: '/assets/examples/example-ad-opening-offer.v1.webp',
-				community_ad: '/assets/examples/example-ad-volunteers.v1.webp',
-				private_ad: '/assets/examples/example-ad-display-table.v1.webp'
+				business_ad: 'example-ad-opening-offer',
+				community_ad: 'example-ad-volunteers',
+				private_ad: 'example-ad-display-table'
 			}
 
 			return {
@@ -469,7 +510,7 @@
 				city: copy.value.location.split(',')[0],
 				neighborhood: copy.value.location.split(',')[1]?.trim() || '',
 				category: null,
-				image_url: adImages[item.type] || adImages.private_ad
+				...exampleCardImage(adImages[item.type] || adImages.private_ad, item.title)
 			}
 		}))
 
@@ -489,6 +530,9 @@
 		title: typedCopy.value.seoTitle,
 		description: typedCopy.value.seoDescription,
 		image: bannerUrl.value,
+		imageAlt: bannerImage.value.image_alt,
+		imageWidth: bannerImage.value.image_width,
+		imageHeight: bannerImage.value.image_height,
 		canonical: examplePath.value,
 		jsonLd: {
 			'@context': 'https://schema.org',
@@ -496,7 +540,8 @@
 			name: typedCopy.value.seoTitle,
 			description: typedCopy.value.seoDescription,
 			url: absoluteUrl(examplePath.value),
-			image: absoluteUrl(bannerUrl.value)
+			image: absoluteUrl(bannerUrl.value),
+			primaryImageOfPage: imageObjectForJsonLd(bannerImage.value, absoluteUrl)
 		}
 	})))
 </script>

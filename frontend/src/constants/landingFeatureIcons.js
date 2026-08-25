@@ -1,41 +1,73 @@
 const iconBase = '/assets/landing/icons/'
 
 const iconFiles = {
-	campaign: 'feature-ads.v2.webp',
-	storefront: 'feature-storefront.v2.webp',
-	inventory_2: 'feature-products.v2.webp',
-	design_services: 'feature-services.v2.webp',
-	event: 'feature-events.v2.webp',
-	star: 'feature-ratings.v2.webp',
-	reviews: 'feature-ratings.v2.webp',
-	forum: 'feature-chat.v2.webp',
-	chat_bubble: 'feature-chat.v2.webp',
-	diversity_3: 'feature-community.v2.webp',
-	groups: 'feature-community.v2.webp',
-	location: 'feature-location.v2.webp',
-	schedule: 'feature-hours.v2.webp',
-	palette: 'feature-palette.v2.webp',
-	share: 'feature-share.v2.webp',
-	search: 'feature-search.v2.webp',
-	tune: 'feature-controls.v2.webp',
-	public: 'feature-profile.v2.webp',
-	person: 'feature-profile.v2.webp',
-	edit: 'feature-controls.v2.webp',
-	verified: 'feature-ratings.v2.webp'
+	campaign: 'feature-ads',
+	storefront: 'feature-storefront',
+	inventory_2: 'feature-products',
+	design_services: 'feature-services',
+	event: 'feature-events',
+	star: 'feature-ratings',
+	reviews: 'feature-ratings',
+	forum: 'feature-chat',
+	chat_bubble: 'feature-chat',
+	diversity_3: 'feature-community',
+	groups: 'feature-community',
+	location: 'feature-location',
+	schedule: 'feature-hours',
+	palette: 'feature-palette',
+	share: 'feature-share',
+	search: 'feature-search',
+	tune: 'feature-controls',
+	public: 'feature-profile',
+	person: 'feature-profile',
+	edit: 'feature-controls',
+	verified: 'feature-ratings'
 }
 
 const landingFeatureFallbacks = ['campaign', 'storefront', 'inventory_2', 'event', 'star', 'forum']
 const landingStepIcons = ['person', 'campaign', 'search', 'verified']
 
 export function landingIconImage(icon, fallback = 'storefront') {
+	return `${landingIconBase(icon, fallback)}.v2.webp`
+}
+
+export function landingIconBase(icon, fallback = 'storefront') {
 	const filename = iconFiles[icon] ?? iconFiles[fallback] ?? iconFiles.storefront
 	return `${iconBase}${filename}`
+}
+
+export function landingIconAvifSrcset(icon, fallback = 'storefront') {
+	const base = landingIconBase(icon, fallback)
+
+	return `${base}-160.v2.avif 160w, ${base}.v2.avif 320w`
+}
+
+export function landingIconWebpSrcset(icon, fallback = 'storefront') {
+	const base = landingIconBase(icon, fallback)
+
+	return `${base}-160.v2.webp 160w, ${base}.v2.webp 320w`
 }
 
 export function landingFeatureIconImage(item, index) {
 	return landingIconImage(item?.icon ?? landingFeatureFallbacks[index])
 }
 
+export function landingFeatureIconAvifSrcset(item, index) {
+	return landingIconAvifSrcset(item?.icon ?? landingFeatureFallbacks[index])
+}
+
+export function landingFeatureIconWebpSrcset(item, index) {
+	return landingIconWebpSrcset(item?.icon ?? landingFeatureFallbacks[index])
+}
+
 export function landingStepIconImage(index) {
 	return landingIconImage(landingStepIcons[index], 'verified')
+}
+
+export function landingStepIconAvifSrcset(index) {
+	return landingIconAvifSrcset(landingStepIcons[index], 'verified')
+}
+
+export function landingStepIconWebpSrcset(index) {
+	return landingIconWebpSrcset(landingStepIcons[index], 'verified')
 }

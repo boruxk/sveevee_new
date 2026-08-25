@@ -11,6 +11,7 @@ use App\Models\PageRating;
 use App\Models\PageService;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Support\PublicImageVariants;
 
 class PayloadService
 {
@@ -61,6 +62,7 @@ class PayloadService
         return [
             'email' => $user?->email,
             'photo_url' => $profile?->photo_url,
+            ...$this->publicImageMeta('photo', $profile?->photo_path, $user?->display_name, '96px'),
             'photo_name' => $profile?->photo_original_name,
             'phone' => $profile?->phone,
             'city' => $profile?->city,
@@ -101,8 +103,10 @@ class PayloadService
             'features' => $this->pageFeatures($setup),
             'palette_key' => $page->palette_key,
             'logo_url' => $page->logo_url,
+            ...$this->publicImageMeta('logo', $page->logo_path, $page->name.' logo', '96px'),
             'logo_name' => $page->logo_original_name,
             'banner_url' => $page->banner_url,
+            ...$this->publicImageMeta('banner', $page->banner_path, $page->name, '(max-width: 700px) calc(100vw - 28px), 1180px'),
             'banner_name' => $page->banner_original_name,
             'rating_summary' => $this->pageRatingSummary($page),
             'products' => $page->products->map(fn (PageProduct $product) => $this->product($product))->values()->all(),
@@ -138,6 +142,7 @@ class PayloadService
             'description' => $product->description,
             'category_key' => $product->category_key,
             'image_url' => $product->image_url,
+            ...$this->publicImageMeta('image', $product->image_path, $product->name, '(max-width: 700px) calc(100vw - 36px), 340px'),
             'image_name' => $product->image_original_name,
             'price' => (float) $product->price,
             'price_label' => '₪'.number_format((float) $product->price, 2),
@@ -156,6 +161,7 @@ class PayloadService
             'description' => $event->description,
             'category_key' => $event->category_key,
             'image_url' => $event->image_url,
+            ...$this->publicImageMeta('image', $event->image_path, $event->name, '(max-width: 700px) calc(100vw - 36px), 340px'),
             'image_name' => $event->image_original_name,
             'date' => $event->event_date?->format('Y-m-d'),
             'time' => $this->eventTime($event->event_time),
@@ -175,6 +181,7 @@ class PayloadService
             'description' => $service->description,
             'category_key' => $service->category_key,
             'image_url' => $service->image_url,
+            ...$this->publicImageMeta('image', $service->image_path, $service->name, '(max-width: 760px) calc(100vw - 36px), 360px'),
             'image_name' => $service->image_original_name,
             'link' => $service->link,
             'created_at' => $service->created_at?->toISOString(),
@@ -224,6 +231,7 @@ class PayloadService
             'text' => $ad->text,
             'category' => $ad->category,
             'image_url' => $ad->image_url,
+            ...$this->publicImageMeta('image', $ad->image_path, $ad->title, '(max-width: 700px) calc(100vw - 36px), 360px'),
             'image_name' => $ad->image_original_name,
             'status' => $ad->status,
             'city' => $this->adLocationValue($ad, 'city'),
@@ -387,6 +395,20 @@ class PayloadService
         }
 
         return $ad->user?->profile?->{$field};
+    }
+
+    public function publicImageMeta(string $prefix, ?string $path, ?string $alt, string $sizes): array
+    {
+        [$width, $height] = PublicImageVariants::dimensions($path);
+
+        return [
+            $prefix.'_alt' => $alt,
+            $prefix.'_width' => $width,
+            $prefix.'_height' => $height,
+            $prefix.'_sizes' => $sizes,
+            $prefix.'_webp_srcset' => PublicImageVariants::webpSrcset($path),
+            $prefix.'_avif_srcset' => '',
+        ];
     }
 
     private function eventTime(?string $time): ?string

@@ -17,6 +17,16 @@
 		const legalDocument = route.meta.legalDocument ? getLegalDocument(route.meta.legalDocument, locale.value) : null
 		const title = legalDocument?.title || (seo.titleKey ? t(seo.titleKey) : t('seo.defaultTitle'))
 		const image = seo.image || (isLanding ? heroSeoImage : undefined)
+		const imageAlt = seo.imageAltKey ? t(seo.imageAltKey) : (image ? title : undefined)
+		const imageWidth = seo.imageWidth || (isLanding ? 1360 : undefined)
+		const imageHeight = seo.imageHeight || (isLanding ? 765 : undefined)
+		const imageObject = image ? {
+			'@type': 'ImageObject',
+			url: absoluteUrl(image),
+			caption: imageAlt,
+			width: imageWidth,
+			height: imageHeight
+		} : null
 
 		return {
 			title,
@@ -26,7 +36,19 @@
 			type: seo.type || 'website',
 			canonical,
 			image,
+			imageAlt,
+			imageWidth,
+			imageHeight,
 			jsonLd: isLanding ? [
+				{
+					'@context': 'https://schema.org',
+					'@type': 'WebPage',
+					name: title,
+					description: legalDocument?.intro || (seo.descriptionKey ? t(seo.descriptionKey) : t('seo.defaultDescription')),
+					url: absoluteUrl('/'),
+					image: absoluteUrl(image),
+					primaryImageOfPage: imageObject
+				},
 				{
 					'@context': 'https://schema.org',
 					'@type': 'WebSite',

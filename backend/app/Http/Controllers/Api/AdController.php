@@ -151,6 +151,7 @@ class AdController extends Controller
             return ApiResponseService::error('This action is unauthorized.', status: 403);
         }
 
+        $this->deletePublicUpload($ad->image_path);
         $ad->delete();
 
         return ApiResponseService::success(null, 'Ad deleted.');

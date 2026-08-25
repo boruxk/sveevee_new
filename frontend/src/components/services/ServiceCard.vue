@@ -2,6 +2,7 @@
 	import { computed, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 
 	const props = defineProps({
 		service: {
@@ -24,6 +25,8 @@
 	const detailOpen = ref(false)
 	const compactActionButtons = computed(() => $q.screen.width <= 700)
 	const serviceLink = computed(() => String(props.service.link || '').trim())
+	const serviceImageAlt = computed(() => props.service?.image_alt || props.service?.name || '')
+	const serviceImageSizes = computed(() => props.service?.image_sizes || '(max-width: 760px) calc(100vw - 36px), 360px')
 	const themeStyle = computed(() => {
 		if (!props.palette) {
 			return null
@@ -42,7 +45,17 @@
 
 <template>
 	<article class="service-card" :style="themeStyle">
-		<div v-if="service.image_url" class="service-card__image" :style="{ backgroundImage: `url(${service.image_url})` }" />
+		<ResponsiveImage
+			v-if="service.image_url"
+			class="service-card__image"
+			:src="service.image_url"
+			:alt="serviceImageAlt"
+			:avif-srcset="service.image_avif_srcset || ''"
+			:webp-srcset="service.image_webp_srcset || ''"
+			:sizes="serviceImageSizes"
+			:width="service.image_width || 768"
+			:height="service.image_height || 576"
+		/>
 		<div class="service-card__body">
 			<div class="service-card__copy">
 				<h3 class="service-card__title">{{ service.name }}</h3>
@@ -87,7 +100,17 @@
 	</article>
 	<q-dialog v-model="detailOpen">
 		<q-card class="service-detail-dialog" :style="themeStyle">
-			<div v-if="service.image_url" class="service-detail-dialog__image" :style="{ backgroundImage: `url(${service.image_url})` }" />
+			<ResponsiveImage
+				v-if="service.image_url"
+				class="service-detail-dialog__image"
+				:src="service.image_url"
+				:alt="serviceImageAlt"
+				:avif-srcset="service.image_avif_srcset || ''"
+				:webp-srcset="service.image_webp_srcset || ''"
+				:sizes="serviceImageSizes"
+				:width="service.image_width || 768"
+				:height="service.image_height || 576"
+			/>
 			<q-card-section class="service-detail-dialog__body">
 				<div class="service-detail-dialog__head">
 					<h3>{{ service.name }}</h3>
@@ -125,8 +148,8 @@
 
 .service-card__image {
   min-height: 230px;
-  background-position: center;
-  background-size: cover;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .service-card__body {
@@ -192,8 +215,8 @@
 
 .service-detail-dialog__image {
   min-height: 280px;
-  background-position: center;
-  background-size: cover;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .service-detail-dialog__body {

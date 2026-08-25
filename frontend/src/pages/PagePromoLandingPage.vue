@@ -3,7 +3,7 @@
 	import { useRoute } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useAppStore } from '@/stores/app'
-	import { landingIconImage } from '@/constants/landingFeatureIcons'
+	import { landingIconAvifSrcset, landingIconImage, landingIconWebpSrcset } from '@/constants/landingFeatureIcons'
 
 	const route = useRoute()
 	const { t, tm } = useI18n()
@@ -82,7 +82,7 @@
 							<source media="(max-width: 640px)" :srcset="mobileHeroWebpSrcSet" :sizes="mobileHeroSizes" type="image/webp" />
 							<img
 								:src="transparentPixel"
-								alt=""
+								:alt="t(copyKey('title'))"
 								width="800"
 								height="800"
 								loading="eager"
@@ -118,7 +118,7 @@
 					<source media="(min-width: 641px)" :srcset="heroWebpSrcSet" sizes="90vw" type="image/webp" />
 					<img
 						:src="transparentPixel"
-						alt=""
+						:alt="t(copyKey('title'))"
 						width="1360"
 						height="765"
 						loading="eager"
@@ -169,15 +169,19 @@
 					<span class="promo-function__marker">{{ String(index + 1).padStart(2, '0') }}</span>
 					<header class="promo-function__head">
 						<span class="promo-function__icon" aria-hidden="true">
-							<img
-								class="promo-function__image"
-								:src="landingIconImage(item.icon)"
-								alt=""
-								width="320"
-								height="320"
-								loading="lazy"
-								decoding="async"
-							/>
+							<picture>
+								<source :srcset="landingIconAvifSrcset(item.icon)" sizes="72px" type="image/avif" />
+								<source :srcset="landingIconWebpSrcset(item.icon)" sizes="72px" type="image/webp" />
+								<img
+									class="promo-function__image"
+									:src="landingIconImage(item.icon)"
+									alt=""
+									width="320"
+									height="320"
+									loading="lazy"
+									decoding="async"
+								/>
+							</picture>
 						</span>
 						<h3>{{ item.title }}</h3>
 					</header>
@@ -490,6 +494,12 @@
   display: block;
   width: 72px;
   height: 72px;
+}
+
+.promo-function__icon picture {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .promo-function__image {

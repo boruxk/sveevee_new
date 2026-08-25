@@ -4,6 +4,7 @@
 	import { useI18n } from 'vue-i18n'
 	import { setLocale } from '@/i18n'
 	import { fetchMarket } from '@/services/api/market'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
 	import { catalogLabel, catalogTopicByKey, marketPath, normalizeCatalogLocale, productPath, publicPagePath } from '@/constants/catalogTopics'
 	import { locationLabel } from '@/utils/locationLabels'
@@ -222,7 +223,19 @@
 					<div class="market-grid">
 						<article v-for="product in products" :key="product.id" class="market-product">
 							<div class="market-product__media">
-								<img v-if="product.image_url" :src="product.image_url" alt="" loading="lazy" decoding="async" />
+								<ResponsiveImage
+									v-if="product.image_url"
+									class="market-product__image"
+									:src="product.image_url"
+									:alt="product.image_alt || product.name"
+									:avif-srcset="product.image_avif_srcset || ''"
+									:webp-srcset="product.image_webp_srcset || ''"
+									:sizes="product.image_sizes || '(max-width: 760px) calc(100vw - 36px), (max-width: 1100px) calc((100vw - 72px) / 2), 390px'"
+									:width="product.image_width || 768"
+									:height="product.image_height || 576"
+									loading="lazy"
+									decoding="async"
+								/>
 								<q-icon v-else name="inventory_2" size="40px" />
 							</div>
 							<div class="market-product__body">
@@ -456,10 +469,11 @@
   color: var(--soz-primary-deep);
 }
 
-.market-product__media img {
+.market-product__image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .market-product__body {

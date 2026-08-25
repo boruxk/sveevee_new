@@ -3,6 +3,7 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import RatingStars from '@/components/ratings/RatingStars.vue'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { useAppStore } from '@/stores/app'
 	import { qrSvg } from '@/utils/qrCode'
 
@@ -146,6 +147,8 @@
 	const previewOpeningHours = computed(() => props.page?.opening_hours || [])
 	const previewLogoUrl = computed(() => props.page?.logo_url || null)
 	const previewBannerUrl = computed(() => props.page?.banner_url || null)
+	const previewLogoAlt = computed(() => props.page?.logo_alt || `${previewTitle.value} logo`)
+	const previewBannerAlt = computed(() => props.page?.banner_alt || previewTitle.value)
 	const ratingSummary = computed(() => props.page?.rating_summary || { average: 0, count: 0 })
 	const ratingAverage = computed(() => Number(ratingSummary.value.average || 0))
 	const ratingCount = computed(() => Number(ratingSummary.value.count || 0))
@@ -281,12 +284,36 @@
 <template>
 	<article class="page-preview" :class="previewClasses" :style="previewStyle">
 		<div class="page-preview__hero">
-			<div class="page-preview__banner" :style="previewBannerUrl ? { backgroundImage: `url(${previewBannerUrl})` } : null" />
+			<ResponsiveImage
+				v-if="previewBannerUrl"
+				class="page-preview__banner"
+				:src="previewBannerUrl"
+				:alt="previewBannerAlt"
+				:avif-srcset="props.page?.banner_avif_srcset || ''"
+				:webp-srcset="props.page?.banner_webp_srcset || ''"
+				:sizes="props.page?.banner_sizes || '(max-width: 700px) calc(100vw - 28px), 1180px'"
+				:width="props.page?.banner_width || 1440"
+				:height="props.page?.banner_height || 640"
+				loading="eager"
+				fetchpriority="high"
+			/>
+			<div v-else class="page-preview__banner" />
 			<div class="page-preview__overlay" />
 
 			<div class="page-preview__intro">
 				<q-avatar class="page-preview__logo" size="96px" square>
-					<img v-if="previewLogoUrl" :src="previewLogoUrl" alt="" />
+					<ResponsiveImage
+						v-if="previewLogoUrl"
+						class="page-preview__logo-image"
+						:src="previewLogoUrl"
+						:alt="previewLogoAlt"
+						:avif-srcset="props.page?.logo_avif_srcset || ''"
+						:webp-srcset="props.page?.logo_webp_srcset || ''"
+						:sizes="props.page?.logo_sizes || '96px'"
+						:width="props.page?.logo_width || 512"
+						:height="props.page?.logo_height || 512"
+						loading="eager"
+					/>
 					<span v-else>{{ previewTitle.slice(0, 1).toUpperCase() }}</span>
 				</q-avatar>
 
@@ -540,9 +567,10 @@
 }
 
 .page-preview__banner {
+  display: block;
   background: var(--presence-hero);
-  background-size: cover;
-  background-position: center;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .page-preview__overlay {
@@ -752,6 +780,11 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.page-preview__logo-image {
+  width: 100%;
+  height: 100%;
 }
 
 .page-preview__copy {

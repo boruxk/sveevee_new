@@ -109,6 +109,7 @@ class MarketController extends Controller
             'type' => $page->type,
             'name' => $page->name,
             'logo_url' => $page->logo_url,
+            ...$this->payloads->publicImageMeta('logo', $page->logo_path, $page->name.' logo', '96px'),
             'address_details' => [
                 'city' => $address['city'] ?? null,
                 'neighborhood' => $address['neighborhood'] ?? null,

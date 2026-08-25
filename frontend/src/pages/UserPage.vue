@@ -9,6 +9,7 @@
 	import { locationLabel } from '@/utils/locationLabels'
 	import { absoluteUrl, truncateText, useSeo } from '@/composables/useSeo'
 	import AdCard from '@/components/AdCard.vue'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 
 	const route = useRoute()
 	const router = useRouter()
@@ -57,6 +58,9 @@
 		title: user.value?.display_name || t('seo.userFallbackTitle'),
 		description: seoDescription.value,
 		image: user.value?.profile?.photo_url,
+		imageAlt: user.value?.display_name,
+		imageWidth: user.value?.profile?.photo_width,
+		imageHeight: user.value?.profile?.photo_height,
 		canonical: canonicalPath.value,
 		type: 'profile',
 		robots: user.value ? 'index,follow' : 'noindex,follow',
@@ -102,7 +106,17 @@
 		<div class="page-shell">
 			<section v-if="user" class="soz-section-card person-head">
 				<q-avatar size="96px" color="primary" text-color="white">
-					<img v-if="user.profile?.photo_url" :src="user.profile.photo_url" alt="" />
+					<ResponsiveImage
+						v-if="user.profile?.photo_url"
+						class="person-photo"
+						:src="user.profile.photo_url"
+						:alt="user.display_name"
+						:avif-srcset="user.profile.photo_avif_srcset || ''"
+						:webp-srcset="user.profile.photo_webp_srcset || ''"
+						sizes="96px"
+						:width="user.profile.photo_width || 96"
+						:height="user.profile.photo_height || 96"
+					/>
 					<span v-else>{{ user.display_name.slice(0, 1) }}</span>
 				</q-avatar>
 				<div>
@@ -178,6 +192,12 @@
 
 .person-catalog-links {
   margin-top: 8px;
+}
+
+.person-photo {
+  width: 100%;
+  height: 100%;
+  --responsive-image-fit: cover;
 }
 
 .detail-catalog-links a {

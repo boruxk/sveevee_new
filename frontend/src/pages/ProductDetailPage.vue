@@ -5,6 +5,7 @@
 	import { setLocale } from '@/i18n'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { fetchProduct } from '@/services/api/products'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
 	import { catalogLabel, catalogPath, catalogTopicByKey, productPath, publicPagePath } from '@/constants/catalogTopics'
 	import { locationLabel } from '@/utils/locationLabels'
@@ -25,6 +26,7 @@
 	const neighborhoodLabel = computed(() => (neighborhood.value ? locationLabel(neighborhood.value, 'neighborhood', locale.value) : ''))
 	const topic = computed(() => catalogTopicByKey(catalogGroups.value, product.value?.category_key))
 	const topicLabel = computed(() => catalogLabel(topic.value?.labels, locale.value))
+	const productImageAlt = computed(() => product.value?.image_alt || product.value?.name || '')
 	const canonicalPath = computed(() => (product.value ? productPath(product.value, routeLocale.value || locale.value) : route.path))
 	const sellerPath = computed(() => (seller.value ? publicPagePath(seller.value, routeLocale.value || locale.value) : ''))
 	const localizedAlternates = computed(() => {
@@ -131,6 +133,9 @@
 		title: pageTitle.value,
 		description: pageDescription.value,
 		image: product.value?.image_url,
+		imageAlt: productImageAlt.value,
+		imageWidth: product.value?.image_width,
+		imageHeight: product.value?.image_height,
 		canonical: canonicalPath.value,
 		alternates: localizedAlternates.value,
 		type: 'product',
@@ -173,7 +178,19 @@
 
 			<section class="product-detail">
 				<div class="product-detail__media">
-					<img v-if="product.image_url" :src="product.image_url" :alt="product.name" />
+					<ResponsiveImage
+						v-if="product.image_url"
+						class="product-detail__image"
+						:src="product.image_url"
+						:alt="productImageAlt"
+						:avif-srcset="product.image_avif_srcset || ''"
+						:webp-srcset="product.image_webp_srcset || ''"
+						:sizes="product.image_sizes || '(max-width: 860px) calc(100vw - 52px), 700px'"
+						:width="product.image_width || 768"
+						:height="product.image_height || 576"
+						loading="eager"
+						fetchpriority="high"
+					/>
 					<q-icon v-else name="inventory_2" size="62px" />
 				</div>
 
@@ -282,12 +299,13 @@
   color: var(--soz-primary-deep);
 }
 
-.product-detail__media img {
+.product-detail__image {
   max-height: 380px;
   width: 100%;
   height: auto;
-  object-fit: cover;
   border-radius: 24px;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .product-detail__body {
@@ -386,7 +404,7 @@
     border-bottom: none;
   }
 
-  .product-detail__media img {
+  .product-detail__image {
     max-height: 308px;
     width: 100%;
     border-radius: 22px;

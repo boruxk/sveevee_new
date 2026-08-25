@@ -4,6 +4,7 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { localizedAdCategoryMeta } from '@/constants/adCategories'
+	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { adRoute, catalogHubPath, catalogLabel, catalogPath, catalogTopicForAdCategory, pageRoute, userRoute } from '@/constants/catalogTopics'
 
@@ -51,7 +52,9 @@
 		community_ad: 'secondary'
 	}[props.ad.type] || 'dark'))
 
-	const imageStyle = computed(() => (props.ad.image_url ? { backgroundImage: `url("${props.ad.image_url}")` } : null))
+	const hasImage = computed(() => Boolean(props.ad.image_url))
+	const imageAlt = computed(() => props.ad.image_alt || props.ad.title || '')
+	const imageSizes = computed(() => props.ad.image_sizes || '(max-width: 700px) calc(100vw - 36px), 360px')
 	const locationLabel = computed(() => [props.ad.city, props.ad.neighborhood].filter(Boolean).join(', '))
 	const ownerName = computed(() => props.ad.page?.name || props.ad.user?.display_name || '')
 	const badgeLabel = computed(() => [badgeTypeLabel.value, ownerName.value].filter(Boolean).join(': '))
@@ -164,16 +167,36 @@
 <template>
 	<article
 		class="listing-card"
-		:class="{ 'listing-card--with-image': imageStyle, 'listing-card--expanded': isExpanded, 'listing-card--with-category': categoryMeta }"
+		:class="{ 'listing-card--with-image': hasImage, 'listing-card--expanded': isExpanded, 'listing-card--with-category': categoryMeta }"
 		:style="cardStyle"
 	>
 		<RouterLink
-			v-if="imageStyle && adDetailRoute"
+			v-if="hasImage && adDetailRoute"
 			:to="adDetailRoute"
 			class="listing-card__image listing-card__image-link"
-			:style="imageStyle"
+		>
+			<ResponsiveImage
+				class="listing-card__image-media"
+				:src="ad.image_url"
+				:alt="imageAlt"
+				:avif-srcset="ad.image_avif_srcset || ''"
+				:webp-srcset="ad.image_webp_srcset || ''"
+				:sizes="imageSizes"
+				:width="ad.image_width || 768"
+				:height="ad.image_height || 576"
+			/>
+		</RouterLink>
+		<ResponsiveImage
+			v-else-if="hasImage"
+			class="listing-card__image"
+			:src="ad.image_url"
+			:alt="imageAlt"
+			:avif-srcset="ad.image_avif_srcset || ''"
+			:webp-srcset="ad.image_webp_srcset || ''"
+			:sizes="imageSizes"
+			:width="ad.image_width || 768"
+			:height="ad.image_height || 576"
 		/>
-		<div v-else-if="imageStyle" class="listing-card__image" :style="imageStyle" />
 		<div class="listing-card__body">
 			<div class="listing-card__head">
 				<RouterLink v-if="ownerRoute" :to="ownerRoute" class="listing-card__badge-link">
@@ -302,13 +325,22 @@
 .listing-card__image {
   position: relative;
   z-index: 1;
+  display: block;
+  height: 100%;
   min-height: 170px;
-  background-size: cover;
-  background-position: center;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .listing-card__image-link {
   display: block;
+}
+
+.listing-card__image-media {
+  width: 100%;
+  height: 100%;
+  --responsive-image-fit: cover;
+  --responsive-image-position: center;
 }
 
 .listing-card--with-image .listing-card__image {

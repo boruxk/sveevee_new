@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Concerns;
 
+use App\Support\PublicImageVariants;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -21,7 +22,10 @@ trait HandlesUploadedImages
     protected function deletePublicUpload(?string $path): void
     {
         if ($path) {
-            Storage::disk('public')->delete($path);
+            Storage::disk('public')->delete([
+                $path,
+                ...PublicImageVariants::variantPaths($path),
+            ]);
         }
     }
 
@@ -49,10 +53,23 @@ trait HandlesUploadedImages
         imagealphablending($image, false);
         imagesavealpha($image, true);
 
+        $path = trim($directory, '/').'/'.Str::uuid().'.webp';
+
+        try {
+            Storage::disk('public')->put($path, $this->webpContents($image, $field, $quality));
+            PublicImageVariants::generateForImage($image, $path, $quality, true);
+        } finally {
+            imagedestroy($image);
+        }
+
+        return $path;
+    }
+
+    private function webpContents(\GdImage $image, string $field, int $quality): string
+    {
         ob_start();
         $converted = imagewebp($image, null, $quality);
         $contents = ob_get_clean();
-        imagedestroy($image);
 
         if (! $converted || ! is_string($contents) || $contents === '') {
             throw ValidationException::withMessages([
@@ -60,9 +77,6 @@ trait HandlesUploadedImages
             ]);
         }
 
-        $path = trim($directory, '/').'/'.Str::uuid().'.webp';
-        Storage::disk('public')->put($path, $contents);
-
-        return $path;
+        return $contents;
     }
 }

@@ -4,7 +4,17 @@
 	import { useAppStore } from '@/stores/app'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { catalogLabel, catalogPath } from '@/constants/catalogTopics'
-	import { landingFeatureIconImage, landingIconImage, landingStepIconImage } from '@/constants/landingFeatureIcons'
+	import {
+		landingFeatureIconAvifSrcset,
+		landingFeatureIconImage,
+		landingFeatureIconWebpSrcset,
+		landingIconAvifSrcset,
+		landingIconImage,
+		landingIconWebpSrcset,
+		landingStepIconAvifSrcset,
+		landingStepIconImage,
+		landingStepIconWebpSrcset
+	} from '@/constants/landingFeatureIcons'
 
 	const { t, tm, locale } = useI18n()
 	const appStore = useAppStore()
@@ -133,7 +143,7 @@
 							<source media="(max-width: 640px)" :srcset="mobileHeroWebpSrcSet" :sizes="mobileHeroSizes" type="image/webp" />
 							<img
 								:src="transparentPixel"
-								alt=""
+								:alt="t('seo.landingTitle')"
 								width="800"
 								height="800"
 								loading="eager"
@@ -170,7 +180,7 @@
 						<source media="(min-width: 641px)" :srcset="heroWebpSrcSet" sizes="90vw" type="image/webp" />
 						<img
 							:src="transparentPixel"
-							alt=""
+							:alt="t('seo.landingTitle')"
 							width="1360"
 							height="766"
 							loading="eager"
@@ -205,15 +215,19 @@
 			<div class="feature-grid">
 				<article v-for="(item, index) in featureCards" :key="item.title" class="feature-card" :class="`feature-card--${index + 1}`">
 					<span class="feature-card__icon" aria-hidden="true">
-						<img
-							class="landing-image-icon"
-							:src="landingFeatureIconImage(item, index)"
-							alt=""
-							width="320"
-							height="320"
-							loading="lazy"
-							decoding="async"
-						/>
+						<picture>
+							<source :srcset="landingFeatureIconAvifSrcset(item, index)" sizes="(max-width: 640px) 68px, 90px" type="image/avif" />
+							<source :srcset="landingFeatureIconWebpSrcset(item, index)" sizes="(max-width: 640px) 68px, 90px" type="image/webp" />
+							<img
+								class="landing-image-icon"
+								:src="landingFeatureIconImage(item, index)"
+								alt=""
+								width="320"
+								height="320"
+								loading="lazy"
+								decoding="async"
+							/>
+						</picture>
 					</span>
 					<h3>{{ item.title }}</h3>
 					<p>{{ item.body }}</p>
@@ -272,15 +286,19 @@
 				<div class="audience-benefit-grid">
 					<article v-for="item in businessBenefits" :key="item.title" class="audience-benefit">
 						<span class="audience-benefit__icon" aria-hidden="true">
-							<img
-								class="landing-image-icon"
-								:src="landingIconImage(item.icon)"
-								alt=""
-								width="320"
-								height="320"
-								loading="lazy"
-								decoding="async"
-							/>
+							<picture>
+								<source :srcset="landingIconAvifSrcset(item.icon)" sizes="(max-width: 640px) 48px, 66px" type="image/avif" />
+								<source :srcset="landingIconWebpSrcset(item.icon)" sizes="(max-width: 640px) 48px, 66px" type="image/webp" />
+								<img
+									class="landing-image-icon"
+									:src="landingIconImage(item.icon)"
+									alt=""
+									width="320"
+									height="320"
+									loading="lazy"
+									decoding="async"
+								/>
+							</picture>
 						</span>
 						<div>
 							<h3>{{ item.title }}</h3>
@@ -326,15 +344,19 @@
 				<div class="audience-benefit-grid">
 					<article v-for="item in communityBenefits" :key="item.title" class="audience-benefit">
 						<span class="audience-benefit__icon" aria-hidden="true">
-							<img
-								class="landing-image-icon"
-								:src="landingIconImage(item.icon)"
-								alt=""
-								width="320"
-								height="320"
-								loading="lazy"
-								decoding="async"
-							/>
+							<picture>
+								<source :srcset="landingIconAvifSrcset(item.icon)" sizes="(max-width: 640px) 48px, 66px" type="image/avif" />
+								<source :srcset="landingIconWebpSrcset(item.icon)" sizes="(max-width: 640px) 48px, 66px" type="image/webp" />
+								<img
+									class="landing-image-icon"
+									:src="landingIconImage(item.icon)"
+									alt=""
+									width="320"
+									height="320"
+									loading="lazy"
+									decoding="async"
+								/>
+							</picture>
 						</span>
 						<div>
 							<h3>{{ item.title }}</h3>
@@ -355,7 +377,7 @@
 					<source :srcset="workflowHouseWebpSrcSet" sizes="(max-width: 640px) calc(100vw - 32px), 420px" type="image/webp" />
 					<img
 						:src="workflowHouseSrc"
-						alt=""
+						:alt="t('landing.workflowTitle')"
 						width="420"
 						height="280"
 						loading="lazy"
@@ -367,15 +389,19 @@
 			<div class="step-list">
 				<article v-for="(item, index) in steps" :key="item.title" class="step-item" :class="`step-item--${index + 1}`">
 					<span class="step-item__icon" aria-hidden="true">
-						<img
-							class="landing-image-icon"
-							:src="landingStepIconImage(index)"
-							alt=""
-							width="320"
-							height="320"
-							loading="lazy"
-							decoding="async"
-						/>
+						<picture>
+							<source :srcset="landingStepIconAvifSrcset(index)" sizes="(max-width: 640px) 54px, 76px" type="image/avif" />
+							<source :srcset="landingStepIconWebpSrcset(index)" sizes="(max-width: 640px) 54px, 76px" type="image/webp" />
+							<img
+								class="landing-image-icon"
+								:src="landingStepIconImage(index)"
+								alt=""
+								width="320"
+								height="320"
+								loading="lazy"
+								decoding="async"
+							/>
+						</picture>
 					</span>
 					<div class="step-item__copy">
 						<h3>{{ item.title }}</h3>
@@ -425,7 +451,7 @@
 							<img
 								class="pricing-card__art"
 								:src="planImage(plan)"
-								alt=""
+								:alt="`${plan.title} ${t('landing.pricingKicker')}`"
 								:width="plan.featured ? 280 : 220"
 								:height="plan.featured ? 289 : 274"
 								loading="lazy"
@@ -759,6 +785,14 @@
   display: block;
   width: 90px;
   height: 90px;
+}
+
+.feature-card__icon picture,
+.audience-benefit__icon picture,
+.step-item__icon picture {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .landing-image-icon {
