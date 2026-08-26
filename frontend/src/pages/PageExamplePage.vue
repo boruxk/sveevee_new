@@ -576,13 +576,17 @@
 <template>
 	<q-page padding class="setup-page example-setup-page">
 		<div class="page-shell">
-			<section class="soz-section-card page-head">
-				<div class="page-head__copy">
-					<q-chip dense color="white" text-color="primary" class="page-head__chip">
-						{{ typedCopy.badge }}
-					</q-chip>
-					<h1 class="soz-page-title">{{ typedCopy.title }}</h1>
-					<p>{{ typedCopy.subtitle }}</p>
+			<div class="page-head-layout">
+				<section class="soz-section-card page-head page-head--content">
+					<div class="page-head__copy">
+						<q-chip dense color="white" text-color="primary" class="page-head__chip">
+							{{ typedCopy.badge }}
+						</q-chip>
+						<h1 class="soz-page-title">{{ typedCopy.title }}</h1>
+						<p>{{ typedCopy.subtitle }}</p>
+					</div>
+				</section>
+				<section class="soz-section-card page-head page-head--action">
 					<q-btn
 						color="primary"
 						unelevated
@@ -592,8 +596,8 @@
 						:label="copy.register"
 						:to="{ name: 'register' }"
 					/>
-				</div>
-			</section>
+				</section>
+			</div>
 
 			<q-tabs
 				v-model="activeTab"
@@ -1040,15 +1044,29 @@
   padding: 28px;
 }
 
+.page-head-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
 .page-head {
   display: grid;
-  justify-items: center;
   gap: 18px;
-  text-align: center;
+}
+
+.page-head--content {
+  justify-items: start;
+  text-align: start;
+}
+
+.page-head--action {
+  place-items: center;
 }
 
 .page-head__copy {
-  justify-items: center;
+  justify-items: start;
   display: grid;
   gap: 10px;
   max-width: 760px;
@@ -1075,8 +1093,7 @@
 }
 
 .page-head__cta.q-btn.bg-primary {
-  width: max-content;
-  margin-top: 8px;
+  width: min(100%, 270px);
   min-height: 62px;
   padding-inline: 26px;
   font-size: 1.05rem;
@@ -1572,6 +1589,10 @@
 }
 
 @media (max-width: 800px) {
+  .page-head-layout {
+    grid-template-columns: 1fr;
+  }
+
   .palette-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

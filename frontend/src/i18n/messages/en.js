@@ -44,11 +44,6 @@ export default {
 		people: 'People',
 		privacy: 'Privacy Policy'
 	},
-	legal: {
-		databaseDocumentTitle: 'Database definition document',
-		databaseDocumentBody: 'View the public Hebrew version of Sveevee’s data-processing and security record.',
-		databaseDocumentAction: 'Open PDF'
-	},
 	validation: {
 		required: 'This field is required.',
 		requiredFields: 'Please fill in the required fields.',
@@ -640,7 +635,7 @@ export default {
 		landingTitle: 'Find businesses, professionals, products, and local ads near you',
 		landingDescription: 'Find businesses, professionals, products, services, community pages, events, and ads by city and neighborhood. Buy, sell, build pages, and chat directly.',
 		businessLandingTitle: 'Free business page for local advertising',
-		businessLandingDescription: 'Create a free business page on Sveevee with products, services, local ads, ratings, contact links, and SEO-ready text for your city and neighborhood.',
+		businessLandingDescription: 'Create a free business page on Sveevee with price lists, products, timed offers, services, local ads, ratings, business chat, and SEO-ready local text.',
 		communityLandingTitle: 'Free community page for events and announcements',
 		communityLandingDescription: 'Create a free community page on Sveevee with events, announcements, local ads, ratings, social links, and direct contact for your neighborhood.',
 		examplePageTitle: 'Example page with all Sveevee modules',
@@ -699,34 +694,36 @@ export default {
 		business: {
 			eyebrow: 'Business pages for local advertising',
 			title: 'Advertise your business locally for free',
-			subtitle: 'Create a public business page with products, services, ads, ratings, contact options, social links, and local SEO text for your city and neighborhood.',
+			subtitle: 'Create a public business page with a price list, products, timed offers, services, ads, ratings, business chat, social links, and local SEO text.',
 			primaryCta: 'Create business page',
 			secondaryCta: 'Browse businesses',
 			descriptionKicker: 'For local businesses',
 			descriptionTitle: 'One free page for your public business presence',
-			descriptionBody: 'Sveevee gives small businesses a clear local page that can be shared, found in search, and connected to products, services, offers, ratings, address, opening hours, WhatsApp, maps, socials, and chat.',
-			freeBody: 'Start with a free page and use the full business toolset. You can add content step by step as your business grows.',
+			descriptionBody: 'Sveevee gives small businesses a clear local page that can be shared, found in search, and connected to price lists, products, timed offers, services, smart labels, ratings, address, opening hours, WhatsApp, maps, socials, and business chat.',
+			freeBody: 'Many tools that often require paid plans elsewhere are included here for free. Start with the full business toolset and add content step by step as your business grows.',
 			functionsTitle: 'All business functions in one page',
 			functions: [
 				{ icon: 'storefront', title: 'Public business page', body: 'A complete local profile for the business.', items: ['Logo and banner', 'Business description', 'Category, city, and neighborhood', 'Address and opening hours'] },
-				{ icon: 'inventory_2', title: 'Products and store', body: 'A visible store layer inside the page.', items: ['Product images and descriptions', 'Prices and availability', 'Public product detail pages', 'Link to your own website'] },
+				{ icon: 'inventory_2', title: 'Products and store', body: 'A visible store layer inside the page.', items: ['Product images and descriptions', 'Brand and model', 'Normal and offer prices', 'Timed offer periods', 'Public product detail pages', 'Availability and website link'] },
+				{ icon: 'receipt_long', title: 'Price list', body: 'A simple price overview shown above the store.', items: ['Name and price for every entry', 'Dedicated price-list tab', 'Module can be switched on or off', 'Visible before products on the public page'] },
+				{ icon: 'sell', title: 'Offers and smart labels', body: 'Important product changes stand out automatically.', items: ['Offers with start and end dates', 'New during the first three days', 'Price dropped after a reduction', 'Popular and Highly rated labels'] },
 				{ icon: 'design_services', title: 'Services', body: 'Clear service presentation before contact.', items: ['Service names and details', 'Local category context', 'Visible services tab', 'Easy browsing from the page'] },
 				{ icon: 'campaign', title: 'Business ads', body: 'Local offers connected to the business.', items: ['Offers and announcements', 'Business badge on ad cards', 'Local discovery feed', 'Links back to the page'] },
 				{ icon: 'reviews', title: 'Ratings and trust', body: 'Public proof for new visitors.', items: ['Star ratings', 'Written reviews', 'Visible trust block'] },
-				{ icon: 'forum', title: 'Direct contact', body: 'All contact paths in one place.', items: ['Sveevee chat', 'WhatsApp, phone, and email', 'Maps and social links'] },
+				{ icon: 'forum', title: 'Direct contact', body: 'All contact paths in one place.', items: ['Separate business chat', 'Messages and replies under the business identity', 'WhatsApp, phone, and email', 'Maps and social links'] },
 				{ icon: 'location', title: 'Address and maps', body: 'Help customers understand where you are.', items: ['Street address', 'City and neighborhood context', 'One-tap maps link', 'Visible location block'] },
 				{ icon: 'schedule', title: 'Opening hours', body: 'Show when the business is available.', items: ['Weekday rows', 'Open and closed switches', 'Time ranges', 'Visible opening-hours section'] },
 				{ icon: 'palette', title: 'Brand look', body: 'Make the page feel like your business.', items: ['Eight color palettes', 'Logo and banner visuals', 'Rounded page cards', 'Consistent theme colors'] },
 				{ icon: 'share', title: 'Sharing tools', body: 'Fast sharing for every public page.', items: ['Local share popup', 'Copy link and QR code', 'WhatsApp and Telegram', 'Facebook, Instagram, and TikTok'] },
 				{ icon: 'search', title: 'Local SEO structure', body: 'Content Google and visitors can understand.', items: ['SEO-ready page text', 'City and neighborhood signals', 'Public business URLs', 'Sitemap-friendly links'] },
-				{ icon: 'tune', title: 'Page controls', body: 'Simple controls for how the page grows.', items: ['Store and services modules', 'Preview and settings tabs', 'Disabled example page view', 'Settings in one place'] }
+				{ icon: 'tune', title: 'Page controls', body: 'Simple controls for how the page grows.', items: ['Price-list, store, and services modules', 'Preview and settings tabs', 'Disabled example page view', 'Settings in one place'] }
 			],
 			benefitsTitle: 'Made for being found nearby',
 			benefits: [
 				{ title: 'Better local SEO', body: 'City, neighborhood, category, services, products, and visible page text help search engines understand your business.' },
 				{ title: 'More useful than a short ad', body: 'An ad can bring attention, while the business page gives visitors the details they need to decide.' },
 				{ title: 'Easy sharing', body: 'Share the direct page link, QR code, WhatsApp, Telegram, Facebook, Instagram, or TikTok from the page.' },
-				{ title: 'Built for small businesses', body: 'Start simple, then add products, services, ads, ratings, and social links when you are ready.' }
+				{ title: 'Built for small businesses', body: 'Start simple, then add a price list, products, offers, services, ads, ratings, and social links when you are ready.' }
 			],
 			ctaTitle: 'Create your business page today',
 			ctaBody: 'It is free, public, and ready for local customers who search by city, neighborhood, and category.'
@@ -819,6 +816,7 @@ export default {
 		businessKicker: 'For businesses',
 		businessTitle: 'A local business page that works harder than a short ad',
 		businessBody: 'Business owners get one clear place for local search, public trust, store content, and direct contact. The page can grow from simple contact details into products, services, ratings, social links, ads, and SEO-ready text.',
+		businessFreeNote: 'Many of these business tools cost money elsewhere. On Sveevee, they are available free of charge.',
 		businessBenefits: [
 			{
 				icon: 'storefront',

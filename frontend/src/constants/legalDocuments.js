@@ -3,13 +3,13 @@ import { getPrivacyPolicy } from '@/constants/privacyPolicy'
 export const termsConditions = {
 	en: {
 		title: 'Terms & Conditions',
-		updated: 'Last updated: August 25, 2026',
+		updated: 'Last updated: August 26, 2026',
 		intro: 'These Terms & Conditions form a binding agreement for use of Sveevee. The Privacy Policy and Disclaimer are part of these Terms. By accessing the service, creating an account, or publishing content, you confirm that you have read and accepted them.',
 		sections: [
 			{
 				title: 'The Service',
 				body: [
-					'Sveevee is an Israel-based local discovery and communication platform for profiles, ads, business and community pages, price lists, products, services, events, offers, ratings, reviews, and personal or page chats.',
+					'Sveevee is an Israel-based local discovery and communication platform for profiles, ads, business and community pages, price lists, products, services, events, offers, ratings, reviews, and personal or page chats. The service is operated by Miriam Konetski.',
 					'Contact the service operator at info@sveevee.co.il.'
 				]
 			},
@@ -100,13 +100,13 @@ export const termsConditions = {
 	},
 	he: {
 		title: 'תנאי שימוש',
-		updated: 'עודכן לאחרונה: 25 באוגוסט 2026',
+		updated: 'עודכן לאחרונה: 26 באוגוסט 2026',
 		intro: 'תנאי שימוש אלה הם הסכם מחייב לשימוש ב-Sveevee. מדיניות הפרטיות וכתב הוויתור הם חלק מתנאים אלה. בכניסה לשירות, ביצירת חשבון או בפרסום תוכן אתם מאשרים שקראתם והסכמתם להם.',
 		sections: [
 			{
 				title: 'השירות',
 				body: [
-					'Sveevee היא פלטפורמה ישראלית לגילוי מקומי ולתקשורת הכוללת פרופילים, מודעות, עמודי עסק וקהילה, מחירונים, מוצרים, שירותים, אירועים, מבצעים, דירוגים, ביקורות וצ׳אטים אישיים או של עמודים.',
+					'Sveevee היא פלטפורמה ישראלית לגילוי מקומי ולתקשורת הכוללת פרופילים, מודעות, עמודי עסק וקהילה, מחירונים, מוצרים, שירותים, אירועים, מבצעים, דירוגים, ביקורות וצ׳אטים אישיים או של עמודים. השירות מופעל על ידי Miriam Konetski.',
 					'ניתן ליצור קשר עם מפעיל השירות ב-info@sveevee.co.il.'
 				]
 			},
@@ -197,13 +197,13 @@ export const termsConditions = {
 	},
 	ru: {
 		title: 'Условия использования',
-		updated: 'Последнее обновление: 25 августа 2026 г.',
+		updated: 'Последнее обновление: 26 августа 2026 г.',
 		intro: 'Эти Условия являются обязательным соглашением об использовании Sveevee. Политика конфиденциальности и Отказ от ответственности входят в Условия. Посещая сервис, создавая аккаунт или публикуя контент, вы подтверждаете, что прочитали и приняли их.',
 		sections: [
 			{
 				title: 'Сервис',
 				body: [
-					'Sveevee — израильская платформа локального поиска и общения для профилей, объявлений, страниц бизнеса и сообществ, прайс-листов, товаров, услуг, событий, предложений, рейтингов, отзывов, личных чатов и чатов страниц.',
+					'Sveevee — израильская платформа локального поиска и общения для профилей, объявлений, страниц бизнеса и сообществ, прайс-листов, товаров, услуг, событий, предложений, рейтингов, отзывов, личных чатов и чатов страниц. Оператор сервиса — Miriam Konetski.',
 					'Связаться с оператором можно по адресу info@sveevee.co.il.'
 				]
 			},
@@ -291,13 +291,13 @@ export const termsConditions = {
 	},
 	fr: {
 		title: 'Conditions générales',
-		updated: 'Dernière mise à jour : 25 août 2026',
+		updated: 'Dernière mise à jour : 26 août 2026',
 		intro: 'Ces Conditions constituent un accord contraignant pour l’utilisation de Sveevee. La Politique de confidentialité et l’Avertissement en font partie. En accédant au service, en créant un compte ou en publiant du contenu, vous confirmez les avoir lus et acceptés.',
 		sections: [
 			{
 				title: 'Le service',
 				body: [
-					'Sveevee est une plateforme israélienne de découverte locale et de communication proposant profils, annonces, pages entreprise et communauté, listes de prix, produits, services, événements, offres, notes, avis et chats personnels ou de pages.',
+					'Sveevee est une plateforme israélienne de découverte locale et de communication proposant profils, annonces, pages entreprise et communauté, listes de prix, produits, services, événements, offres, notes, avis et chats personnels ou de pages. Le service est exploité par Miriam Konetski.',
 					'Vous pouvez contacter l’opérateur à info@sveevee.co.il.'
 				]
 			},
@@ -388,9 +388,15 @@ export const termsConditions = {
 export const disclaimers = {
 	en: {
 		title: 'Disclaimer',
-		updated: 'Last updated: August 25, 2026',
+		updated: 'Last updated: August 26, 2026',
 		intro: 'This Disclaimer describes important limits of Sveevee’s role. It should be read with the Terms & Conditions and Privacy Policy. It does not remove any responsibility or consumer right that Israeli law does not permit us to exclude.',
 		sections: [
+			{
+				title: 'Service Operator',
+				body: [
+					'Sveevee is operated in Israel by Miriam Konetski. Questions and reports concerning this Disclaimer may be sent to info@sveevee.co.il.'
+				]
+			},
 			{
 				title: 'User-Generated Information',
 				body: [
@@ -454,9 +460,15 @@ export const disclaimers = {
 	},
 	he: {
 		title: 'כתב ויתור',
-		updated: 'עודכן לאחרונה: 25 באוגוסט 2026',
+		updated: 'עודכן לאחרונה: 26 באוגוסט 2026',
 		intro: 'כתב ויתור זה מתאר מגבלות חשובות בתפקידה של Sveevee. יש לקרוא אותו יחד עם תנאי השימוש ומדיניות הפרטיות. אין בו כדי להסיר אחריות או זכות צרכנית שהדין הישראלי אינו מתיר לשלול.',
 		sections: [
+			{
+				title: 'מפעילת השירות',
+				body: [
+					'Sveevee מופעלת בישראל על ידי Miriam Konetski. לשאלות ולדיווחים בנוגע לכתב ויתור זה ניתן לפנות אל info@sveevee.co.il.'
+				]
+			},
 			{
 				title: 'מידע שנוצר בידי משתמשים',
 				body: [
@@ -520,9 +532,15 @@ export const disclaimers = {
 	},
 	ru: {
 		title: 'Отказ от ответственности',
-		updated: 'Последнее обновление: 25 августа 2026 г.',
+		updated: 'Последнее обновление: 26 августа 2026 г.',
 		intro: 'Этот документ описывает важные пределы роли Sveevee. Его следует читать вместе с Условиями и Политикой конфиденциальности. Он не отменяет ответственность или права потребителя, которые нельзя исключить по закону Израиля.',
 		sections: [
+			{
+				title: 'Оператор сервиса',
+				body: [
+					'Sveevee управляется в Израиле Miriam Konetski. Вопросы и сообщения по этому документу можно направлять на info@sveevee.co.il.'
+				]
+			},
 			{
 				title: 'Пользовательская информация',
 				body: [
@@ -580,9 +598,15 @@ export const disclaimers = {
 	},
 	fr: {
 		title: 'Avertissement',
-		updated: 'Dernière mise à jour : 25 août 2026',
+		updated: 'Dernière mise à jour : 26 août 2026',
 		intro: 'Cet Avertissement décrit les limites importantes du rôle de Sveevee. Il doit être lu avec les Conditions et la Politique de confidentialité. Il ne supprime aucune responsabilité ni aucun droit du consommateur que le droit israélien interdit d’exclure.',
 		sections: [
+			{
+				title: 'Exploitante du service',
+				body: [
+					'Sveevee est exploité en Israël par Miriam Konetski. Les questions et signalements relatifs à cet Avertissement peuvent être adressés à info@sveevee.co.il.'
+				]
+			},
 			{
 				title: 'Informations créées par les utilisateurs',
 				body: [

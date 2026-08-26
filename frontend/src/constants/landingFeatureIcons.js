@@ -4,6 +4,8 @@ const iconFiles = {
 	campaign: 'feature-ads',
 	storefront: 'feature-storefront',
 	inventory_2: 'feature-products',
+	receipt_long: 'feature-products',
+	sell: 'feature-ads',
 	design_services: 'feature-services',
 	event: 'feature-events',
 	star: 'feature-ratings',

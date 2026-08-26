@@ -44,11 +44,6 @@ export default {
 		label: 'Liens de pied de page',
 		privacy: 'Politique de confidentialite'
 	},
-	legal: {
-		databaseDocumentTitle: 'Document de définition de la base de données',
-		databaseDocumentBody: 'Consultez la version publique en hébreu du registre Sveevee relatif au traitement et à la sécurité des données.',
-		databaseDocumentAction: 'Ouvrir le PDF'
-	},
 	validation: {
 		required: 'Ce champ est obligatoire.',
 		requiredFields: 'Veuillez remplir les champs obligatoires.',
@@ -640,7 +635,7 @@ export default {
 		landingTitle: 'Entreprises, professionnels, produits et annonces pres de vous',
 		landingDescription: 'Trouvez entreprises, pros, produits, services, pages communaute, evenements et annonces par ville et quartier. Achetez, vendez et contactez directement.',
 		businessLandingTitle: 'Page entreprise gratuite pour publicite locale',
-		businessLandingDescription: 'Creez une page entreprise gratuite sur Sveevee avec produits, services, annonces locales, avis, liens de contact et texte SEO par ville et quartier.',
+		businessLandingDescription: 'Créez une page entreprise gratuite sur Sveevee avec liste de prix, produits, offres programmées, services, annonces, avis, chat professionnel et texte SEO local.',
 		communityLandingTitle: 'Page communaute gratuite pour evenements et annonces',
 		communityLandingDescription: 'Creez une page communaute gratuite sur Sveevee avec evenements, annonces, avis, liens sociaux et contact direct pour votre quartier.',
 		examplePageTitle: 'Page exemple avec tous les modules Sveevee',
@@ -699,34 +694,36 @@ export default {
 		business: {
 			eyebrow: 'Pages entreprise pour publicite locale',
 			title: 'Faites connaitre votre entreprise localement gratuitement',
-			subtitle: 'Creez une page publique avec produits, services, annonces, avis, contacts, liens sociaux et texte local SEO pour votre ville et quartier.',
+			subtitle: 'Créez une page entreprise publique avec liste de prix, produits, offres programmées, services, annonces, avis, chat professionnel, liens sociaux et texte SEO local.',
 			primaryCta: 'Creer une page entreprise',
 			secondaryCta: 'Voir les entreprises',
 			descriptionKicker: 'Pour entreprises locales',
 			descriptionTitle: 'Une page gratuite pour votre presence publique',
-			descriptionBody: 'Sveevee donne aux petites entreprises une page locale claire, partageable et visible, avec produits, services, offres, avis, adresse, horaires, WhatsApp, cartes, reseaux sociaux et chat.',
-			freeBody: 'Commencez avec une page gratuite et utilisez tous les outils entreprise. Ajoutez du contenu etape par etape.',
+			descriptionBody: 'Sveevee offre aux petites entreprises une page locale claire, partageable et visible, avec listes de prix, produits, offres programmées, services, libellés intelligents, avis, adresse, horaires, WhatsApp, cartes, réseaux sociaux et chat professionnel.',
+			freeBody: 'De nombreux outils qui nécessitent ailleurs une formule payante sont inclus ici gratuitement. Utilisez tous les outils entreprise et ajoutez du contenu progressivement.',
 			functionsTitle: 'Toutes les fonctions entreprise au meme endroit',
 			functions: [
 				{ icon: 'storefront', title: 'Page entreprise publique', body: 'Un profil local complet pour l entreprise.', items: ['Logo et banniere', 'Description de l entreprise', 'Categorie, ville et quartier', 'Adresse et horaires'] },
-				{ icon: 'inventory_2', title: 'Produits et boutique', body: 'Une boutique visible dans la page.', items: ['Images et descriptions produit', 'Prix et disponibilite', 'Pages detail produit publiques', 'Lien vers votre site'] },
+				{ icon: 'inventory_2', title: 'Produits et boutique', body: 'Une boutique visible dans la page.', items: ['Images et descriptions produit', 'Marque et modèle', 'Prix normal et prix promotionnel', 'Période d’offre programmée', 'Pages produit publiques', 'Disponibilité et lien vers le site'] },
+				{ icon: 'receipt_long', title: 'Liste de prix', body: 'Un aperçu simple des prix affiché au-dessus de la boutique.', items: ['Nom et prix de chaque entrée', 'Onglet dédié à la liste de prix', 'Module activable ou désactivable', 'Visible avant les produits sur la page publique'] },
+				{ icon: 'sell', title: 'Offres et libellés intelligents', body: 'Les changements importants ressortent automatiquement.', items: ['Offres avec dates de début et de fin', 'Nouveau pendant les trois premiers jours', 'Baisse de prix après une réduction', 'Libellés populaire et très bien noté'] },
 				{ icon: 'design_services', title: 'Services', body: 'Des services clairs avant le contact.', items: ['Noms et details des services', 'Contexte local et categorie', 'Onglet services visible', 'Navigation simple depuis la page'] },
 				{ icon: 'campaign', title: 'Annonces entreprise', body: 'Des offres locales reliees a l entreprise.', items: ['Offres et annonces', 'Badge entreprise sur les cartes', 'Fil de decouverte local', 'Liens vers la page'] },
 				{ icon: 'reviews', title: 'Avis et confiance', body: 'Une preuve publique pour les visiteurs.', items: ['Notes en etoiles', 'Avis ecrits', 'Bloc confiance visible'] },
-				{ icon: 'forum', title: 'Contact direct', body: 'Tous les chemins de contact ensemble.', items: ['Chat Sveevee', 'WhatsApp, telephone et e-mail', 'Cartes et liens sociaux'] },
+				{ icon: 'forum', title: 'Contact direct', body: 'Tous les moyens de contact au même endroit.', items: ['Chat professionnel séparé', 'Messages et réponses au nom de l’entreprise', 'WhatsApp, téléphone et e-mail', 'Cartes et liens sociaux'] },
 				{ icon: 'location', title: 'Adresse et cartes', body: 'Aidez les clients a comprendre ou vous etes.', items: ['Adresse complete', 'Contexte ville et quartier', 'Lien carte en un clic', 'Bloc localisation visible'] },
 				{ icon: 'schedule', title: 'Horaires', body: 'Montrez quand l entreprise est disponible.', items: ['Lignes par jour', 'Boutons ouvert et ferme', 'Plages horaires', 'Section horaires visible'] },
 				{ icon: 'palette', title: 'Identite visuelle', body: 'Donnez a la page le style de votre entreprise.', items: ['Huit palettes couleur', 'Logo et banniere', 'Cartes arrondies', 'Couleurs coherentes'] },
 				{ icon: 'share', title: 'Outils de partage', body: 'Partage rapide de chaque page publique.', items: ['Popup de partage locale', 'Copier le lien et QR code', 'WhatsApp et Telegram', 'Facebook, Instagram et TikTok'] },
 				{ icon: 'search', title: 'Structure SEO locale', body: 'Un contenu clair pour Google et les visiteurs.', items: ['Texte pret pour le SEO', 'Signaux ville et quartier', 'URLs publiques entreprise', 'Liens adaptes au sitemap'] },
-				{ icon: 'tune', title: 'Controle de la page', body: 'Des reglages simples pour faire grandir la page.', items: ['Modules boutique et services', 'Onglets apercu et reglages', 'Page exemple desactivee', 'Reglages au meme endroit'] }
+				{ icon: 'tune', title: 'Contrôle de la page', body: 'Des réglages simples pour faire évoluer la page.', items: ['Modules liste de prix, boutique et services', 'Onglets aperçu et réglages', 'Page exemple désactivée', 'Réglages au même endroit'] }
 			],
 			benefitsTitle: 'Fait pour etre trouve pres de chez vous',
 			benefits: [
 				{ title: 'Meilleur SEO local', body: 'Ville, quartier, categorie, services, produits et texte visible aident les moteurs de recherche.' },
 				{ title: 'Plus utile qu une annonce courte', body: 'L annonce attire l attention, la page donne les details pour decider.' },
 				{ title: 'Partage facile', body: 'Partagez lien direct, QR, WhatsApp, Telegram, Facebook, Instagram ou TikTok.' },
-				{ title: 'Pour petites entreprises', body: 'Commencez simplement puis ajoutez produits, services, annonces, avis et liens sociaux.' }
+				{ title: 'Pour petites entreprises', body: 'Commencez simplement puis ajoutez une liste de prix, des produits, offres, services, annonces, avis et liens sociaux.' }
 			],
 			ctaTitle: 'Creez votre page entreprise aujourd hui',
 			ctaBody: 'C est gratuit, public et pret pour les clients qui cherchent par ville, quartier et categorie.'
@@ -819,6 +816,7 @@ export default {
 		businessKicker: 'Pour les entreprises',
 		businessTitle: 'Une page locale plus forte qu une simple annonce',
 		businessBody: 'Les entreprises ont un endroit clair pour la recherche locale, la confiance publique, les produits, les services et le contact direct. La page peut evoluer de simples coordonnees vers boutique, services, avis, liens sociaux, annonces et texte pret pour le SEO.',
+		businessFreeNote: 'Beaucoup de ces outils professionnels sont payants ailleurs. Sur Sveevee, ils sont disponibles gratuitement.',
 		businessBenefits: [
 			{
 				icon: 'storefront',

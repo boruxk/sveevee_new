@@ -5,9 +5,8 @@
 	import { getLegalDocument } from '@/constants/legalDocuments'
 
 	const route = useRoute()
-	const { t, locale } = useI18n()
+	const { locale } = useI18n()
 	const policy = computed(() => getLegalDocument(route.meta.legalDocument || 'privacy', locale.value))
-	const isPrivacyPolicy = computed(() => route.meta.legalDocument === 'privacy')
 </script>
 
 <template>
@@ -19,30 +18,6 @@
 					<p class="privacy-updated">{{ policy.updated }}</p>
 					<p class="privacy-intro">{{ policy.intro }}</p>
 				</header>
-
-				<aside v-if="isPrivacyPolicy" class="privacy-database-document">
-					<div>
-						<h2>{{ t('legal.databaseDocumentTitle') }}</h2>
-						<p>{{ t('legal.databaseDocumentBody') }}</p>
-					</div>
-					<q-btn
-						tag="a"
-						href="/documents/sveevee-database-definition-he.pdf"
-						target="_blank"
-						rel="noopener"
-						color="primary"
-						unelevated
-						rounded
-						no-caps
-					>
-						<svg class="privacy-pdf-icon" viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M6.75 2.75h7.5l4 4v14.5H6.75z" />
-							<path d="M14.25 2.75v4h4" />
-							<path d="M9.25 11h6.5M9.25 14.25h6.5M9.25 17.5h4.25" />
-						</svg>
-						<span>{{ t('legal.databaseDocumentAction') }}</span>
-					</q-btn>
-				</aside>
 
 				<div class="privacy-sections">
 					<section v-for="section in policy.sections" :key="section.title" class="privacy-section">
@@ -91,46 +66,6 @@
   line-height: 1.7;
 }
 
-.privacy-database-document {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  margin-top: 30px;
-  padding: 20px 0;
-  border-block: 1px solid rgba(17, 34, 45, 0.12);
-}
-
-.privacy-database-document h2,
-.privacy-database-document p {
-  margin: 0;
-}
-
-.privacy-database-document h2 {
-  margin-bottom: 6px;
-  font-size: 1.24rem;
-}
-
-.privacy-database-document p {
-  color: rgba(17, 34, 45, 0.7);
-  line-height: 1.55;
-}
-
-.privacy-database-document .q-btn {
-  flex: 0 0 auto;
-}
-
-.privacy-pdf-icon {
-  width: 20px;
-  height: 20px;
-  margin-inline-end: 7px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
-}
-
 .privacy-sections {
   display: grid;
   gap: 28px;
@@ -167,16 +102,6 @@
   .privacy-sections {
     gap: 24px;
     margin-top: 28px;
-  }
-
-  .privacy-database-document {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .privacy-database-document .q-btn {
-    align-self: flex-start;
   }
 }
 </style>

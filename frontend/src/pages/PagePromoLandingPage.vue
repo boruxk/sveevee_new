@@ -417,14 +417,19 @@
   display: grid;
   gap: 8px;
   padding: 24px;
-  border: 1px solid rgba(255, 116, 38, 0.18);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.62);
-  box-shadow: 0 18px 38px rgba(255, 116, 38, 0.08);
+  border: 2px solid transparent;
+  border-radius: 30px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.72)) padding-box,
+    linear-gradient(115deg, #ff7426 0%, #f54291 24%, #7b3ff2 48%, #f54291 72%, #ff7426 100%) border-box;
+  background-size: 100% 100%, 320% 320%;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 26px rgba(92, 47, 126, 0.09);
+  animation: promoFreeBorderWave 4.8s ease-in-out infinite;
 }
 
 .promo-description__free strong {
-  color: #7f1239;
+  color: #702ee6;
   font-size: 24px;
   line-height: 1.16;
 }
@@ -433,6 +438,17 @@
   color: rgba(21, 31, 59, 0.72);
   font-size: 15px;
   line-height: 1.6;
+}
+
+@keyframes promoFreeBorderWave {
+  0%,
+  100% {
+    background-position: 0 0, 0% 50%;
+  }
+
+  50% {
+    background-position: 0 0, 100% 50%;
+  }
 }
 
 .promo-function-grid {

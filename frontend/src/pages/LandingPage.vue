@@ -273,6 +273,7 @@
 					<div class="section-kicker">{{ t('landing.businessKicker') }}</div>
 					<h2>{{ t('landing.businessTitle') }}</h2>
 					<p>{{ t('landing.businessBody') }}</p>
+					<p class="audience-panel__free-note">{{ t('landing.businessFreeNote') }}</p>
 					<div class="audience-panel__actions">
 						<q-btn
 							unelevated
@@ -796,7 +797,6 @@
   gap: 24px;
   align-items: end;
   padding-bottom: 42px;
-  border-bottom: 1px solid rgba(123, 63, 242, 0.12);
 }
 
 .landing-purpose h2 {
@@ -949,12 +949,12 @@
 .content-section__head {
   display: grid;
   gap: 10px;
-  max-width: 790px;
+  max-width: none;
   margin-bottom: 28px;
 }
 
 .content-section h2 {
-  max-width: 820px;
+  max-width: none;
   color: #24145d;
   font-size: clamp(34px, 4vw, 48px);
 }
@@ -967,7 +967,6 @@
 
 .content-block {
   padding: 0 0 26px;
-  border-bottom: 1px solid rgba(123, 63, 242, 0.14);
 }
 
 .content-block h3 {
@@ -999,11 +998,6 @@
   gap: clamp(28px, 5vw, 64px);
   align-items: start;
   padding: 34px 0;
-  border-top: 1px solid rgba(123, 63, 242, 0.12);
-}
-
-.audience-panel:last-child {
-  border-bottom: 1px solid rgba(123, 63, 242, 0.12);
 }
 
 .audience-panel__copy {
@@ -1022,6 +1016,14 @@
   color: rgba(21, 31, 59, 0.72);
   font-size: 17px;
   line-height: 1.72;
+}
+
+.audience-panel__copy .audience-panel__free-note {
+  padding-inline-start: 13px;
+  border-inline-start: 3px solid #f54291;
+  color: #5f2ac7;
+  font-weight: 800;
+  line-height: 1.55;
 }
 
 .audience-panel__actions {
