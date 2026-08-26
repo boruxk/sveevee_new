@@ -776,6 +776,7 @@ HTML);
                 'phone' => '02-1234567',
                 'contact_email' => 'avi@example.test',
                 'setup' => [
+                    'website' => 'https://avi-electric.example',
                     'address' => [
                         'street' => 'Herzl',
                         'number' => '10',
@@ -826,6 +827,8 @@ HTML);
             $this->assertStringContainsString('addressCountry', $businessHtml);
             $this->assertStringContainsString('hreflang="en"', $businessHtml);
             $this->assertStringContainsString('02-1234567', $businessHtml);
+            $this->assertStringContainsString('https://avi-electric.example', $businessHtml);
+            $this->assertStringContainsString('sameAs', $businessHtml);
             $this->assertStringNotContainsString('Homepage fallback', $businessHtml);
             $this->assertStringContainsString('<h1>Samsung Galaxy</h1>', $productHtml);
             $this->assertStringContainsString('Product', $productHtml);
@@ -868,7 +871,42 @@ HTML);
             ->all();
 
         $this->assertContains('professionals.electricians', $scopedTopicKeys);
-        $this->assertNotContains('products.pets.food', $scopedTopicKeys);
+        $this->assertContains('products.pets.food', $scopedTopicKeys);
+
+        $productResponse = $this->getJson('/api/v1/catalog?scope=products')
+            ->assertOk();
+        $softwareGroup = collect($productResponse->json('data.groups'))
+            ->firstWhere('key', 'products_software');
+        $productTopicKeys = collect($productResponse->json('data.groups'))
+            ->flatMap(fn (array $group): array => collect($group['topics'] ?? [])->pluck('key')->all())
+            ->values()
+            ->all();
+
+        $this->assertNotNull($softwareGroup);
+        $this->assertSame('Software', $softwareGroup['labels']['en']);
+        $this->assertSame('Программное обеспечение', $softwareGroup['labels']['ru']);
+        $this->assertSame('Logiciels', $softwareGroup['labels']['fr']);
+        $this->assertCount(14, $softwareGroup['topics']);
+        $this->assertContains(
+            'products.software.games',
+            collect($softwareGroup['topics'])->pluck('key')->all()
+        );
+        $this->assertContains(
+            'products.software.developer_tools',
+            collect($softwareGroup['topics'])->pluck('key')->all()
+        );
+        $this->assertSame([], array_values(array_diff($productTopicKeys, $scopedTopicKeys)));
+        $this->assertContains('beauty_personal_care.makeup', $productTopicKeys);
+        $this->assertContains('beauty_personal_care.nails', $productTopicKeys);
+        $this->assertContains('health_care.medical_equipment', $productTopicKeys);
+        $this->assertContains('services.events_entertainment.party_equipment', $productTopicKeys);
+        $this->assertNotContains('jobs.job_offers', $productTopicKeys);
+        $this->assertTrue(CatalogTopics::isAdCategoryValue('products.software.games'));
+        $this->assertTrue(CatalogTopics::isAdCategoryValue('products.software.developer_tools'));
+        $this->assertSame(
+            'products.fashion_beauty.cosmetics_skin_care',
+            CatalogTopics::keyForAdCategory('beauty_personal_care.cosmetics')
+        );
 
         $this->getJson('/api/v1/catalog/businesses')
             ->assertOk()
@@ -1313,6 +1351,7 @@ HTML);
             'contact_email' => 'hello@example.test',
             'phone' => '+972 50 111 2222',
             'address' => 'Herzl 10, Haifa',
+            'website' => 'studio.example',
             'palette_key' => 'sea-glass',
             'setup' => [
                 'contact' => [
@@ -1343,6 +1382,8 @@ HTML);
             ->assertJsonPath('data.contact.whatsapp', '+972 50 111 2222')
             ->assertJsonPath('data.address_details.street', 'Herzl')
             ->assertJsonPath('data.address_details.neighborhood', 'Hadar')
+            ->assertJsonPath('data.website', 'https://studio.example')
+            ->assertJsonPath('data.setup.website', 'https://studio.example')
             ->assertJsonPath('data.opening_hours.1.weekday', 'monday')
             ->assertJsonPath('data.opening_hours.1.opens_at', '08:30')
             ->assertJsonPath('data.features.store', false)
@@ -1426,6 +1467,13 @@ HTML);
             'category' => 'professionals.electricians',
         ])->assertCreated()
             ->assertJsonPath('data.category', 'professionals.electricians');
+
+        $this->postJson('/api/v1/ads', [
+            'title' => 'Software category ad',
+            'text' => 'A product topic is valid for ads too.',
+            'category' => 'products.software.developer_tools',
+        ])->assertCreated()
+            ->assertJsonPath('data.category', 'products.software.developer_tools');
 
         $this->postJson('/api/v1/ads', [
             'title' => 'Invalid category ad',

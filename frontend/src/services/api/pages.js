@@ -16,6 +16,7 @@ async function toPageFormData(payload) {
 	formData.append('contact_email', payload.contact_email || '')
 	formData.append('phone', payload.phone || '')
 	formData.append('address', payload.address || addressLine(payload.setup?.address) || '')
+	formData.append('website', payload.website || payload.setup?.website || '')
 	formData.append('category_key', payload.category_key || '')
 	formData.append('palette_key', payload.palette_key || 'amber-dawn')
 	formData.append('setup', JSON.stringify(payload.setup || {}))

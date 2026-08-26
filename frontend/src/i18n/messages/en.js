@@ -463,6 +463,8 @@ export default {
 		email: 'E-mail',
 		tel: 'Tel',
 		whatsapp: 'WhatsApp',
+		website: 'Website',
+		websiteInvalid: 'Enter a valid website address.',
 		socials: {
 			facebook: 'Facebook',
 			instagram: 'Instagram',

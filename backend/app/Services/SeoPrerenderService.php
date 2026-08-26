@@ -32,6 +32,7 @@ class SeoPrerenderService
             'productDescription' => '{name} ב{city} במחיר {price}. צפו בפרטי המוצר, המוכר, המיקום, הזמינות ואפשרויות יצירת קשר ב-Sveevee.',
             'category' => 'קטגוריה',
             'location' => 'מיקום',
+            'website' => 'אתר',
             'contact' => 'יצירת קשר',
             'phone' => 'טלפון',
             'email' => 'אימייל',
@@ -58,6 +59,7 @@ class SeoPrerenderService
             'productDescription' => '{name} in {city} for {price}. View product details, seller, location, availability, and contact options on Sveevee.',
             'category' => 'Category',
             'location' => 'Location',
+            'website' => 'Website',
             'contact' => 'Contact',
             'phone' => 'Phone',
             'email' => 'Email',
@@ -84,6 +86,7 @@ class SeoPrerenderService
             'productDescription' => '{name} в {city} за {price}. Смотрите детали товара, продавца, местоположение, наличие и варианты связи в Sveevee.',
             'category' => 'Категория',
             'location' => 'Место',
+            'website' => 'Веб-сайт',
             'contact' => 'Контакт',
             'phone' => 'Телефон',
             'email' => 'Email',
@@ -110,6 +113,7 @@ class SeoPrerenderService
             'productDescription' => '{name} a {city} pour {price}. Consultez details du produit, vendeur, lieu, disponibilite et options de contact sur Sveevee.',
             'category' => 'Categorie',
             'location' => 'Lieu',
+            'website' => 'Site web',
             'contact' => 'Contact',
             'phone' => 'Telephone',
             'email' => 'Email',
@@ -960,6 +964,7 @@ class SeoPrerenderService
             $this->ratingText($page, $locale) ? [$copy['rating'], $this->ratingText($page, $locale)] : null,
         ];
         $hours = $this->openingHoursText($page, $locale);
+        $website = trim((string) data_get($page->setup, 'website', ''));
         $prices = data_get($page->setup, 'features.price_list', false) ? $page->prices->take(12)->map(fn ($price): string => sprintf(
             '<li><strong>%s</strong><span>%s</span></li>',
             $this->escape($price->name),
@@ -984,6 +989,7 @@ class SeoPrerenderService
             .'<h1>'.$this->escape($page->name).'</h1>'
             .'<p class="sveevee-prerender__lead">'.$this->escape($meta['description']).'</p>'
             .$this->definitionList($detailRows)
+            .($website ? $this->section($copy['website'], '<p><a href="'.$this->escapeAttribute($website).'">'.$this->escape($website).'</a></p>') : '')
             .$this->section($copy['contact'], $this->definitionList($contactRows))
             .($hours ? $this->section($copy['openingHours'], '<p>'.$this->escape($hours).'</p>') : '')
             .($prices ? $this->section($copy['priceList'], '<ul>'.$prices.'</ul>') : '')
@@ -1056,6 +1062,7 @@ class SeoPrerenderService
 
     private function businessSchema(Page $page, string $locale, array $meta): array
     {
+        $website = trim((string) data_get($page->setup, 'website', ''));
         $schema = [
             '@context' => 'https://schema.org',
             '@type' => 'LocalBusiness',
@@ -1066,6 +1073,7 @@ class SeoPrerenderService
             'logo' => $page->logo_url ? $this->absoluteUrl($page->logo_url) : null,
             'telephone' => $page->phone,
             'email' => $page->contact_email,
+            'sameAs' => $website ? [$website] : null,
             'address' => $this->addressSchema($meta['address']),
             'openingHoursSpecification' => $this->openingHoursSchema($page),
             'aggregateRating' => $this->ratingSchema($page),

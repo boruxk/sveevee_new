@@ -463,6 +463,8 @@ export default {
 		email: 'Эл. почта',
 		tel: 'Телефон',
 		whatsapp: 'WhatsApp',
+		website: 'Веб-сайт',
+		websiteInvalid: 'Введите корректный адрес сайта.',
 		socials: {
 			facebook: 'Facebook',
 			instagram: 'Instagram',

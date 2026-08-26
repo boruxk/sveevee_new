@@ -380,6 +380,7 @@
 		name: typedCopy.value.pageName,
 		public_description: typedCopy.value.pageDescription,
 		category_key: demoCategoryKey.value,
+		website: 'https://ramotstudio.example',
 		phone: '+972 50 123 4567',
 		contact_email: 'hello@ramotstudio.example',
 		whatsapp: '+972 50 123 4567',
@@ -404,6 +405,7 @@
 		public_description: typedCopy.value.pageDescription,
 		contact_email: 'hello@ramotstudio.example',
 		phone: '+972 50 123 4567',
+		website: 'https://ramotstudio.example',
 		contact: {
 			tel: '+972 50 123 4567',
 			email: 'hello@ramotstudio.example',
@@ -728,6 +730,12 @@
 											required
 											disabled
 											:label="requiredLabel('catalog.category')"
+										/>
+										<q-input
+											:model-value="demoForm.website"
+											outlined
+											disable
+											:label="t('pages.website')"
 										/>
 
 										<section class="presence-segment">

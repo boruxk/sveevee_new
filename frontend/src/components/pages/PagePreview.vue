@@ -109,6 +109,23 @@
 		return bases[platform] && handle ? `${bases[platform]}${handle}` : ''
 	}
 
+	function websiteHref(value) {
+		const raw = String(value || '').trim()
+
+		if (!raw) {
+			return ''
+		}
+
+		const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+
+		try {
+			const url = new URL(candidate)
+			return ['http:', 'https:'].includes(url.protocol) && url.hostname ? url.toString() : ''
+		} catch {
+			return ''
+		}
+	}
+
 	const previewContact = computed(() => {
 		const contact = props.page?.contact || {}
 		const phone = contact.tel || props.page?.phone || null
@@ -148,6 +165,10 @@
 
 		return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(previewAddress.value)}`
 	})
+	const previewWebsiteHref = computed(() => websiteHref(props.page?.website || props.page?.setup?.website))
+	const previewWebsiteLabel = computed(() => previewWebsiteHref.value
+		.replace(/^https?:\/\//i, '')
+		.replace(/\/$/, ''))
 	const previewOpeningHours = computed(() => props.page?.opening_hours || [])
 	const previewLogoUrl = computed(() => props.page?.logo_url || null)
 	const previewBannerUrl = computed(() => props.page?.banner_url || null)
@@ -478,6 +499,19 @@
 							<span>{{ previewAddress }}</span>
 						</a>
 						<div v-else class="text-body2 page-preview__empty">{{ t('pages.noAddress') }}</div>
+					</div>
+
+					<div v-if="previewWebsiteHref" class="page-preview__detail-card">
+						<div class="page-preview__section-title">{{ t('pages.website') }}</div>
+						<a
+							class="page-preview__website-link"
+							:href="previewWebsiteHref"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							<q-icon name="language" size="20px" />
+							<span>{{ previewWebsiteLabel }}</span>
+						</a>
 					</div>
 
 					<div v-if="previewSocials.length" class="page-preview__detail-card">
@@ -967,7 +1001,8 @@
 }
 
 .page-preview__detail-link,
-.page-preview__address-link {
+.page-preview__address-link,
+.page-preview__website-link {
   min-width: 0;
   color: var(--presence-accent);
   font-weight: 800;
@@ -976,7 +1011,8 @@
 }
 
 .page-preview__detail-link:hover,
-.page-preview__address-link:hover {
+.page-preview__address-link:hover,
+.page-preview__website-link:hover {
   color: color-mix(in srgb, var(--presence-accent) 72%, var(--presence-ink));
 }
 
@@ -984,14 +1020,16 @@
   color: var(--presence-muted);
 }
 
-.page-preview__address-link {
+.page-preview__address-link,
+.page-preview__website-link {
   display: flex;
   gap: 8px;
   align-items: flex-start;
   margin-top: 14px;
 }
 
-.page-preview__address-link .q-icon {
+.page-preview__address-link .q-icon,
+.page-preview__website-link .q-icon {
   flex: 0 0 auto;
   margin-top: 1px;
 }

@@ -74,7 +74,7 @@ class CatalogTopics
         'fashion.wigs_head_coverings' => 'products.fashion_beauty.wigs_head_coverings',
         'beauty_personal_care.hairdresser' => 'professionals.hair_salons',
         'beauty_personal_care.hair_treatments' => 'professionals.hair_salons',
-        'beauty_personal_care.skin_care' => 'professionals.cosmetics',
+        'beauty_personal_care.skin_care' => 'products.fashion_beauty.cosmetics_skin_care',
         'beauty_personal_care.hair_removal' => 'professionals.beauticians',
         'health_wellness.therapy' => 'health_care.therapy_counseling',
         'health_wellness.alternative_medicine' => 'professionals.alternative_medicine',
@@ -111,7 +111,7 @@ class CatalogTopics
         'electronics_appliances.electrical_products' => 'shopping_retail.electronics',
         'electronics_appliances.small_appliances' => 'products.appliances.coffee_small_appliances',
         'community_religious.community_events' => 'events.community_social.community_festival',
-        'beauty_personal_care.cosmetics' => 'professionals.cosmetics',
+        'beauty_personal_care.cosmetics' => 'products.fashion_beauty.cosmetics_skin_care',
     ];
 
     private const MARKET_PRODUCT_TYPES = [
@@ -711,8 +711,8 @@ class CatalogTopics
             self::group('beauty_wellness', 'יופי ואורח חיים', 'Beauty & wellness', '#e11d48', $businessServices, [
                 self::topic('professionals.hair_salons', 'hair-salons', 'עיצוב שיער ומספרות', 'Hair salons', [], $userBusinessServices),
                 self::topic('professionals.beauticians', 'beauticians', 'קוסמטיקאיות', 'Beauticians', [], $userBusinessServices),
-                self::topic('beauty_personal_care.nails', 'nails', 'ציפורניים', 'Nails'),
-                self::topic('beauty_personal_care.makeup', 'makeup', 'איפור', 'Makeup'),
+                self::topic('beauty_personal_care.nails', 'nails', 'ציפורניים', 'Nails', [], [self::SCOPE_BUSINESS_PAGES, self::SCOPE_SERVICES, self::SCOPE_PRODUCTS]),
+                self::topic('beauty_personal_care.makeup', 'makeup', 'איפור', 'Makeup', [], [self::SCOPE_BUSINESS_PAGES, self::SCOPE_SERVICES, self::SCOPE_PRODUCTS]),
                 self::topic('professionals.cosmetics', 'cosmetics', 'קוסמטיקה וטיפוח', 'Cosmetics & skin care', [], $userBusinessServices),
                 self::topic('professionals.beauty_salons', 'beauty-salons', 'מכוני יופי', 'Beauty salons', [], $userBusinessServices),
                 self::topic('beauty_personal_care.spa_massage', 'spa-massage', 'ספא ועיסוי', 'Massage & spa'),
@@ -728,7 +728,7 @@ class CatalogTopics
                 self::topic('health_care.senior_care', 'senior-care', 'טיפול בקשישים', 'Senior care'),
                 self::topic('health_care.caregivers_nursing', 'caregivers-nursing', 'מטפלים וסיעוד', 'Caregivers & nursing'),
                 self::topic('health_care.pharmacies', 'pharmacies', 'בתי מרקחת', 'Pharmacies'),
-                self::topic('health_care.medical_equipment', 'medical-equipment', 'ציוד רפואי', 'Medical equipment'),
+                self::topic('health_care.medical_equipment', 'medical-equipment', 'ציוד רפואי', 'Medical equipment', [], [self::SCOPE_BUSINESS_PAGES, self::SCOPE_SERVICES, self::SCOPE_PRODUCTS]),
                 self::topic('professionals.medical_massage', 'medical-massage', 'עיסוי רפואי', 'Medical massage', [], $userBusinessServices),
             ]),
             self::group('education_kids', 'חינוך וילדים', 'Education & kids', '#7c3aed', [self::SCOPE_BUSINESS_PAGES, self::SCOPE_SERVICES, self::SCOPE_EVENTS], [
@@ -887,6 +887,22 @@ class CatalogTopics
                 self::topic('products.electronics_computers.accessories_cables', 'accessories-cables', 'אביזרים וכבלים', 'Accessories & cables'),
                 self::topic('products.electronics_computers.printers_office_tech', 'printers-office-tech', 'מדפסות וציוד משרדי', 'Printers & office tech'),
             ]),
+            self::group('products_software', 'תוכנה', 'Software', '#4f46e5', $products, [
+                self::topic('products.software.operating_systems_utilities', 'operating-systems-utilities', 'מערכות הפעלה וכלי עזר', 'Operating systems & utilities', ['products.software', 'software-products'], null, 'Операционные системы и утилиты', 'Systèmes d\'exploitation et utilitaires'),
+                self::topic('products.software.games', 'gaming-software', 'משחקים ותוכנות גיימינג', 'Games & gaming software', [], null, 'Игры и игровое ПО', 'Jeux et logiciels gaming'),
+                self::topic('products.software.mobile_apps', 'mobile-apps', 'אפליקציות מובייל', 'Mobile apps', [], null, 'Мобильные приложения', 'Applications mobiles'),
+                self::topic('products.software.business_productivity', 'business-productivity-software', 'תוכנות לעסקים ופרודוקטיביות', 'Business & productivity', [], null, 'Бизнес и продуктивность', 'Entreprise et productivité'),
+                self::topic('products.software.finance_accounting', 'finance-accounting-software', 'כספים והנהלת חשבונות', 'Finance & accounting', [], null, 'Финансы и бухгалтерия', 'Finance et comptabilité'),
+                self::topic('products.software.communication_collaboration', 'communication-collaboration-software', 'תקשורת ושיתוף פעולה', 'Communication & collaboration', [], null, 'Коммуникации и совместная работа', 'Communication et collaboration'),
+                self::topic('products.software.cloud_saas', 'cloud-saas', 'ענן ו-SaaS', 'Cloud & SaaS', [], null, 'Облачные сервисы и SaaS', 'Cloud et SaaS'),
+                self::topic('products.software.ai_automation', 'ai-automation-software', 'בינה מלאכותית ואוטומציה', 'AI & automation', [], null, 'ИИ и автоматизация', 'IA et automatisation'),
+                self::topic('products.software.design_creative', 'design-creative-software', 'עיצוב ויצירה', 'Design & creative', [], null, 'Дизайн и творчество', 'Design et création'),
+                self::topic('products.software.media_entertainment', 'media-entertainment-software', 'מדיה ובידור', 'Media & entertainment', [], null, 'Медиа и развлечения', 'Médias et divertissement'),
+                self::topic('products.software.security_antivirus', 'security-antivirus', 'אבטחה ואנטי-וירוס', 'Security & antivirus', [], null, 'Безопасность и антивирусы', 'Sécurité et antivirus'),
+                self::topic('products.software.developer_tools', 'developer-tools', 'כלי פיתוח', 'Developer tools', [], null, 'Инструменты разработчика', 'Outils de développement'),
+                self::topic('products.software.website_plugins_themes', 'website-plugins-themes', 'תוספים ותבניות לאתרים', 'Website plugins & themes', [], null, 'Плагины и темы для сайтов', 'Extensions et thèmes de sites'),
+                self::topic('products.software.education_learning', 'education-learning-software', 'לימוד והדרכה', 'Education & learning', [], null, 'Образование и обучение', 'Éducation et apprentissage'),
+            ], 'Программное обеспечение', 'Logiciels'),
             self::group('products_appliances', 'מוצרי חשמל', 'Appliances', '#64748b', $products, [
                 self::topic('products.appliances.refrigerators_freezers', 'refrigerators-freezers', 'מקררים ומקפיאים', 'Refrigerators & freezers'),
                 self::topic('products.appliances.ovens_stoves', 'ovens-stoves', 'תנורים וכיריים', 'Ovens & stoves'),
@@ -1004,7 +1020,7 @@ class CatalogTopics
                 self::topic('services.events_entertainment.photography_video', 'photography-video-services', 'צילום ווידאו', 'Photography & video'),
                 self::topic('services.events_entertainment.catering', 'catering-services', 'קייטרינג', 'Catering'),
                 self::topic('services.events_entertainment.venues', 'venue-services', 'אולמות ומקומות', 'Venues'),
-                self::topic('services.events_entertainment.party_equipment', 'party-equipment-services', 'ציוד לאירועים', 'Party equipment'),
+                self::topic('services.events_entertainment.party_equipment', 'party-equipment-services', 'ציוד לאירועים', 'Party equipment', [], [self::SCOPE_SERVICES, self::SCOPE_PRODUCTS]),
                 self::topic('services.events_entertainment.attractions', 'event-attraction-services', 'אטרקציות', 'Attractions'),
                 self::topic('services.events_entertainment.kids_entertainer', 'kids-entertainer-services', 'מפעיל ילדים', 'Kids entertainer'),
                 self::topic('services.events_entertainment.flowers_decor', 'event-decor-services', 'פרחים ועיצוב', 'Flowers & decor'),
@@ -1188,6 +1204,13 @@ class CatalogTopics
 
     private static function topicPayload(array $topic, array $group): array
     {
+        $scopes = collect($topic['scopes'] ?? $group['scopes']);
+
+        // Products can always be promoted as ads; ad-only topics such as jobs stay out of stores.
+        if ($scopes->contains(self::SCOPE_PRODUCTS)) {
+            $scopes->push(self::SCOPE_ADS);
+        }
+
         return [
             'key' => $topic['key'],
             'slug' => $topic['slug'],
@@ -1195,7 +1218,7 @@ class CatalogTopics
             'color' => $topic['color'] ?? $group['color'],
             'group_key' => $group['key'],
             'group_labels' => $group['labels'],
-            'scopes' => $topic['scopes'] ?? $group['scopes'],
+            'scopes' => $scopes->unique()->values()->all(),
             'aliases' => collect(Arr::wrap($topic['aliases'] ?? []))->unique()->values()->all(),
         ];
     }

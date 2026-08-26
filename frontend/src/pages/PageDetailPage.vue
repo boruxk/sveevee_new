@@ -219,6 +219,7 @@
 			logo: page.value.logo_url || undefined,
 			telephone: page.value.contact?.tel || page.value.phone || undefined,
 			email: page.value.contact?.email || page.value.contact_email || undefined,
+			sameAs: page.value.website ? [page.value.website] : undefined,
 			address: structuredAddress.value,
 			openingHoursSpecification: isBusinessPage.value && structuredOpeningHours.value.length ? structuredOpeningHours.value : undefined,
 			aggregateRating: page.value.rating_summary?.count > 0 ? {

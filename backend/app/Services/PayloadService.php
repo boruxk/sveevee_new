@@ -104,6 +104,7 @@ class PayloadService
             'phone' => $page->phone,
             'address' => $page->address,
             'category_key' => $page->category_key,
+            'website' => filled($setup['website'] ?? null) ? (string) $setup['website'] : null,
             'contact' => $contact,
             'address_details' => $addressDetails,
             'socials' => $socials,

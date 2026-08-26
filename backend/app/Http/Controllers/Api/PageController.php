@@ -49,6 +49,7 @@ class PageController extends Controller
         $this->validateType($type);
         $catalogScope = $this->catalogScopeForType($type);
         $this->normalizeCategoryKey($request, $catalogScope);
+        $this->normalizeWebsite($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -56,6 +57,7 @@ class PageController extends Controller
             'contact_email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:40'],
             'address' => ['nullable', 'string', 'max:255'],
+            'website' => ['nullable', 'string', 'max:2048', 'url:http,https'],
             'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope($catalogScope))],
             'palette_key' => ['nullable', 'string', 'max:50'],
             'setup' => ['nullable'],
@@ -66,6 +68,7 @@ class PageController extends Controller
         ]);
 
         $setup = $this->normalizedSetup($request->input('setup'));
+        $setup['website'] = $data['website'] ?? null;
         $setup['features'] = [
             'store' => $type === Page::TYPE_BUSINESS ? $setup['features']['store'] : false,
             'services' => $type === Page::TYPE_BUSINESS ? $setup['features']['services'] : false,
@@ -227,6 +230,7 @@ class PageController extends Controller
         $services = is_array($decoded['services'] ?? null) ? $decoded['services'] : [];
 
         return array_merge($decoded, [
+            'website' => $this->nullableString($decoded['website'] ?? null),
             'contact' => [
                 'tel' => $this->nullableString($contact['tel'] ?? null),
                 'email' => $this->nullableString($contact['email'] ?? null),
@@ -269,6 +273,27 @@ class PageController extends Controller
         }
 
         return in_array(strtolower((string) $value), ['1', 'true', 'yes', 'on'], true);
+    }
+
+    private function normalizeWebsite(Request $request): void
+    {
+        $website = $request->input('website');
+
+        if ($website === null) {
+            $setup = $request->input('setup');
+            if (is_string($setup) && trim($setup) !== '') {
+                $setup = json_decode($setup, true);
+            }
+
+            $website = is_array($setup) ? ($setup['website'] ?? null) : null;
+        }
+
+        $website = trim((string) $website);
+        if ($website !== '' && ! preg_match('~^https?://~i', $website)) {
+            $website = 'https://'.$website;
+        }
+
+        $request->merge(['website' => $website === '' ? null : $website]);
     }
 
     private function normalizedOpeningHours(mixed $openingHours): array

@@ -101,6 +101,7 @@
 			price_list: false
 		},
 		category_key: '',
+		website: '',
 		palette_key: presencePalettes[0].key,
 		logo: null,
 		banner: null
@@ -211,6 +212,7 @@
 			city: form.address.city,
 			neighborhood: form.address.neighborhood
 		},
+		website: normalizedWebsite(form.website),
 		opening_hours: form.opening_hours.map((item) => ({ ...item })),
 		features: {
 			store: form.features.store,
@@ -313,6 +315,27 @@
 		return [address.street, address.number, address.neighborhood, address.city].filter(Boolean).join(', ')
 	}
 
+	function normalizedWebsite(value) {
+		const raw = String(value || '').trim()
+
+		if (!raw) {
+			return ''
+		}
+
+		const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+
+		try {
+			const url = new URL(candidate)
+			return ['http:', 'https:'].includes(url.protocol) && url.hostname ? url.toString() : ''
+		} catch {
+			return ''
+		}
+	}
+
+	function websiteRule(value) {
+		return !String(value || '').trim() || Boolean(normalizedWebsite(value)) || t('pages.websiteInvalid')
+	}
+
 	function cleanPageText(value) {
 		const text = String(value || '').trim()
 
@@ -363,6 +386,7 @@
 		form.features.events = featureFlag(value, 'events', false)
 		form.features.price_list = featureFlag(value, 'price_list', false)
 		form.category_key = value?.category_key || ''
+		form.website = value?.website || setup.website || ''
 		form.palette_key = findPresencePalette(value?.palette_key || setup.palette_key).key
 		form.logo = null
 		form.banner = null
@@ -371,15 +395,19 @@
 	}
 
 	function pagePayload() {
+		const website = normalizedWebsite(form.website)
+
 		return {
 			name: form.name.trim(),
 			public_description: form.public_description.trim(),
 			contact_email: form.contact_email.trim(),
 			phone: form.phone.trim(),
 			address: addressLine(form.address),
+			website,
 			category_key: form.category_key || null,
 			palette_key: form.palette_key,
 			setup: {
+				website,
 				contact: {
 					tel: form.phone.trim() || null,
 					email: form.contact_email.trim() || null,
@@ -1079,6 +1107,14 @@
 											:scope="pageCatalogScope"
 											required
 											:label="requiredLabel('catalog.category')"
+										/>
+										<q-input
+											v-model="form.website"
+											outlined
+											clearable
+											inputmode="url"
+											:label="t('pages.website')"
+											:rules="[websiteRule]"
 										/>
 
 										<section class="presence-segment">

@@ -463,6 +463,8 @@ export default {
 		email: 'אימייל',
 		tel: 'טלפון',
 		whatsapp: 'וואטסאפ',
+		website: 'אתר',
+		websiteInvalid: 'יש להזין כתובת אתר תקינה.',
 		socials: {
 			facebook: 'Facebook',
 			instagram: 'Instagram',
