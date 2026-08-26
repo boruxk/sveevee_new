@@ -28,6 +28,10 @@ class PayloadService
         ['weekday' => 'saturday', 'is_open' => false, 'opens_at' => null, 'closes_at' => null],
     ];
 
+    public function __construct(private readonly SystemSettingsService $settings)
+    {
+    }
+
     public function user(User $user, bool $includePrivate = false): array
     {
         $user->loadMissing(['profile', 'pages']);
@@ -502,7 +506,13 @@ class PayloadService
         $ratingAverage = (float) ($product->page?->getAttribute('ratings_avg_rating') ?? 0);
         $ratingCount = (int) ($product->page?->getAttribute('ratings_count') ?? 0);
 
-        if ($product->created_at?->greaterThanOrEqualTo(now()->subDays(3))) {
+        $newDays = $this->settings->integer('labels.new_days', 3);
+        $popularViews = $this->settings->integer('labels.popular_views', 100);
+        $popularContacts = $this->settings->integer('labels.popular_contacts', 10);
+        $ratingAverageMinimum = (float) $this->settings->get('labels.highly_rated_average', 4.7);
+        $ratingCountMinimum = $this->settings->integer('labels.highly_rated_min_ratings', 3);
+
+        if ($product->created_at?->greaterThanOrEqualTo(now()->subDays($newDays))) {
             $labels[] = 'new';
         }
 
@@ -510,11 +520,11 @@ class PayloadService
             $labels[] = 'price_dropped';
         }
 
-        if ((int) $product->views_count >= 100 || (int) $product->contacts_count >= 10) {
+        if ((int) $product->views_count >= $popularViews || (int) $product->contacts_count >= $popularContacts) {
             $labels[] = 'popular';
         }
 
-        if ($ratingCount >= 3 && $ratingAverage >= 4.7) {
+        if ($ratingCount >= $ratingCountMinimum && $ratingAverage >= $ratingAverageMinimum) {
             $labels[] = 'highly_rated';
         }
 

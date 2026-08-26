@@ -1574,7 +1574,7 @@ HTML);
             ->assertJsonPath('data.pagination.current_page', 2);
     }
 
-    public function test_ads_expire_after_one_week_and_can_be_pruned(): void
+    public function test_ads_expire_after_one_week_and_are_pruned_after_retention_period(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-01 10:00:00'));
 
@@ -1596,6 +1596,14 @@ HTML);
             $this->getJson('/api/v1/ads?scope=mine')
                 ->assertOk()
                 ->assertJsonCount(0, 'data');
+
+            $this->artisan('ads:prune-expired')
+                ->expectsOutput('Deleted 0 expired ads.')
+                ->assertExitCode(0);
+
+            $this->assertDatabaseHas('ads', ['id' => $ad->id]);
+
+            Carbon::setTestNow(now()->addDays(30));
 
             $this->artisan('ads:prune-expired')
                 ->expectsOutput('Deleted 1 expired ads.')

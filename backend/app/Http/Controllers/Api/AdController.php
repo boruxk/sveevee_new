@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Services\SystemSettingsService;
 use App\Support\CatalogTopics;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -18,8 +19,10 @@ class AdController extends Controller
 {
     use HandlesUploadedImages;
 
-    public function __construct(private readonly PayloadService $payloads)
-    {
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly SystemSettingsService $settings,
+    ) {
     }
 
     public function index(Request $request)
@@ -79,6 +82,10 @@ class AdController extends Controller
                 ->findOrFail($data['page_id']);
         }
 
+        if ($limitError = $this->activeLimitError($request, $page)) {
+            return $limitError;
+        }
+
         $location = $this->locationFor($page, $request->user());
 
         $image = $request->file('image');
@@ -93,7 +100,7 @@ class AdController extends Controller
             'image_path' => $image ? $this->storePublicWebp($image, Ad::IMAGE_DIRECTORY, 'image') : null,
             'image_original_name' => $image ? $this->originalUploadName($request, 'image', $image) : null,
             'status' => 'active',
-            'expires_at' => now()->addWeek(),
+            'expires_at' => now()->addDays($this->settings->integer('ads.visibility_days', 7)),
             'city' => $location['city'],
             'neighborhood' => $location['neighborhood'],
         ]);
@@ -117,6 +124,13 @@ class AdController extends Controller
         ]);
 
         $ad->loadMissing(['page', 'user.profile']);
+
+        if (($data['status'] ?? $ad->status) === 'active' && $ad->status !== 'active') {
+            if ($limitError = $this->activeLimitError($request, $ad->page, $ad->id)) {
+                return $limitError;
+            }
+        }
+
         $location = $this->locationFor($ad->page, $ad->user);
 
         $ad->fill([
@@ -151,7 +165,6 @@ class AdController extends Controller
             return ApiResponseService::error('This action is unauthorized.', status: 403);
         }
 
-        $this->deletePublicUpload($ad->image_path);
         $ad->delete();
 
         return ApiResponseService::success(null, 'Ad deleted.');
@@ -164,6 +177,34 @@ class AdController extends Controller
             Page::TYPE_COMMUNITY => Ad::TYPE_COMMUNITY,
             default => Ad::TYPE_PRIVATE,
         };
+    }
+
+    private function activeLimitError(Request $request, ?Page $page, ?int $ignoreAdId = null)
+    {
+        $query = Ad::query()
+            ->active()
+            ->when($ignoreAdId, fn ($query) => $query->where('id', '!=', $ignoreAdId));
+
+        if ($page) {
+            $limit = $this->settings->integer('ads.page_active_limit', 30);
+            $count = $query->where('page_id', $page->id)->count();
+        } else {
+            $limit = $this->settings->integer('ads.private_active_limit', 10);
+            $count = $query
+                ->where('user_id', $request->user()->id)
+                ->whereNull('page_id')
+                ->count();
+        }
+
+        if ($count < $limit) {
+            return null;
+        }
+
+        return ApiResponseService::error(
+            message: 'The active ad limit has been reached.',
+            status: 422,
+            data: ['reason' => 'active_ad_limit', 'limit' => $limit]
+        );
     }
 
     private function canManage(Request $request, Ad $ad): bool

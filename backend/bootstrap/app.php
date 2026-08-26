@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsurePlatformIsAvailable;
 use App\Http\Middleware\VerifyRecaptcha;
 use App\Services\ApiResponseService;
 use Illuminate\Auth\AuthenticationException;
@@ -13,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -25,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
             'admin' => EnsureUserIsAdmin::class,
+            'platform.available' => EnsurePlatformIsAvailable::class,
             'recaptcha' => VerifyRecaptcha::class,
         ]);
     })
@@ -56,6 +59,16 @@ return Application::configure(basePath: dirname(__DIR__))
 
             if ($exception instanceof NotFoundHttpException) {
                 return ApiResponseService::error('Resource not found.', status: 404);
+            }
+
+            if ($exception instanceof TooManyRequestsHttpException) {
+                $response = ApiResponseService::error('Too many requests.', status: 429);
+
+                foreach ($exception->getHeaders() as $name => $value) {
+                    $response->headers->set($name, $value);
+                }
+
+                return $response;
             }
 
             return ApiResponseService::error(

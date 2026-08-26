@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AdController;
+use App\Http\Controllers\Api\AdminBlockedTermController;
+use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
@@ -15,12 +17,14 @@ use App\Http\Controllers\Api\PageProductController;
 use App\Http\Controllers\Api\PagePriceController;
 use App\Http\Controllers\Api\PageRatingController;
 use App\Http\Controllers\Api\PageServiceController;
+use App\Http\Controllers\Api\PlatformStatusController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PublicUserController;
 use App\Http\Controllers\Api\SearchController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v1')->middleware('recaptcha')->group(function () {
+Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(function () {
+    Route::get('/platform-status', PlatformStatusController::class)->withoutMiddleware('platform.available');
     Route::get('/catalog', [CatalogController::class, 'index']);
     Route::get('/catalog/{topicSlug}', [CatalogController::class, 'index']);
     Route::get('/catalog/{citySlug}/{topicSlug}', [CatalogController::class, 'indexForCity']);
@@ -40,16 +44,17 @@ Route::prefix('v1')->middleware('recaptcha')->group(function () {
 
     Route::prefix('auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
-        Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth-login');
-        Route::get('/google/redirect', [AuthController::class, 'redirectToGoogle'])->middleware('throttle:auth-login');
-        Route::get('/google/callback', [AuthController::class, 'handleGoogleCallback'])->middleware('throttle:auth-login');
+        Route::post('/login', [AuthController::class, 'login'])->withoutMiddleware('platform.available')->middleware('throttle:auth-login');
+        Route::get('/google/redirect', [AuthController::class, 'redirectToGoogle'])->withoutMiddleware('platform.available')->middleware('throttle:auth-login');
+        Route::get('/google/callback', [AuthController::class, 'handleGoogleCallback'])->withoutMiddleware('platform.available')->middleware('throttle:auth-login');
         Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-login');
         Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-login');
-        Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
+        Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout'])->withoutMiddleware('platform.available');
     });
 
+    Route::middleware('auth:sanctum')->get('/me', [AuthController::class, 'me'])->withoutMiddleware('platform.available');
+
     Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/me', [AuthController::class, 'me']);
         Route::get('/home-feed', [HomeFeedController::class, 'index']);
 
         Route::get('/profile', [ProfileController::class, 'show']);
@@ -100,8 +105,14 @@ Route::prefix('v1')->middleware('recaptcha')->group(function () {
         Route::patch('/chats/{conversation}/read', [ChatController::class, 'markAsRead']);
     });
 
-    Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::middleware(['auth:sanctum', 'admin'])->withoutMiddleware('platform.available')->prefix('admin')->group(function () {
         Route::get('/support-chats', [ChatController::class, 'adminSupportIndex']);
+        Route::get('/settings', [AdminSettingsController::class, 'index']);
+        Route::patch('/settings/{section}', [AdminSettingsController::class, 'update']);
+        Route::get('/blocked-terms', [AdminBlockedTermController::class, 'index']);
+        Route::post('/blocked-terms', [AdminBlockedTermController::class, 'store']);
+        Route::put('/blocked-terms/{blockedTerm}', [AdminBlockedTermController::class, 'update']);
+        Route::delete('/blocked-terms/{blockedTerm}', [AdminBlockedTermController::class, 'destroy']);
         Route::get('/users', [AdminUserController::class, 'index']);
         Route::get('/users/{user}', [AdminUserController::class, 'show']);
         Route::patch('/users/{user}/ban', [AdminUserController::class, 'ban']);

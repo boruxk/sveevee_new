@@ -109,7 +109,12 @@
 			emit('saved', response.data.data)
 			$q.notify({ type: 'positive', message: isEditing.value ? t('actions.update') : t('events.created') })
 		} catch (error) {
-			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('events.saveFailed')) })
+			$q.notify({
+				type: 'negative',
+				message: apiErrorMessage(error, t('events.saveFailed'), {
+					event_limit: t('events.limitReached', { limit: error.response?.data?.data?.limit })
+				})
+			})
 		} finally {
 			loading.value = false
 		}

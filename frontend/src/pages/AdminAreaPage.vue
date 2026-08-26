@@ -1,19 +1,66 @@
 <script setup>
 	import { computed, nextTick, onMounted, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
+	import { useRoute } from 'vue-router'
 	import { useQuasar } from 'quasar'
-	import { banAdminUser, fetchAdminSupportChats, fetchAdminUser, fetchAdminUserTable, restoreAdminUser } from '@/services/api/admin'
+	import {
+		banAdminUser,
+		createBlockedTerm,
+		deleteBlockedTerm,
+		fetchAdminSettings,
+		fetchAdminSupportChats,
+		fetchAdminUser,
+		fetchAdminUserTable,
+		fetchBlockedTerms,
+		restoreAdminUser,
+		updateAdminSettings,
+		updateBlockedTerm
+	} from '@/services/api/admin'
 	import { fetchChat, sendChatMessage } from '@/services/api/chats'
 	import { useAuthStore } from '@/stores/auth'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
+	import { catalogLabel } from '@/constants/catalogTopics'
+	import { apiErrorMessage } from '@/utils/apiErrors'
+
+	const defaultSettings = () => ({
+		ads: {
+			visibility_days: 7,
+			private_active_limit: 10,
+			page_active_limit: 30,
+			purge_after_expiry_days: 30
+		},
+		labels: {
+			new_days: 3,
+			popular_views: 100,
+			popular_contacts: 10,
+			highly_rated_average: 4.7,
+			highly_rated_min_ratings: 3
+		},
+		chat: {
+			new_recipients_per_day: 10,
+			messages_per_minute: 30
+		},
+		moderation: {
+			products_per_business_page: 100,
+			future_events_per_community_page: 50
+		},
+		platform: {
+			maintenance_enabled: false,
+			maintenance_messages: { he: '', en: '', ru: '', fr: '' },
+			popular_topic_keys: []
+		}
+	})
+	const clone = (value) => JSON.parse(JSON.stringify(value))
 
 	const { locale, t } = useI18n()
+	const route = useRoute()
 	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const supportLoading = ref(false)
 	const tableLoading = ref(false)
-	const activeTab = ref('communication')
+	const adminTabNames = ['communication', 'users', 'landing-pages', 'settings']
+	const activeTab = ref(adminTabNames.includes(String(route.query.tab || '')) ? String(route.query.tab) : 'communication')
 	const supportConversations = ref([])
 	const userRows = ref([])
 	const totalUsers = ref(0)
@@ -26,6 +73,17 @@
 	const userSearch = ref('')
 	const appliedUserSearch = ref('')
 	const messagesEl = ref(null)
+	const settingsLoading = ref(false)
+	const settingsForms = ref(defaultSettings())
+	const savedSettings = ref(defaultSettings())
+	const savingSections = ref({})
+	const catalogTopics = ref([])
+	const popularTopicToAdd = ref(null)
+	const blockedTerms = ref([])
+	const blockedTermsLoading = ref(false)
+	const blockedTermSaving = ref(false)
+	const blockedTermRowSaving = ref({})
+	const newBlockedTerm = ref({ term: '', locale: 'all', active: true })
 	const tablePagination = ref({
 		page: 1,
 		rowsPerPage: 50,
@@ -98,6 +156,30 @@
 			sortable: false
 		}
 	])
+	const blockedLocaleOptions = computed(() => [
+		{ label: t('admin.settings.allLanguages'), value: 'all' },
+		{ label: t('languages.he'), value: 'he' },
+		{ label: t('languages.en'), value: 'en' },
+		{ label: t('languages.ru'), value: 'ru' },
+		{ label: t('languages.fr'), value: 'fr' }
+	])
+	const catalogTopicOptions = computed(() => catalogTopics.value
+		.map((topic) => ({
+			label: catalogLabel(topic.labels, locale.value),
+			value: topic.key
+		}))
+		.filter((option) => !settingsForms.value.platform.popular_topic_keys.includes(option.value))
+		.sort((left, right) => left.label.localeCompare(right.label, intlLocale.value)))
+	const selectedPopularTopics = computed(() => settingsForms.value.platform.popular_topic_keys.map((key) => ({
+		key,
+		label: catalogLabel(catalogTopics.value.find((topic) => topic.key === key)?.labels, locale.value) || key
+	})))
+	const adminPageTitle = computed(() => ({
+		communication: t('admin.communication'),
+		users: t('admin.userTable'),
+		'landing-pages': t('admin.landingPages'),
+		settings: t('admin.settings.title')
+	}[activeTab.value] || t('admin.users')))
 
 	function formatMessageTime(value) {
 		if (!value) {
@@ -270,9 +352,152 @@
 		}
 	}
 
+	function sectionDirty(section) {
+		return JSON.stringify(settingsForms.value[section]) !== JSON.stringify(savedSettings.value[section])
+	}
+
+	async function loadSettings() {
+		settingsLoading.value = true
+		blockedTermsLoading.value = true
+
+		try {
+			const [settingsResponse, termsResponse] = await Promise.all([
+				fetchAdminSettings(),
+				fetchBlockedTerms()
+			])
+			const payload = settingsResponse.data.data || {}
+			const nextSettings = defaultSettings()
+
+			Object.keys(nextSettings).forEach((section) => {
+				nextSettings[section] = {
+					...nextSettings[section],
+					...(payload.settings?.[section] || {})
+				}
+			})
+
+			settingsForms.value = clone(nextSettings)
+			savedSettings.value = clone(nextSettings)
+			catalogTopics.value = payload.catalog_topics || []
+			blockedTerms.value = clone(termsResponse.data.data?.items || [])
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.settings.loadFailed')) })
+		} finally {
+			settingsLoading.value = false
+			blockedTermsLoading.value = false
+		}
+	}
+
+	async function saveSettings(section) {
+		const enablingMaintenance = section === 'platform' &&
+			settingsForms.value.platform.maintenance_enabled &&
+			!savedSettings.value.platform.maintenance_enabled
+
+		if (enablingMaintenance && !window.confirm(t('admin.settings.maintenanceConfirm'))) {
+			settingsForms.value.platform.maintenance_enabled = false
+			return
+		}
+
+		savingSections.value = { ...savingSections.value, [section]: true }
+		try {
+			const { data } = await updateAdminSettings(section, settingsForms.value[section])
+			const saved = clone(data.data?.settings || settingsForms.value[section])
+			settingsForms.value[section] = saved
+			savedSettings.value[section] = clone(saved)
+			$q.notify({ type: 'positive', message: t('admin.settings.saved') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.settings.saveFailed')) })
+		} finally {
+			savingSections.value = { ...savingSections.value, [section]: false }
+		}
+	}
+
+	function addPopularTopic() {
+		const key = popularTopicToAdd.value
+		const selected = settingsForms.value.platform.popular_topic_keys
+
+		if (!key || selected.includes(key) || selected.length >= 12) {
+			return
+		}
+
+		selected.push(key)
+		popularTopicToAdd.value = null
+	}
+
+	function movePopularTopic(index, direction) {
+		const keys = settingsForms.value.platform.popular_topic_keys
+		const target = index + direction
+
+		if (target < 0 || target >= keys.length) {
+			return
+		}
+
+		const [key] = keys.splice(index, 1)
+		keys.splice(target, 0, key)
+	}
+
+	function removePopularTopic(index) {
+		settingsForms.value.platform.popular_topic_keys.splice(index, 1)
+	}
+
+	async function addBlockedTerm() {
+		if (!newBlockedTerm.value.term.trim()) {
+			return
+		}
+
+		blockedTermSaving.value = true
+		try {
+			const { data } = await createBlockedTerm({
+				...newBlockedTerm.value,
+				term: newBlockedTerm.value.term.trim()
+			})
+			blockedTerms.value.push(data.data)
+			newBlockedTerm.value = { term: '', locale: 'all', active: true }
+			$q.notify({ type: 'positive', message: t('admin.settings.termAdded') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.settings.termSaveFailed')) })
+		} finally {
+			blockedTermSaving.value = false
+		}
+	}
+
+	async function saveBlockedTerm(term) {
+		blockedTermRowSaving.value = { ...blockedTermRowSaving.value, [term.id]: true }
+		try {
+			const { data } = await updateBlockedTerm(term.id, {
+				term: term.term,
+				locale: term.locale,
+				active: term.active
+			})
+			Object.assign(term, data.data)
+			$q.notify({ type: 'positive', message: t('admin.settings.termSaved') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.settings.termSaveFailed')) })
+		} finally {
+			blockedTermRowSaving.value = { ...blockedTermRowSaving.value, [term.id]: false }
+		}
+	}
+
+	async function removeBlockedTerm(term) {
+		if (!window.confirm(t('admin.settings.termDeleteConfirm', { term: term.term }))) {
+			return
+		}
+
+		blockedTermRowSaving.value = { ...blockedTermRowSaving.value, [term.id]: true }
+		try {
+			await deleteBlockedTerm(term.id)
+			blockedTerms.value = blockedTerms.value.filter((item) => item.id !== term.id)
+			$q.notify({ type: 'positive', message: t('admin.settings.termDeleted') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.settings.termDeleteFailed')) })
+		} finally {
+			blockedTermRowSaving.value = { ...blockedTermRowSaving.value, [term.id]: false }
+		}
+	}
+
 	onMounted(() => {
 		loadSupportConversations()
 		loadUserTable()
+		loadSettings()
 	})
 </script>
 
@@ -281,7 +506,7 @@
 		<div class="page-shell">
 			<section class="soz-section-card page-head">
 				<div>
-					<h1 class="soz-page-title">{{ t('admin.users') }}</h1>
+					<h1 class="soz-page-title">{{ adminPageTitle }}</h1>
 				</div>
 			</section>
 
@@ -299,6 +524,7 @@
 				<q-tab name="communication" icon="forum" :label="t('admin.communication')" />
 				<q-tab name="users" icon="manage_accounts" :label="t('admin.userTable')" />
 				<q-tab name="landing-pages" icon="dashboard" :label="t('admin.landingPages')" />
+				<q-tab name="settings" icon="tune" :label="t('admin.settings.title')" />
 			</q-tabs>
 
 			<q-tab-panels v-model="activeTab" animated class="admin-panels">
@@ -536,6 +762,342 @@
 							</article>
 						</div>
 					</section>
+				</q-tab-panel>
+
+				<q-tab-panel name="settings" class="admin-panel settings-panel">
+					<section class="soz-section-card settings-section">
+						<header class="settings-section__head">
+							<div><h2>{{ t('admin.settings.adsTitle') }}</h2><p>{{ t('admin.settings.adsIntro') }}</p></div>
+							<q-badge v-if="sectionDirty('ads')" color="warning" text-color="dark">{{ t('admin.settings.unsaved') }}</q-badge>
+						</header>
+						<div class="settings-fields settings-fields--four">
+							<q-input v-model.number="settingsForms.ads.visibility_days"
+								outlined
+								type="number"
+								:label="t('admin.settings.adVisibility')"
+								:suffix="t('admin.settings.days')"
+								min="1"
+								max="365"
+							/>
+							<q-input v-model.number="settingsForms.ads.private_active_limit"
+								outlined
+								type="number"
+								:label="t('admin.settings.privateAdLimit')"
+								:suffix="t('admin.settings.adsUnit')"
+								min="1"
+								max="1000"
+							/>
+							<q-input v-model.number="settingsForms.ads.page_active_limit"
+								outlined
+								type="number"
+								:label="t('admin.settings.pageAdLimit')"
+								:suffix="t('admin.settings.adsUnit')"
+								min="1"
+								max="5000"
+							/>
+							<q-input v-model.number="settingsForms.ads.purge_after_expiry_days"
+								outlined
+								type="number"
+								:label="t('admin.settings.adPurgeDelay')"
+								:suffix="t('admin.settings.days')"
+								min="0"
+								max="3650"
+							/>
+						</div>
+						<footer class="settings-section__footer">
+							<q-btn color="primary"
+								unelevated
+								rounded
+								icon="save"
+								:label="t('actions.save')"
+								:loading="savingSections.ads"
+								:disable="!sectionDirty('ads')"
+								@click="saveSettings('ads')"
+							/>
+						</footer>
+					</section>
+
+					<section class="soz-section-card settings-section">
+						<header class="settings-section__head">
+							<div><h2>{{ t('admin.settings.labelsTitle') }}</h2><p>{{ t('admin.settings.labelsIntro') }}</p></div>
+							<q-badge v-if="sectionDirty('labels')" color="warning" text-color="dark">{{ t('admin.settings.unsaved') }}</q-badge>
+						</header>
+						<div class="settings-fields">
+							<q-input v-model.number="settingsForms.labels.new_days"
+								outlined
+								type="number"
+								:label="t('admin.settings.newLabelDays')"
+								:suffix="t('admin.settings.days')"
+								min="1"
+								max="365"
+							/>
+							<q-input v-model.number="settingsForms.labels.popular_views"
+								outlined
+								type="number"
+								:label="t('admin.settings.popularViews')"
+								:suffix="t('admin.settings.views')"
+								min="1"
+								max="10000000"
+							/>
+							<q-input v-model.number="settingsForms.labels.popular_contacts"
+								outlined
+								type="number"
+								:label="t('admin.settings.popularContacts')"
+								:suffix="t('admin.settings.contacts')"
+								min="1"
+								max="1000000"
+							/>
+							<q-input v-model.number="settingsForms.labels.highly_rated_average"
+								outlined
+								type="number"
+								step="0.1"
+								:label="t('admin.settings.ratingAverage')"
+								min="1"
+								max="5"
+							/>
+							<q-input v-model.number="settingsForms.labels.highly_rated_min_ratings"
+								outlined
+								type="number"
+								:label="t('admin.settings.ratingCount')"
+								:suffix="t('admin.settings.ratings')"
+								min="1"
+								max="100000"
+							/>
+						</div>
+						<footer class="settings-section__footer">
+							<q-btn color="primary"
+								unelevated
+								rounded
+								icon="save"
+								:label="t('actions.save')"
+								:loading="savingSections.labels"
+								:disable="!sectionDirty('labels')"
+								@click="saveSettings('labels')"
+							/>
+						</footer>
+					</section>
+
+					<section class="soz-section-card settings-section">
+						<header class="settings-section__head">
+							<div><h2>{{ t('admin.settings.chatTitle') }}</h2><p>{{ t('admin.settings.chatIntro') }}</p></div>
+							<q-badge v-if="sectionDirty('chat')" color="warning" text-color="dark">{{ t('admin.settings.unsaved') }}</q-badge>
+						</header>
+						<div class="settings-fields">
+							<q-input v-model.number="settingsForms.chat.new_recipients_per_day"
+								outlined
+								type="number"
+								:label="t('admin.settings.newRecipients')"
+								:suffix="t('admin.settings.perDay')"
+								min="1"
+								max="10000"
+							/>
+							<q-input v-model.number="settingsForms.chat.messages_per_minute"
+								outlined
+								type="number"
+								:label="t('admin.settings.messagesPerMinute')"
+								:suffix="t('admin.settings.perMinute')"
+								min="1"
+								max="1000"
+							/>
+						</div>
+						<footer class="settings-section__footer">
+							<q-btn color="primary"
+								unelevated
+								rounded
+								icon="save"
+								:label="t('actions.save')"
+								:loading="savingSections.chat"
+								:disable="!sectionDirty('chat')"
+								@click="saveSettings('chat')"
+							/>
+						</footer>
+					</section>
+
+					<section class="soz-section-card settings-section">
+						<header class="settings-section__head">
+							<div><h2>{{ t('admin.settings.moderationTitle') }}</h2><p>{{ t('admin.settings.moderationIntro') }}</p></div>
+							<q-badge v-if="sectionDirty('moderation')" color="warning" text-color="dark">{{ t('admin.settings.unsaved') }}</q-badge>
+						</header>
+						<div class="settings-fields">
+							<q-input v-model.number="settingsForms.moderation.products_per_business_page"
+								outlined
+								type="number"
+								:label="t('admin.settings.productLimit')"
+								:suffix="t('admin.settings.products')"
+								min="1"
+								max="100000"
+							/>
+							<q-input v-model.number="settingsForms.moderation.future_events_per_community_page"
+								outlined
+								type="number"
+								:label="t('admin.settings.eventLimit')"
+								:suffix="t('admin.settings.events')"
+								min="1"
+								max="10000"
+							/>
+						</div>
+						<footer class="settings-section__footer">
+							<q-btn color="primary"
+								unelevated
+								rounded
+								icon="save"
+								:label="t('actions.save')"
+								:loading="savingSections.moderation"
+								:disable="!sectionDirty('moderation')"
+								@click="saveSettings('moderation')"
+							/>
+						</footer>
+
+						<div class="blocked-terms">
+							<div class="settings-subhead"><h3>{{ t('admin.settings.blockedTerms') }}</h3><p>{{ t('admin.settings.blockedTermsIntro') }}</p></div>
+							<div class="blocked-term-row blocked-term-row--new">
+								<q-input v-model="newBlockedTerm.term"
+									outlined
+									dense
+									:label="t('admin.settings.wordOrPhrase')"
+									maxlength="200"
+									@keyup.enter="addBlockedTerm"
+								/>
+								<q-select v-model="newBlockedTerm.locale"
+									outlined
+									dense
+									emit-value
+									map-options
+									:options="blockedLocaleOptions"
+									:label="t('admin.settings.language')"
+								/>
+								<q-toggle v-model="newBlockedTerm.active" :label="t('admin.settings.activeTerm')" />
+								<q-btn color="primary"
+									unelevated
+									round
+									icon="add"
+									:aria-label="t('admin.settings.addTerm')"
+									:loading="blockedTermSaving"
+									:disable="!newBlockedTerm.term.trim()"
+									@click="addBlockedTerm"
+								/>
+							</div>
+							<div v-for="term in blockedTerms" :key="term.id" class="blocked-term-row">
+								<q-input v-model="term.term" outlined dense :label="t('admin.settings.wordOrPhrase')" maxlength="200" />
+								<q-select v-model="term.locale"
+									outlined
+									dense
+									emit-value
+									map-options
+									:options="blockedLocaleOptions"
+									:label="t('admin.settings.language')"
+								/>
+								<q-toggle v-model="term.active" :label="t('admin.settings.activeTerm')" />
+								<div class="blocked-term-actions">
+									<q-btn flat
+										round
+										color="primary"
+										icon="save"
+										:aria-label="t('actions.save')"
+										:loading="blockedTermRowSaving[term.id]"
+										@click="saveBlockedTerm(term)"
+									/>
+									<q-btn flat
+										round
+										color="negative"
+										icon="delete"
+										:aria-label="t('actions.delete')"
+										:disable="blockedTermRowSaving[term.id]"
+										@click="removeBlockedTerm(term)"
+									/>
+								</div>
+							</div>
+							<div v-if="!blockedTermsLoading && blockedTerms.length === 0" class="settings-empty">{{ t('admin.settings.noBlockedTerms') }}</div>
+							<q-inner-loading :showing="blockedTermsLoading" />
+						</div>
+					</section>
+
+					<section class="soz-section-card settings-section">
+						<header class="settings-section__head">
+							<div><h2>{{ t('admin.settings.platformTitle') }}</h2><p>{{ t('admin.settings.platformIntro') }}</p></div>
+							<q-badge v-if="sectionDirty('platform')" color="warning" text-color="dark">{{ t('admin.settings.unsaved') }}</q-badge>
+						</header>
+						<div class="maintenance-setting">
+							<div><strong>{{ t('admin.settings.maintenanceMode') }}</strong><p>{{ t('admin.settings.maintenanceHint') }}</p></div>
+							<q-toggle v-model="settingsForms.platform.maintenance_enabled" color="negative" />
+						</div>
+						<div class="settings-fields settings-fields--messages">
+							<q-input v-for="language in ['he', 'en', 'ru', 'fr']"
+								:key="language"
+								v-model="settingsForms.platform.maintenance_messages[language]"
+								outlined
+								type="textarea"
+								autogrow
+								:label="`${t('admin.settings.maintenanceMessage')} - ${t(`languages.${language}`)}`"
+								maxlength="500"
+							/>
+						</div>
+
+						<div class="popular-settings">
+							<div class="settings-subhead"><h3>{{ t('admin.settings.popularCategories') }}</h3><p>{{ t('admin.settings.popularCategoriesIntro') }}</p></div>
+							<div class="popular-add">
+								<q-select v-model="popularTopicToAdd"
+									outlined
+									emit-value
+									map-options
+									use-input
+									input-debounce="0"
+									:options="catalogTopicOptions"
+									:label="t('admin.settings.chooseCategory')"
+									:disable="selectedPopularTopics.length >= 12"
+								/>
+								<q-btn color="primary"
+									unelevated
+									round
+									icon="add"
+									:aria-label="t('admin.settings.addCategory')"
+									:disable="!popularTopicToAdd || selectedPopularTopics.length >= 12"
+									@click="addPopularTopic"
+								/>
+							</div>
+							<div class="popular-list">
+								<div v-for="(topic, index) in selectedPopularTopics" :key="topic.key" class="popular-row">
+									<strong><span>{{ index + 1 }}</span>{{ topic.label }}</strong>
+									<div>
+										<q-btn flat
+											round
+											icon="arrow_upward"
+											:aria-label="t('admin.settings.moveUp')"
+											:disable="index === 0"
+											@click="movePopularTopic(index, -1)"
+										/>
+										<q-btn flat
+											round
+											icon="arrow_downward"
+											:aria-label="t('admin.settings.moveDown')"
+											:disable="index === selectedPopularTopics.length - 1"
+											@click="movePopularTopic(index, 1)"
+										/>
+										<q-btn flat
+											round
+											color="negative"
+											icon="close"
+											:aria-label="t('actions.delete')"
+											@click="removePopularTopic(index)"
+										/>
+									</div>
+								</div>
+								<div v-if="selectedPopularTopics.length === 0" class="settings-empty">{{ t('admin.settings.popularEmpty') }}</div>
+							</div>
+						</div>
+						<footer class="settings-section__footer">
+							<q-btn color="primary"
+								unelevated
+								rounded
+								icon="save"
+								:label="t('actions.save')"
+								:loading="savingSections.platform"
+								:disable="!sectionDirty('platform')"
+								@click="saveSettings('platform')"
+							/>
+						</footer>
+					</section>
+					<q-inner-loading :showing="settingsLoading" />
 				</q-tab-panel>
 			</q-tab-panels>
 
@@ -1115,9 +1677,158 @@
   opacity: 0.78;
 }
 
+.settings-panel {
+  position: relative;
+  display: grid;
+  gap: 18px;
+}
+
+.settings-section {
+  padding: 26px;
+}
+
+.settings-section__head,
+.settings-section__footer,
+.maintenance-setting,
+.popular-row {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-section__head {
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+.settings-section__head h2,
+.settings-section__head p,
+.settings-subhead h3,
+.settings-subhead p,
+.maintenance-setting p {
+  margin: 0;
+}
+
+.settings-section__head h2 {
+  font-size: 24px;
+}
+
+.settings-section__head p,
+.settings-subhead p,
+.maintenance-setting p {
+  margin-top: 5px;
+  color: var(--soz-muted);
+}
+
+.settings-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.settings-fields--four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.settings-fields--messages {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.settings-section__footer {
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.blocked-terms,
+.popular-settings {
+  position: relative;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(17, 34, 45, 0.08);
+}
+
+.settings-subhead {
+  margin-bottom: 16px;
+}
+
+.blocked-term-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 180px auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(17, 34, 45, 0.06);
+}
+
+.blocked-term-row--new {
+  padding-top: 0;
+}
+
+.blocked-term-actions {
+  display: flex;
+  align-items: center;
+}
+
+.maintenance-setting {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(198, 40, 75, 0.055);
+}
+
+.popular-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  max-width: 720px;
+}
+
+.popular-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.popular-row {
+  min-height: 52px;
+  padding: 5px 7px 5px 14px;
+  border-radius: 16px;
+  background: rgba(17, 34, 45, 0.045);
+}
+
+.popular-row strong {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.popular-row strong span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--soz-primary-tint);
+  color: var(--soz-primary-deep);
+  font-size: 12px;
+  place-items: center;
+}
+
+.settings-empty {
+  padding: 18px;
+  color: var(--soz-muted);
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .settings-fields,
+  .settings-fields--four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1188,6 +1899,42 @@
 
   .table-panel {
     padding: 18px;
+  }
+
+  .settings-section {
+    padding: 20px 16px;
+  }
+
+  .settings-section__head {
+    gap: 10px;
+  }
+
+  .settings-section__head h2 {
+    font-size: 21px;
+  }
+
+  .settings-fields,
+  .settings-fields--four,
+  .settings-fields--messages,
+  .blocked-term-row {
+    grid-template-columns: 1fr;
+  }
+
+  .blocked-term-row {
+    padding: 16px 0;
+  }
+
+  .blocked-term-actions {
+    justify-content: flex-end;
+  }
+
+  .maintenance-setting {
+    align-items: flex-start;
+  }
+
+  .popular-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .user-search {

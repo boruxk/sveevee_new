@@ -27,3 +27,27 @@ export function restoreAdminUser(id) {
 export function messageAdminUser(id, body) {
 	return apiClient.post(`/admin/users/${id}/message`, { body })
 }
+
+export function fetchAdminSettings() {
+	return apiClient.get('/admin/settings')
+}
+
+export function updateAdminSettings(section, payload) {
+	return apiClient.patch(`/admin/settings/${section}`, payload)
+}
+
+export function fetchBlockedTerms() {
+	return apiClient.get('/admin/blocked-terms')
+}
+
+export function createBlockedTerm(payload) {
+	return apiClient.post('/admin/blocked-terms', payload)
+}
+
+export function updateBlockedTerm(id, payload) {
+	return apiClient.put(`/admin/blocked-terms/${id}`, payload)
+}
+
+export function deleteBlockedTerm(id) {
+	return apiClient.delete(`/admin/blocked-terms/${id}`)
+}

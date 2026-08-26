@@ -41,4 +41,19 @@ apiClient.interceptors.request.use(async(config) => {
 	return config
 })
 
+apiClient.interceptors.response.use(
+	(response) => response,
+	(error) => {
+		const payload = error.response?.data?.data
+
+		if (error.response?.status === 503 && payload?.reason === 'maintenance') {
+			window.dispatchEvent(new CustomEvent('sveevee:maintenance', {
+				detail: payload.maintenance
+			}))
+		}
+
+		return Promise.reject(error)
+	}
+)
+
 export default apiClient

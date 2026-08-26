@@ -9,16 +9,20 @@ use App\Models\PageEvent;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Services\SystemSettingsService;
 use App\Support\CatalogTopics;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 class PageEventController extends Controller
 {
     use HandlesUploadedImages;
 
-    public function __construct(private readonly PayloadService $payloads)
-    {
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly SystemSettingsService $settings,
+    ) {
     }
 
     public function store(Request $request, Page $page)
@@ -39,6 +43,19 @@ class PageEventController extends Controller
             'end_time' => ['nullable', 'date_format:H:i'],
             'address' => ['required', 'string', 'max:255'],
         ]);
+
+        if (Carbon::parse($data['date'])->startOfDay()->gte(today())) {
+            $limit = $this->settings->integer('moderation.future_events_per_community_page', 50);
+            $futureEvents = $page->events()->whereDate('event_date', '>=', today())->count();
+
+            if ($futureEvents >= $limit) {
+                return ApiResponseService::error(
+                    message: 'The future event limit for this community page has been reached.',
+                    status: 422,
+                    data: ['reason' => 'event_limit', 'limit' => $limit]
+                );
+            }
+        }
 
         $image = $request->file('image');
 

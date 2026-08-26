@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { Quasar, Notify } from 'quasar'
+import { Quasar, Dialog, Notify } from 'quasar'
 import iconSet from 'quasar/icon-set/svg-material-icons'
 import '@/styles/quasar.sass'
 import '@/styles/app.scss'
@@ -25,7 +25,7 @@ async function bootstrap() {
 	app.use(router)
 	app.use(i18n)
 	app.use(Quasar, {
-		plugins: { Notify },
+		plugins: { Dialog, Notify },
 		iconSet,
 		lang: initialLocale.quasarLocale,
 		config: {

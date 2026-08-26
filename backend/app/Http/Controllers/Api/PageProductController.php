@@ -9,6 +9,7 @@ use App\Models\PageProduct;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Services\SystemSettingsService;
 use App\Support\CatalogTopics;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -18,8 +19,10 @@ class PageProductController extends Controller
 {
     use HandlesUploadedImages;
 
-    public function __construct(private readonly PayloadService $payloads)
-    {
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly SystemSettingsService $settings,
+    ) {
     }
 
     public function show(PageProduct $product)
@@ -61,6 +64,15 @@ class PageProductController extends Controller
             'offer_ends_at' => ['nullable', Rule::requiredIf($request->boolean('offer_enabled')), 'date', 'after:offer_starts_at'],
             'link' => ['required', 'url', 'max:2048'],
         ]);
+
+        $limit = $this->settings->integer('moderation.products_per_business_page', 100);
+        if ($page->products()->count() >= $limit) {
+            return ApiResponseService::error(
+                message: 'The product limit for this business page has been reached.',
+                status: 422,
+                data: ['reason' => 'product_limit', 'limit' => $limit]
+            );
+        }
 
         $image = $request->file('image');
 

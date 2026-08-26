@@ -11,6 +11,7 @@ use App\Models\PageService;
 use App\Models\User;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Services\SystemSettingsService;
 use App\Support\CatalogTopics;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,8 +23,10 @@ class CatalogController extends Controller
 {
     private const SEGMENT_LIMIT = 12;
 
-    public function __construct(private readonly PayloadService $payloads)
-    {
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly SystemSettingsService $settings,
+    ) {
     }
 
     public function index(
@@ -50,7 +53,10 @@ class CatalogController extends Controller
         ?string $neighborhoodSlug = null
     ) {
         if (! filled($topicSlug)) {
-            return ApiResponseService::success(CatalogTopics::publicPayload($request->query('scope')));
+            return ApiResponseService::success(CatalogTopics::publicPayload(
+                $request->query('scope'),
+                $this->settings->popularTopicKeys()
+            ));
         }
 
         $hub = CatalogTopics::findScopeHub($topicSlug);
@@ -72,7 +78,10 @@ class CatalogController extends Controller
                 ->map(fn (array $segment): int => $segment['count'])
                 ->all();
 
-            return ApiResponseService::success(array_merge(CatalogTopics::publicPayload($hub['scopes']), [
+            return ApiResponseService::success(array_merge(CatalogTopics::publicPayload(
+                $hub['scopes'],
+                $this->settings->popularTopicKeys()
+            ), [
                 'hub' => $hub,
                 'city' => $city,
                 'city_slug' => CatalogTopics::locationSlug($city),

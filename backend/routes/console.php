@@ -2,6 +2,7 @@
 
 use App\Models\Ad;
 use App\Services\SeoPrerenderService;
+use App\Services\SystemSettingsService;
 use App\Support\PublicImageVariants;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -13,10 +14,22 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Artisan::command('ads:prune-expired', function () {
-    $deleted = Ad::query()->expired()->delete();
+    $retentionDays = app(SystemSettingsService::class)->integer('ads.purge_after_expiry_days', 30);
+    $cutoff = now()->subDays($retentionDays);
+    $deleted = 0;
+
+    Ad::query()
+        ->whereNotNull('expires_at')
+        ->where('expires_at', '<=', $cutoff)
+        ->chunkById(100, function ($ads) use (&$deleted): void {
+            $ads->each(function (Ad $ad) use (&$deleted): void {
+                $ad->delete();
+                $deleted++;
+            });
+        });
 
     $this->info("Deleted {$deleted} expired ads.");
-})->purpose('Delete ads after their one-week lifetime has ended');
+})->purpose('Permanently delete expired ads after the configured retention period');
 
 Artisan::command('seo:prerender-public-pages {--dist= : Path to the built frontend dist directory}', function () {
     $result = app(SeoPrerenderService::class)->render($this->option('dist'));

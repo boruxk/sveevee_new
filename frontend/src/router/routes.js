@@ -25,6 +25,7 @@ export default [
 		component: PublicLayout,
 		children: [
 			{ path: '', name: 'landing', component: () => import('@/pages/LandingPage.vue'), meta: { seo: { titleKey: 'seo.landingTitle', descriptionKey: 'seo.landingDescription' } } },
+			{ path: 'maintenance', name: 'maintenance', component: () => import('@/pages/MaintenancePage.vue'), meta: { seo: { titleKey: 'maintenance.title', descriptionKey: 'maintenance.defaultMessage', robots: 'noindex,nofollow' } } },
 			{ path: 'login', name: 'login', component: () => import('@/pages/LoginPage.vue'), meta: { seo: { titleKey: 'seo.loginTitle', descriptionKey: 'seo.loginDescription', robots: 'noindex,nofollow' } } },
 			{ path: 'auth/google/callback', name: 'google-auth-callback', component: () => import('@/pages/GoogleAuthCallbackPage.vue'), meta: { seo: { titleKey: 'seo.loginTitle', descriptionKey: 'seo.loginDescription', robots: 'noindex,nofollow' } } },
 			{ path: 'forgot-password', name: 'forgot-password', component: () => import('@/pages/ForgotPasswordPage.vue'), meta: { seo: { titleKey: 'seo.forgotPasswordTitle', descriptionKey: 'seo.forgotPasswordDescription', robots: 'noindex,nofollow' } } },

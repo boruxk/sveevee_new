@@ -1,7 +1,8 @@
 <script setup>
 	import { computed, onMounted, ref } from 'vue'
-	import { useRoute } from 'vue-router'
+	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
+	import { useQuasar } from 'quasar'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { fetchAd } from '@/services/api/ads'
 	import { catalogLabel, catalogPath, catalogTopicForAdCategory } from '@/constants/catalogTopics'
@@ -10,6 +11,8 @@
 	import AdCard from '@/components/AdCard.vue'
 
 	const route = useRoute()
+	const router = useRouter()
+	const $q = useQuasar()
 	const { t, locale } = useI18n()
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const ad = ref(null)
@@ -82,6 +85,12 @@
 		}
 	}
 
+	function handleExpired() {
+		ad.value = null
+		$q.notify({ type: 'warning', message: t('ads.timer.expiredRedirect') })
+		router.replace({ name: 'catalog-ads' })
+	}
+
 	onMounted(async() => {
 		await Promise.all([load(), loadCatalogTopics()])
 	})
@@ -96,7 +105,7 @@
 						{{ link.label }}
 					</router-link>
 				</nav>
-				<AdCard :ad="ad" :detail-links="false" />
+				<AdCard :ad="ad" :detail-links="false" @expired="handleExpired" />
 			</div>
 			<div v-else-if="loading" class="row justify-center q-pa-xl">
 				<q-spinner color="primary" />

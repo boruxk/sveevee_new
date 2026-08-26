@@ -95,7 +95,12 @@
 			emit('saved', response.data.data)
 			$q.notify({ type: 'positive', message: actionLabel.value })
 		} catch (error) {
-			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('ads.saveFailed')) })
+			$q.notify({
+				type: 'negative',
+				message: apiErrorMessage(error, t('ads.saveFailed'), {
+					active_ad_limit: t('ads.activeLimitReached', { limit: error.response?.data?.data?.limit })
+				})
+			})
 		} finally {
 			loading.value = false
 		}

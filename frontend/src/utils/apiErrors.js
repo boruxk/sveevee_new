@@ -22,6 +22,12 @@ function firstValidationMessage(errors) {
 	return ''
 }
 
-export function apiErrorMessage(error, fallback) {
+export function apiErrorMessage(error, fallback, reasonMessages = {}) {
+	const reason = error?.response?.data?.data?.reason
+
+	if (reason && reasonMessages[reason]) {
+		return reasonMessages[reason]
+	}
+
 	return firstValidationMessage(error?.response?.data?.errors) || error?.response?.data?.message || fallback
 }

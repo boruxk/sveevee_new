@@ -213,7 +213,7 @@ class CatalogTopics
             ->values();
     }
 
-    public static function publicPayload(array|string|null $scopes = null): array
+    public static function publicPayload(array|string|null $scopes = null, ?array $popularKeys = null): array
     {
         $normalizedScopes = self::normalizeScopes($scopes);
         $groups = $normalizedScopes === []
@@ -222,7 +222,7 @@ class CatalogTopics
 
         return [
             'groups' => $groups,
-            'popular_topics' => collect(self::POPULAR_KEYS)
+            'popular_topics' => collect($popularKeys ?? self::POPULAR_KEYS)
                 ->map(fn (string $key) => self::findByKey($key))
                 ->filter(fn (?array $topic) => $topic && (
                     $normalizedScopes === [] || self::topicHasAnyScope($topic, $normalizedScopes)

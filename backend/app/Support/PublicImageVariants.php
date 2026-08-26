@@ -44,8 +44,20 @@ class PublicImageVariants
             return [];
         }
 
-        return collect(self::widthsForPath($path))
-            ->map(fn (int $width): string => self::variantPath($path, $width))
+        $paths = collect(self::widthsForPath($path))
+            ->flatMap(function (int $width) use ($path): array {
+                $webp = self::variantPath($path, $width);
+
+                return [$webp, preg_replace('/\.webp$/i', '.avif', $webp) ?: $webp.'.avif'];
+            });
+
+        if (str_ends_with(strtolower($path), '.webp')) {
+            $paths->push(substr($path, 0, -5).'.avif');
+        }
+
+        return $paths
+            ->unique()
+            ->values()
             ->all();
     }
 

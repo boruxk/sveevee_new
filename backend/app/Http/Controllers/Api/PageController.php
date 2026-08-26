@@ -175,7 +175,7 @@ class PageController extends Controller
             return ApiResponseService::error('This action is unauthorized.', status: 403);
         }
 
-        $page->ads()->delete();
+        $page->ads()->get()->each->delete();
         $page->delete();
 
         return ApiResponseService::success(null, 'Page deleted.');

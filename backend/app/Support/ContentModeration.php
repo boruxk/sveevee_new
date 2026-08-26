@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Services\BlockedTermService;
+
 class ContentModeration
 {
     private const PATTERNS = [
@@ -34,7 +36,7 @@ class ContentModeration
             }
         }
 
-        return false;
+        return app(BlockedTermService::class)->contains($value);
     }
 
     private static function normalize(mixed $value): string

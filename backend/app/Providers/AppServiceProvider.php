@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Services\SystemSettingsService;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -45,7 +46,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('chat-send', function (Request $request) {
-            return Limit::perMinute(30)->by(
+            $limit = app(SystemSettingsService::class)->integer('chat.messages_per_minute', 30);
+
+            return Limit::perMinute($limit)->by(
                 ($request->user()?->id ?? 'guest').'|'.$request->ip()
             );
         });

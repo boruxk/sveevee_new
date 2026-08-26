@@ -9,13 +9,16 @@ use App\Models\User;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Services\SystemSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class ChatController extends Controller
 {
-    public function __construct(private readonly PayloadService $payloads)
-    {
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly SystemSettingsService $settings,
+    ) {
     }
 
     public function index(Request $request)
@@ -249,11 +252,13 @@ class ChatController extends Controller
             ];
         }
 
-        if ($ownMessages === 0 && $otherMessages === 0 && $this->newRecipientsToday($user) >= 10) {
+        $dailyLimit = $this->settings->integer('chat.new_recipients_per_day', 10);
+
+        if ($ownMessages === 0 && $otherMessages === 0 && $this->newRecipientsToday($user) >= $dailyLimit) {
             return [
                 'can_send' => false,
                 'reason' => 'daily_limit',
-                'message' => 'You can contact only 10 new users per day.',
+                'message' => "You can contact only {$dailyLimit} new users per day.",
             ];
         }
 

@@ -5,6 +5,7 @@
 	import { useQuasar } from 'quasar'
 	import { localizedAdCategoryMeta } from '@/constants/adCategories'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
+	import AdExpiryTimer from '@/components/AdExpiryTimer.vue'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { adRoute, catalogHubPath, catalogLabel, catalogPath, catalogTopicForAdCategory, pageRoute, userRoute } from '@/constants/catalogTopics'
 
@@ -23,13 +24,14 @@
 		}
 	})
 
-	const emit = defineEmits(['delete', 'edit'])
+	const emit = defineEmits(['delete', 'edit', 'expired'])
 	const { t, locale } = useI18n()
 	const $q = useQuasar()
 	const textWrapRef = ref(null)
 	const textRef = ref(null)
 	const isExpanded = ref(false)
 	const hasOverflow = ref(false)
+	const isVisible = ref(true)
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	let resizeObserver = null
 	const compactActionButtons = computed(() => $q.screen.width <= 700)
@@ -141,12 +143,18 @@
 		nextTick(measureOverflow)
 	}
 
-	watch(() => [props.ad.title, props.ad.text], async() => {
+	watch(() => [props.ad.title, props.ad.text, props.ad.expires_at], async() => {
+		isVisible.value = true
 		isExpanded.value = false
 		hasOverflow.value = false
 		await nextTick()
 		measureOverflow()
 	})
+
+	function handleExpired() {
+		isVisible.value = false
+		emit('expired', props.ad)
+	}
 
 	onMounted(async() => {
 		await loadCatalogTopics()
@@ -166,6 +174,7 @@
 
 <template>
 	<article
+		v-if="isVisible"
 		class="listing-card"
 		:class="{ 'listing-card--with-image': hasImage, 'listing-card--expanded': isExpanded, 'listing-card--with-category': categoryMeta }"
 		:style="cardStyle"
@@ -243,6 +252,7 @@
 			<div ref="textWrapRef" class="listing-card__text-wrap" :class="{ 'listing-card__text-wrap--overflow': hasOverflow && !isExpanded }">
 				<p ref="textRef" class="listing-card__text">{{ ad.text }}</p>
 			</div>
+			<AdExpiryTimer :expires-at="ad.expires_at || ''" @expired="handleExpired" />
 			<div v-if="hasOverflow || editable" class="listing-card__footer">
 				<q-btn v-if="hasOverflow && !isExpanded"
 					flat
@@ -389,6 +399,7 @@
 .listing-card__title,
 .listing-card__location,
 .listing-card__text-wrap,
+.ad-expiry,
 .listing-card__footer {
   position: relative;
   z-index: 1;

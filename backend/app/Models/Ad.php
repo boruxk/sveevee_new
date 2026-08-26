@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\PublicSlug;
+use App\Support\PublicImageVariants;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,20 @@ class Ad extends Model
         return [
             'expires_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Ad $ad): void {
+            if (! $ad->image_path) {
+                return;
+            }
+
+            Storage::disk('public')->delete([
+                $ad->image_path,
+                ...PublicImageVariants::variantPaths($ad->image_path),
+            ]);
+        });
     }
 
     public function user(): BelongsTo
