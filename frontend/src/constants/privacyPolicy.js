@@ -44,7 +44,7 @@ export const privacyPolicies = {
 				]
 			},
 			{
-				title: 'Cookies, Analytics, and External Services',
+				title: 'Cookies, Browser Storage, Analytics, and External Services',
 				body: [
 					'Sveevee uses cookies or similar browser storage needed for authentication, language and interface preferences, security, and session continuity. Disabling essential storage may prevent parts of the service from working.',
 					'We use Google services that may receive technical information under their own terms and privacy policies, including Google Sign-In, Google Analytics, reCAPTCHA, and links to Google Maps. Links and sharing tools may also open WhatsApp, Facebook, Instagram, TikTok, Telegram, or other external services. Those services control their own processing after you interact with them.'
@@ -147,7 +147,7 @@ export const privacyPolicies = {
 				]
 			},
 			{
-				title: 'קובצי Cookie, ניתוח נתונים ושירותים חיצוניים',
+				title: 'קובצי Cookie, אחסון בדפדפן, ניתוח נתונים ושירותים חיצוניים',
 				body: [
 					'Sveevee משתמשת בקובצי cookie או באחסון דפדפן דומה הנחוץ להתחברות, העדפות שפה וממשק, אבטחה והמשכיות הפעלה. חסימת אחסון חיוני עלולה למנוע מחלקים מהשירות לפעול.',
 					'אנו משתמשים בשירותי Google שעשויים לקבל מידע טכני בהתאם לתנאים ולמדיניות שלהם, לרבות Google Sign-In, Google Analytics, reCAPTCHA וקישורים ל-Google Maps. קישורים וכלי שיתוף עשויים לפתוח גם את WhatsApp, Facebook, Instagram, TikTok, Telegram או שירותים חיצוניים אחרים. שירותים אלה שולטים בעיבוד שלהם לאחר האינטראקציה עמם.'
@@ -250,7 +250,7 @@ export const privacyPolicies = {
 				]
 			},
 			{
-				title: 'Cookies, аналитика и внешние сервисы',
+				title: 'Cookies, хранилище браузера, аналитика и внешние сервисы',
 				body: [
 					'Sveevee использует cookies или похожее хранилище браузера, необходимое для входа, настроек языка и интерфейса, безопасности и продолжения сессии. Отключение обязательного хранилища может нарушить работу частей сервиса.',
 					'Мы используем сервисы Google, которые могут получать техническую информацию по собственным условиям и политикам: Google Sign-In, Google Analytics, reCAPTCHA и ссылки на Google Maps. Ссылки и инструменты публикации также могут открывать WhatsApp, Facebook, Instagram, TikTok, Telegram или другие внешние сервисы. После взаимодействия с ними обработку контролируют эти сервисы.'
@@ -353,7 +353,7 @@ export const privacyPolicies = {
 				]
 			},
 			{
-				title: 'Cookies, analyse et services externes',
+				title: 'Cookies, stockage du navigateur, analyse et services externes',
 				body: [
 					'Sveevee utilise des cookies ou un stockage similaire du navigateur nécessaires à l’authentification, aux préférences de langue et d’interface, à la sécurité et à la continuité de la session. Le blocage du stockage essentiel peut empêcher certaines parties du service de fonctionner.',
 					'Nous utilisons des services Google susceptibles de recevoir des informations techniques selon leurs propres conditions et politiques, notamment Google Sign-In, Google Analytics, reCAPTCHA et des liens vers Google Maps. Les liens et outils de partage peuvent aussi ouvrir WhatsApp, Facebook, Instagram, TikTok, Telegram ou d’autres services externes. Ces services contrôlent leur propre traitement après votre interaction.'

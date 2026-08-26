@@ -17,6 +17,7 @@ export const termsConditions = {
 				title: 'Eligibility and Accounts',
 				body: [
 					'You must be at least 18 years old to use Sveevee independently. A minor may use the service only with the permission and supervision of a parent or legal guardian who accepts responsibility for that use.',
+					'Do not publish a minor’s personal information, image, precise location, contact details, or other identifying content without appropriate permission from a parent or legal guardian and any other authorization required by law.',
 					'You must provide accurate information, keep login details confidential, and promptly update information that changes. You are responsible for activity through your account and must notify us if you suspect unauthorized access.'
 				]
 			},
@@ -114,6 +115,7 @@ export const termsConditions = {
 				title: 'כשירות וחשבונות',
 				body: [
 					'כדי להשתמש ב-Sveevee באופן עצמאי עליכם להיות בני 18 לפחות. קטין רשאי להשתמש בשירות רק באישור ובהשגחה של הורה או אפוטרופוס חוקי שמקבל אחריות לשימוש זה.',
+					'אין לפרסם מידע אישי, תמונה, מיקום מדויק, פרטי קשר או תוכן מזהה אחר של קטין ללא אישור מתאים מהורה או מאפוטרופוס חוקי וללא כל הרשאה נוספת הנדרשת לפי דין.',
 					'עליכם למסור מידע מדויק, לשמור על סודיות פרטי הכניסה ולעדכן מידע שהשתנה. אתם אחראים לפעילות בחשבון ועליכם להודיע לנו אם קיים חשש לגישה לא מורשית.'
 				]
 			},
@@ -211,6 +213,7 @@ export const termsConditions = {
 				title: 'Возраст и аккаунты',
 				body: [
 					'Для самостоятельного использования Sveevee вам должно быть не менее 18 лет. Несовершеннолетний может пользоваться сервисом только с разрешения и под надзором родителя или законного опекуна, принимающего ответственность за такое использование.',
+					'Не публикуйте персональные данные, изображения, точное местоположение, контактные данные или иной идентифицирующий контент несовершеннолетнего без надлежащего разрешения родителя или законного опекуна и иных разрешений, требуемых законом.',
 					'Предоставляйте точные данные, защищайте реквизиты входа и своевременно обновляйте информацию. Вы отвечаете за активность аккаунта и должны сообщить нам о подозрении на несанкционированный доступ.'
 				]
 			},
@@ -305,6 +308,7 @@ export const termsConditions = {
 				title: 'Âge et comptes',
 				body: [
 					'Vous devez avoir au moins 18 ans pour utiliser Sveevee de manière autonome. Un mineur ne peut l’utiliser qu’avec l’autorisation et sous la surveillance d’un parent ou représentant légal qui en assume la responsabilité.',
+					'Ne publiez pas les informations personnelles, l’image, la localisation précise, les coordonnées ou tout autre contenu identifiant un mineur sans l’autorisation appropriée d’un parent ou représentant légal et toute autre autorisation exigée par la loi.',
 					'Vous devez fournir des informations exactes, protéger vos identifiants et actualiser les informations modifiées. Vous êtes responsable de l’activité du compte et devez nous avertir en cas de suspicion d’accès non autorisé.'
 				]
 			},

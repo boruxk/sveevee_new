@@ -721,6 +721,10 @@ class SveeveeApiTest extends TestCase
             ->assertSee('https://sveevee.co.il/he/product/'.$product->public_slug, false)
             ->assertSee('https://sveevee.co.il/en/product/'.$product->public_slug, false)
             ->assertSee('https://sveevee.co.il/ads/'.$ad->public_slug, false)
+            ->assertSee('https://sveevee.co.il/privacy', false)
+            ->assertSee('https://sveevee.co.il/terms', false)
+            ->assertSee('https://sveevee.co.il/disclaimer', false)
+            ->assertDontSee('https://sveevee.co.il/register', false)
             ->assertDontSee('https://sveevee.co.il/ads/'.$ad->id, false)
             ->assertDontSee('https://sveevee.co.il/ads/'.$expiredAd->public_slug, false);
 
@@ -801,6 +805,10 @@ HTML);
             $businessCatalogHtml = File::get($dist.'/catalog/businesses/index.html');
             $productCatalogHtml = File::get($dist.'/catalog/products/index.html');
             $adsCatalogHtml = File::get($dist.'/catalog/ads/index.html');
+            $privacyHtml = File::get($dist.'/privacy/index.html');
+            $termsHtml = File::get($dist.'/terms/index.html');
+            $disclaimerHtml = File::get($dist.'/disclaimer/index.html');
+            $registerHtml = File::get($dist.'/register/index.html');
             $businessHub = CatalogTopics::findScopeHub('businesses');
             $productHub = CatalogTopics::findScopeHub('products');
             $adsHub = CatalogTopics::findScopeHub('ads');
@@ -824,6 +832,20 @@ HTML);
             $this->assertStringContainsString('Offer', $productHtml);
             $this->assertStringContainsString('₪1,900.00', $productHtml);
             $this->assertStringContainsString('Phone for sale in Jerusalem.', $productHtml);
+            $this->assertStringContainsString('<h1>מדיניות פרטיות</h1>', $privacyHtml);
+            $this->assertStringContainsString('Miriam Konetski', $privacyHtml);
+            $this->assertStringContainsString('Local Storage', $privacyHtml);
+            $this->assertStringContainsString('Google reCAPTCHA', $privacyHtml);
+            $this->assertStringContainsString('קטינים', $privacyHtml);
+            $this->assertStringContainsString('<h1>תנאי שימוש</h1>', $termsHtml);
+            $this->assertStringContainsString('אין לפרסם מידע אישי', $termsHtml);
+            $this->assertStringContainsString('Miriam Konetski', $disclaimerHtml);
+            $this->assertStringContainsString('<meta name="robots" content="noindex,follow" />', $registerHtml);
+            $this->assertStringNotContainsString('Homepage fallback', $privacyHtml);
+            $this->assertStringNotContainsString('Homepage fallback', $termsHtml);
+            $this->assertStringNotContainsString('Homepage fallback', $disclaimerHtml);
+            $this->assertStringNotContainsString('Homepage fallback', $registerHtml);
+            $this->assertFalse(File::exists($dist.'/documents/sveevee-database-definition-he.pdf'));
         } finally {
             File::deleteDirectory($dist);
         }
