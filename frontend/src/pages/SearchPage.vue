@@ -3,12 +3,12 @@
 	import { useI18n } from 'vue-i18n'
 	import { useRoute, useRouter } from 'vue-router'
 	import { searchEverything } from '@/services/api/search'
+	import { useAuthStore } from '@/stores/auth'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
-	import { catalogPath, catalogTopicByKey, catalogTopicMatchesScope, CATALOG_SCOPES, pageRoute, userRoute } from '@/constants/catalogTopics'
-	import AdCard from '@/components/AdCard.vue'
+	import { catalogPath, catalogTopicByKey, catalogTopicMatchesScope, CATALOG_SCOPES } from '@/constants/catalogTopics'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
-	import ResponsiveImage from '@/components/ResponsiveImage.vue'
+	import SearchResultCard from '@/components/SearchResultCard.vue'
 
 	function queryValue(value) {
 		return Array.isArray(value) ? value[0] || '' : value || ''
@@ -17,8 +17,10 @@
 	const { t } = useI18n()
 	const route = useRoute()
 	const router = useRouter()
+	const authStore = useAuthStore()
 	const loading = ref(false)
 	const hasSearched = ref(false)
+	const discoveryMode = ref(false)
 	const q = ref(queryValue(route.query.q))
 	const initialCity = queryValue(route.query.city)
 	const filters = reactive({
@@ -27,9 +29,10 @@
 		scope: queryValue(route.query.scope),
 		category: queryValue(route.query.category)
 	})
-	const advancedOpen = ref(Boolean(filters.scope || filters.category))
+	const discoveryLocation = reactive({ city: '', neighborhood: '' })
+	const advancedOpen = ref(false)
 	const results = reactive({ users: [], pages: [], products: [], services: [], events: [], ads: [] })
-	const combinedResults = computed(() => [
+	const searchResults = computed(() => [
 		...results.users.map((user) => ({ id: `user-${user.id}`, kind: 'user', value: user })),
 		...results.pages.map((page) => ({ id: `page-${page.id}`, kind: 'page', value: page })),
 		...results.products.map((product) => ({ id: `product-${product.id}`, kind: 'product', value: product })),
@@ -37,6 +40,14 @@
 		...results.events.map((event) => ({ id: `event-${event.id}`, kind: 'event', value: event })),
 		...results.ads.map((ad) => ({ id: `ad-${ad.id}`, kind: 'ad', value: ad }))
 	])
+	const discoveryResults = computed(() => [
+		...results.ads.map((ad) => ({ id: `ad-${ad.id}`, kind: 'ad', value: ad })),
+		...results.pages.map((page) => ({ id: `page-${page.id}`, kind: 'page', value: page })),
+		...results.products.map((product) => ({ id: `product-${product.id}`, kind: 'product', value: product })),
+		...results.services.map((service) => ({ id: `service-${service.id}`, kind: 'service', value: service })),
+		...results.events.map((event) => ({ id: `event-${event.id}`, kind: 'event', value: event }))
+	].sort(compareDiscoveryItems))
+	const combinedResults = computed(() => (discoveryMode.value ? discoveryResults.value : searchResults.value))
 	const citySelectOptions = ref([])
 	const neighborhoodSelectOptions = ref([])
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
@@ -74,6 +85,81 @@
 		hasOptionValue
 	} = useLocationOptions(toRef(filters, 'city'))
 
+	function applyResults(payload = {}) {
+		results.users = payload.users || []
+		results.pages = payload.pages || []
+		results.products = payload.products || []
+		results.services = payload.services || []
+		results.events = payload.events || []
+		results.ads = payload.ads || []
+	}
+
+	function hasSearchCriteria(params) {
+		return Object.values(params).some(Boolean)
+	}
+
+	function discoveryItemLocation(item) {
+		if (item.kind === 'ad') {
+			return { city: item.value.city || '', neighborhood: item.value.neighborhood || '' }
+		}
+
+		if (item.kind === 'page') {
+			return item.value.address_details || {}
+		}
+
+		return item.value.page?.address_details || {}
+	}
+
+	function discoveryPriority(item) {
+		if (!discoveryLocation.city) {
+			return 0
+		}
+
+		const location = discoveryItemLocation(item)
+		if (location.city !== discoveryLocation.city) {
+			return discoveryLocation.neighborhood ? 2 : 1
+		}
+
+		if (discoveryLocation.neighborhood && location.neighborhood !== discoveryLocation.neighborhood) {
+			return 1
+		}
+
+		return 0
+	}
+
+	function compareDiscoveryItems(left, right) {
+		const priorityDifference = discoveryPriority(left) - discoveryPriority(right)
+		if (priorityDifference !== 0) {
+			return priorityDifference
+		}
+
+		const leftTime = Date.parse(left.value.created_at || '') || 0
+		const rightTime = Date.parse(right.value.created_at || '') || 0
+
+		return rightTime - leftTime || String(right.id).localeCompare(String(left.id))
+	}
+
+	async function loadDiscovery() {
+		const profile = authStore.user?.profile || {}
+		const preferredCity = profile.city || ''
+
+		loading.value = true
+		try {
+			const { data } = await searchEverything({
+				discover: 1,
+				preferred_city: preferredCity,
+				preferred_neighborhood: preferredCity ? profile.neighborhood || '' : ''
+			})
+			applyResults(data.data)
+			discoveryLocation.city = data.data?.preferred_location?.city || ''
+			discoveryLocation.neighborhood = data.data?.preferred_location?.neighborhood || ''
+			discoveryMode.value = true
+			hasSearched.value = false
+		} finally {
+			loading.value = false
+		}
+	}
+
 	async function submit() {
 		const params = {
 			q: q.value.trim(),
@@ -83,6 +169,12 @@
 			category: filters.scope ? filters.category : ''
 		}
 
+		if (!hasSearchCriteria(params)) {
+			await router.replace({ name: 'search' })
+			await loadDiscovery()
+			return
+		}
+
 		loading.value = true
 		try {
 			await router.replace({
@@ -90,16 +182,18 @@
 				query: Object.fromEntries(Object.entries(params).filter(([, value]) => value))
 			})
 			const { data } = await searchEverything(params)
-			results.users = data.data?.users || []
-			results.pages = data.data?.pages || []
-			results.products = data.data?.products || []
-			results.services = data.data?.services || []
-			results.events = data.data?.events || []
-			results.ads = data.data?.ads || []
+			applyResults(data.data)
+			discoveryLocation.city = ''
+			discoveryLocation.neighborhood = ''
+			discoveryMode.value = false
 			hasSearched.value = true
 		} finally {
 			loading.value = false
 		}
+	}
+
+	function removeExpiredAd(adId) {
+		results.ads = results.ads.filter((ad) => ad.id !== adId)
 	}
 
 	function filterCityOptions(value, update) {
@@ -164,6 +258,8 @@
 		}
 		if (q.value || filters.city || filters.neighborhood || filters.scope || filters.category) {
 			await submit()
+		} else {
+			await loadDiscovery()
 		}
 	})
 </script>
@@ -171,63 +267,69 @@
 <template>
 	<q-page padding class="search-page">
 		<div class="page-shell">
-			<section class="soz-section-card page-head">
-				<div>
-					<h1 class="soz-page-title">{{ t('search.title') }}</h1>
-				</div>
-			</section>
-
 			<section class="soz-section-card search-panel">
 				<q-form class="search-form" @submit.prevent="submit">
-					<q-input v-model="q" outlined clearable :label="t('search.placeholder')" />
-					<q-select v-model="filters.city"
-						outlined
-						clearable
-						emit-value
-						map-options
-						use-input
-						hide-selected
-						fill-input
-						input-debounce="0"
-						new-value-mode="add-unique"
-						:options="citySelectOptions"
-						:label="t('auth.city')"
-						@filter="filterCityOptions"
-						@new-value="addOption"
-					/>
-					<q-select v-model="filters.neighborhood"
-						outlined
-						clearable
-						emit-value
-						map-options
-						use-input
-						hide-selected
-						fill-input
-						input-debounce="0"
-						new-value-mode="add-unique"
-						:options="neighborhoodSelectOptions"
-						:label="t('auth.neighborhood')"
-						:disable="!filters.city"
-						@filter="filterNeighborhoodOptions"
-						@new-value="addOption"
-					/>
-					<q-btn
-						class="advanced-search-toggle"
-						flat
-						rounded
-						type="button"
-						icon="tune"
-						:label="advancedOpen ? t('search.hideAdvanced') : t('search.advanced')"
-						@click="toggleAdvancedSearch"
-					/>
-					<q-btn color="primary"
-						unelevated
-						rounded
-						type="submit"
-						icon="search"
-						:loading="loading"
-						:label="t('actions.search')"
-					/>
+					<div class="search-form__primary">
+						<q-input
+							v-model="q"
+							class="search-query-input"
+							outlined
+							clearable
+							:placeholder="t('search.placeholder')"
+							:aria-label="t('search.placeholder')"
+						/>
+					</div>
+					<div class="search-form__controls">
+						<q-select v-model="filters.city"
+							outlined
+							clearable
+							emit-value
+							map-options
+							use-input
+							hide-selected
+							fill-input
+							input-debounce="0"
+							new-value-mode="add-unique"
+							:options="citySelectOptions"
+							:label="t('auth.city')"
+							@filter="filterCityOptions"
+							@new-value="addOption"
+						/>
+						<q-select v-model="filters.neighborhood"
+							outlined
+							clearable
+							emit-value
+							map-options
+							use-input
+							hide-selected
+							fill-input
+							input-debounce="0"
+							new-value-mode="add-unique"
+							:options="neighborhoodSelectOptions"
+							:label="t('auth.neighborhood')"
+							:disable="!filters.city"
+							@filter="filterNeighborhoodOptions"
+							@new-value="addOption"
+						/>
+						<q-btn
+							class="advanced-search-toggle"
+							:class="{ 'advanced-search-toggle--active': advancedOpen }"
+							flat
+							rounded
+							type="button"
+							icon="tune"
+							:label="t('search.advanced')"
+							@click="toggleAdvancedSearch"
+						/>
+						<q-btn color="primary"
+							unelevated
+							rounded
+							type="submit"
+							icon="search"
+							:loading="loading"
+							:label="t('actions.search')"
+						/>
+					</div>
 				</q-form>
 				<div v-if="advancedOpen" class="advanced-search-panel">
 					<div class="advanced-search-panel__head">
@@ -266,81 +368,15 @@
 				</div>
 			</section>
 
-			<section v-if="hasSearched || combinedResults.length > 0" class="result-section">
-				<div v-if="hasSearched && !loading && combinedResults.length === 0" class="empty-state">{{ t('search.empty') }}</div>
+			<section v-if="discoveryMode || hasSearched || combinedResults.length > 0" class="result-section">
+				<div v-if="!loading && combinedResults.length === 0" class="empty-state">{{ t('search.empty') }}</div>
 				<div v-else class="result-list">
-					<template v-for="item in combinedResults" :key="item.id">
-						<router-link v-if="item.kind === 'user'" :to="userRoute(item.value)" class="result-card">
-							<q-avatar size="54px" color="primary" text-color="white">
-								<ResponsiveImage
-									v-if="item.value.profile?.photo_url"
-									class="result-avatar-image"
-									:src="item.value.profile.photo_url"
-									:alt="item.value.display_name"
-									:avif-srcset="item.value.profile.photo_avif_srcset || ''"
-									:webp-srcset="item.value.profile.photo_webp_srcset || ''"
-									sizes="54px"
-									:width="item.value.profile.photo_width || 96"
-									:height="item.value.profile.photo_height || 96"
-								/>
-								<span v-else>{{ item.value.display_name.slice(0, 1) }}</span>
-							</q-avatar>
-							<div>
-								<strong>{{ item.value.display_name }}</strong>
-								<p>{{ item.value.profile?.neighborhood || item.value.profile?.city || '-' }}</p>
-							</div>
-						</router-link>
-
-						<router-link v-else-if="item.kind === 'page'" :to="pageRoute(item.value)" class="result-card result-card--page">
-							<q-avatar size="72px" rounded class="page-result-logo" color="primary" text-color="white">
-								<ResponsiveImage
-									v-if="item.value.logo_url"
-									class="result-avatar-image"
-									:src="item.value.logo_url"
-									:alt="item.value.logo_alt || `${item.value.name} logo`"
-									:avif-srcset="item.value.logo_avif_srcset || ''"
-									:webp-srcset="item.value.logo_webp_srcset || ''"
-									sizes="72px"
-									:width="item.value.logo_width || 96"
-									:height="item.value.logo_height || 96"
-								/>
-								<q-icon v-else :name="item.value.type === 'business' ? 'storefront' : 'diversity_3'" size="34px" />
-							</q-avatar>
-							<div>
-								<strong>{{ item.value.name }}</strong>
-								<p>{{ item.value.public_description || '-' }}</p>
-							</div>
-						</router-link>
-
-						<router-link
-							v-else-if="['product', 'service', 'event'].includes(item.kind)"
-							:to="pageRoute(item.value.page)"
-							class="result-card result-card--page"
-						>
-							<q-avatar size="72px" rounded class="page-result-logo" color="primary" text-color="white">
-								<ResponsiveImage
-									v-if="item.value.image_url"
-									class="result-avatar-image"
-									:src="item.value.image_url"
-									:alt="item.value.image_alt || item.value.name"
-									:avif-srcset="item.value.image_avif_srcset || ''"
-									:webp-srcset="item.value.image_webp_srcset || ''"
-									sizes="72px"
-									:width="item.value.image_width || 768"
-									:height="item.value.image_height || 576"
-								/>
-								<q-icon v-else :name="item.kind === 'event' ? 'event' : item.kind === 'service' ? 'design_services' : 'inventory_2'" size="34px" />
-							</q-avatar>
-							<div>
-								<strong>{{ item.value.name }}</strong>
-								<p>{{ item.value.description || item.value.page?.name || '-' }}</p>
-							</div>
-						</router-link>
-
-						<div v-else class="result-listing-wrap">
-							<AdCard :ad="item.value" />
-						</div>
-					</template>
+					<SearchResultCard
+						v-for="item in combinedResults"
+						:key="item.id"
+						:item="item"
+						@expired="removeExpiredAd"
+					/>
 				</div>
 			</section>
 		</div>
@@ -357,25 +393,60 @@
   margin: 0 auto;
 }
 
-.page-head {
-  padding: 28px;
-}
-
-.page-head h1 {
-  margin: 0;
-}
-
 .search-panel {
-  margin-top: 18px;
-  padding: 24px;
+  padding: 28px 24px;
 }
 
 .search-form {
   display: grid;
-  grid-template-columns: minmax(220px, 1.4fr) minmax(170px, 0.75fr) minmax(170px, 0.75fr) auto auto;
+  gap: 24px;
+  width: 100%;
+}
+
+.search-form__primary {
+  width: calc(100% * 8 / 12);
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.search-form__controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   align-items: start;
-  width: 100%;
+  width: calc(100% * 10 / 12);
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.search-query-input :deep(.q-field__control) {
+  height: 76px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 12px 28px rgba(66, 20, 143, 0.14);
+  transition: box-shadow 0.18s ease;
+}
+
+.search-query-input :deep(.q-field__marginal) {
+  height: 76px;
+}
+
+.search-query-input :deep(.q-field__native),
+.search-query-input :deep(.q-field__input) {
+  min-height: 76px;
+  padding-block: 0;
+  padding-inline: 6px;
+  font-size: 1.28rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.search-query-input.q-field--focused :deep(.q-field__control) {
+  box-shadow: 0 15px 34px rgba(123, 63, 242, 0.2);
+}
+
+.search-form__controls .q-btn {
+  min-height: 56px;
 }
 
 .advanced-search-toggle {
@@ -385,6 +456,14 @@
   background: rgba(255, 255, 255, 0.54);
   color: var(--soz-primary-deep);
   font-weight: 780;
+}
+
+.advanced-search-toggle--active,
+.advanced-search-toggle--active:hover {
+  border-color: var(--soz-primary);
+  background: var(--soz-primary);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(123, 63, 242, 0.24);
 }
 
 .advanced-search-panel {
@@ -495,70 +574,6 @@
   gap: 16px;
 }
 
-.result-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
-  align-items: center;
-  padding: 18px;
-  border: 1px solid rgba(17, 34, 45, 0.1);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.76);
-  overflow: hidden;
-}
-
-.result-avatar-image {
-  width: 100%;
-  height: 100%;
-  --responsive-image-fit: cover;
-}
-
-.result-listing-wrap {
-  color: inherit;
-  text-decoration: none;
-}
-
-.result-list :deep(.listing-card) {
-  border-radius: 24px;
-}
-
-.result-card--page {
-  min-height: 104px;
-  padding: 22px;
-}
-
-.page-result-logo {
-  border: 1px solid rgba(245, 66, 145, 0.2);
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 116, 38, 0.94), rgba(245, 66, 145, 0.94)) !important;
-  box-shadow: 0 14px 28px rgba(245, 66, 145, 0.16);
-}
-
-.page-result-logo :deep(img) {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.result-card > div {
-  min-width: 0;
-}
-
-.result-card strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.result-card p {
-  overflow: hidden;
-  margin: 4px 0 0;
-  color: rgba(17, 34, 45, 0.62);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .empty-state {
   display: flex;
   align-items: center;
@@ -575,10 +590,13 @@
 }
 
 @media (max-width: 900px) {
-  .page-head,
-  .search-form,
-  .result-list {
-    grid-template-columns: 1fr;
+  .search-form__primary {
+    width: calc(100% * 10 / 12);
+  }
+
+  .search-form__controls {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .search-type-options {
@@ -591,13 +609,7 @@
     padding-inline: 10px;
   }
 
-  .page-head {
-    overflow: hidden;
-    padding: 20px;
-  }
-
   .search-panel {
-    margin-top: 14px;
     padding: 20px;
   }
 
@@ -607,10 +619,15 @@
     overflow: hidden;
   }
 
-  .search-form > * {
+  .search-form__primary,
+  .search-form__controls {
     width: 100%;
     min-width: 0;
     max-width: 100%;
+  }
+
+  .search-form__controls {
+    grid-template-columns: 1fr;
   }
 
   .search-form :deep(.q-field),
@@ -638,25 +655,5 @@
     justify-content: center;
   }
 
-  .result-card {
-    padding: 16px;
-  }
-
-  .result-card--page {
-    min-height: 94px;
-    padding: 18px;
-  }
-
-  .page-result-logo {
-    width: 62px !important;
-    height: 62px !important;
-  }
-
-  .result-card p {
-    display: -webkit-box;
-    white-space: normal;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
 }
 </style>

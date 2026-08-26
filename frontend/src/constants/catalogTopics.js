@@ -182,9 +182,13 @@ export function buildCatalogSelectOptions(groups = [], scope, locale = 'he') {
 export function catalogTopicMatchesScope(topic, scope) {
 	const scopes = Array.isArray(scope) ? scope.filter(Boolean) : (scope ? [scope] : [])
 
-	return scopes.length === 0 || scopes.some((item) => (
-		item === CATALOG_SCOPES.ADS ? catalogTopicHasAdCategory(topic) : topic.scopes?.includes(item)
-	))
+	return scopes.length === 0 || scopes.some((item) => {
+		if (item === CATALOG_SCOPES.ADS) {
+			return topic.scopes?.includes(CATALOG_SCOPES.ADS) || catalogTopicHasAdCategory(topic)
+		}
+
+		return topic.scopes?.includes(item)
+	})
 }
 
 export function catalogGroupsForScope(groups = [], scope) {

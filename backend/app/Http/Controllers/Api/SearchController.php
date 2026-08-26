@@ -14,9 +14,12 @@ use App\Services\PayloadService;
 use App\Support\CatalogTopics;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class SearchController extends Controller
 {
+    private const DISCOVERY_LIMIT = 20;
+
     private const RESULT_SCOPES = ['users', 'pages', 'products', 'services', 'events', 'ads'];
 
     private const TOPIC_SCOPES_BY_RESULT = [
@@ -28,9 +31,7 @@ class SearchController extends Controller
         'ads' => [CatalogTopics::SCOPE_ADS],
     ];
 
-    public function __construct(private readonly PayloadService $payloads)
-    {
-    }
+    public function __construct(private readonly PayloadService $payloads) {}
 
     public function index(Request $request)
     {
@@ -58,7 +59,18 @@ class SearchController extends Controller
             ]);
         }
 
-        if ($term === '' && ! $city && ! $neighborhood && ! $topic && ! $resultScope) {
+        $hasSearchCriteria = $term !== '' || $city || $neighborhood || $topic || $resultScope;
+
+        if ($request->boolean('discover') && ! $hasSearchCriteria) {
+            $preferredCity = $this->nullableString($request->query('preferred_city'));
+            $preferredNeighborhood = $preferredCity
+                ? $this->nullableString($request->query('preferred_neighborhood'))
+                : null;
+
+            return $this->discovery($preferredCity, $preferredNeighborhood);
+        }
+
+        if (! $hasSearchCriteria) {
             return ApiResponseService::success([
                 'users' => [],
                 'pages' => [],
@@ -124,9 +136,10 @@ class SearchController extends Controller
             ->when($neighborhood, function (Builder $query, string $neighborhood): void {
                 $query->where('setup->address->neighborhood', $neighborhood);
             })
+            ->latest()
             ->limit(20)
             ->get()
-            ->map(fn (Page $page) => $this->payloads->page($page))
+            ->map(fn (Page $page) => $this->compactPage($page))
             ->values() : collect();
 
         $products = $this->shouldSearch('products', $resultScope) ? PageProduct::query()
@@ -209,6 +222,133 @@ class SearchController extends Controller
         ]);
     }
 
+    private function discovery(?string $city, ?string $neighborhood)
+    {
+        $pages = $this->prioritizedDiscoveryItems(
+            Page::query()
+                ->with(['user.profile'])
+                ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at')),
+            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inPageLocation($query, $tierCity, $tierNeighborhood),
+            $city,
+            $neighborhood
+        )->map(fn (Page $page): array => $this->compactPage($page));
+
+        $products = $this->prioritizedDiscoveryItems(
+            PageProduct::query()
+                ->with([
+                    'page' => fn ($page) => $page
+                        ->with('user.profile')
+                        ->withCount('ratings')
+                        ->withAvg('ratings', 'rating'),
+                ])
+                ->whereHas('page.user', fn (Builder $user) => $user->whereNull('banned_at')),
+            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
+            $city,
+            $neighborhood
+        )->map(fn (PageProduct $product): array => $this->withCompactPage($this->payloads->product($product), $product->page));
+
+        $services = $this->prioritizedDiscoveryItems(
+            PageService::query()
+                ->with(['page.user.profile'])
+                ->whereHas('page.user', fn (Builder $user) => $user->whereNull('banned_at')),
+            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
+            $city,
+            $neighborhood
+        )->map(fn (PageService $service): array => $this->withCompactPage($this->payloads->service($service), $service->page));
+
+        $events = $this->prioritizedDiscoveryItems(
+            PageEvent::query()
+                ->with(['page.user.profile'])
+                ->whereDate('event_date', '>=', today())
+                ->whereHas('page.user', fn (Builder $user) => $user->whereNull('banned_at')),
+            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
+            $city,
+            $neighborhood
+        )->map(fn (PageEvent $event): array => $this->withCompactPage($this->payloads->event($event), $event->page));
+
+        $ads = $this->prioritizedDiscoveryItems(
+            Ad::query()
+                ->with(['user.profile', 'page'])
+                ->active()
+                ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at')),
+            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $query->inLocation($tierCity, $tierNeighborhood),
+            $city,
+            $neighborhood
+        )->map(fn (Ad $ad): array => $this->payloads->ad($ad));
+
+        return ApiResponseService::success([
+            'users' => [],
+            'pages' => $pages->values(),
+            'products' => $products->values(),
+            'services' => $services->values(),
+            'events' => $events->values(),
+            'ads' => $ads->values(),
+            'topic' => null,
+            'scope' => null,
+            'mode' => 'discovery',
+            'preferred_location' => [
+                'city' => $city,
+                'neighborhood' => $neighborhood,
+            ],
+        ]);
+    }
+
+    private function prioritizedDiscoveryItems(
+        Builder $query,
+        callable $applyLocation,
+        ?string $city,
+        ?string $neighborhood
+    ): Collection {
+        $items = collect();
+
+        if ($city && $neighborhood) {
+            $this->appendDiscoveryTier($items, $query, $applyLocation, $city, $neighborhood);
+        }
+
+        if ($city) {
+            $this->appendDiscoveryTier($items, $query, $applyLocation, $city, null);
+        }
+
+        $this->appendDiscoveryTier($items, $query, $applyLocation, null, null);
+
+        return $items;
+    }
+
+    private function appendDiscoveryTier(
+        Collection $items,
+        Builder $query,
+        callable $applyLocation,
+        ?string $city,
+        ?string $neighborhood
+    ): void {
+        $remaining = self::DISCOVERY_LIMIT - $items->count();
+
+        if ($remaining <= 0) {
+            return;
+        }
+
+        $tier = clone $query;
+
+        if ($city || $neighborhood) {
+            $applyLocation($tier, $city, $neighborhood);
+        }
+
+        $existingIds = $items->pluck('id')->filter()->values()->all();
+        if ($existingIds !== []) {
+            $tier->whereNotIn($tier->getModel()->getQualifiedKeyName(), $existingIds);
+        }
+
+        $models = $tier
+            ->latest()
+            ->orderByDesc($tier->getModel()->getQualifiedKeyName())
+            ->limit($remaining)
+            ->get();
+
+        foreach ($models as $model) {
+            $items->push($model);
+        }
+    }
+
     private function topicFromQuery(mixed $value): ?array
     {
         $value = $this->nullableString($value);
@@ -275,23 +415,45 @@ class SearchController extends Controller
             ->when($neighborhood, fn (Builder $query, string $neighborhood) => $query->where('setup->address->neighborhood', $neighborhood));
     }
 
+    private function inRelatedPageLocation(Builder $query, ?string $city, ?string $neighborhood): Builder
+    {
+        return $query->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {
+            $this->inPageLocation($page, $city, $neighborhood);
+        });
+    }
+
+    private function compactPage(Page $page): array
+    {
+        $setup = $page->setup ?? [];
+        $address = is_array($setup['address'] ?? null) ? $setup['address'] : [];
+
+        return [
+            'id' => $page->id,
+            'slug' => $page->public_slug,
+            'public_path' => '/pages/'.$page->public_slug,
+            'user_id' => $page->user_id,
+            'type' => $page->type,
+            'name' => $page->name,
+            'public_description' => $page->public_description,
+            'category_key' => $page->category_key,
+            'logo_url' => $page->logo_url,
+            ...$this->payloads->publicImageMeta('logo', $page->logo_path, $page->name.' logo', '96px'),
+            'banner_url' => $page->banner_url,
+            ...$this->payloads->publicImageMeta('banner', $page->banner_path, $page->name, '(max-width: 700px) calc(100vw - 28px), 1180px'),
+            'address' => $page->address,
+            'address_details' => [
+                'city' => $address['city'] ?? null,
+                'neighborhood' => $address['neighborhood'] ?? null,
+            ],
+            'created_at' => $page->created_at?->toISOString(),
+            'updated_at' => $page->updated_at?->toISOString(),
+        ];
+    }
+
     private function withCompactPage(array $payload, ?Page $page): array
     {
         return array_merge($payload, [
-            'page' => $page ? [
-                'id' => $page->id,
-                'slug' => $page->public_slug,
-                'public_path' => '/pages/'.$page->public_slug,
-                'type' => $page->type,
-                'name' => $page->name,
-                'category_key' => $page->category_key,
-                'logo_url' => $page->logo_url,
-                ...$this->payloads->publicImageMeta('logo', $page->logo_path, $page->name.' logo', '96px'),
-                'address_details' => [
-                    'city' => $page->setup['address']['city'] ?? null,
-                    'neighborhood' => $page->setup['address']['neighborhood'] ?? null,
-                ],
-            ] : null,
+            'page' => $page ? $this->compactPage($page) : null,
         ]);
     }
 

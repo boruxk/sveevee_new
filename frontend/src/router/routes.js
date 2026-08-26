@@ -63,7 +63,7 @@ export default [
 		component: UserLayout,
 		meta: { requiresAuth: true },
 		children: [
-			{ path: 'home', name: 'home', component: () => import('@/pages/HomePage.vue'), meta: { seo: { titleKey: 'seo.homeTitle', descriptionKey: 'seo.homeDescription' } } },
+			{ path: 'home', name: 'home', component: () => import('@/pages/HomePage.vue'), meta: { seo: { titleKey: 'seo.landingTitle', descriptionKey: 'seo.landingDescription' } } },
 			{ path: 'me', name: 'me', component: () => import('@/pages/MyPlacePage.vue'), meta: { seo: { titleKey: 'seo.meTitle', descriptionKey: 'seo.meDescription' } } },
 			{ path: 'profile', name: 'profile', component: () => import('@/pages/ProfilePage.vue'), meta: { seo: { titleKey: 'seo.profileTitle', descriptionKey: 'seo.profileDescription' } } },
 			{ path: 'business', name: 'business', component: () => import('@/pages/PageSetupPage.vue'), meta: { pageType: 'business', seo: { titleKey: 'seo.businessTitle', descriptionKey: 'seo.businessDescription' } } },

@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\Models\Ad;
 use App\Models\EmailBan;
 use App\Models\Page;
-use App\Models\PageEvent;
 use App\Models\PageConversation;
+use App\Models\PageEvent;
 use App\Models\PageProduct;
 use App\Models\PageRating;
 use App\Models\PageService;
@@ -18,9 +18,9 @@ use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
@@ -1622,6 +1622,161 @@ HTML);
             ->assertJsonPath('data.pagination.current_page', 2);
     }
 
+    public function test_public_search_discovery_includes_all_content_and_prioritizes_location_then_recency(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-27 12:00:00'));
+
+        try {
+            $localOwner = User::factory()->create();
+            $cityOwner = User::factory()->create();
+            $otherOwner = User::factory()->create();
+
+            $makePage = function (User $owner, string $name, string $city, string $neighborhood): Page {
+                return Page::query()->create([
+                    'user_id' => $owner->id,
+                    'type' => Page::TYPE_BUSINESS,
+                    'name' => $name,
+                    'public_description' => $name.' description',
+                    'category_key' => 'shopping_retail.sales_special_offers',
+                    'setup' => [
+                        'address' => [
+                            'city' => $city,
+                            'neighborhood' => $neighborhood,
+                        ],
+                    ],
+                ]);
+            };
+            $stamp = function ($model, string $timestamp): void {
+                $date = Carbon::parse($timestamp);
+                $model->forceFill(['created_at' => $date, 'updated_at' => $date])->saveQuietly();
+            };
+
+            $localPage = $makePage($localOwner, 'Ramot page', 'Jerusalem', 'Ramot');
+            $cityPage = $makePage($cityOwner, 'Gilo page', 'Jerusalem', 'Gilo');
+            $otherPage = $makePage($otherOwner, 'Haifa page', 'Haifa', 'Hadar');
+            $stamp($localPage, '2026-08-24 09:00:00');
+            $stamp($cityPage, '2026-08-25 09:00:00');
+            $stamp($otherPage, '2026-08-26 09:00:00');
+
+            $localProduct = PageProduct::query()->create([
+                'page_id' => $localPage->id,
+                'name' => 'Ramot product',
+                'description' => 'Local product description.',
+                'category_key' => 'products.software.games',
+                'image_path' => 'products/ramot.webp',
+                'price' => 10,
+                'link' => 'https://example.test/ramot-product',
+            ]);
+            $cityProduct = PageProduct::query()->create([
+                'page_id' => $cityPage->id,
+                'name' => 'Gilo product',
+                'description' => 'City product description.',
+                'category_key' => 'products.software.games',
+                'image_path' => 'products/gilo.webp',
+                'price' => 20,
+                'link' => 'https://example.test/gilo-product',
+            ]);
+            $otherProduct = PageProduct::query()->create([
+                'page_id' => $otherPage->id,
+                'name' => 'Haifa product',
+                'description' => 'Other product description.',
+                'category_key' => 'products.software.games',
+                'image_path' => 'products/haifa.webp',
+                'price' => 30,
+                'link' => 'https://example.test/haifa-product',
+            ]);
+            $stamp($localProduct, '2026-08-24 10:00:00');
+            $stamp($cityProduct, '2026-08-25 10:00:00');
+            $stamp($otherProduct, '2026-08-26 10:00:00');
+
+            PageService::query()->create([
+                'page_id' => $localPage->id,
+                'name' => 'Ramot service',
+                'description' => 'Local service description.',
+                'category_key' => 'services.home_repairs.handyman',
+                'image_path' => 'services/ramot.webp',
+            ]);
+            PageEvent::query()->create([
+                'page_id' => $localPage->id,
+                'name' => 'Ramot event',
+                'description' => 'Local event description.',
+                'category_key' => 'events.community_social.community_festival',
+                'image_path' => 'events/ramot.webp',
+                'event_date' => now()->addWeek()->toDateString(),
+                'event_time' => '18:00',
+                'address' => 'Ramot, Jerusalem',
+            ]);
+
+            $localOlderAd = Ad::query()->create([
+                'user_id' => $localOwner->id,
+                'type' => Ad::TYPE_PRIVATE,
+                'title' => 'Ramot older ad',
+                'text' => 'Older local ad.',
+                'status' => 'active',
+                'city' => 'Jerusalem',
+                'neighborhood' => 'Ramot',
+            ]);
+            $localNewerAd = Ad::query()->create([
+                'user_id' => $localOwner->id,
+                'type' => Ad::TYPE_PRIVATE,
+                'title' => 'Ramot newer ad',
+                'text' => 'Newer local ad.',
+                'status' => 'active',
+                'city' => 'Jerusalem',
+                'neighborhood' => 'Ramot',
+            ]);
+            $cityAd = Ad::query()->create([
+                'user_id' => $cityOwner->id,
+                'type' => Ad::TYPE_PRIVATE,
+                'title' => 'Gilo ad',
+                'text' => 'City ad.',
+                'status' => 'active',
+                'city' => 'Jerusalem',
+                'neighborhood' => 'Gilo',
+            ]);
+            $otherAd = Ad::query()->create([
+                'user_id' => $otherOwner->id,
+                'type' => Ad::TYPE_PRIVATE,
+                'title' => 'Haifa ad',
+                'text' => 'Other city ad.',
+                'status' => 'active',
+                'city' => 'Haifa',
+                'neighborhood' => 'Hadar',
+            ]);
+            $stamp($localOlderAd, '2026-08-24 08:00:00');
+            $stamp($localNewerAd, '2026-08-24 11:00:00');
+            $stamp($cityAd, '2026-08-25 11:00:00');
+            $stamp($otherAd, '2026-08-26 11:00:00');
+
+            $response = $this->getJson('/api/v1/search?discover=1&preferred_city=Jerusalem&preferred_neighborhood=Ramot')
+                ->assertOk()
+                ->assertJsonPath('data.mode', 'discovery')
+                ->assertJsonPath('data.preferred_location.city', 'Jerusalem')
+                ->assertJsonPath('data.preferred_location.neighborhood', 'Ramot')
+                ->assertJsonCount(0, 'data.users')
+                ->assertJsonCount(3, 'data.pages')
+                ->assertJsonCount(3, 'data.products')
+                ->assertJsonCount(1, 'data.services')
+                ->assertJsonCount(1, 'data.events')
+                ->assertJsonCount(4, 'data.ads');
+
+            $this->assertSame(
+                ['Ramot page', 'Gilo page', 'Haifa page'],
+                collect($response->json('data.pages'))->pluck('name')->all()
+            );
+            $this->assertSame(
+                ['Ramot product', 'Gilo product', 'Haifa product'],
+                collect($response->json('data.products'))->pluck('name')->all()
+            );
+            $this->assertSame(
+                ['Ramot newer ad', 'Ramot older ad', 'Gilo ad', 'Haifa ad'],
+                collect($response->json('data.ads'))->pluck('title')->all()
+            );
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
     public function test_ads_expire_after_one_week_and_are_pruned_after_retention_period(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-01 10:00:00'));
@@ -2420,7 +2575,7 @@ HTML);
             ->assertJsonCount(50, 'data.items')
             ->assertJsonPath('data.pagination.per_page', 50)
             ->assertJsonPath('data.pagination.total', $total)
-			->assertJsonPath('data.total_users', $total)
+            ->assertJsonPath('data.total_users', $total)
             ->assertJsonPath('data.items.0.email', fn ($value) => filled($value));
     }
 
