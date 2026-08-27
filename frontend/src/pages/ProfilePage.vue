@@ -1,5 +1,5 @@
 <script setup>
-	import { computed, onMounted, reactive, ref, toRef, watch } from 'vue'
+	import { computed, nextTick, onMounted, reactive, ref, toRef, watch } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
@@ -26,6 +26,7 @@
 	const passwordSaving = ref(false)
 	const photoDeleting = ref(false)
 	const formRef = ref(null)
+	const cityFieldRef = ref(null)
 	const passwordFormRef = ref(null)
 	const photo = ref(null)
 	const citySelectOptions = ref([])
@@ -190,6 +191,11 @@
 		await Promise.all([load(), loadLocationOptions(), loadCatalogTopics()])
 		citySelectOptions.value = cityOptions.value
 		neighborhoodSelectOptions.value = neighborhoodOptions.value
+
+		if (route.query.complete === '1' && !form.city) {
+			await nextTick()
+			await cityFieldRef.value?.validate()
+		}
 	})
 </script>
 
@@ -204,7 +210,7 @@
 
 			<section class="soz-section-card profile-panel q-mt-lg">
 				<div v-if="route.query.complete === '1'" class="profile-completion-banner">
-					<q-icon name="error_outline" size="34px" />
+					<q-icon name="info" size="34px" />
 					<div>
 						<h2>{{ t('profile.completeTitle') }}</h2>
 						<p>{{ t('profile.completeBody') }}</p>
@@ -235,6 +241,7 @@
 					<div class="row q-col-gutter-md q-pb-md">
 						<q-input class="col-12 col-md-4" v-model="form.phone" outlined :label="t('auth.phone')" />
 						<q-select class="col-12 col-md-4"
+							ref="cityFieldRef"
 							v-model="form.city"
 							outlined
 							clearable
@@ -426,13 +433,13 @@
   align-items: flex-start;
   margin-bottom: 28px;
   padding: 24px 26px;
-  border: 1px solid rgba(218, 36, 77, 0.26);
+  border: 1px solid rgba(43, 123, 180, 0.24);
   border-radius: 24px;
-  color: #7f1239;
+  color: #165178;
   background:
-    radial-gradient(circle at top left, rgba(255, 116, 38, 0.2), transparent 38%),
-    linear-gradient(135deg, rgba(218, 36, 77, 0.18), rgba(245, 66, 145, 0.16));
-  box-shadow: 0 22px 44px rgba(218, 36, 77, 0.16);
+    radial-gradient(circle at top left, rgba(88, 190, 224, 0.16), transparent 40%),
+    linear-gradient(135deg, rgba(235, 248, 255, 0.94), rgba(242, 244, 255, 0.92));
+  box-shadow: 0 18px 38px rgba(42, 108, 153, 0.12);
 }
 
 .profile-completion-banner .q-icon {
@@ -448,7 +455,7 @@
 
 .profile-completion-banner p {
   margin: 0;
-  color: rgba(80, 20, 48, 0.82);
+  color: rgba(22, 63, 88, 0.82);
   font-size: 1.06rem;
   font-weight: 650;
   line-height: 1.58;
