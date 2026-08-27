@@ -13,6 +13,13 @@ const apiClient = axios.create({
 })
 
 const MUTATING_METHODS = ['post', 'put', 'patch', 'delete']
+const RECAPTCHA_RETRY_DELAY_MS = 300
+
+const isRecaptchaRejection = (error) => {
+	return error.response?.status === 422 && Array.isArray(error.response?.data?.errors?.recaptcha)
+}
+
+const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 
 apiClient.interceptors.request.use(async(config) => {
 	const token = localStorage.getItem(TOKEN_KEY)
@@ -43,13 +50,19 @@ apiClient.interceptors.request.use(async(config) => {
 
 apiClient.interceptors.response.use(
 	(response) => response,
-	(error) => {
+	async(error) => {
 		const payload = error.response?.data?.data
 
 		if (error.response?.status === 503 && payload?.reason === 'maintenance') {
 			window.dispatchEvent(new CustomEvent('sveevee:maintenance', {
 				detail: payload.maintenance
 			}))
+		}
+
+		if (isRecaptchaRejection(error) && error.config && !error.config.recaptchaRetried) {
+			error.config.recaptchaRetried = true
+			await wait(RECAPTCHA_RETRY_DELAY_MS)
+			return apiClient.request(error.config)
 		}
 
 		return Promise.reject(error)

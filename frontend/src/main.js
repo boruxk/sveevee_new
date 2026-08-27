@@ -9,6 +9,7 @@ import router from '@/router'
 import i18n, { prepareLocale } from '@/i18n'
 import { useAppStore } from '@/stores/app'
 import { materialIconMapFn } from '@/utils/materialIconMap'
+import { installRecaptchaWarmup } from '@/services/recaptcha'
 
 const localHosts = ['localhost', '127.0.0.1', '::1']
 
@@ -41,6 +42,7 @@ async function bootstrap() {
 	appStore.syncDocument(initialLocale.locale)
 
 	app.mount('#app')
+	installRecaptchaWarmup()
 }
 
 bootstrap()

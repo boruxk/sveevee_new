@@ -507,6 +507,7 @@
 					</div>
 
 					<q-btn
+						v-if="!authStore.isAuthenticated"
 						class="pricing-card__button"
 						unelevated
 						rounded

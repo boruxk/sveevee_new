@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
@@ -107,6 +108,40 @@ class SveeveeApiTest extends TestCase
 
         Http::assertSent(fn ($request) => $request['secret'] === 'test-secret'
             && $request['response'] === 'valid-token');
+    }
+
+    public function test_recaptcha_logs_rejection_details_without_logging_the_token(): void
+    {
+        $this->enableRecaptcha();
+        Log::spy();
+
+        Http::fake([
+            'https://www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => true,
+                'score' => 0.2,
+                'action' => 'post_auth/login',
+                'hostname' => 'sveevee.co.il',
+            ]),
+        ]);
+
+        $this->withHeaders([
+            'X-Recaptcha-Action' => 'post_auth/login',
+            'X-Recaptcha-Token' => 'sensitive-token',
+        ])->postJson('/api/v1/auth/login', [
+            'email' => 'score-too-low@example.test',
+            'password' => 'password',
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.recaptcha.0', 'Please try again.');
+
+        Log::shouldHaveReceived('notice')
+            ->once()
+            ->withArgs(function (string $message, array $context): bool {
+                return $message === 'reCAPTCHA verification was rejected.'
+                    && $context['score'] === 0.2
+                    && $context['min_score'] === 0.5
+                    && $context['expected_action'] === 'post_auth/login'
+                    && ! str_contains(json_encode($context), 'sensitive-token');
+            });
     }
 
     public function test_registration_requires_explicit_consent(): void
