@@ -665,7 +665,7 @@ export default {
 	},
 	search: {
 		title: 'Search',
-		placeholder: 'Search business, community, ad, or user',
+		placeholder: 'Search business, community, ad or event',
 		advanced: 'Advanced search',
 		hideAdvanced: 'Hide advanced search',
 		chooseType: 'What do you want to search?',
@@ -850,6 +850,7 @@ export default {
 	landing: {
 		eyebrow: 'Local ads, local businesses.',
 		title: 'sveevee',
+		heroRegisterCta: 'Register to sell, advertise, promote',
 		firstBadgeTitle: 'Get there first. Be seen first.',
 		firstBadgeBody: 'Join Sveevee today and be among the first in your city and neighborhood.',
 		shareTitle: 'Good things are better when shared.',

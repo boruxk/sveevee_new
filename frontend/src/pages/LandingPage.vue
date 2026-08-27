@@ -1,9 +1,12 @@
 <script setup>
-	import { computed, onMounted } from 'vue'
+	import { computed, onMounted, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
+	import { useRouter } from 'vue-router'
 	import { useAppStore } from '@/stores/app'
+	import { useAuthStore } from '@/stores/auth'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { catalogLabel, catalogPath } from '@/constants/catalogTopics'
+	import SearchQueryInput from '@/components/SearchQueryInput.vue'
 	import SocialShareButtons from '@/components/share/SocialShareButtons.vue'
 	import {
 		landingFeatureIconAvifSrcset,
@@ -18,8 +21,11 @@
 	} from '@/constants/landingFeatureIcons'
 
 	const { t, tm, locale } = useI18n()
+	const router = useRouter()
 	const appStore = useAppStore()
+	const authStore = useAuthStore()
 	const { catalogPopularTopics, loadCatalogTopics } = useCatalogTopics()
+	const heroSearch = ref('')
 	const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 	const heroAvifSrcSet = '/assets/landing/hero-main-960.v1.avif 960w, /assets/landing/hero-main-1360.v1.avif 1360w'
 	const heroWebpSrcSet = '/assets/landing/hero-main-960.v1.webp 960w, /assets/landing/hero-main-1360.v1.webp 1360w'
@@ -108,6 +114,14 @@
 		return catalogLabel(topic?.labels, locale.value)
 	}
 
+	function submitHeroSearch() {
+		const query = heroSearch.value.trim()
+		router.push({
+			name: 'search',
+			query: query ? { q: query } : {}
+		})
+	}
+
 	onMounted(loadCatalogTopics)
 </script>
 
@@ -115,84 +129,97 @@
 	<q-page class="landing-page" :class="{ 'landing-page--rtl': appStore.isRtl }">
 		<section class="landing-hero">
 			<div class="landing-hero__inner">
-				<div class="landing-hero__copy">
-					<h1 class="landing-hero__title">
-						<picture>
-							<source :srcset="logoAvifSrcSet" sizes="(max-width: 640px) calc(100vw - 48px), 560px" type="image/avif" />
-							<source :srcset="logoWebpSrcSet" sizes="(max-width: 640px) calc(100vw - 48px), 560px" type="image/webp" />
-							<img
-								class="landing-hero__wordmark"
-								:src="logoSrc"
-								:alt="t('landing.title')"
-								width="640"
-								height="125"
-								decoding="async"
-							/>
-						</picture>
-					</h1>
-					<p class="landing-hero__subtitle">
-						<span class="landing-hero__subtitle-shape" aria-hidden="true"></span>
-						{{ t('landing.subtitle') }}
-					</p>
+				<div class="landing-hero__stage">
+					<div class="landing-hero__copy">
+						<h1 class="landing-hero__title">
+							<picture>
+								<source :srcset="logoAvifSrcSet" sizes="(max-width: 640px) calc(100vw - 48px), 560px" type="image/avif" />
+								<source :srcset="logoWebpSrcSet" sizes="(max-width: 640px) calc(100vw - 48px), 560px" type="image/webp" />
+								<img
+									class="landing-hero__wordmark"
+									:src="logoSrc"
+									:alt="t('landing.title')"
+									width="640"
+									height="125"
+									decoding="async"
+								/>
+							</picture>
+						</h1>
+						<p class="landing-hero__subtitle">
+							<span class="landing-hero__subtitle-shape" aria-hidden="true"></span>
+							{{ t('landing.subtitle') }}
+						</p>
 
-					<div class="landing-hero__mobile-visual">
+						<div class="landing-hero__mobile-visual">
+							<picture>
+								<source media="(max-width: 640px)" :srcset="mobileHeroAvifSrcSet" :sizes="mobileHeroSizes" type="image/avif" />
+								<source media="(max-width: 640px)" :srcset="mobileHeroWebpSrcSet" :sizes="mobileHeroSizes" type="image/webp" />
+								<img
+									:src="transparentPixel"
+									:alt="t('seo.landingTitle')"
+									width="800"
+									height="800"
+									loading="eager"
+									fetchpriority="high"
+									decoding="async"
+								/>
+							</picture>
+						</div>
+
+						<router-link v-if="!authStore.isAuthenticated" :to="{ name: 'register' }" class="landing-first-badge">
+							<span class="landing-first-badge__copy">
+								<strong>{{ t('landing.firstBadgeTitle') }}</strong>
+								<span>{{ t('landing.firstBadgeBody') }}</span>
+							</span>
+						</router-link>
+					</div>
+
+					<div class="landing-hero__visual">
 						<picture>
-							<source media="(max-width: 640px)" :srcset="mobileHeroAvifSrcSet" :sizes="mobileHeroSizes" type="image/avif" />
-							<source media="(max-width: 640px)" :srcset="mobileHeroWebpSrcSet" :sizes="mobileHeroSizes" type="image/webp" />
+							<source media="(min-width: 641px)" :srcset="heroAvifSrcSet" sizes="90vw" type="image/avif" />
+							<source media="(min-width: 641px)" :srcset="heroWebpSrcSet" sizes="90vw" type="image/webp" />
 							<img
 								:src="transparentPixel"
 								:alt="t('seo.landingTitle')"
-								width="800"
-								height="800"
+								width="1360"
+								height="766"
 								loading="eager"
 								fetchpriority="high"
 								decoding="async"
 							/>
 						</picture>
 					</div>
-
-					<router-link :to="{ name: 'register' }" class="landing-first-badge">
-						<span class="landing-first-badge__copy">
-							<strong>{{ t('landing.firstBadgeTitle') }}</strong>
-							<span>{{ t('landing.firstBadgeBody') }}</span>
-						</span>
-					</router-link>
-
-					<div class="landing-hero__actions">
-						<q-btn color="primary"
-							unelevated
-							rounded
-							icon="person_add"
-							class="landing-register-cta"
-							:label="t('nav.register')"
-							:to="{ name: 'register' }"
-						/>
-						<q-btn unelevated
-							rounded
-							color="primary"
-							class="landing-hero__search-btn"
-							icon="search"
-							:label="t('landing.searchWithoutRegistration')"
-							:title="t('landing.searchWithoutRegistration')"
-							:to="{ name: 'search' }"
-						/>
-					</div>
 				</div>
 
-				<div class="landing-hero__visual">
-					<picture>
-						<source media="(min-width: 641px)" :srcset="heroAvifSrcSet" sizes="90vw" type="image/avif" />
-						<source media="(min-width: 641px)" :srcset="heroWebpSrcSet" sizes="90vw" type="image/webp" />
-						<img
-							:src="transparentPixel"
-							:alt="t('seo.landingTitle')"
-							width="1360"
-							height="766"
-							loading="eager"
-							fetchpriority="high"
-							decoding="async"
+				<div
+					class="landing-hero__actions"
+					:class="{ 'landing-hero__actions--authenticated': authStore.isAuthenticated }"
+				>
+					<q-btn
+						v-if="!authStore.isAuthenticated"
+						color="primary"
+						unelevated
+						rounded
+						icon="person_add"
+						class="landing-register-cta"
+						:label="t('landing.heroRegisterCta')"
+						:to="{ name: 'register' }"
+					/>
+					<div v-if="!authStore.isAuthenticated" class="landing-hero__divider">
+						<span>{{ t('auth.or') }}</span>
+					</div>
+					<q-form class="landing-hero__search-form" @submit.prevent="submitHeroSearch">
+						<SearchQueryInput v-model="heroSearch" :placeholder="t('search.placeholder')" />
+						<q-btn
+							unelevated
+							round
+							color="primary"
+							class="landing-hero__search-btn"
+							type="submit"
+							icon="search"
+							:aria-label="t('actions.search')"
 						/>
-					</picture>
+					</q-form>
 				</div>
 			</div>
 		</section>
@@ -526,21 +553,30 @@
 
 .landing-hero__inner {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 0.88fr) minmax(420px, 1.12fr);
-  gap: clamp(28px, 5vw, 72px);
-  align-items: center;
   max-width: 1280px;
-  min-height: clamp(540px, 52vw, 650px);
   margin: 0 auto;
   padding: clamp(42px, 7vw, 84px) 24px clamp(34px, 6vw, 72px);
+}
+
+.landing-hero__stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(420px, 1.12fr);
+  column-gap: clamp(28px, 5vw, 72px);
+  align-items: center;
+  width: 100%;
+  min-height: 540px;
+  max-height: 650px;
+  aspect-ratio: 1360 / 690;
 }
 
 .landing-hero__copy {
   position: relative;
   z-index: 2;
   grid-column: 1 / 2;
+  grid-row: 1;
   max-width: 600px;
+  transform: translateY(30px);
 }
 
 .landing-hero h1 {
@@ -568,9 +604,77 @@
 }
 
 .landing-hero__actions {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) 64px minmax(0, 1.08fr);
+  gap: 22px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  margin-top: 0;
+  padding-inline-start: 10px;
+  padding-inline-end: 30px;
+  box-sizing: border-box;
+}
+
+.landing-hero__actions--authenticated {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.landing-register-cta.q-btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 76px;
+  border-radius: 999px;
+  font-size: 1.08rem;
+}
+
+.landing-register-cta :deep(.q-btn__content) {
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.landing-register-cta :deep(.block) {
+  min-width: 0;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.landing-hero__divider {
+  display: grid;
+  grid-template-rows: 1fr auto 1fr;
+  gap: 7px;
+  align-items: center;
+  justify-items: center;
+  width: 64px;
+  height: 76px;
+  color: rgba(17, 34, 45, 0.5);
+  font-size: 1rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.landing-hero__divider::before,
+.landing-hero__divider::after {
+  display: block;
+  width: 1px;
+  height: 100%;
+  background: rgba(17, 34, 45, 0.18);
+  content: "";
+}
+
+.landing-hero__search-form {
   display: flex;
-  flex-wrap: wrap;
   gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.landing-hero__search-form :deep(.search-query-input) {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .landing-first-badge {
@@ -634,25 +738,15 @@
 }
 
 .landing-register-cta.q-btn.bg-primary {
-  animation: landingCtaPulse 2.15s ease-in-out infinite;
   box-shadow: 0 16px 34px rgba(245, 66, 145, 0.28) !important;
   font-weight: 900;
 }
 
-@keyframes landingCtaPulse {
-  0%,
-  100% {
-    transform: scale(1);
-    filter: drop-shadow(0 0 0 rgba(245, 66, 145, 0));
-  }
-
-  50% {
-    transform: scale(1.035);
-    filter: drop-shadow(0 10px 18px rgba(245, 66, 145, 0.28));
-  }
-}
-
 .landing-hero__search-btn.q-btn.bg-primary {
+  flex: 0 0 76px;
+  width: 76px;
+  min-width: 76px;
+  height: 76px;
   background: var(--soz-menu-gradient) !important;
   box-shadow: 0 12px 24px rgba(123, 63, 242, 0.26) !important;
   color: #ffffff !important;
@@ -1410,7 +1504,7 @@
 }
 
 @media (max-width: 980px) {
-  .landing-hero__inner,
+  .landing-hero__stage,
   .workflow-section,
   .audience-panel,
   .content-grid,
@@ -1458,8 +1552,16 @@
     overflow: hidden;
   }
 
+  .landing-hero__stage {
+    display: block;
+    min-height: 0;
+    max-height: none;
+    aspect-ratio: auto;
+  }
+
   .landing-hero__copy {
     max-width: none;
+    transform: none;
   }
 
   .landing-hero h1 {
@@ -1637,12 +1739,34 @@
   }
 
   .landing-hero__actions {
-    align-items: stretch;
-    position: relative;
-    z-index: 2;
+    grid-template-columns: minmax(0, 1fr);
     gap: 14px;
+    align-items: stretch;
+    width: auto;
     margin: 0 var(--landing-mobile-gutter);
-    padding: 0;
+    padding-inline: 10px;
+  }
+
+  .landing-hero__actions--authenticated {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-hero__divider {
+    grid-template-rows: none;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    width: 100%;
+    height: auto;
+  }
+
+  .landing-hero__divider::before,
+  .landing-hero__divider::after {
+    width: 100%;
+    height: 1px;
+  }
+
+  .landing-hero__search-form {
+    gap: 10px;
   }
 
   .landing-first-badge {
@@ -1674,20 +1798,35 @@
     font-size: 16px;
   }
 
-  .landing-hero__actions .q-btn {
+  .landing-register-cta.q-btn {
     width: 100%;
     min-width: 0;
     min-height: 58px;
-    font-size: 14px;
+    font-size: 13px;
   }
 
-  .landing-hero__actions .q-btn :deep(.q-btn__content) {
-    min-width: 0;
+  .landing-register-cta :deep(.q-icon) {
+    display: none;
   }
 
-  .landing-hero__actions .q-btn :deep(.block) {
-    min-width: 0;
-    white-space: normal;
+  .landing-hero__search-form :deep(.search-query-input .q-field__control),
+  .landing-hero__search-form :deep(.search-query-input .q-field__marginal) {
+    height: 58px;
+  }
+
+  .landing-hero__search-form :deep(.search-query-input .q-field__native),
+  .landing-hero__search-form :deep(.search-query-input .q-field__input) {
+    min-height: 58px;
+    font-size: 1rem;
+  }
+
+  .landing-hero__search-btn.q-btn.bg-primary {
+    flex-basis: 58px;
+    width: 58px;
+    min-width: 58px;
+    min-height: 58px;
+    height: 58px;
+    max-height: 58px;
   }
 }
 </style>

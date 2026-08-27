@@ -8,6 +8,7 @@
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { catalogPath, catalogTopicByKey, catalogTopicMatchesScope, CATALOG_SCOPES } from '@/constants/catalogTopics'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
+	import SearchQueryInput from '@/components/SearchQueryInput.vue'
 	import SearchResultCard from '@/components/SearchResultCard.vue'
 
 	function queryValue(value) {
@@ -270,13 +271,9 @@
 			<section class="soz-section-card search-panel">
 				<q-form class="search-form" @submit.prevent="submit">
 					<div class="search-form__primary">
-						<q-input
+						<SearchQueryInput
 							v-model="q"
-							class="search-query-input"
-							outlined
-							clearable
 							:placeholder="t('search.placeholder')"
-							:aria-label="t('search.placeholder')"
 						/>
 					</div>
 					<div class="search-form__controls">
@@ -417,32 +414,6 @@
   width: calc(100% * 10 / 12);
   min-width: 0;
   margin-inline: auto;
-}
-
-.search-query-input :deep(.q-field__control) {
-  height: 76px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 12px 28px rgba(66, 20, 143, 0.14);
-  transition: box-shadow 0.18s ease;
-}
-
-.search-query-input :deep(.q-field__marginal) {
-  height: 76px;
-}
-
-.search-query-input :deep(.q-field__native),
-.search-query-input :deep(.q-field__input) {
-  min-height: 76px;
-  padding-block: 0;
-  padding-inline: 6px;
-  font-size: 1.28rem;
-  font-weight: 500;
-  line-height: 1.45;
-}
-
-.search-query-input.q-field--focused :deep(.q-field__control) {
-  box-shadow: 0 15px 34px rgba(123, 63, 242, 0.2);
 }
 
 .search-form__controls .q-btn {

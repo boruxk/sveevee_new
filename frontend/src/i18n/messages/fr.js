@@ -665,7 +665,7 @@ export default {
 	},
 	search: {
 		title: 'Recherche',
-		placeholder: 'Rechercher une entreprise, une communauté, une annonce ou un utilisateur',
+		placeholder: 'Rechercher une entreprise, une communauté, une annonce ou un événement',
 		advanced: 'Recherche avancee',
 		hideAdvanced: 'Masquer la recherche avancee',
 		chooseType: 'Que voulez-vous rechercher ?',
@@ -850,6 +850,7 @@ export default {
 	landing: {
 		eyebrow: 'Annonces locales, entreprises locales.',
 		title: 'sveevee',
+		heroRegisterCta: 'Inscrivez-vous pour vendre, publier et promouvoir',
 		firstBadgeTitle: 'Arrivez en premier. Soyez visible en premier.',
 		firstBadgeBody: 'Rejoignez Sveevee aujourd hui et faites partie des premiers dans votre ville et votre quartier.',
 		shareTitle: 'Les bonnes choses sont encore meilleures quand on les partage.',
