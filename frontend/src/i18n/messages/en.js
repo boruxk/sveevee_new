@@ -722,6 +722,8 @@ export default {
 		pages: {
 			title: 'Unclaimed business pages',
 			create: 'Create page',
+			list: 'Unclaimed pages',
+			empty: 'No unclaimed pages yet.',
 			infoOnly: 'This is an informational, unclaimed page. Modules, chat, ratings, logos, and images remain disabled until an administrator approves a claim.',
 			source: 'Public source',
 			sourceUrl: 'Source URL',

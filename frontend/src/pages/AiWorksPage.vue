@@ -16,10 +16,11 @@
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { absoluteUrl } from '@/composables/useSeo'
-	import { CATALOG_SCOPES, publicPagePath } from '@/constants/catalogTopics'
+	import { CATALOG_SCOPES, catalogLabel, catalogTopicByKey, publicPagePath } from '@/constants/catalogTopics'
 	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
+	import UnclaimedPageIcon from '@/components/icons/UnclaimedPageIcon.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
 
 	const DEFAULT_OPENING_HOURS = [
@@ -35,7 +36,7 @@
 	const { t, locale } = useI18n()
 	const $q = useQuasar()
 	const activeTab = ref('tasks')
-	const workspaceTab = ref('preview')
+	const workspaceTab = ref('settings')
 	const tasks = ref([])
 	const pages = ref([])
 	const selectedPageId = ref(null)
@@ -149,7 +150,7 @@
 	function selectPage(page) {
 		selectedPageId.value = page?.id || null
 		replacePageForm(page)
-		workspaceTab.value = 'preview'
+		workspaceTab.value = 'settings'
 	}
 
 	function createPageDraft() {
@@ -191,17 +192,17 @@
 		}
 	}
 
-	async function loadPages({ preserveSelection = true } = {}) {
+	async function loadPages({ preserveSelection = true, selectFirst = false } = {}) {
 		pagesLoading.value = true
 		try {
 			const currentId = preserveSelection ? selectedPageId.value : null
 			const { data } = await fetchAiWorkPages()
 			pages.value = data.data?.pages || []
-			const next = pages.value.find((page) => page.id === currentId) || pages.value[0] || null
+			const next = pages.value.find((page) => page.id === currentId) || (selectFirst ? pages.value[0] : null)
 
 			if (next) {
 				selectPage(next)
-			} else if (currentId) {
+			} else {
 				createPageDraft()
 			}
 		} finally {
@@ -270,6 +271,7 @@
 			return
 		}
 
+		const returnToPagesTable = deleteTarget.value.type === 'page' && workspaceTab.value === 'unclaimed-pages'
 		deleting.value = true
 		try {
 			if (deleteTarget.value.type === 'task') {
@@ -279,6 +281,9 @@
 				await deleteAiWorkPage(deleteTarget.value.item.id)
 				selectedPageId.value = null
 				await loadPages({ preserveSelection: false })
+				if (returnToPagesTable) {
+					workspaceTab.value = 'unclaimed-pages'
+				}
 			}
 			deleteDialogOpen.value = false
 			deleteTarget.value = null
@@ -292,6 +297,24 @@
 
 	function dayLabel(weekday) {
 		return t(`pages.weekdays.${weekday}`)
+	}
+
+	function categoryLabel(categoryKey) {
+		const topic = catalogTopicByKey(catalogGroups.value, categoryKey)
+
+		return topic ? catalogLabel(topic.labels, locale.value) : categoryKey || '—'
+	}
+
+	function sourceLabel(value) {
+		try {
+			return new URL(value).hostname.replace(/^www\./, '')
+		} catch {
+			return value || '—'
+		}
+	}
+
+	function checkedDate(value) {
+		return String(value || '').slice(0, 10) || '—'
 	}
 
 	function filterCityOptions(value, update) {
@@ -372,32 +395,6 @@
 
 				<q-tab-panel name="pages">
 					<div class="page-workspace">
-						<aside class="soz-section-card page-list-panel">
-							<header class="page-list-head">
-								<h2>{{ t('aiWorks.pages.title') }}</h2>
-								<q-btn round
-									unelevated
-									color="primary"
-									icon="add"
-									:aria-label="t('aiWorks.pages.create')"
-									@click="createPageDraft"
-								/>
-							</header>
-							<q-inner-loading :showing="pagesLoading" color="primary" />
-							<div class="page-list">
-								<button v-for="item in pages"
-									:key="item.id"
-									type="button"
-									class="page-list-row"
-									:class="{ 'page-list-row--active': selectedPageId === item.id }"
-									@click="selectPage(item)"
-								>
-									<strong>{{ item.name }}</strong>
-									<span>{{ item.address_details?.city || t('auth.city') }}</span>
-								</button>
-							</div>
-						</aside>
-
 						<section class="page-editor">
 							<div class="page-editor-toolbar">
 								<q-tabs v-model="workspaceTab"
@@ -407,8 +404,14 @@
 									active-color="primary"
 									indicator-color="transparent"
 								>
-									<q-tab name="preview" icon="visibility" :label="t('pages.tabs.preview')" />
 									<q-tab name="settings" icon="settings" :label="t('pages.tabs.settings')" />
+									<q-tab name="preview" icon="visibility" :label="t('pages.tabs.preview')" />
+									<q-tab name="unclaimed-pages">
+										<span class="workspace-tab-content">
+											<UnclaimedPageIcon :size="20" />
+											<span>{{ t('aiWorks.pages.list') }}</span>
+										</span>
+									</q-tab>
 								</q-tabs>
 								<div class="page-editor-actions">
 									<q-btn v-if="selectedPage"
@@ -431,22 +434,10 @@
 							</div>
 
 							<q-tab-panels v-model="workspaceTab" animated class="workspace-panels">
-								<q-tab-panel name="preview">
-									<PagePreview
-										:page="previewPage"
-										:palette="selectedPalette"
-										:can-rate="false"
-										:can-chat="false"
-										:show-ratings="false"
-										title-tag="h2"
-										:share-url="previewShareUrl"
-									/>
-								</q-tab-panel>
-
 								<q-tab-panel name="settings">
 									<q-form ref="pageFormRef" greedy class="page-form" @submit.prevent="savePage">
 										<section class="ai-info-banner">
-											<q-icon name="verified_user" size="26px" />
+											<UnclaimedPageIcon />
 											<span>{{ t('aiWorks.pages.infoOnly') }}</span>
 										</section>
 
@@ -568,6 +559,79 @@
 										</div>
 									</q-form>
 								</q-tab-panel>
+
+								<q-tab-panel name="preview">
+									<PagePreview
+										:page="previewPage"
+										:palette="selectedPalette"
+										:can-rate="false"
+										:can-chat="false"
+										:show-ratings="false"
+										title-tag="h2"
+										:share-url="previewShareUrl"
+									/>
+								</q-tab-panel>
+
+								<q-tab-panel name="unclaimed-pages">
+									<section class="page-table-card">
+										<q-inner-loading :showing="pagesLoading" color="primary" />
+										<div v-if="pages.length" class="page-table-scroll">
+											<table class="page-table">
+												<thead>
+													<tr>
+														<th>{{ t('pages.name') }}</th>
+														<th>{{ t('auth.city') }}</th>
+														<th>{{ t('catalog.category') }}</th>
+														<th>{{ t('aiWorks.pages.source') }}</th>
+														<th>{{ t('aiWorks.pages.checkedAt') }}</th>
+														<th class="page-table__actions-heading">{{ t('admin.actions') }}</th>
+													</tr>
+												</thead>
+												<tbody>
+													<tr v-for="item in pages" :key="item.id">
+														<td><strong>{{ item.name }}</strong></td>
+														<td>{{ item.address_details?.city || '—' }}</td>
+														<td>{{ categoryLabel(item.category_key) }}</td>
+														<td>
+															<a
+																v-if="item.source_url"
+																class="page-table__source"
+																:href="item.source_url"
+																target="_blank"
+																rel="noopener noreferrer"
+															>
+																{{ sourceLabel(item.source_url) }}
+															</a>
+															<span v-else>—</span>
+														</td>
+														<td>{{ checkedDate(item.source_checked_at) }}</td>
+														<td>
+															<div class="page-table__actions">
+																<q-btn
+																	flat
+																	round
+																	color="primary"
+																	icon="edit"
+																	:aria-label="t('actions.update')"
+																	@click="selectPage(item)"
+																/>
+																<q-btn
+																	flat
+																	round
+																	color="negative"
+																	icon="delete"
+																	:aria-label="t('actions.deletePage')"
+																	@click="requestDelete('page', item)"
+																/>
+															</div>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+										</div>
+										<div v-else-if="!pagesLoading" class="ai-empty">{{ t('aiWorks.pages.empty') }}</div>
+									</section>
+								</q-tab-panel>
 							</q-tab-panels>
 						</section>
 					</div>
@@ -641,7 +705,6 @@
 
 .ai-works-head h1,
 .ai-panel-head h2,
-.page-list-head h2,
 .ai-dialog h2 {
   margin: 0;
   color: var(--soz-ink);
@@ -680,6 +743,12 @@
   color: #fff !important;
 }
 
+.workspace-tab-content {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .ai-main-panels,
 .workspace-panels {
   margin-top: 16px;
@@ -699,7 +768,6 @@
 }
 
 .ai-panel-head,
-.page-list-head,
 .page-editor-toolbar {
   display: flex;
   gap: 16px;
@@ -748,46 +816,7 @@
 }
 
 .page-workspace {
-  display: grid;
-  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
-}
-
-.page-list-panel {
-  position: sticky;
-  top: 90px;
-  min-height: 320px;
-  padding: 18px;
-}
-
-.page-list {
-  display: grid;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.page-list-row {
-  display: grid;
-  gap: 4px;
   width: 100%;
-  padding: 13px 14px;
-  border: 1px solid transparent;
-  border-radius: 13px;
-  background: rgba(17, 34, 45, 0.04);
-  color: var(--soz-ink);
-  text-align: start;
-  cursor: pointer;
-}
-
-.page-list-row span {
-  color: var(--soz-muted);
-  font-size: 0.82rem;
-}
-
-.page-list-row--active {
-  border-color: rgba(123, 63, 242, 0.28);
-  background: rgba(123, 63, 242, 0.1);
 }
 
 .page-editor {
@@ -800,6 +829,69 @@
 
 .page-editor-actions {
   display: flex;
+}
+
+.page-table-card {
+  position: relative;
+  min-height: 220px;
+  padding: 18px;
+  border: 1px solid rgba(17, 34, 45, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 18px 42px rgba(40, 22, 93, 0.08);
+}
+
+.page-table-scroll {
+  overflow-x: auto;
+}
+
+.page-table {
+  width: 100%;
+  min-width: 800px;
+  border-collapse: collapse;
+  color: var(--soz-ink);
+}
+
+.page-table th,
+.page-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(17, 34, 45, 0.08);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.page-table th {
+  color: var(--soz-muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.page-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.page-table tbody tr:hover {
+  background: rgba(123, 63, 242, 0.045);
+}
+
+.page-table__source {
+  color: var(--soz-primary-deep);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.page-table__source:hover {
+  text-decoration: underline;
+}
+
+.page-table__actions-heading {
+  width: 108px;
+}
+
+.page-table__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .page-form {
@@ -909,14 +1001,6 @@
 }
 
 @media (max-width: 900px) {
-  .page-workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .page-list-panel {
-    position: static;
-  }
-
   .form-grid--three,
   .form-grid--four,
   .form-grid--address {

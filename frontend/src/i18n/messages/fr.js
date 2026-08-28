@@ -722,6 +722,8 @@ export default {
 		pages: {
 			title: 'Pages entreprise non revendiquées',
 			create: 'Créer une page',
+			list: 'Pages non revendiquées',
+			empty: 'Aucune page non revendiquée pour le moment.',
 			infoOnly: 'Il s’agit d’une page informative non revendiquée. Modules, chat, avis, logo et images restent désactivés jusqu’à l’approbation d’une demande par un administrateur.',
 			source: 'Source publique',
 			sourceUrl: 'URL de la source',

@@ -20,6 +20,7 @@ class AiWorksApiTest extends TestCase
         $worker = $this->aiWorker();
 
         $this->assertMatchesRegularExpression('/^\$2y\$\d{2}\$/', $worker->password);
+        $this->assertSame('en', $worker->locale);
 
         Sanctum::actingAs(User::factory()->create());
         $this->getJson('/api/v1/ai-works/tasks')->assertForbidden();

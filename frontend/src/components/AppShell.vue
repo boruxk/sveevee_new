@@ -6,6 +6,7 @@
 	import { useChatsStore } from '@/stores/chats'
 	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
+	import AiWorksIcon from '@/components/icons/AiWorksIcon.vue'
 	import { getLegalDocument } from '@/constants/legalDocuments'
 	import { marketPath, normalizeCatalogLocale } from '@/constants/catalogTopics'
 
@@ -254,7 +255,7 @@
 									<q-item-section>{{ t('nav.admin') }}</q-item-section>
 								</q-item>
 								<q-item v-if="isAiWorker" clickable v-close-popup @click="openAiWorks">
-									<q-item-section avatar><q-icon name="auto_awesome" /></q-item-section>
+									<q-item-section avatar><AiWorksIcon /></q-item-section>
 									<q-item-section>{{ t('nav.aiWorks') }}</q-item-section>
 								</q-item>
 								<q-item v-if="!isAiWorker" clickable v-close-popup @click="openProfile">
@@ -335,7 +336,7 @@
 									<q-item-section>{{ t('nav.admin') }}</q-item-section>
 								</q-item>
 								<q-item v-if="authStore.isAuthenticated && isAiWorker" clickable v-close-popup @click="openAiWorks">
-									<q-item-section avatar><q-icon name="auto_awesome" /></q-item-section>
+									<q-item-section avatar><AiWorksIcon /></q-item-section>
 									<q-item-section>{{ t('nav.aiWorks') }}</q-item-section>
 								</q-item>
 								<q-item v-if="authStore.isAuthenticated && !isAiWorker" clickable v-close-popup @click="openProfile">

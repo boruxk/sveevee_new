@@ -128,7 +128,7 @@ export const useAuthStore = defineStore('auth', {
 			await setLocale(getGuestLocale())
 		},
 		async syncLocaleFromUser() {
-			const preferredLocale = this.user?.locale
+			const preferredLocale = this.isAiWorker ? 'en' : this.user?.locale
 			const locale = supportedLocales.includes(preferredLocale) ? preferredLocale : 'he'
 
 			await setLocale(locale)
