@@ -72,6 +72,16 @@ class User extends Authenticatable
         return $this->hasMany(PageRating::class)->latest();
     }
 
+    public function aiWorkTasks(): HasMany
+    {
+        return $this->hasMany(AiWorkTask::class, 'created_by_user_id')->latest();
+    }
+
+    public function pageClaimRequests(): HasMany
+    {
+        return $this->hasMany(PageClaimRequest::class)->latest();
+    }
+
     public function conversationsAsUserOne(): HasMany
     {
         return $this->hasMany(Conversation::class, 'user_one_id');

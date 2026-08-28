@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
+use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Models\PageProduct;
 use App\Rules\CleanContent;
@@ -22,8 +22,7 @@ class PageProductController extends Controller
     public function __construct(
         private readonly PayloadService $payloads,
         private readonly SystemSettingsService $settings,
-    ) {
-    }
+    ) {}
 
     public function show(PageProduct $product)
     {
@@ -51,10 +50,10 @@ class PageProductController extends Controller
         $this->normalizeCategoryKey($request);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:1000', new CleanContent()],
-            'brand' => ['nullable', 'string', 'max:120', new CleanContent()],
-            'model' => ['nullable', 'string', 'max:120', new CleanContent()],
-            'description' => ['required', 'string', 'max:5000', new CleanContent()],
+            'name' => ['required', 'string', 'max:1000', new CleanContent],
+            'brand' => ['nullable', 'string', 'max:120', new CleanContent],
+            'model' => ['nullable', 'string', 'max:120', new CleanContent],
+            'description' => ['required', 'string', 'max:5000', new CleanContent],
             'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope(CatalogTopics::SCOPE_PRODUCTS))],
             'image' => ['required', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
@@ -104,10 +103,10 @@ class PageProductController extends Controller
         $this->normalizeCategoryKey($request);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:1000', new CleanContent()],
-            'brand' => ['nullable', 'string', 'max:120', new CleanContent()],
-            'model' => ['nullable', 'string', 'max:120', new CleanContent()],
-            'description' => ['required', 'string', 'max:5000', new CleanContent()],
+            'name' => ['required', 'string', 'max:1000', new CleanContent],
+            'brand' => ['nullable', 'string', 'max:120', new CleanContent],
+            'model' => ['nullable', 'string', 'max:120', new CleanContent],
+            'description' => ['required', 'string', 'max:5000', new CleanContent],
             'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope(CatalogTopics::SCOPE_PRODUCTS))],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'image_remove' => ['nullable', 'boolean'],
@@ -185,7 +184,7 @@ class PageProductController extends Controller
 
     private function guardBusinessPage(Request $request, Page $page)
     {
-        if ($page->user_id !== $request->user()->id) {
+        if ($page->is_unclaimed || $page->user_id !== $request->user()->id) {
             return ApiResponseService::error('This action is unauthorized.', status: 403);
         }
 

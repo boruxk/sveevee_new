@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
+use App\Http\Controllers\Controller;
 use App\Models\Ad;
 use App\Models\Page;
 use App\Models\User;
@@ -22,8 +22,7 @@ class AdController extends Controller
     public function __construct(
         private readonly PayloadService $payloads,
         private readonly SystemSettingsService $settings,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -67,9 +66,13 @@ class AdController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->user()->hasRole('ai_worker')) {
+            return ApiResponseService::error('AI works accounts cannot publish ads.', status: 403);
+        }
+
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:1000', new CleanContent()],
-            'text' => ['required', 'string', 'max:5000', new CleanContent()],
+            'title' => ['required', 'string', 'max:1000', new CleanContent],
+            'text' => ['required', 'string', 'max:5000', new CleanContent],
             'category' => $this->categoryRules(),
             'page_id' => ['nullable', 'integer', 'exists:pages,id'],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
@@ -79,6 +82,7 @@ class AdController extends Controller
         if (! empty($data['page_id'])) {
             $page = Page::query()
                 ->where('user_id', $request->user()->id)
+                ->where('is_unclaimed', false)
                 ->findOrFail($data['page_id']);
         }
 
@@ -115,8 +119,8 @@ class AdController extends Controller
         }
 
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:1000', new CleanContent()],
-            'text' => ['required', 'string', 'max:5000', new CleanContent()],
+            'title' => ['required', 'string', 'max:1000', new CleanContent],
+            'text' => ['required', 'string', 'max:5000', new CleanContent],
             'category' => $this->categoryRules(),
             'status' => ['nullable', Rule::in(['active', 'paused'])],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],

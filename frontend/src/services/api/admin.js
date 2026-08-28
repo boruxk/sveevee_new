@@ -20,6 +20,14 @@ export function sendAdminSupportMessage(source, id, body) {
 	return apiClient.post(`/admin/support-chats/${source}/${id}/messages`, { body })
 }
 
+export function approvePageClaim(id) {
+	return apiClient.post(`/admin/page-claims/${id}/approve`)
+}
+
+export function cancelPageClaim(id) {
+	return apiClient.post(`/admin/page-claims/${id}/cancel`)
+}
+
 export function fetchAdminUser(id) {
 	return apiClient.get(`/admin/users/${id}`)
 }

@@ -23,9 +23,15 @@ export const useAuthStore = defineStore('auth', {
 	}),
 	getters: {
 		isAuthenticated: (state) => Boolean(state.token && state.user),
-		needsProfileCompletion: (state) => Boolean(state.token && state.user && state.user.profile_complete === false),
+		needsProfileCompletion: (state) => Boolean(
+			state.token &&
+			state.user &&
+			state.user.profile_complete === false &&
+			!normalizedRoles(state.user).some((role) => ['admin', 'ai_worker'].includes(role))
+		),
 		roles: (state) => normalizedRoles(state.user),
 		isAdmin: (state) => normalizedRoles(state.user).includes('admin'),
+		isAiWorker: (state) => normalizedRoles(state.user).includes('ai_worker'),
 		unreadMessagesCount: (state) => state.user?.unread_messages_count || 0
 	},
 	actions: {

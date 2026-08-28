@@ -45,6 +45,11 @@ class Conversation extends Model
         return $this->hasMany(ChatMessage::class)->oldest();
     }
 
+    public function claimRequests(): HasMany
+    {
+        return $this->hasMany(PageClaimRequest::class)->latest();
+    }
+
     public function scopeForParticipant(Builder $query, User $user): Builder
     {
         return $query->where(function (Builder $inner) use ($user): void {

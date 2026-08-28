@@ -1,11 +1,12 @@
 <script setup>
 	import { computed, reactive, ref } from 'vue'
-	import { useRouter } from 'vue-router'
+	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
 	import { useAppStore } from '@/stores/app'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import { useCredentialRules } from '@/composables/useCredentialRules'
 	import GoogleAuthButton from '@/components/GoogleAuthButton.vue'
 	import PasswordInput from '@/components/PasswordInput.vue'
 	import { getLegalDocument } from '@/constants/legalDocuments'
@@ -13,6 +14,7 @@
 	const { t, locale } = useI18n()
 	const $q = useQuasar()
 	const router = useRouter()
+	const route = useRoute()
 	const authStore = useAuthStore()
 	const appStore = useAppStore()
 	const formRef = ref(null)
@@ -25,6 +27,8 @@
 		consented: false
 	})
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
+	const { emailRule, passwordRule, matchingPasswordRule } = useCredentialRules(t)
+	const passwordConfirmationRule = matchingPasswordRule(() => form.password)
 	const termsTitle = computed(() => getLegalDocument('terms', locale.value).title)
 	const privacyTitle = computed(() => getLegalDocument('privacy', locale.value).title)
 	const consentRule = (value) => value === true || t('auth.consentRequired')
@@ -36,7 +40,13 @@
 
 		try {
 			await authStore.register({ ...form, locale: appStore.locale })
-			router.replace({ name: 'profile', query: { complete: '1' } })
+			router.replace({
+				name: 'profile',
+				query: {
+					complete: '1',
+					...(route.query.redirect ? { redirect: route.query.redirect } : {})
+				}
+			})
 		} catch {
 			$q.notify({ type: 'negative', message: t('auth.registerFailed') })
 		}
@@ -60,7 +70,7 @@
 								type="email"
 								autocomplete="email"
 								:label="requiredLabel('auth.email')"
-								:rules="[requiredRule]"
+								:rules="[requiredRule, emailRule]"
 							/>
 							<q-input class="col-12 col-md-4"
 								v-model="form.given_name"
@@ -80,15 +90,16 @@
 								v-model="form.password"
 								autocomplete="new-password"
 								:label="requiredLabel('auth.password')"
-								:rules="[requiredRule]"
+								:rules="[requiredRule, passwordRule]"
 							/>
 							<PasswordInput class="col-12 col-md-6"
 								v-model="form.password_confirmation"
 								autocomplete="new-password"
 								:label="requiredLabel('auth.passwordConfirmation')"
-								:rules="[requiredRule]"
+								:rules="[requiredRule, passwordConfirmationRule]"
 							/>
 						</div>
+						<p class="password-requirements">{{ t('auth.passwordRequirements') }}</p>
 						<q-field
 							v-model="form.consented"
 							borderless
@@ -215,6 +226,13 @@
 
 .register-form__row > :deep(.col-md-6) {
   grid-column: span 6;
+}
+
+.password-requirements {
+  margin: -6px 4px 0;
+  color: rgba(17, 34, 45, 0.62);
+  font-size: 0.86rem;
+  line-height: 1.45;
 }
 
 .form-submit {

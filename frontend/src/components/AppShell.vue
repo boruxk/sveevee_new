@@ -26,11 +26,15 @@
 
 	const toneClass = computed(() => `shell--${props.tone}`)
 	const currentYear = new Date().getFullYear()
-	const homeRouteName = computed(() => (authStore.isAuthenticated ? 'home' : 'landing'))
+	const homeRouteName = computed(() => (
+		authStore.isAiWorker ? 'ai-works' : (authStore.isAuthenticated ? 'home' : 'landing')
+	))
 	const unreadCount = computed(() => chatsStore.unreadCount || authStore.unreadMessagesCount)
 	const hasBusinessPage = computed(() => Boolean(authStore.user?.business_page))
 	const hasCommunityPage = computed(() => Boolean(authStore.user?.community_page))
 	const isAdmin = computed(() => authStore.isAdmin || authStore.canAccess(['admin']))
+	const isAiWorker = computed(() => authStore.isAiWorker || authStore.canAccess(['ai_worker']))
+	const isPrivilegedAccount = computed(() => isAdmin.value || isAiWorker.value)
 	const profileAvatar = computed(() => authStore.user?.profile || null)
 	const profileAvatarUrl = computed(() => authStore.user?.profile?.photo_url || null)
 	const profileAvatarAlt = computed(() => authStore.user?.display_name || t('nav.profile'))
@@ -42,9 +46,9 @@
 	const navLinks = computed(() => [
 		{ label: t('nav.home'), name: homeRouteName.value, icon: 'home', visible: true },
 		{ label: t('nav.search'), name: 'search', icon: 'search', visible: true },
-		{ label: t('nav.me'), name: 'me', icon: 'forum', visible: authStore.isAuthenticated, badge: unreadCount.value },
-		{ label: t('nav.business'), name: 'business', icon: 'storefront', visible: authStore.isAuthenticated && hasBusinessPage.value },
-		{ label: t('nav.community'), name: 'community', icon: 'diversity_3', visible: authStore.isAuthenticated && hasCommunityPage.value }
+		{ label: t('nav.me'), name: 'me', icon: 'forum', visible: authStore.isAuthenticated && !isPrivilegedAccount.value, badge: unreadCount.value },
+		{ label: t('nav.business'), name: 'business', icon: 'storefront', visible: authStore.isAuthenticated && !isPrivilegedAccount.value && hasBusinessPage.value },
+		{ label: t('nav.community'), name: 'community', icon: 'diversity_3', visible: authStore.isAuthenticated && !isPrivilegedAccount.value && hasCommunityPage.value }
 	])
 	const visibleNavLinks = computed(() => navLinks.value.filter((link) => link.visible))
 	const footerColumns = computed(() => {
@@ -114,6 +118,10 @@
 		router.push({ name: 'admin-area' })
 	}
 
+	function openAiWorks() {
+		router.push({ name: 'ai-works' })
+	}
+
 	async function refreshShellUser() {
 		if (authStore.token) {
 			try {
@@ -125,7 +133,7 @@
 	}
 
 	async function loadChatBadge() {
-		if (authStore.isAuthenticated) {
+		if (authStore.isAuthenticated && !isPrivilegedAccount.value) {
 			await chatsStore.loadConversations()
 		}
 	}
@@ -245,7 +253,11 @@
 									<q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
 									<q-item-section>{{ t('nav.admin') }}</q-item-section>
 								</q-item>
-								<q-item clickable v-close-popup @click="openProfile">
+								<q-item v-if="isAiWorker" clickable v-close-popup @click="openAiWorks">
+									<q-item-section avatar><q-icon name="auto_awesome" /></q-item-section>
+									<q-item-section>{{ t('nav.aiWorks') }}</q-item-section>
+								</q-item>
+								<q-item v-if="!isAiWorker" clickable v-close-popup @click="openProfile">
 									<q-item-section avatar><q-icon name="badge" /></q-item-section>
 									<q-item-section>{{ t('nav.profile') }}</q-item-section>
 								</q-item>
@@ -322,7 +334,11 @@
 									<q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
 									<q-item-section>{{ t('nav.admin') }}</q-item-section>
 								</q-item>
-								<q-item v-if="authStore.isAuthenticated" clickable v-close-popup @click="openProfile">
+								<q-item v-if="authStore.isAuthenticated && isAiWorker" clickable v-close-popup @click="openAiWorks">
+									<q-item-section avatar><q-icon name="auto_awesome" /></q-item-section>
+									<q-item-section>{{ t('nav.aiWorks') }}</q-item-section>
+								</q-item>
+								<q-item v-if="authStore.isAuthenticated && !isAiWorker" clickable v-close-popup @click="openProfile">
 									<q-item-section avatar><q-icon name="badge" /></q-item-section>
 									<q-item-section>{{ t('nav.profile') }}</q-item-section>
 								</q-item>
@@ -363,7 +379,7 @@
 				</nav>
 			</div>
 		</footer>
-		<SupportChatWidget v-if="!isAdmin" />
+		<SupportChatWidget v-if="!isPrivilegedAccount" />
 	</q-layout>
 </template>
 

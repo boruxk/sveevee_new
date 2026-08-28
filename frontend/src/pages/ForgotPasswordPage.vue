@@ -5,6 +5,7 @@
 	import { forgotPassword } from '@/services/api/auth'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import { useCredentialRules } from '@/composables/useCredentialRules'
 
 	const { t } = useI18n()
 	const $q = useQuasar()
@@ -15,6 +16,7 @@
 		email: ''
 	})
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
+	const { emailRule } = useCredentialRules(t)
 
 	async function submit() {
 		if (!(await validateRequiredForm(formRef))) {
@@ -52,7 +54,7 @@
 							type="email"
 							autocomplete="email"
 							:label="requiredLabel('auth.email')"
-							:rules="[requiredRule]"
+							:rules="[requiredRule, emailRule]"
 						/>
 						<q-btn
 							color="primary"

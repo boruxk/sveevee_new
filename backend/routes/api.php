@@ -2,21 +2,25 @@
 
 use App\Http\Controllers\Api\AdController;
 use App\Http\Controllers\Api\AdminBlockedTermController;
+use App\Http\Controllers\Api\AdminPageClaimController;
 use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\AdminSupportController;
 use App\Http\Controllers\Api\AdminUserController;
+use App\Http\Controllers\Api\AiWorkPageController;
+use App\Http\Controllers\Api\AiWorkTaskController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ChatController;
-use App\Http\Controllers\Api\HomeFeedController;
 use App\Http\Controllers\Api\GuestSupportController;
+use App\Http\Controllers\Api\HomeFeedController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MarketController;
-use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\PageChatController;
+use App\Http\Controllers\Api\PageClaimController;
+use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\PageEventController;
-use App\Http\Controllers\Api\PageProductController;
 use App\Http\Controllers\Api\PagePriceController;
+use App\Http\Controllers\Api\PageProductController;
 use App\Http\Controllers\Api\PageRatingController;
 use App\Http\Controllers\Api\PageServiceController;
 use App\Http\Controllers\Api\PlatformStatusController;
@@ -59,15 +63,15 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
     });
 
     Route::middleware('auth:sanctum')->get('/me', [AuthController::class, 'me'])->withoutMiddleware('platform.available');
+    Route::middleware('auth:sanctum')->put('/profile/locale', [ProfileController::class, 'updateLocale'])->withoutMiddleware('platform.available');
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'role:user,admin'])->group(function () {
         Route::post('/guest-support/claim', [GuestSupportController::class, 'claim'])->middleware('throttle:10,1');
 
         Route::get('/home-feed', [HomeFeedController::class, 'index']);
 
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::put('/profile', [ProfileController::class, 'update']);
-        Route::put('/profile/locale', [ProfileController::class, 'updateLocale']);
         Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
         Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
         Route::delete('/profile/photo', [ProfileController::class, 'destroyPhoto']);
@@ -76,6 +80,7 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::post('/pages/{type}', [PageController::class, 'upsert']);
         Route::patch('/pages/{type}/features', [PageController::class, 'updateFeatures']);
         Route::delete('/pages/{page}', [PageController::class, 'destroy']);
+        Route::post('/pages/{page}/claim-requests', [PageClaimController::class, 'store']);
         Route::post('/pages/{page}/products', [PageProductController::class, 'store']);
         Route::put('/products/{product}', [PageProductController::class, 'update']);
         Route::delete('/products/{product}', [PageProductController::class, 'destroy']);
@@ -113,6 +118,20 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::patch('/chats/{conversation}/read', [ChatController::class, 'markAsRead']);
     });
 
+    Route::middleware(['auth:sanctum', 'role:ai_worker'])
+        ->withoutMiddleware('platform.available')
+        ->prefix('ai-works')
+        ->group(function () {
+            Route::get('/tasks', [AiWorkTaskController::class, 'index']);
+            Route::post('/tasks', [AiWorkTaskController::class, 'store']);
+            Route::put('/tasks/{task}', [AiWorkTaskController::class, 'update']);
+            Route::delete('/tasks/{task}', [AiWorkTaskController::class, 'destroy']);
+            Route::get('/pages', [AiWorkPageController::class, 'index']);
+            Route::post('/pages', [AiWorkPageController::class, 'store']);
+            Route::put('/pages/{page}', [AiWorkPageController::class, 'update']);
+            Route::delete('/pages/{page}', [AiWorkPageController::class, 'destroy']);
+        });
+
     Route::middleware(['auth:sanctum', 'admin'])->withoutMiddleware('platform.available')->prefix('admin')->group(function () {
         Route::get('/support-chats', [AdminSupportController::class, 'index']);
         Route::get('/support-chats/{source}/{id}', [AdminSupportController::class, 'show'])
@@ -120,6 +139,8 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::post('/support-chats/{source}/{id}/messages', [AdminSupportController::class, 'send'])
             ->whereIn('source', ['account', 'guest'])
             ->middleware('throttle:chat-send');
+        Route::post('/page-claims/{claimRequest}/approve', [AdminPageClaimController::class, 'approve']);
+        Route::post('/page-claims/{claimRequest}/cancel', [AdminPageClaimController::class, 'cancel']);
         Route::get('/settings', [AdminSettingsController::class, 'index']);
         Route::patch('/settings/{section}', [AdminSettingsController::class, 'update']);
         Route::get('/blocked-terms', [AdminBlockedTermController::class, 'index']);

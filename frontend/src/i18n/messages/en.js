@@ -6,6 +6,7 @@ export default {
 		business: 'Business',
 		community: 'Community',
 		admin: 'Admin',
+		aiWorks: 'AI Works',
 		login: 'Login',
 		register: 'Register',
 		profile: 'Profile',
@@ -128,6 +129,9 @@ export default {
 		tiktokCopied: 'Link copied. Paste it in TikTok.'
 	},
 	auth: {
+		emailInvalid: 'Enter an email address containing @.',
+		passwordRequirements: 'Use at least 8 characters, including letters and numbers.',
+		passwordMismatch: 'The passwords do not match.',
 		identifier: 'Email or login',
 		email: 'Email',
 		password: 'Password',
@@ -590,6 +594,18 @@ export default {
 		supportInbox: 'Support inbox',
 		guest: 'Guest',
 		noSupportChats: 'No support chats yet.',
+		claimRequest: 'Page claim request',
+		openClaimPage: 'Open page',
+		claimApprove: 'Approve',
+		claimCancel: 'Reject',
+		claimApproved: 'The page was assigned to the requester.',
+		claimCancelled: 'The claim request was rejected.',
+		claimReviewFailed: 'The claim request could not be reviewed.',
+		claimStatuses: {
+			pending: 'Pending',
+			approved: 'Approved',
+			cancelled: 'Rejected'
+		},
 		landingPages: 'Landing pages',
 		landingPagesIntro: 'Public advertising pages for the free business and community page offers.',
 		landingPageBusinessTitle: 'Businesses landing page',
@@ -682,6 +698,57 @@ export default {
 			moveDown: 'Move down',
 			popularEmpty: 'No popular categories selected.'
 		}
+	},
+	aiWorks: {
+		title: 'AI Works',
+		intro: 'Manage writing assignments and create basic public-source business pages.',
+		tabs: {
+			tasks: 'Tasks',
+			pages: 'Pages'
+		},
+		tasks: {
+			title: 'Assignments',
+			intro: 'Create and maintain the work list for ChatGPT Work.',
+			create: 'New task',
+			edit: 'Edit task',
+			saved: 'Task saved.',
+			saveFailed: 'Task could not be saved.',
+			empty: 'No tasks yet.',
+			fields: {
+				title: 'Title',
+				text: 'Instructions'
+			}
+		},
+		pages: {
+			title: 'Unclaimed business pages',
+			create: 'Create page',
+			infoOnly: 'This is an informational, unclaimed page. Modules, chat, ratings, logos, and images remain disabled until an administrator approves a claim.',
+			source: 'Public source',
+			sourceUrl: 'Source URL',
+			checkedAt: 'Checked on'
+		},
+		deleteTitle: 'Delete this item?',
+		deleteBody: 'This action cannot be undone.',
+		deleted: 'Item deleted.',
+		deleteFailed: 'The item could not be deleted.'
+	},
+	pageClaim: {
+		unverifiedBadge: 'Unclaimed and unverified',
+		title: 'Is this your business?',
+		description: 'This basic page was created by Sveevee from publicly available business information and is not yet managed or verified by the business.',
+		accuracyWarning: 'The information may be incomplete, incorrect, or out of date. Verify important details directly with the business.',
+		source: 'View public source',
+		checkedAt: 'Source last checked: {date}',
+		registerToClaim: 'Register to claim this page',
+		claimButton: 'Request ownership',
+		pending: 'Request pending',
+		dialogTitle: 'Request page ownership',
+		dialogText: 'Tell the administrator why you are authorized to represent this business. Ownership is transferred only after manual review.',
+		messageLabel: 'Verification details',
+		messageHint: 'For example, your role and a business contact method the administrator can verify.',
+		send: 'Send request',
+		sent: 'Your claim request was sent to support.',
+		sendFailed: 'The claim request could not be sent.'
 	},
 	maintenance: {
 		title: 'We will be right back',
@@ -779,6 +846,8 @@ export default {
 		communityDescription: 'Build and manage your public community page, events, ads, ratings, and contact details.',
 		adminTitle: 'Admin',
 		adminDescription: 'sveevee administration area.',
+		aiWorksTitle: 'AI Works',
+		aiWorksDescription: 'Internal Sveevee workspace for public-source business pages.',
 		userFallbackTitle: 'sveevee profile',
 		userFallbackDescription: 'View a public sveevee profile, pages, and local ads.',
 		userDescription: 'View {name} on sveevee, including public pages and local ads.',

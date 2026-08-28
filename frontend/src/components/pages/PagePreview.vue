@@ -40,6 +40,10 @@
 		canChat: {
 			type: Boolean,
 			default: false
+		},
+		showRatings: {
+			type: Boolean,
+			default: true
 		}
 	})
 
@@ -571,7 +575,7 @@
 						<div v-else class="text-body2 page-preview__empty">{{ t('pages.noOpeningHours') }}</div>
 					</div>
 
-					<div class="page-preview__detail-card">
+					<div v-if="showRatings" class="page-preview__detail-card">
 						<div class="page-preview__section-title">{{ t('ratings.title') }}</div>
 						<div class="page-preview__rating-row">
 							<div class="page-preview__rating-score">

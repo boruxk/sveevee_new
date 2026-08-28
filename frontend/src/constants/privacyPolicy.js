@@ -46,6 +46,15 @@ export const privacyPolicies = {
 				]
 			},
 			{
+				title: 'Business Information from Public Sources',
+				body: [
+					'Sveevee may create a basic, unclaimed business page from business information made publicly available for business purposes, where use of that information is reasonably believed to be lawful and consistent with the source terms. It may include a trading name, category, business address, business phone number, official website, opening hours, and services published by the business or another official source.',
+					'The purpose is local discovery and search by city and neighborhood. These pages are public and may appear in Sveevee results and external search engines. They are clearly marked as unclaimed and unverified, do not include a page chat, logo, or photos before approval, and may contain incomplete, incorrect, or outdated information.',
+					'Where reasonably practicable, Sveevee records the source URL and date checked. Where information concerns an individual or sole trader, we aim to use only information expressly published for business activity and avoid private information that is not necessary for local business discovery.',
+					'The person or business concerned may request access, correction, removal, or ownership of the page through the claim process or by writing to info@sveevee.co.il. We may request reasonable proof of identity or authority before disclosing, changing, removing, or transferring a page.'
+				]
+			},
+			{
 				title: 'Cookies, Browser Storage, Analytics, and External Services',
 				body: [
 					'Sveevee uses cookies or similar browser storage needed for authentication, language and interface preferences, security, and session continuity. Disabling essential storage may prevent parts of the service from working.',
@@ -149,6 +158,15 @@ export const privacyPolicies = {
 					'מנהלי Sveevee מורשים רשאים לגשת להודעות רק כאשר הדבר נחוץ באופן סביר לצורכי אבטחה, חקירת שימוש לרעה, ציות לדין או תמיכה טכנית. פניות תמיכה זמינות למנהלים מורשים. אין לשלוח מידע רגיש שאינו נחוץ לשיחה.',
 					'תשובות לתמיכה כאורח זמינות באותו דפדפן, וכתובת האימייל האופציונלית אינה משמשת להתראות או לשחזור השיחה. אם לאחר כניסה לחשבון תבחרו במפורש לחבר את שיחת האורח, הודעותיה יועתקו לשיחת התמיכה של החשבון.',
 					'הודעות צ׳אט עשויות להישמר כל עוד החשבונות או העמודים הרלוונטיים פעילים ולמשך זמן סביר לאחר מכן, כאשר הדבר נחוץ לאבטחה, טיפול במחלוקת, אכיפה או חובה חוקית.'
+				]
+			},
+			{
+				title: 'מידע על עסקים ממקורות ציבוריים',
+				body: [
+					'Sveevee עשויה ליצור עמוד עסק בסיסי שלא נדרש על סמך מידע עסקי שפורסם לציבור לצורך פעילות עסקית, כאשר קיים יסוד סביר להניח שהשימוש במידע מותר לפי דין ותואם את תנאי המקור. המידע עשוי לכלול שם מסחרי, קטגוריה, כתובת עסקית, מספר טלפון עסקי, אתר רשמי, שעות פעילות ושירותים שפורסמו בידי העסק או במקור רשמי אחר.',
+					'מטרת השימוש היא גילוי וחיפוש מקומי לפי עיר ושכונה. העמודים ציבוריים ועשויים להופיע בתוצאות Sveevee ובמנועי חיפוש חיצוניים. הם מסומנים בבירור כעמודים שלא נדרשו ולא אומתו, אינם כוללים צ׳אט של העמוד, לוגו או תמונות לפני אישור, והמידע בהם עשוי להיות חלקי, שגוי או לא מעודכן.',
+					'ככל שהדבר מעשי באופן סביר, Sveevee שומרת את כתובת המקור ואת מועד בדיקתו. כאשר המידע מתייחס לאדם פרטי או לעוסק יחיד, אנו שואפים להשתמש רק בפרטים שפורסמו במפורש לצורך פעילות עסקית ולהימנע ממידע פרטי שאינו נחוץ לגילוי העסק המקומי.',
+					'בעל העסק או האדם שהמידע מתייחס אליו רשאי לבקש לעיין במידע, לתקנו, להסירו או לקבל בעלות על העמוד באמצעות הליך בקשת הבעלות או בפנייה אל info@sveevee.co.il. אנו עשויים לבקש הוכחה סבירה לזהות או להרשאה לפני מסירה, שינוי, הסרה או העברת עמוד.'
 				]
 			},
 			{
@@ -258,6 +276,15 @@ export const privacyPolicies = {
 				]
 			},
 			{
+				title: 'Информация о компаниях из открытых источников',
+				body: [
+					'Sveevee может создать базовую невостребованную бизнес-страницу на основе деловой информации, публично опубликованной для ведения бизнеса, если есть разумные основания считать использование законным и соответствующим условиям источника. Это может включать торговое название, категорию, деловой адрес и телефон, официальный сайт, часы работы и услуги, опубликованные самим бизнесом или другим официальным источником.',
+					'Цель обработки — локальный поиск по городу и району. Такие страницы публичны и могут появляться в результатах Sveevee и внешних поисковых системах. Они явно помечены как невостребованные и непроверенные, не содержат чат страницы, логотип или фотографии до подтверждения и могут включать неполные, ошибочные или устаревшие сведения.',
+					'Когда это практически разумно, Sveevee сохраняет URL источника и дату проверки. Если сведения относятся к физическому лицу или индивидуальному предпринимателю, мы стремимся использовать только данные, явно опубликованные для деловой деятельности, и избегать частной информации, не нужной для локального поиска бизнеса.',
+					'Лицо или бизнес, к которому относятся сведения, может запросить доступ, исправление, удаление или владение страницей через процесс запроса владения либо по адресу info@sveevee.co.il. До раскрытия, изменения, удаления или передачи страницы мы можем запросить разумное подтверждение личности или полномочий.'
+				]
+			},
+			{
 				title: 'Cookies, хранилище браузера, аналитика и внешние сервисы',
 				body: [
 					'Sveevee использует cookies или похожее хранилище браузера, необходимое для входа, настроек языка и интерфейса, безопасности и продолжения сессии. Отключение обязательного хранилища может нарушить работу частей сервиса.',
@@ -361,6 +388,15 @@ export const privacyPolicies = {
 					'Les administrateurs Sveevee autorisés peuvent accéder aux messages uniquement lorsque cela est raisonnablement nécessaire pour la sécurité, l’enquête sur un abus, le respect de la loi ou le support technique. Les communications au support sont accessibles aux administrateurs autorisés. Ne transmettez pas d’informations sensibles inutiles à la conversation.',
 					'Les réponses du support invité sont disponibles dans le même navigateur et l’adresse e-mail facultative n’est pas utilisée pour les notifications ou la récupération de la session. Si vous choisissez explicitement d’associer le chat après connexion, ses messages sont copiés dans le chat support de votre compte.',
 					'Les messages de chat peuvent rester stockés tant que les comptes ou pages concernés sont actifs, puis pendant une durée raisonnable si cela est nécessaire à la sécurité, à la gestion d’un litige, à l’application des règles ou aux obligations légales.'
+				]
+			},
+			{
+				title: 'Informations professionnelles issues de sources publiques',
+				body: [
+					'Sveevee peut créer une page entreprise de base non revendiquée à partir d’informations professionnelles rendues publiques à des fins commerciales, lorsqu’il existe des raisons raisonnables de croire que leur utilisation est licite et conforme aux conditions de la source. Elles peuvent inclure le nom commercial, la catégorie, l’adresse et le téléphone professionnels, le site officiel, les horaires et les services publiés par l’entreprise ou une autre source officielle.',
+					'La finalité est la découverte et la recherche locales par ville et quartier. Ces pages sont publiques et peuvent apparaître dans les résultats Sveevee et les moteurs de recherche externes. Elles sont clairement indiquées comme non revendiquées et non vérifiées, ne proposent ni chat de page, ni logo, ni photo avant approbation, et peuvent contenir des informations incomplètes, erronées ou obsolètes.',
+					'Lorsque cela est raisonnablement possible, Sveevee conserve l’URL de la source et la date de vérification. Si les informations concernent une personne physique ou un entrepreneur individuel, nous cherchons à n’utiliser que les données expressément publiées pour l’activité professionnelle et à éviter les informations privées inutiles à la découverte locale.',
+					'La personne ou l’entreprise concernée peut demander l’accès, la correction, le retrait ou la propriété de la page via la procédure de revendication ou à info@sveevee.co.il. Nous pouvons demander une preuve raisonnable d’identité ou d’autorité avant toute communication, modification, suppression ou transmission de page.'
 				]
 			},
 			{

@@ -61,7 +61,7 @@ export default [
 	{
 		path: '/',
 		component: UserLayout,
-		meta: { requiresAuth: true },
+		meta: { requiresAuth: true, roles: ['user', 'admin'] },
 		children: [
 			{ path: 'home', name: 'home', component: () => import('@/pages/HomePage.vue'), meta: { seo: { titleKey: 'seo.landingTitle', descriptionKey: 'seo.landingDescription' } } },
 			{ path: 'me', name: 'me', component: () => import('@/pages/MyPlacePage.vue'), meta: { seo: { titleKey: 'seo.meTitle', descriptionKey: 'seo.meDescription' } } },
@@ -76,6 +76,14 @@ export default [
 		meta: { requiresAuth: true, roles: ['admin'] },
 		children: [
 			{ path: 'admin', name: 'admin-area', component: () => import('@/pages/AdminAreaPage.vue'), meta: { seo: { titleKey: 'seo.adminTitle', descriptionKey: 'seo.adminDescription', robots: 'noindex,nofollow' } } }
+		]
+	},
+	{
+		path: '/',
+		component: AdminLayout,
+		meta: { requiresAuth: true, roles: ['ai_worker'] },
+		children: [
+			{ path: 'ai-works', name: 'ai-works', component: () => import('@/pages/AiWorksPage.vue'), meta: { seo: { titleKey: 'seo.aiWorksTitle', descriptionKey: 'seo.aiWorksDescription', robots: 'noindex,nofollow' } } }
 		]
 	}
 ]

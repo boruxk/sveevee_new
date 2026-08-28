@@ -12,18 +12,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Str;
 use Throwable;
 
 class AuthController extends Controller
 {
-    public function __construct(private readonly PayloadService $payloads)
-    {
-    }
+    public function __construct(private readonly PayloadService $payloads) {}
 
     public function register(Request $request)
     {
@@ -31,7 +30,7 @@ class AuthController extends Controller
 
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:5', 'confirmed'],
+            'password' => ['required', 'string', PasswordRule::min(8)->letters()->numbers(), 'confirmed'],
             'given_name' => ['required', 'string', 'max:255'],
             'family_name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:40'],
@@ -200,7 +199,7 @@ class AuthController extends Controller
         $data = $request->validate([
             'email' => ['required', 'email'],
             'token' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:5', 'confirmed'],
+            'password' => ['required', 'string', PasswordRule::min(8)->letters()->numbers(), 'confirmed'],
         ]);
 
         $status = Password::reset($data, function (User $user, string $password): void {

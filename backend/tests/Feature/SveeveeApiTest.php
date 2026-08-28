@@ -149,8 +149,8 @@ class SveeveeApiTest extends TestCase
     {
         $this->postJson('/api/v1/auth/register', [
             'email' => 'no-consent@example.test',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'password1',
+            'password_confirmation' => 'password1',
             'given_name' => 'No',
             'family_name' => 'Consent',
             'locale' => 'en',
@@ -167,8 +167,8 @@ class SveeveeApiTest extends TestCase
     {
         $this->postJson('/api/v1/auth/register', [
             'email' => 'consented@example.test',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'password1',
+            'password_confirmation' => 'password1',
             'given_name' => 'Ada',
             'family_name' => 'Cohen',
             'locale' => 'en',
@@ -180,6 +180,40 @@ class SveeveeApiTest extends TestCase
             'email' => 'consented@example.test',
             'consented' => true,
         ]);
+    }
+
+    public function test_registration_requires_a_valid_email_and_a_password_with_letters_and_numbers(): void
+    {
+        $basePayload = [
+            'password' => 'password1',
+            'password_confirmation' => 'password1',
+            'given_name' => 'Valid',
+            'family_name' => 'Credentials',
+            'locale' => 'en',
+            'consented' => true,
+        ];
+
+        $this->postJson('/api/v1/auth/register', [
+            ...$basePayload,
+            'email' => 'missing-at-sign',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+
+        $this->postJson('/api/v1/auth/register', [
+            ...$basePayload,
+            'email' => 'letters-only@example.test',
+            'password' => 'onlyletters',
+            'password_confirmation' => 'onlyletters',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['password']);
+
+        $this->postJson('/api/v1/auth/register', [
+            ...$basePayload,
+            'email' => 'numbers-only@example.test',
+            'password' => '12345678',
+            'password_confirmation' => '12345678',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['password']);
     }
 
     public function test_google_callback_creates_user_and_marks_missing_city(): void
@@ -824,6 +858,29 @@ HTML);
                     ],
                 ],
             ]);
+            $unclaimedPage = Page::query()->create([
+                'user_id' => $user->id,
+                'created_by_user_id' => $user->id,
+                'type' => Page::TYPE_BUSINESS,
+                'is_unclaimed' => true,
+                'name' => 'Public Source Bakery',
+                'public_description' => '',
+                'category_key' => 'food_catering.bakery',
+                'source_url' => 'https://example.test/public-source-bakery',
+                'source_checked_at' => now()->toDateString(),
+                'setup' => [
+                    'address' => [
+                        'city' => 'Jerusalem',
+                        'neighborhood' => 'Ramot',
+                    ],
+                    'features' => [
+                        'store' => false,
+                        'services' => false,
+                        'events' => false,
+                        'price_list' => false,
+                    ],
+                ],
+            ]);
             $product = PageProduct::query()->create([
                 'page_id' => $page->id,
                 'name' => 'Samsung Galaxy',
@@ -838,6 +895,7 @@ HTML);
                 ->assertExitCode(0);
 
             $businessHtml = File::get($dist.'/he/business/'.$page->public_slug.'/index.html');
+            $unclaimedBusinessHtml = File::get($dist.'/he/business/'.$unclaimedPage->public_slug.'/index.html');
             $productHtml = File::get($dist.'/he/product/'.$product->public_slug.'/index.html');
             $businessCatalogHtml = File::get($dist.'/catalog/businesses/index.html');
             $productCatalogHtml = File::get($dist.'/catalog/products/index.html');
@@ -866,6 +924,16 @@ HTML);
             $this->assertStringContainsString('https://avi-electric.example', $businessHtml);
             $this->assertStringContainsString('sameAs', $businessHtml);
             $this->assertStringNotContainsString('Homepage fallback', $businessHtml);
+            $this->assertStringContainsString('<h1>Public Source Bakery</h1>', $unclaimedBusinessHtml);
+            $this->assertStringContainsString('Public Source Bakery בJerusalem - שירותים, ביקורות ויצירת קשר | Sveevee', $unclaimedBusinessHtml);
+            $this->assertStringContainsString('<meta name="robots" content="index,follow" />', $unclaimedBusinessHtml);
+            $this->assertStringContainsString('עמוד עסק לא מאומת', $unclaimedBusinessHtml);
+            $this->assertStringContainsString('שגוי או לא מעודכן', $unclaimedBusinessHtml);
+            $this->assertStringNotContainsString('aggregateRating', $unclaimedBusinessHtml);
+            $this->assertGreaterThan(
+                strpos($unclaimedBusinessHtml, 'יצירת קשר'),
+                strpos($unclaimedBusinessHtml, 'עמוד עסק לא מאומת')
+            );
             $this->assertStringContainsString('<h1>Samsung Galaxy</h1>', $productHtml);
             $this->assertStringContainsString('Product', $productHtml);
             $this->assertStringContainsString('Offer', $productHtml);
@@ -876,9 +944,13 @@ HTML);
             $this->assertStringContainsString('Local Storage', $privacyHtml);
             $this->assertStringContainsString('Google reCAPTCHA', $privacyHtml);
             $this->assertStringContainsString('קטינים', $privacyHtml);
+            $this->assertStringContainsString('מידע על עסקים ממקורות ציבוריים', $privacyHtml);
             $this->assertStringContainsString('<h1>תנאי שימוש</h1>', $termsHtml);
             $this->assertStringContainsString('אין לפרסם מידע אישי', $termsHtml);
+            $this->assertStringContainsString('עמודי עסק שלא נדרשו על ידי בעל העסק', $termsHtml);
             $this->assertStringContainsString('Miriam Konetski', $disclaimerHtml);
+            $this->assertStringContainsString('עמוד עסק לא מאומת', $disclaimerHtml);
+            $this->assertStringContainsString('המידע עלול להכיל טעויות', $disclaimerHtml);
             $this->assertStringContainsString('<meta name="robots" content="noindex,follow" />', $registerHtml);
             $this->assertStringNotContainsString('Homepage fallback', $privacyHtml);
             $this->assertStringNotContainsString('Homepage fallback', $termsHtml);
@@ -2008,11 +2080,11 @@ HTML);
         $this->postJson('/api/v1/auth/reset-password', [
             'email' => 'reset-token@example.test',
             'token' => $token,
-            'password' => 'new-password',
-            'password_confirmation' => 'new-password',
+            'password' => 'new-password1',
+            'password_confirmation' => 'new-password1',
         ])->assertOk();
 
-        $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
+        $this->assertTrue(Hash::check('new-password1', $user->fresh()->password));
     }
 
     public function test_user_can_update_profile_password_and_receive_email(): void
@@ -2024,11 +2096,11 @@ HTML);
 
         $this->putJson('/api/v1/profile/password', [
             'current_password' => 'old-password',
-            'password' => 'new-password',
-            'password_confirmation' => 'new-password',
+            'password' => 'new-password1',
+            'password_confirmation' => 'new-password1',
         ])->assertOk();
 
-        $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
+        $this->assertTrue(Hash::check('new-password1', $user->fresh()->password));
         Notification::assertSentTo($user, PasswordChangedNotification::class);
     }
 

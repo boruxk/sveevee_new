@@ -7,10 +7,12 @@
 	import { useAppStore } from '@/stores/app'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import { useCredentialRules } from '@/composables/useCredentialRules'
 	import { deleteProfilePhoto, fetchProfile, updateProfile, updateProfilePassword, uploadProfilePhoto } from '@/services/api/profile'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import PasswordInput from '@/components/PasswordInput.vue'
+	import LocaleFlag from '@/components/icons/LocaleFlag.vue'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { CATALOG_SCOPES } from '@/constants/catalogTopics'
@@ -61,18 +63,22 @@
 		authStore.user?.profile?.photo_name
 	))
 	const hasStoredPhoto = computed(() => Boolean(authStore.user?.profile?.photo_url) && !photo.value)
-	const flag = (...points) => String.fromCodePoint(...points)
 	const allLocaleOptions = computed(() => [
-		{ label: `${flag(0x1f1ee, 0x1f1f1)} ${t('languages.he')}`, title: t('languages.he'), value: 'he', flag: flag(0x1f1ee, 0x1f1f1) },
-		{ label: `${flag(0x1f1fa, 0x1f1f8)} ${t('languages.en')}`, title: t('languages.en'), value: 'en', flag: flag(0x1f1fa, 0x1f1f8) },
-		{ label: `${flag(0x1f1f7, 0x1f1fa)} ${t('languages.ru')}`, title: t('languages.ru'), value: 'ru', flag: flag(0x1f1f7, 0x1f1fa) },
-		{ label: `${flag(0x1f1eb, 0x1f1f7)} ${t('languages.fr')}`, title: t('languages.fr'), value: 'fr', flag: flag(0x1f1eb, 0x1f1f7) }
+		{ label: t('languages.he'), value: 'he' },
+		{ label: t('languages.en'), value: 'en' },
+		{ label: t('languages.ru'), value: 'ru' },
+		{ label: t('languages.fr'), value: 'fr' }
 	])
 	const localeOptions = computed(() => allLocaleOptions.value.filter((option) => option.value !== 'ru'))
-	const selectedLocaleLabel = computed(() => allLocaleOptions.value.find((option) => option.value === form.locale)?.label || form.locale)
+	const selectedLocale = computed(() => allLocaleOptions.value.find((option) => option.value === form.locale) || {
+		label: form.locale,
+		value: form.locale
+	})
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const hasPassword = computed(() => authStore.user?.has_password !== false)
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
+	const { emailRule, passwordRule, matchingPasswordRule } = useCredentialRules(t)
+	const passwordConfirmationRule = matchingPasswordRule(() => passwordForm.password)
 
 	function hydrate(profile) {
 		form.email = profile?.email || authStore.user?.email || ''
@@ -114,7 +120,7 @@
 			$q.notify({ type: 'positive', message: t('profile.saved') })
 
 			if (route.query.complete === '1' && authStore.user?.profile_complete) {
-				router.push({ name: 'home' })
+				router.push(route.query.redirect || { name: 'home' })
 			}
 		} catch (error) {
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('profile.saveFailed')) })
@@ -225,7 +231,7 @@
 							outlined
 							type="email"
 							:label="requiredLabel('auth.email')"
-							:rules="[requiredRule]"
+							:rules="[requiredRule, emailRule]"
 						/>
 						<q-input class="col-12 col-md-4"
 							v-model="form.given_name"
@@ -288,17 +294,18 @@
 							options-dense
 							popup-content-class="profile-locale-select-menu"
 							popup-content-style="max-height: min(72vh, 520px); overflow-y: auto;"
-							:display-value="selectedLocaleLabel"
 							:options="localeOptions"
 							:label="t('profile.languages')"
 						>
+							<template #selected-item>
+								<div class="profile-locale-selection">
+									<LocaleFlag :locale="selectedLocale.value" :label="selectedLocale.label" />
+								</div>
+							</template>
 							<template #option="scope">
-								<q-item v-bind="scope.itemProps">
+								<q-item v-bind="scope.itemProps" class="profile-locale-option">
 									<q-item-section avatar>
-										<span class="profile-locale-option__flag">{{ scope.opt.flag }}</span>
-									</q-item-section>
-									<q-item-section>
-										<q-item-label>{{ scope.opt.title }}</q-item-label>
+										<LocaleFlag :locale="scope.opt.value" :label="scope.opt.label" />
 									</q-item-section>
 								</q-item>
 							</template>
@@ -358,6 +365,7 @@
 					<div class="profile-password-intro">
 						<h2>{{ t('profile.passwordTitle') }}</h2>
 						<p>{{ t('profile.passwordBody') }}</p>
+						<p class="password-requirements">{{ t('auth.passwordRequirements') }}</p>
 					</div>
 					<div class="row q-col-gutter-md profile-password-fields">
 						<PasswordInput class="col-12 col-md-4"
@@ -370,13 +378,13 @@
 							v-model="passwordForm.password"
 							autocomplete="new-password"
 							:label="requiredLabel('auth.newPassword')"
-							:rules="[requiredRule]"
+							:rules="[requiredRule, passwordRule]"
 						/>
 						<PasswordInput class="col-12 col-md-4"
 							v-model="passwordForm.password_confirmation"
 							autocomplete="new-password"
 							:label="requiredLabel('auth.passwordConfirmation')"
-							:rules="[requiredRule]"
+							:rules="[requiredRule, passwordConfirmationRule]"
 						/>
 					</div>
 					<q-btn class="form-submit"
@@ -494,12 +502,20 @@
   align-items: center;
 }
 
-.profile-locale-option__flag {
-  display: block;
-  width: 24px;
-  font-size: 20px;
-  line-height: 1;
-  text-align: center;
+.profile-locale-selection {
+  display: inline-flex;
+  align-items: center;
+}
+
+.profile-locale-option :deep(.q-item__section--avatar) {
+  align-items: center;
+  min-width: 28px;
+}
+
+.profile-password-intro .password-requirements {
+  margin-top: 8px;
+  color: rgba(17, 34, 45, 0.62);
+  font-size: 0.86rem;
 }
 
 @media (max-width: 700px) {

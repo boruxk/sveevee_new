@@ -2,14 +2,16 @@
 	import { computed, onMounted, ref, watch } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
+	import { useQuasar } from 'quasar'
 	import { setLocale } from '@/i18n'
 	import { useAuthStore } from '@/stores/auth'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
-	import { fetchPage } from '@/services/api/pages'
+	import { fetchPage, requestPageClaim } from '@/services/api/pages'
 	import { findPresencePalette } from '@/constants/presencePalettes'
 	import { catalogLabel, catalogPath, catalogTopicByKey, publicPagePath } from '@/constants/catalogTopics'
 	import { locationLabel } from '@/utils/locationLabels'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
+	import { apiErrorMessage } from '@/utils/apiErrors'
 	import EventCard from '@/components/events/EventCard.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
 	import PriceList from '@/components/prices/PriceList.vue'
@@ -22,6 +24,7 @@
 	const route = useRoute()
 	const router = useRouter()
 	const { t, locale } = useI18n()
+	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const SEO_LOCALES = ['he', 'en', 'ru', 'fr']
@@ -39,10 +42,20 @@
 	const ratingsDialogOpen = ref(false)
 	const reviewDialogOpen = ref(false)
 	const pageChatDialogOpen = ref(false)
+	const claimDialogOpen = ref(false)
+	const claimMessage = ref('')
+	const claimSending = ref(false)
+	const claimSent = ref(false)
 	const selectedPalette = computed(() => findPresencePalette(page.value?.palette_key))
-	const canRate = computed(() => authStore.isAuthenticated && page.value?.user_id !== authStore.user?.id)
-	const showChatAction = computed(() => Boolean(page.value?.id))
+	const isUnclaimed = computed(() => Boolean(page.value?.is_unclaimed))
+	const canRate = computed(() => !isUnclaimed.value && authStore.isAuthenticated && page.value?.user_id !== authStore.user?.id)
+	const showChatAction = computed(() => Boolean(page.value?.id) && !isUnclaimed.value)
 	const isPageOwner = computed(() => authStore.isAuthenticated && page.value?.user_id === authStore.user?.id)
+	const canRequestClaim = computed(() => authStore.isAuthenticated && authStore.canAccess(['user']))
+	const claimRegisterRoute = computed(() => ({
+		name: 'register',
+		query: { redirect: route.fullPath }
+	}))
 	const featureFlags = computed(() => page.value?.features || page.value?.setup?.features || {})
 	const featureFlag = (key, fallback) => {
 		const value = featureFlags.value[key] ?? fallback
@@ -131,8 +144,9 @@
 			return t('seo.pageFallbackDescription')
 		}
 
+		const visibleDescription = cleanText(page.value.public_description)
 		return truncateText(
-			cleanText(page.value.public_description) ||
+			visibleDescription ||
 				businessSeoDescription.value ||
 				t('seo.pageDescription', { name: page.value.name, type: pageTypeLabel.value })
 		)
@@ -294,6 +308,27 @@
 		pageChatDialogOpen.value = true
 	}
 
+	async function submitClaimRequest() {
+		const message = claimMessage.value.trim()
+
+		if (!page.value?.id || !message || claimSending.value) {
+			return
+		}
+
+		claimSending.value = true
+		try {
+			await requestPageClaim(page.value.id, message)
+			claimSent.value = true
+			claimDialogOpen.value = false
+			claimMessage.value = ''
+			$q.notify({ type: 'positive', message: t('pageClaim.sent') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('pageClaim.sendFailed')) })
+		} finally {
+			claimSending.value = false
+		}
+	}
+
 	watch(() => route.fullPath, load)
 	watch([page, () => route.query.pageChat, () => authStore.isAuthenticated], () => {
 		if (page.value && route.query.pageChat === '1' && authStore.isAuthenticated && !isPageOwner.value) {
@@ -320,6 +355,7 @@
 				:palette="selectedPalette"
 				:can-rate="canRate"
 				:can-chat="showChatAction"
+				:show-ratings="!isUnclaimed"
 				:has-after-info="hasPreviewContent"
 				:title-tag="isBusinessPage ? 'h1' : 'h2'"
 				:description-fallback="businessSeoDescription"
@@ -366,6 +402,38 @@
 				</template>
 			</PagePreview>
 
+			<section v-if="isUnclaimed" class="unclaimed-notice">
+				<div class="unclaimed-notice__copy">
+					<span class="unclaimed-notice__badge">{{ t('pageClaim.unverifiedBadge') }}</span>
+					<h2>{{ t('pageClaim.title') }}</h2>
+					<p>{{ t('pageClaim.description') }}</p>
+					<p class="unclaimed-notice__warning">{{ t('pageClaim.accuracyWarning') }}</p>
+					<div class="unclaimed-notice__source">
+						<a v-if="page.source_url" :href="page.source_url" target="_blank" rel="noopener noreferrer">{{ t('pageClaim.source') }}</a>
+						<small v-if="page.source_checked_at">{{ t('pageClaim.checkedAt', { date: page.source_checked_at }) }}</small>
+					</div>
+				</div>
+				<div class="unclaimed-notice__action">
+					<q-btn v-if="!authStore.isAuthenticated"
+						rounded
+						unelevated
+						color="primary"
+						icon="person_add"
+						:label="t('pageClaim.registerToClaim')"
+						:to="claimRegisterRoute"
+					/>
+					<q-btn v-else-if="canRequestClaim"
+						rounded
+						unelevated
+						color="primary"
+						icon="verified_user"
+						:disable="claimSent"
+						:label="claimSent ? t('pageClaim.pending') : t('pageClaim.claimButton')"
+						@click="claimDialogOpen = true"
+					/>
+				</div>
+			</section>
+
 			<q-dialog v-model="pageChatDialogOpen" transition-show="slide-up" transition-hide="slide-down">
 				<q-card class="page-chat-dialog-card">
 					<header class="page-chat-dialog-head">
@@ -383,6 +451,47 @@
 						/>
 					</header>
 					<ChatBlock :page-id="page.id" compact class="page-public-chat" />
+				</q-card>
+			</q-dialog>
+
+			<q-dialog v-model="claimDialogOpen">
+				<q-card class="claim-dialog-card">
+					<q-card-section class="claim-dialog-head">
+						<div>
+							<h2>{{ t('pageClaim.dialogTitle') }}</h2>
+							<p>{{ t('pageClaim.dialogText') }}</p>
+						</div>
+						<q-btn flat
+							round
+							dense
+							icon="close"
+							:aria-label="t('actions.close')"
+							v-close-popup
+						/>
+					</q-card-section>
+					<q-card-section>
+						<q-input
+							v-model="claimMessage"
+							outlined
+							type="textarea"
+							autogrow
+							maxlength="2000"
+							:label="t('pageClaim.messageLabel')"
+							:hint="t('pageClaim.messageHint')"
+							counter
+						/>
+					</q-card-section>
+					<q-card-actions align="right">
+						<q-btn flat rounded :label="t('actions.cancel')" v-close-popup />
+						<q-btn rounded
+							unelevated
+							color="primary"
+							:loading="claimSending"
+							:disable="!claimMessage.trim()"
+							:label="t('pageClaim.send')"
+							@click="submitClaimRequest"
+						/>
+					</q-card-actions>
 				</q-card>
 			</q-dialog>
 
@@ -411,6 +520,89 @@
 .page-shell {
   max-width: 1280px;
   margin: 0 auto;
+}
+
+.unclaimed-notice {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid rgba(123, 63, 242, 0.2);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 16px 36px rgba(40, 22, 93, 0.08);
+}
+
+.unclaimed-notice__copy {
+  display: grid;
+  gap: 8px;
+  max-width: 850px;
+}
+
+.unclaimed-notice__copy h2,
+.unclaimed-notice__copy p {
+  margin: 0;
+}
+
+.unclaimed-notice__copy p,
+.unclaimed-notice__copy small {
+  color: var(--soz-muted);
+  line-height: 1.55;
+}
+
+.unclaimed-notice__badge {
+  width: max-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(123, 63, 242, 0.11);
+  color: var(--soz-primary-deep);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.unclaimed-notice__warning {
+  font-weight: 750;
+}
+
+.unclaimed-notice__source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+
+.unclaimed-notice__source a {
+  color: var(--soz-primary-deep);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.unclaimed-notice__action {
+  flex: 0 0 auto;
+}
+
+.claim-dialog-card {
+  width: min(560px, calc(100vw - 28px));
+  border-radius: 22px;
+}
+
+.claim-dialog-head {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.claim-dialog-head h2,
+.claim-dialog-head p {
+  margin: 0;
+}
+
+.claim-dialog-head p {
+  margin-top: 6px;
+  color: var(--soz-muted);
 }
 
 .detail-catalog-links {
@@ -558,6 +750,16 @@
     height: 100dvh;
     max-height: none;
     border-radius: 0 !important;
+  }
+
+  .unclaimed-notice {
+    align-items: stretch;
+    padding: 18px;
+    flex-direction: column;
+  }
+
+  .unclaimed-notice__action .q-btn {
+    width: 100%;
   }
 }
 </style>

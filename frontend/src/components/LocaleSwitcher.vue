@@ -7,6 +7,7 @@
 	import { setLocale } from '@/i18n'
 	import { updateProfileLocale } from '@/services/api/profile'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import LocaleFlag from '@/components/icons/LocaleFlag.vue'
 
 	const props = defineProps({
 		persist: {
@@ -29,24 +30,21 @@
 	const $q = useQuasar()
 	const { t } = useI18n()
 	const changing = ref(false)
-	const flag = (...points) => String.fromCodePoint(...points)
-
 	const allLocaleOptions = computed(() => [
-		{ flag: flag(0x1f1ee, 0x1f1f1), title: t('languages.he'), value: 'he' },
-		{ flag: flag(0x1f1fa, 0x1f1f8), title: t('languages.en'), value: 'en' },
-		{ flag: flag(0x1f1f7, 0x1f1fa), title: t('languages.ru'), value: 'ru' },
-		{ flag: flag(0x1f1eb, 0x1f1f7), title: t('languages.fr'), value: 'fr' }
+		{ label: t('languages.he'), value: 'he' },
+		{ label: t('languages.en'), value: 'en' },
+		{ label: t('languages.ru'), value: 'ru' },
+		{ label: t('languages.fr'), value: 'fr' }
 	])
 	const localeOptions = computed(() => allLocaleOptions.value
 		.filter((option) => option.value !== 'ru')
 		.map((option) => ({
-			label: props.compact ? option.flag : `${option.flag} ${option.title}`,
+			label: option.label,
 			value: option.value
 		})))
-	const selectedLocaleLabel = computed(() => {
-		const option = allLocaleOptions.value.find(({ value }) => value === appStore.locale)
-
-		return option ? (props.compact ? option.flag : `${option.flag} ${option.title}`) : appStore.locale
+	const selectedLocale = computed(() => allLocaleOptions.value.find(({ value }) => value === appStore.locale) || {
+		label: appStore.locale,
+		value: appStore.locale
 	})
 
 	async function selectLocale(locale) {
@@ -90,7 +88,6 @@
 		popup-content-class="locale-switcher-menu"
 		standout="bg-white text-primary"
 		:model-value="appStore.locale"
-		:display-value="selectedLocaleLabel"
 		:options="localeOptions"
 		:loading="changing"
 		:disable="changing"
@@ -99,7 +96,20 @@
 		class="locale-switcher"
 		:class="{ 'locale-switcher--compact': compact }"
 		@update:model-value="selectLocale"
-	/>
+	>
+		<template #selected-item>
+			<div class="locale-switcher__selection">
+				<LocaleFlag :locale="selectedLocale.value" :label="selectedLocale.label" />
+			</div>
+		</template>
+		<template #option="scope">
+			<q-item v-bind="scope.itemProps" class="locale-switcher__option">
+				<q-item-section avatar>
+					<LocaleFlag :locale="scope.opt.value" :label="scope.opt.label" />
+				</q-item-section>
+			</q-item>
+		</template>
+	</q-select>
 </template>
 
 <style scoped lang="scss">
@@ -135,5 +145,17 @@
       line-height: 1;
     }
   }
+}
+
+.locale-switcher__selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.locale-switcher__option :deep(.q-item__section--avatar) {
+  align-items: center;
+  min-width: 28px;
 }
 </style>

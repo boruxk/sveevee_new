@@ -7,6 +7,7 @@ export default {
 		business: 'Entreprise',
 		community: 'Communauté',
 		admin: 'Admin',
+		aiWorks: 'Travaux IA',
 		login: 'Connexion',
 		register: 'Inscription',
 		profile: 'Profil',
@@ -128,6 +129,9 @@ export default {
 		tiktokCopied: 'Lien copié. Collez-le dans TikTok.'
 	},
 	auth: {
+		emailInvalid: 'Saisissez une adresse e-mail contenant @.',
+		passwordRequirements: 'Utilisez au moins 8 caractères, avec des lettres et des chiffres.',
+		passwordMismatch: 'Les mots de passe ne correspondent pas.',
 		identifier: 'E-mail ou identifiant',
 		email: 'E-mail',
 		password: 'Mot de passe',
@@ -590,6 +594,18 @@ export default {
 		supportInbox: 'Boîte support',
 		guest: 'Invité',
 		noSupportChats: 'Aucun chat support pour le moment.',
+		claimRequest: 'Demande de propriété de page',
+		openClaimPage: 'Ouvrir la page',
+		claimApprove: 'Approuver',
+		claimCancel: 'Refuser',
+		claimApproved: 'La page a été attribuée au demandeur.',
+		claimCancelled: 'La demande de propriété a été refusée.',
+		claimReviewFailed: 'La demande de propriété n’a pas pu être traitée.',
+		claimStatuses: {
+			pending: 'En attente',
+			approved: 'Approuvée',
+			cancelled: 'Refusée'
+		},
 		landingPages: 'Pages de destination',
 		landingPagesIntro: 'Pages publiques de promotion pour les pages entreprise et communauté gratuites.',
 		landingPageBusinessTitle: 'Page de destination entreprises',
@@ -682,6 +698,57 @@ export default {
 			moveDown: 'Déplacer vers le bas',
 			popularEmpty: 'Aucune catégorie populaire sélectionnée.'
 		}
+	},
+	aiWorks: {
+		title: 'Travaux IA',
+		intro: 'Gérez les tâches de rédaction et créez des pages entreprise de base à partir de sources publiques.',
+		tabs: {
+			tasks: 'Tâches',
+			pages: 'Pages'
+		},
+		tasks: {
+			title: 'Tâches de travail',
+			intro: 'Créez et gérez la liste de travail destinée à ChatGPT Work.',
+			create: 'Nouvelle tâche',
+			edit: 'Modifier la tâche',
+			saved: 'Tâche enregistrée.',
+			saveFailed: 'La tâche n’a pas pu être enregistrée.',
+			empty: 'Aucune tâche pour le moment.',
+			fields: {
+				title: 'Titre',
+				text: 'Instructions'
+			}
+		},
+		pages: {
+			title: 'Pages entreprise non revendiquées',
+			create: 'Créer une page',
+			infoOnly: 'Il s’agit d’une page informative non revendiquée. Modules, chat, avis, logo et images restent désactivés jusqu’à l’approbation d’une demande par un administrateur.',
+			source: 'Source publique',
+			sourceUrl: 'URL de la source',
+			checkedAt: 'Vérifiée le'
+		},
+		deleteTitle: 'Supprimer cet élément ?',
+		deleteBody: 'Cette action est irréversible.',
+		deleted: 'Élément supprimé.',
+		deleteFailed: 'L’élément n’a pas pu être supprimé.'
+	},
+	pageClaim: {
+		unverifiedBadge: 'Non revendiquée et non vérifiée',
+		title: 'Est-ce votre entreprise ?',
+		description: 'Cette page de base a été créée par Sveevee à partir d’informations professionnelles publiques. Elle n’est pas encore gérée ni vérifiée par l’entreprise.',
+		accuracyWarning: 'Les informations peuvent être incomplètes, erronées ou obsolètes. Vérifiez les éléments importants directement auprès de l’entreprise.',
+		source: 'Voir la source publique',
+		checkedAt: 'Source vérifiée pour la dernière fois : {date}',
+		registerToClaim: 'S’inscrire pour revendiquer la page',
+		claimButton: 'Demander la propriété',
+		pending: 'Demande en attente',
+		dialogTitle: 'Demander la propriété de la page',
+		dialogText: 'Expliquez à l’administrateur pourquoi vous êtes autorisé à représenter cette entreprise. La propriété est transférée uniquement après une vérification manuelle.',
+		messageLabel: 'Éléments de vérification',
+		messageHint: 'Par exemple, votre rôle et un moyen de contact professionnel vérifiable.',
+		send: 'Envoyer la demande',
+		sent: 'Votre demande a été envoyée au support.',
+		sendFailed: 'La demande de propriété n’a pas pu être envoyée.'
 	},
 	maintenance: {
 		title: 'Nous revenons bientôt',
@@ -779,6 +846,8 @@ export default {
 		communityDescription: 'Créez et gérez votre page communauté publique, ses événements, annonces, avis et coordonnées.',
 		adminTitle: 'Admin',
 		adminDescription: 'Zone d’administration sveevee.',
+		aiWorksTitle: 'Travaux IA',
+		aiWorksDescription: 'Espace interne Sveevee pour les pages entreprise issues de sources publiques.',
 		userFallbackTitle: 'Profil sveevee',
 		userFallbackDescription: 'Consultez un profil public sveevee, ses pages et annonces locales.',
 		userDescription: 'Consultez {name} sur sveevee, avec ses pages publiques et annonces locales.',

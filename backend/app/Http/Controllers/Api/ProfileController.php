@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
+use App\Http\Controllers\Controller;
 use App\Models\Ad;
 use App\Models\EmailBan;
 use App\Notifications\PasswordChangedNotification;
@@ -13,14 +13,13 @@ use App\Support\UserTypes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 
 class ProfileController extends Controller
 {
     use HandlesUploadedImages;
 
-    public function __construct(private readonly PayloadService $payloads)
-    {
-    }
+    public function __construct(private readonly PayloadService $payloads) {}
 
     public function show(Request $request)
     {
@@ -100,7 +99,7 @@ class ProfileController extends Controller
 
         $data = $request->validate([
             'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:5', 'confirmed'],
+            'password' => ['required', 'string', PasswordRule::min(8)->letters()->numbers(), 'confirmed'],
         ]);
 
         if (! Hash::check($data['current_password'], $user->password)) {
@@ -108,7 +107,7 @@ class ProfileController extends Controller
         }
 
         $user->forceFill(['password' => $data['password']])->save();
-        $user->notify(new PasswordChangedNotification());
+        $user->notify(new PasswordChangedNotification);
 
         return ApiResponseService::success(null, 'Password changed.');
     }

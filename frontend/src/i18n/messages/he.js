@@ -7,6 +7,7 @@ export default {
 		business: 'עסק',
 		community: 'קהילה',
 		admin: 'ניהול',
+		aiWorks: 'עבודות AI',
 		login: 'כניסה',
 		register: 'הרשמה',
 		profile: 'פרופיל',
@@ -128,6 +129,9 @@ export default {
 		tiktokCopied: 'הקישור הועתק. הדביקו אותו ב-TikTok.'
 	},
 	auth: {
+		emailInvalid: 'יש להזין כתובת אימייל הכוללת @.',
+		passwordRequirements: 'הסיסמה חייבת לכלול לפחות 8 תווים, אותיות ומספרים.',
+		passwordMismatch: 'הסיסמאות אינן תואמות.',
 		identifier: 'אימייל או לוגין',
 		email: 'אימייל',
 		password: 'סיסמה',
@@ -590,6 +594,18 @@ export default {
 		supportInbox: 'תיבת תמיכה',
 		guest: 'אורח',
 		noSupportChats: 'אין עדיין שיחות תמיכה.',
+		claimRequest: 'בקשת בעלות על עמוד',
+		openClaimPage: 'פתיחת העמוד',
+		claimApprove: 'אישור',
+		claimCancel: 'דחייה',
+		claimApproved: 'העמוד הועבר למבקש הבעלות.',
+		claimCancelled: 'בקשת הבעלות נדחתה.',
+		claimReviewFailed: 'לא ניתן היה לבדוק את בקשת הבעלות.',
+		claimStatuses: {
+			pending: 'ממתינה',
+			approved: 'אושרה',
+			cancelled: 'נדחתה'
+		},
 		landingPages: 'עמודי נחיתה',
 		landingPagesIntro: 'עמודי פרסום ציבוריים להצעת עמוד עסק ועמוד קהילה בחינם.',
 		landingPageBusinessTitle: 'עמוד נחיתה לעסקים',
@@ -682,6 +698,57 @@ export default {
 			moveDown: 'העברה למטה',
 			popularEmpty: 'לא נבחרו קטגוריות פופולריות.'
 		}
+	},
+	aiWorks: {
+		title: 'עבודות AI',
+		intro: 'ניהול משימות כתיבה ויצירת עמודי עסק בסיסיים ממידע שפורסם לציבור.',
+		tabs: {
+			tasks: 'משימות',
+			pages: 'עמודים'
+		},
+		tasks: {
+			title: 'משימות עבודה',
+			intro: 'יצירה וניהול של רשימת העבודה עבור ChatGPT Work.',
+			create: 'משימה חדשה',
+			edit: 'עריכת משימה',
+			saved: 'המשימה נשמרה.',
+			saveFailed: 'לא ניתן היה לשמור את המשימה.',
+			empty: 'אין עדיין משימות.',
+			fields: {
+				title: 'כותרת',
+				text: 'הנחיות'
+			}
+		},
+		pages: {
+			title: 'עמודי עסק שלא נדרשו',
+			create: 'יצירת עמוד',
+			infoOnly: 'זהו עמוד מידע שלא נדרש. מודולים, צ׳אט, דירוגים, לוגו ותמונות נשארים מושבתים עד שמנהל מאשר בקשת בעלות.',
+			source: 'מקור ציבורי',
+			sourceUrl: 'כתובת המקור',
+			checkedAt: 'נבדק בתאריך'
+		},
+		deleteTitle: 'למחוק פריט זה?',
+		deleteBody: 'לא ניתן לבטל פעולה זו.',
+		deleted: 'הפריט נמחק.',
+		deleteFailed: 'לא ניתן היה למחוק את הפריט.'
+	},
+	pageClaim: {
+		unverifiedBadge: 'לא נדרש ולא אומת',
+		title: 'זה העסק שלכם?',
+		description: 'עמוד בסיסי זה נוצר על ידי Sveevee ממידע עסקי שפורסם לציבור, והוא עדיין אינו מנוהל או מאומת בידי בית העסק.',
+		accuracyWarning: 'המידע עשוי להיות חלקי, שגוי או לא מעודכן. מומלץ לאמת פרטים חשובים ישירות מול בית העסק.',
+		source: 'צפייה במקור הציבורי',
+		checkedAt: 'המקור נבדק לאחרונה: {date}',
+		registerToClaim: 'הרשמה כדי לקבל בעלות',
+		claimButton: 'בקשת בעלות',
+		pending: 'הבקשה ממתינה',
+		dialogTitle: 'בקשת בעלות על העמוד',
+		dialogText: 'כתבו למנהל מדוע אתם מורשים לייצג את העסק. הבעלות תועבר רק לאחר בדיקה ידנית.',
+		messageLabel: 'פרטים לצורך אימות',
+		messageHint: 'לדוגמה, התפקיד שלכם ודרך קשר עסקית שהמנהל יכול לאמת.',
+		send: 'שליחת הבקשה',
+		sent: 'בקשת הבעלות נשלחה לתמיכה.',
+		sendFailed: 'לא ניתן היה לשלוח את בקשת הבעלות.'
 	},
 	maintenance: {
 		title: 'נחזור מיד',
@@ -779,6 +846,8 @@ export default {
 		communityDescription: 'בנו ונהלו עמוד קהילה ציבורי, אירועים, מודעות, דירוגים ופרטי קשר.',
 		adminTitle: 'ניהול',
 		adminDescription: 'אזור הניהול של sveevee.',
+		aiWorksTitle: 'עבודות AI',
+		aiWorksDescription: 'סביבת עבודה פנימית של Sveevee לעמודי עסק ממקורות ציבוריים.',
 		userFallbackTitle: 'פרופיל sveevee',
 		userFallbackDescription: 'צפו בפרופיל ציבורי, עמודים ומודעות מקומיות ב-sveevee.',
 		userDescription: 'צפו ב-{name} ב-sveevee, כולל עמודים ציבוריים ומודעות מקומיות.',

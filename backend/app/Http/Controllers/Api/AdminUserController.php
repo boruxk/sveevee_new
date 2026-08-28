@@ -15,8 +15,7 @@ class AdminUserController extends Controller
     public function __construct(
         private readonly PayloadService $payloads,
         private readonly UserDeletionService $userDeletion,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -84,8 +83,8 @@ class AdminUserController extends Controller
 
     public function ban(Request $request, User $user)
     {
-        if ($user->hasRole('admin')) {
-            return ApiResponseService::error('Admin users cannot be banned from this screen.', status: 422);
+        if ($user->hasAnyRole(['admin', 'ai_worker'])) {
+            return ApiResponseService::error('Privileged service accounts cannot be banned from this screen.', status: 422);
         }
 
         $data = $request->validate([
@@ -127,8 +126,8 @@ class AdminUserController extends Controller
 
     public function destroy(User $user)
     {
-        if ($user->hasRole('admin')) {
-            return ApiResponseService::error('Admin users cannot be deleted from this screen.', status: 422);
+        if ($user->hasAnyRole(['admin', 'ai_worker'])) {
+            return ApiResponseService::error('Privileged service accounts cannot be deleted from this screen.', status: 422);
         }
 
         $deletedUserId = $user->id;

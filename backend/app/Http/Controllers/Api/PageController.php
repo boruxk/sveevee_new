@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
+use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
@@ -25,12 +25,14 @@ class PageController extends Controller
         ['weekday' => 'saturday', 'is_open' => false, 'opens_at' => null, 'closes_at' => null],
     ];
 
-    public function __construct(private readonly PayloadService $payloads)
-    {
-    }
+    public function __construct(private readonly PayloadService $payloads) {}
 
     public function mine(Request $request, string $type)
     {
+        if ($request->user()->hasRole('ai_worker')) {
+            return ApiResponseService::error('Use the AI works area to manage generated pages.', status: 403);
+        }
+
         $this->validateType($type);
 
         $page = Page::query()
@@ -46,6 +48,10 @@ class PageController extends Controller
 
     public function upsert(Request $request, string $type)
     {
+        if ($request->user()->hasRole('ai_worker')) {
+            return ApiResponseService::error('Use the AI works area to manage generated pages.', status: 403);
+        }
+
         $this->validateType($type);
         $catalogScope = $this->catalogScopeForType($type);
         $this->normalizeCategoryKey($request, $catalogScope);
@@ -129,6 +135,10 @@ class PageController extends Controller
 
     public function updateFeatures(Request $request, string $type)
     {
+        if ($request->user()->hasRole('ai_worker')) {
+            return ApiResponseService::error('Generated pages cannot enable modules.', status: 403);
+        }
+
         $this->validateType($type);
 
         $data = $request->validate([

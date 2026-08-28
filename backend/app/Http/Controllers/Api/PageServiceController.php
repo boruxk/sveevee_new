@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
+use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Models\PageService;
 use App\Rules\CleanContent;
@@ -17,9 +17,7 @@ class PageServiceController extends Controller
 {
     use HandlesUploadedImages;
 
-    public function __construct(private readonly PayloadService $payloads)
-    {
-    }
+    public function __construct(private readonly PayloadService $payloads) {}
 
     public function store(Request $request, Page $page)
     {
@@ -30,8 +28,8 @@ class PageServiceController extends Controller
         $this->normalizeCategoryKey($request);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:1000', new CleanContent()],
-            'description' => ['required', 'string', 'max:5000', new CleanContent()],
+            'name' => ['required', 'string', 'max:1000', new CleanContent],
+            'description' => ['required', 'string', 'max:5000', new CleanContent],
             'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope(CatalogTopics::SCOPE_SERVICES))],
             'image' => ['required', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'link' => ['nullable', 'url', 'max:2048'],
@@ -63,8 +61,8 @@ class PageServiceController extends Controller
         $this->normalizeCategoryKey($request);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:1000', new CleanContent()],
-            'description' => ['required', 'string', 'max:5000', new CleanContent()],
+            'name' => ['required', 'string', 'max:1000', new CleanContent],
+            'description' => ['required', 'string', 'max:5000', new CleanContent],
             'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope(CatalogTopics::SCOPE_SERVICES))],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'image_remove' => ['nullable', 'boolean'],
@@ -111,7 +109,7 @@ class PageServiceController extends Controller
 
     private function guardBusinessPage(Request $request, Page $page)
     {
-        if ($page->user_id !== $request->user()->id) {
+        if ($page->is_unclaimed || $page->user_id !== $request->user()->id) {
             return ApiResponseService::error('This action is unauthorized.', status: 403);
         }
 

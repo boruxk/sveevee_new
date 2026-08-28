@@ -17,7 +17,7 @@ window.addEventListener('sveevee:maintenance', (event) => {
 	const authStore = useAuthStore()
 	platformStore.setMaintenance(event.detail)
 
-	if (!authStore.isAdmin && router.currentRoute.value.name !== 'maintenance') {
+	if (!authStore.isAdmin && !authStore.isAiWorker && router.currentRoute.value.name !== 'maintenance') {
 		router.push({
 			name: 'maintenance',
 			query: { redirect: router.currentRoute.value.fullPath }

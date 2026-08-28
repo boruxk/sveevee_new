@@ -8,8 +8,8 @@ use App\Models\Page;
 use App\Models\PageChatMessage;
 use App\Models\PageConversation;
 use App\Models\PageEvent;
-use App\Models\PageProduct;
 use App\Models\PagePrice;
+use App\Models\PageProduct;
 use App\Models\PageRating;
 use App\Models\PageService;
 use App\Models\User;
@@ -28,9 +28,7 @@ class PayloadService
         ['weekday' => 'saturday', 'is_open' => false, 'opens_at' => null, 'closes_at' => null],
     ];
 
-    public function __construct(private readonly SystemSettingsService $settings)
-    {
-    }
+    public function __construct(private readonly SystemSettingsService $settings) {}
 
     public function user(User $user, bool $includePrivate = false): array
     {
@@ -86,6 +84,15 @@ class PayloadService
         }
 
         $setup = $page->setup ?? [];
+        $isUnclaimed = (bool) $page->is_unclaimed;
+        $features = $isUnclaimed ? [
+            'store' => false,
+            'services' => false,
+            'events' => false,
+            'price_list' => false,
+        ] : $this->pageFeatures($setup);
+        $logoPath = $isUnclaimed ? null : $page->logo_path;
+        $bannerPath = $isUnclaimed ? null : $page->banner_path;
         $contact = $this->pageContact($page, $setup);
         $addressDetails = $this->pageAddress($setup);
         $socials = $this->pageSocials($setup);
@@ -96,8 +103,9 @@ class PayloadService
             'id' => $page->id,
             'slug' => $page->public_slug,
             'public_path' => '/pages/'.$page->public_slug,
-            'user_id' => $page->user_id,
+            'user_id' => $isUnclaimed ? null : $page->user_id,
             'type' => $page->type,
+            'is_unclaimed' => $isUnclaimed,
             'name' => $page->name,
             'public_description' => $page->public_description,
             'contact_email' => $page->contact_email,
@@ -109,29 +117,36 @@ class PayloadService
             'address_details' => $addressDetails,
             'socials' => $socials,
             'opening_hours' => $this->normalizedOpeningHours($setup['opening_hours'] ?? []),
-            'features' => $this->pageFeatures($setup),
+            'features' => $features,
             'palette_key' => $page->palette_key,
-            'logo_url' => $page->logo_url,
-            ...$this->publicImageMeta('logo', $page->logo_path, $page->name.' logo', '96px'),
-            'logo_name' => $page->logo_original_name,
-            'banner_url' => $page->banner_url,
-            ...$this->publicImageMeta('banner', $page->banner_path, $page->name, '(max-width: 700px) calc(100vw - 28px), 1180px'),
-            'banner_name' => $page->banner_original_name,
-            'rating_summary' => $this->pageRatingSummary($page),
-            'prices' => $page->prices->map(fn (PagePrice $price) => $this->price($price))->values()->all(),
-            'products' => $page->products->map(fn (PageProduct $product) => $this->product($product))->values()->all(),
-            'services' => $page->services->map(fn (PageService $service) => $this->service($service))->values()->all(),
-            'events' => $page->events->map(fn (PageEvent $event) => $this->event($event))->values()->all(),
-            'setup' => $setup,
-            'owner' => $page->relationLoaded('user') ? $this->user($page->user) : null,
+            'logo_url' => $isUnclaimed ? null : $page->logo_url,
+            ...$this->publicImageMeta('logo', $logoPath, $page->name.' logo', '96px'),
+            'logo_name' => $isUnclaimed ? null : $page->logo_original_name,
+            'banner_url' => $isUnclaimed ? null : $page->banner_url,
+            ...$this->publicImageMeta('banner', $bannerPath, $page->name, '(max-width: 700px) calc(100vw - 28px), 1180px'),
+            'banner_name' => $isUnclaimed ? null : $page->banner_original_name,
+            'rating_summary' => $isUnclaimed ? ['average' => 0, 'count' => 0] : $this->pageRatingSummary($page),
+            'prices' => $isUnclaimed ? [] : $page->prices->map(fn (PagePrice $price) => $this->price($price))->values()->all(),
+            'products' => $isUnclaimed ? [] : $page->products->map(fn (PageProduct $product) => $this->product($product))->values()->all(),
+            'services' => $isUnclaimed ? [] : $page->services->map(fn (PageService $service) => $this->service($service))->values()->all(),
+            'events' => $isUnclaimed ? [] : $page->events->map(fn (PageEvent $event) => $this->event($event))->values()->all(),
+            'setup' => [...$setup, 'features' => $features],
+            'source_url' => $isUnclaimed ? $page->source_url : null,
+            'source_checked_at' => $isUnclaimed ? $page->source_checked_at?->format('Y-m-d') : null,
+            'claimed_at' => $page->claimed_at?->toISOString(),
+            'owner' => ! $isUnclaimed && $page->relationLoaded('user') && $page->user
+                ? $this->user($page->user)
+                : null,
             'created_at' => $page->created_at?->toISOString(),
             'updated_at' => $page->updated_at?->toISOString(),
         ];
 
         if ($withAds) {
-            $ads = $page->relationLoaded('ads')
+            $ads = $isUnclaimed
+                ? collect()
+                : ($page->relationLoaded('ads')
                 ? $page->ads->filter(fn (Ad $ad) => $ad->isVisible())
-                : $page->ads()->with(['user.profile', 'page'])->active()->get();
+                : $page->ads()->with(['user.profile', 'page'])->active()->get());
 
             $payload['ads'] = $ads->map(fn (Ad $ad) => $this->ad($ad))->values()->all();
         }

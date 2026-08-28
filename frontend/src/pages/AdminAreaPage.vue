@@ -4,7 +4,9 @@
 	import { useRoute } from 'vue-router'
 	import { useQuasar } from 'quasar'
 	import {
+		approvePageClaim,
 		banAdminUser,
+		cancelPageClaim,
 		createBlockedTerm,
 		deleteAdminUser,
 		deleteBlockedTerm,
@@ -75,6 +77,7 @@
 	const selectedSupportKey = ref(null)
 	const activeSupportConversation = ref(null)
 	const supportMessage = ref('')
+	const reviewingClaimId = ref(null)
 	const userSearch = ref('')
 	const appliedUserSearch = ref('')
 	const messagesEl = ref(null)
@@ -113,6 +116,7 @@
 		}
 	])
 	const supportMessages = computed(() => activeSupportConversation.value?.messages || [])
+	const activeClaimRequests = computed(() => activeSupportConversation.value?.claim_requests || [])
 	const selectedSupportConversation = computed(() =>
 		supportConversations.value.find((conversation) => conversation.support_key === selectedSupportKey.value) || activeSupportConversation.value || null
 	)
@@ -412,6 +416,31 @@
 		}
 	}
 
+	async function reviewPageClaim(claim, action) {
+		if (!claim?.id || claim.status !== 'pending' || reviewingClaimId.value) {
+			return
+		}
+
+		reviewingClaimId.value = claim.id
+		try {
+			if (action === 'approve') {
+				await approvePageClaim(claim.id)
+			} else {
+				await cancelPageClaim(claim.id)
+			}
+
+			await openSupportConversation(activeSupportConversation.value)
+			$q.notify({
+				type: 'positive',
+				message: t(action === 'approve' ? 'admin.claimApproved' : 'admin.claimCancelled')
+			})
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.claimReviewFailed')) })
+		} finally {
+			reviewingClaimId.value = null
+		}
+	}
+
 	function sectionDirty(section) {
 		return JSON.stringify(settingsForms.value[section]) !== JSON.stringify(savedSettings.value[section])
 	}
@@ -617,6 +646,7 @@
 									<strong>
 										{{ conversation.participant?.display_name }}
 										<q-badge v-if="conversation.is_guest" color="secondary" rounded>{{ t('admin.guest') }}</q-badge>
+										<q-badge v-if="conversation.pending_claim_count" color="warning" rounded>{{ conversation.pending_claim_count }} · {{ t('admin.claimRequest') }}</q-badge>
 									</strong>
 									<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
 								</span>
@@ -639,6 +669,49 @@
 									</div>
 									<q-chip color="primary" text-color="white">{{ activeSupportConversation.is_guest ? t('admin.guest') : t('admin.supportInbox') }}</q-chip>
 								</header>
+
+								<div v-if="activeClaimRequests.length" class="claim-review-list">
+									<article v-for="claim in activeClaimRequests" :key="claim.id" class="claim-review-card">
+										<header>
+											<div>
+												<span class="claim-review-card__eyebrow">{{ t('admin.claimRequest') }} #{{ claim.id }}</span>
+												<strong>{{ claim.page?.name }}</strong>
+											</div>
+											<q-badge :color="claim.status === 'pending' ? 'warning' : claim.status === 'approved' ? 'positive' : 'grey-7'" rounded>
+												{{ t(`admin.claimStatuses.${claim.status}`) }}
+											</q-badge>
+										</header>
+										<p>{{ claim.message }}</p>
+										<div class="claim-review-card__footer">
+											<q-btn v-if="claim.page?.public_path"
+												flat
+												rounded
+												icon="open_in_new"
+												:label="t('admin.openClaimPage')"
+												:to="claim.page.public_path"
+												target="_blank"
+											/>
+											<div v-if="claim.status === 'pending'" class="claim-review-card__actions">
+												<q-btn rounded
+													outline
+													color="negative"
+													icon="close"
+													:loading="reviewingClaimId === claim.id"
+													:label="t('admin.claimCancel')"
+													@click="reviewPageClaim(claim, 'cancel')"
+												/>
+												<q-btn rounded
+													unelevated
+													color="positive"
+													icon="check"
+													:loading="reviewingClaimId === claim.id"
+													:label="t('admin.claimApprove')"
+													@click="reviewPageClaim(claim, 'approve')"
+												/>
+											</div>
+										</div>
+									</article>
+								</div>
 
 								<div ref="messagesEl" class="support-messages">
 									<div v-if="supportMessages.length === 0" class="support-empty">{{ t('chat.noMessages') }}</div>
@@ -1686,6 +1759,49 @@
   overflow-wrap: anywhere;
 }
 
+.claim-review-list {
+  display: grid;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 14px 2px 2px;
+}
+
+.claim-review-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(123, 63, 242, 0.22);
+  border-radius: 16px;
+  background: rgba(123, 63, 242, 0.06);
+}
+
+.claim-review-card header,
+.claim-review-card__footer,
+.claim-review-card__actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.claim-review-card header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.claim-review-card__eyebrow {
+  color: var(--soz-muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.claim-review-card p {
+  margin: 0;
+  color: var(--soz-muted);
+  white-space: pre-line;
+}
+
 .support-messages {
   display: grid;
   align-content: start;
@@ -1989,6 +2105,16 @@
 
   .support-compose .q-btn {
     width: 100%;
+  }
+
+  .claim-review-card__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .claim-review-card__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .table-panel {

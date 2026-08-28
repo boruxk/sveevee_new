@@ -12,11 +12,14 @@ use Illuminate\Support\Facades\Storage;
 class Page extends Model
 {
     public const TYPE_BUSINESS = 'business';
+
     public const TYPE_COMMUNITY = 'community';
 
     protected $fillable = [
         'user_id',
+        'created_by_user_id',
         'type',
+        'is_unclaimed',
         'name',
         'public_description',
         'contact_email',
@@ -29,18 +32,34 @@ class Page extends Model
         'banner_path',
         'banner_original_name',
         'setup',
+        'source_url',
+        'source_checked_at',
+        'claimed_at',
     ];
 
     protected function casts(): array
     {
         return [
             'setup' => 'array',
+            'is_unclaimed' => 'boolean',
+            'source_checked_at' => 'date',
+            'claimed_at' => 'datetime',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function claimRequests(): HasMany
+    {
+        return $this->hasMany(PageClaimRequest::class)->latest();
     }
 
     public function ads(): HasMany

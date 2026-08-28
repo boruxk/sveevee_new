@@ -6,6 +6,7 @@
 	import { resetPassword } from '@/services/api/auth'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import { useCredentialRules } from '@/composables/useCredentialRules'
 	import PasswordInput from '@/components/PasswordInput.vue'
 
 	const { t } = useI18n()
@@ -20,6 +21,8 @@
 		password_confirmation: ''
 	})
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
+	const { emailRule, passwordRule, matchingPasswordRule } = useCredentialRules(t)
+	const passwordConfirmationRule = matchingPasswordRule(() => form.password)
 
 	async function submit() {
 		if (!(await validateRequiredForm(formRef))) {
@@ -57,19 +60,19 @@
 							type="email"
 							autocomplete="email"
 							:label="requiredLabel('auth.email')"
-							:rules="[requiredRule]"
+							:rules="[requiredRule, emailRule]"
 						/>
 						<PasswordInput
 							v-model="form.password"
 							autocomplete="new-password"
 							:label="requiredLabel('auth.newPassword')"
-							:rules="[requiredRule]"
+							:rules="[requiredRule, passwordRule]"
 						/>
 						<PasswordInput
 							v-model="form.password_confirmation"
 							autocomplete="new-password"
 							:label="requiredLabel('auth.passwordConfirmation')"
-							:rules="[requiredRule]"
+							:rules="[requiredRule, passwordConfirmationRule]"
 						/>
 						<q-btn
 							color="primary"

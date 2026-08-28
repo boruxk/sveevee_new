@@ -14,9 +14,7 @@ use Illuminate\Http\Request;
 
 class PageChatController extends Controller
 {
-    public function __construct(private readonly PayloadService $payloads)
-    {
-    }
+    public function __construct(private readonly PayloadService $payloads) {}
 
     public function ownerIndex(Request $request, Page $page)
     {
@@ -47,6 +45,7 @@ class PageChatController extends Controller
         $conversations = PageConversation::query()
             ->where('visitor_id', $user->id)
             ->whereNotNull('last_message_at')
+            ->whereHas('page', fn ($query) => $query->where('is_unclaimed', false))
             ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
             ->with(['page', 'visitor.profile', 'messages.sender.profile'])
             ->orderByDesc('last_message_at')
@@ -139,7 +138,7 @@ class PageChatController extends Controller
         }
 
         $data = $request->validate([
-            'body' => ['required', 'string', 'max:5000', new CleanContent()],
+            'body' => ['required', 'string', 'max:5000', new CleanContent],
         ]);
 
         $senderAsPage = $conversation->page->user_id === $request->user()->id;
@@ -173,6 +172,14 @@ class PageChatController extends Controller
     {
         $conversation->loadMissing(['page', 'messages']);
 
+        if ($conversation->page->is_unclaimed) {
+            return [
+                'can_send' => false,
+                'reason' => 'page_unclaimed',
+                'message' => 'Chat becomes available after the business claims this page.',
+            ];
+        }
+
         if ($conversation->page->user_id === $user->id) {
             return ['can_send' => true, 'reason' => null, 'message' => null];
         }
@@ -195,6 +202,10 @@ class PageChatController extends Controller
     {
         $page->loadMissing('user');
 
+        if ($page->is_unclaimed) {
+            return ApiResponseService::error('Generated pages cannot use chat before they are claimed.', status: 409);
+        }
+
         if ($page->user?->banned_at) {
             return ApiResponseService::error('Resource not found.', status: 404);
         }
@@ -207,6 +218,10 @@ class PageChatController extends Controller
     private function guardVisitor(User $user, Page $page)
     {
         $page->loadMissing('user');
+
+        if ($page->is_unclaimed) {
+            return ApiResponseService::error('Chat becomes available after the business claims this page.', status: 409);
+        }
 
         if ($page->user?->banned_at) {
             return ApiResponseService::error('Resource not found.', status: 404);

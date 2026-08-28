@@ -11,8 +11,11 @@ use RuntimeException;
 class SeoPrerenderService
 {
     private const LOCALES = ['he', 'en', 'ru', 'fr'];
+
     private const RTL_LOCALES = ['he'];
+
     private const MANIFEST = '.sveevee-prerender.json';
+
     private const SCHEMA_WEEKDAYS = [
         'sunday' => 'Sunday',
         'monday' => 'Monday',
@@ -28,6 +31,8 @@ class SeoPrerenderService
             'site' => 'Sveevee',
             'businessTitle' => '{name} ב{city} - שירותים, ביקורות ויצירת קשר | Sveevee',
             'businessDescription' => '{name} - {category} ב{city}{neighborhood}. צפו בשירותים, שעות פעילות, אזורי שירות, ביקורות ופרטי יצירת קשר ב-Sveevee.',
+            'unclaimedNoticeTitle' => 'עמוד עסק לא מאומת',
+            'unclaimedNoticeBody' => 'עמוד זה נוצר על ידי Sveevee ממידע עסקי שפורסם לציבור. הוא אינו מנוהל או מאומת בידי העסק, והמידע עשוי להיות חלקי, שגוי או לא מעודכן. יש לאמת פרטים חשובים ישירות מול העסק.',
             'productTitle' => '{name} ב{city} - מחיר ופרטי המוצר | Sveevee',
             'productDescription' => '{name} ב{city} במחיר {price}. צפו בפרטי המוצר, המוכר, המיקום, הזמינות ואפשרויות יצירת קשר ב-Sveevee.',
             'category' => 'קטגוריה',
@@ -55,6 +60,8 @@ class SeoPrerenderService
             'site' => 'Sveevee',
             'businessTitle' => '{name} in {city} - services, reviews, and contact | Sveevee',
             'businessDescription' => '{name} - {category} in {city}{neighborhood}. View services, opening hours, ratings, and contact details on Sveevee.',
+            'unclaimedNoticeTitle' => 'Unverified business page',
+            'unclaimedNoticeBody' => 'This page was created by Sveevee from publicly available business information. It is not managed or verified by the business, and its information may be incomplete, incorrect, or outdated. Verify important details directly with the business.',
             'productTitle' => '{name} in {city} - price and product details | Sveevee',
             'productDescription' => '{name} in {city} for {price}. View product details, seller, location, availability, and contact options on Sveevee.',
             'category' => 'Category',
@@ -82,6 +89,8 @@ class SeoPrerenderService
             'site' => 'Sveevee',
             'businessTitle' => '{name} в {city} - услуги, отзывы и контакт | Sveevee',
             'businessDescription' => '{name} - {category} в {city}{neighborhood}. Смотрите услуги, часы работы, рейтинги и контактные данные в Sveevee.',
+            'unclaimedNoticeTitle' => 'Непроверенная бизнес-страница',
+            'unclaimedNoticeBody' => 'Эта страница создана Sveevee по общедоступной деловой информации. Она не управляется и не проверена бизнесом, а сведения могут быть неполными, ошибочными или устаревшими. Проверяйте важные данные непосредственно у бизнеса.',
             'productTitle' => '{name} в {city} - цена и детали товара | Sveevee',
             'productDescription' => '{name} в {city} за {price}. Смотрите детали товара, продавца, местоположение, наличие и варианты связи в Sveevee.',
             'category' => 'Категория',
@@ -109,6 +118,8 @@ class SeoPrerenderService
             'site' => 'Sveevee',
             'businessTitle' => '{name} à {city} - services, avis et contact | Sveevee',
             'businessDescription' => '{name} - {category} à {city}{neighborhood}. Consultez les services, horaires, notes et coordonnées sur Sveevee.',
+            'unclaimedNoticeTitle' => 'Page entreprise non vérifiée',
+            'unclaimedNoticeBody' => 'Cette page a été créée par Sveevee à partir d’informations professionnelles publiques. Elle n’est ni gérée ni vérifiée par l’entreprise, et ses informations peuvent être incomplètes, erronées ou obsolètes. Vérifiez les éléments importants directement auprès de l’entreprise.',
             'productTitle' => '{name} à {city} - prix et détails du produit | Sveevee',
             'productDescription' => '{name} à {city} pour {price}. Consultez les détails du produit, le vendeur, le lieu, la disponibilité et les options de contact sur Sveevee.',
             'category' => 'Catégorie',
@@ -426,6 +437,14 @@ class SeoPrerenderService
                         ],
                     ],
                     [
+                        'title' => 'מידע על עסקים ממקורות ציבוריים',
+                        'body' => [
+                            'Sveevee עשויה ליצור עמוד עסק בסיסי שלא נדרש על סמך מידע עסקי שפורסם לציבור לצורך פעילות עסקית, כאשר קיים יסוד סביר להניח שהשימוש במידע מותר לפי דין ותואם את תנאי המקור. המידע עשוי לכלול שם מסחרי, קטגוריה, כתובת עסקית, טלפון עסקי, אתר רשמי, שעות פעילות ושירותים.',
+                            'העמוד מסומן כעמוד שלא נדרש ולא אומת, אינו כולל צ׳אט, דירוגים, לוגו או תמונות לפני אישור, והמידע בו עשוי להיות חלקי, שגוי או לא מעודכן. ככל שהדבר מעשי באופן סביר, נשמרים כתובת המקור ומועד בדיקתו.',
+                            'בעל העסק או האדם שהמידע מתייחס אליו רשאי לבקש לעיין במידע, לתקנו, להסירו או לקבל בעלות על העמוד באמצעות הליך בקשת הבעלות או בפנייה אל info@sveevee.co.il, בכפוף לאימות סביר.',
+                        ],
+                    ],
+                    [
                         'title' => 'קובצי Cookie, אחסון בדפדפן ושירותי Google',
                         'body' => [
                             'Sveevee משתמשת בקובצי Cookie, ב-Local Storage או באחסון דפדפן דומה הנחוץ להתחברות, שמירת אסימון הכניסה, העדפות שפה וממשק, אבטחה והמשכיות הפעלה. חסימת אחסון חיוני עלולה למנוע מחלקים מהשירות לפעול.',
@@ -483,7 +502,7 @@ class SeoPrerenderService
                 'label' => 'תנאי שימוש',
                 'title' => 'תנאי שימוש | Sveevee',
                 'description' => 'תנאי השימוש של Sveevee מסדירים חשבונות, עמודים, תוכן, עסקאות, צ׳אטים, קטינים, אחריות ושימוש מותר בשירות.',
-                'updated' => 'עודכן לאחרונה: 26 באוגוסט 2026',
+                'updated' => 'עודכן לאחרונה: 28 באוגוסט 2026',
                 'sections' => [
                     [
                         'title' => 'השירות ומפעילתו',
@@ -503,6 +522,14 @@ class SeoPrerenderService
                         'title' => 'עמודי עסק וקהילה',
                         'body' => [
                             'מותר ליצור או לנהל עמוד רק אם אתם בעלי העסק או הקהילה, מורשים לייצג אותם או מחזיקים בזכות לפרסם את המידע והמדיה שלהם. פרטי עמוד, מחירים, מבצעים, שירותים ואירועים חייבים להיות מעודכנים ולא מטעים.',
+                        ],
+                    ],
+                    [
+                        'title' => 'עמודי עסק שלא נדרשו על ידי בעל העסק',
+                        'body' => [
+                            'Sveevee עשויה ליצור עמוד עסק בסיסי ממידע עסקי שפורסם לציבור, כאשר קיים יסוד סביר להניח שהשימוש מותר לפי דין ותואם את תנאי המקור. העמוד מסומן כלא נדרש ולא מאומת, ויצירתו אינה מעידה שהעסק יצר או אישר אותו, אימת את המידע או קשור ל-Sveevee.',
+                            'עמוד כזה מיועד למידע בלבד. מודולים, דירוגים, צ׳אט, לוגו ותמונות מושבתים עד לאישור בקשת בעלות. המידע עשוי להיות חלקי, שגוי או לא מעודכן ויש לאמתו ישירות מול העסק.',
+                            'בעל העסק, האדם שהמידע מתייחס אליו או נציג מורשה רשאים לבקש בעלות, תיקון או הסרה באמצעות הליך בקשת הבעלות או ב-info@sveevee.co.il, בכפוף לאימות סביר. אין להעתיק תיאורים, ביקורות, תמונות, לוגואים או תוכן מוגן מ-Google Maps או ממקור אחר ללא הרשאה.',
                         ],
                     ],
                     [
@@ -566,12 +593,20 @@ class SeoPrerenderService
                 'label' => 'כתב ויתור',
                 'title' => 'כתב ויתור | Sveevee',
                 'description' => 'כתב הוויתור של Sveevee מסביר את מגבלות תפקיד הפלטפורמה ביחס לתוכן משתמשים, מחירים, עסקאות, שירותים חיצוניים וזמינות.',
-                'updated' => 'עודכן לאחרונה: 26 באוגוסט 2026',
+                'updated' => 'עודכן לאחרונה: 28 באוגוסט 2026',
                 'sections' => [
                     [
                         'title' => 'מפעילת השירות',
                         'body' => [
                             'Sveevee מופעלת בישראל על ידי Miriam Konetski. לשאלות ולדיווחים בנוגע לכתב ויתור זה ניתן לפנות אל info@sveevee.co.il.',
+                        ],
+                    ],
+                    [
+                        'title' => 'עמוד עסק לא מאומת',
+                        'body' => [
+                            'עמוד עסק שלא נדרש נוצר על ידי Sveevee על סמך מידע עסקי שפורסם לציבור. הוא אינו מנוהל או מאומת בידי בית העסק, ואין בהצגתו כדי להעיד על קשר, שיתוף פעולה, אישור, המלצה או אימות מצד העסק.',
+                            'המידע עלול להכיל טעויות ועשוי להיות חלקי, שגוי או לא מעודכן. לפני הגעה, רכישה או יצירת קשר יש לאמת את הכתובת, פרטי הקשר, שעות הפעילות, השירותים וכל פרט מהותי ישירות מול העסק.',
+                            'בעל העסק, האדם שהמידע מתייחס אליו או נציג מורשה רשאים לבקש בעלות, תיקון או הסרה באמצעות הליך בקשת הבעלות שבעמוד או בפנייה אל info@sveevee.co.il, בכפוף לאימות סביר.',
                         ],
                     ],
                     [
@@ -964,22 +999,22 @@ class SeoPrerenderService
         $detailRows = [
             [$copy['category'], $meta['category']],
             $meta['location'] ? [$copy['location'], $meta['location']] : null,
-            $this->ratingText($page, $locale) ? [$copy['rating'], $this->ratingText($page, $locale)] : null,
+            ! $page->is_unclaimed && $this->ratingText($page, $locale) ? [$copy['rating'], $this->ratingText($page, $locale)] : null,
         ];
         $hours = $this->openingHoursText($page, $locale);
         $website = trim((string) data_get($page->setup, 'website', ''));
-        $prices = data_get($page->setup, 'features.price_list', false) ? $page->prices->take(12)->map(fn ($price): string => sprintf(
+        $prices = ! $page->is_unclaimed && data_get($page->setup, 'features.price_list', false) ? $page->prices->take(12)->map(fn ($price): string => sprintf(
             '<li><strong>%s</strong><span>%s</span></li>',
             $this->escape($price->name),
             $this->escape('₪'.number_format((float) $price->price, 2))
         ))->implode('') : '';
-        $products = data_get($page->setup, 'features.store', false) ? $page->products->take(8)->map(fn (PageProduct $product): string => sprintf(
+        $products = ! $page->is_unclaimed && data_get($page->setup, 'features.store', false) ? $page->products->take(8)->map(fn (PageProduct $product): string => sprintf(
             '<li><a href="%s">%s</a> <span>%s</span></li>',
             $this->escapeAttribute($this->productPath($product, $locale)),
             $this->escape($product->name),
             $this->escape($this->priceLabel($product))
         ))->implode('') : '';
-        $services = data_get($page->setup, 'features.services', false) ? $page->services->take(8)->map(fn ($service): string => sprintf(
+        $services = ! $page->is_unclaimed && data_get($page->setup, 'features.services', false) ? $page->services->take(8)->map(fn ($service): string => sprintf(
             '<li><strong>%s</strong><span>%s</span></li>',
             $this->escape($service->name),
             $this->escape($this->truncate($service->description, 110))
@@ -988,7 +1023,7 @@ class SeoPrerenderService
         return '<main class="sveevee-prerender"><article class="sveevee-prerender__card">'
             .$this->brand()
             .$this->breadcrumbHtml($meta['breadcrumbs'])
-            .($page->banner_url ? '<img class="sveevee-prerender__image" src="'.$this->escapeAttribute($this->absoluteUrl($page->banner_url)).'" alt="'.$this->escapeAttribute($page->name).'" />' : '')
+            .(! $page->is_unclaimed && $page->banner_url ? '<img class="sveevee-prerender__image" src="'.$this->escapeAttribute($this->absoluteUrl($page->banner_url)).'" alt="'.$this->escapeAttribute($page->name).'" />' : '')
             .'<h1>'.$this->escape($page->name).'</h1>'
             .'<p class="sveevee-prerender__lead">'.$this->escape($meta['description']).'</p>'
             .$this->definitionList($detailRows)
@@ -998,6 +1033,11 @@ class SeoPrerenderService
             .($prices ? $this->section($copy['priceList'], '<ul>'.$prices.'</ul>') : '')
             .($products ? $this->section($copy['products'], '<ul>'.$products.'</ul>') : '')
             .($services ? $this->section($copy['services'], '<ul>'.$services.'</ul>') : '')
+            .($page->is_unclaimed ? $this->section(
+                $copy['unclaimedNoticeTitle'],
+                '<p>'.$this->escape($copy['unclaimedNoticeBody']).'</p>'
+                .'<p><a href="'.$this->escapeAttribute($meta['canonical']).'">'.$this->escape($page->name).'</a></p>'
+            ) : '')
             .'</article></main>';
     }
 
@@ -1072,14 +1112,14 @@ class SeoPrerenderService
             'name' => $page->name,
             'description' => $meta['description'],
             'url' => $meta['canonical'],
-            'image' => $page->banner_url ? $this->absoluteUrl($page->banner_url) : null,
-            'logo' => $page->logo_url ? $this->absoluteUrl($page->logo_url) : null,
+            'image' => ! $page->is_unclaimed && $page->banner_url ? $this->absoluteUrl($page->banner_url) : null,
+            'logo' => ! $page->is_unclaimed && $page->logo_url ? $this->absoluteUrl($page->logo_url) : null,
             'telephone' => $page->phone,
             'email' => $page->contact_email,
             'sameAs' => $website ? [$website] : null,
             'address' => $this->addressSchema($meta['address']),
             'openingHoursSpecification' => $this->openingHoursSchema($page),
-            'aggregateRating' => $this->ratingSchema($page),
+            'aggregateRating' => $page->is_unclaimed ? null : $this->ratingSchema($page),
         ];
 
         return $this->withoutEmpty($schema);

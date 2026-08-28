@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\GuestSupportService;
+use App\Services\PageClaimService;
 use App\Services\PayloadService;
 use Illuminate\Http\Request;
 
@@ -19,8 +20,8 @@ class AdminSupportController extends Controller
     public function __construct(
         private readonly PayloadService $payloads,
         private readonly GuestSupportService $guestSupport,
-    ) {
-    }
+        private readonly PageClaimService $pageClaims,
+    ) {}
 
     public function index(Request $request)
     {
@@ -30,7 +31,14 @@ class AdminSupportController extends Controller
             ->forParticipant($admin)
             ->where('is_support', true)
             ->whereNotNull('last_message_at')
-            ->with(['userOne.profile', 'userTwo.profile', 'messages.sender.profile'])
+            ->with([
+                'userOne.profile',
+                'userTwo.profile',
+                'messages.sender.profile',
+                'claimRequests.page',
+                'claimRequests.user.profile',
+                'claimRequests.reviewedBy.profile',
+            ])
             ->get()
             ->map(fn (Conversation $conversation): array => $this->accountPayload($conversation, $admin));
 
@@ -70,7 +78,14 @@ class AdminSupportController extends Controller
                 ->whereNull('read_at')
                 ->update(['read_at' => now()]);
 
-            $conversation->load(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
+            $conversation->load([
+                'userOne.profile',
+                'userTwo.profile',
+                'messages.sender.profile',
+                'claimRequests.page',
+                'claimRequests.user.profile',
+                'claimRequests.reviewedBy.profile',
+            ]);
 
             return ApiResponseService::success($this->accountPayload(
                 $conversation,
@@ -105,7 +120,7 @@ class AdminSupportController extends Controller
     {
         $request->merge(['body' => trim((string) $request->input('body'))]);
         $data = $request->validate([
-            'body' => ['required', 'string', 'max:5000', new CleanContent()],
+            'body' => ['required', 'string', 'max:5000', new CleanContent],
         ]);
 
         if ($source === 'account') {
@@ -122,7 +137,14 @@ class AdminSupportController extends Controller
             ]);
 
             $conversation->forceFill(['last_message_at' => $message->created_at])->save();
-            $conversation->load(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
+            $conversation->load([
+                'userOne.profile',
+                'userTwo.profile',
+                'messages.sender.profile',
+                'claimRequests.page',
+                'claimRequests.user.profile',
+                'claimRequests.reviewedBy.profile',
+            ]);
 
             return ApiResponseService::success($this->accountPayload(
                 $conversation,
@@ -176,12 +198,21 @@ class AdminSupportController extends Controller
             $withMessages
         );
 
+        $claimRequests = $conversation->claimRequests
+            ->map(fn ($claim): array => $this->pageClaims->requestPayload($claim))
+            ->values()
+            ->all();
+
         return [
             ...$payload,
             'support_key' => "account:{$conversation->id}",
             'source' => 'account',
             'participant' => $payload['other_user'],
             'is_guest' => false,
+            'claim_requests' => $claimRequests,
+            'pending_claim_count' => collect($claimRequests)
+                ->where('status', 'pending')
+                ->count(),
         ];
     }
 }

@@ -11,9 +11,7 @@ use Illuminate\Http\Request;
 
 class PageRatingController extends Controller
 {
-    public function __construct(private readonly PayloadService $payloads)
-    {
-    }
+    public function __construct(private readonly PayloadService $payloads) {}
 
     public function index(Request $request, Page $page)
     {
@@ -39,6 +37,10 @@ class PageRatingController extends Controller
 
     public function store(Request $request, Page $page)
     {
+        if ($page->is_unclaimed) {
+            return ApiResponseService::error('Unclaimed pages cannot be rated.', status: 409);
+        }
+
         if ($page->user?->banned_at) {
             return ApiResponseService::error('Resource not found.', status: 404);
         }

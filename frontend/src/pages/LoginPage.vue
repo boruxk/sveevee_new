@@ -24,7 +24,8 @@
 
 		try {
 			await authStore.login(form)
-			router.push(route.query.redirect || { name: 'home' })
+			const defaultRoute = authStore.isAdmin ? { name: 'admin-area' } : (authStore.isAiWorker ? { name: 'ai-works' } : { name: 'home' })
+			router.push(route.query.redirect || defaultRoute)
 		} catch {
 			$q.notify({ type: 'negative', message: t('auth.loginFailed') })
 		}
