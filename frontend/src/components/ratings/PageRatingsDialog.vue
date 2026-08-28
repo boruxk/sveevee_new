@@ -16,7 +16,7 @@
 	})
 
 	const emit = defineEmits(['update:modelValue', 'loaded'])
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const loading = ref(false)
 	const ratings = ref([])
 	const summary = ref({ average: 0, count: 0 })
@@ -24,7 +24,10 @@
 		get: () => props.modelValue,
 		set: (value) => emit('update:modelValue', value)
 	})
-	const averageText = computed(() => Number(summary.value.average || 0).toFixed(1))
+	const averageText = computed(() => new Intl.NumberFormat(locale.value, {
+		minimumFractionDigits: 1,
+		maximumFractionDigits: 1
+	}).format(Number(summary.value.average || 0)))
 
 	async function loadRatings() {
 		if (!props.pageId) {
@@ -45,7 +48,17 @@
 	}
 
 	function formatDate(value) {
-		return value ? new Date(value).toLocaleDateString() : ''
+		if (!value) {
+			return ''
+		}
+
+		const date = new Date(value)
+
+		if (Number.isNaN(date.getTime())) {
+			return ''
+		}
+
+		return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(date)
 	}
 
 	watch(open, (value) => {

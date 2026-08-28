@@ -1,7 +1,12 @@
 import { unref, watchEffect } from 'vue'
 
 const SITE_NAME = 'sveevee'
-const DEFAULT_DESCRIPTION = 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.'
+const DEFAULT_DESCRIPTIONS = {
+	he: 'מודעות מקומיות, דפי עסקים, דפי קהילה, מוצרים, אירועים, ביקורות וצ׳אט ישיר לשכונה שלכם.',
+	en: 'Local ads, business pages, community pages, store products, events, ratings, and direct chat for your neighborhood.',
+	ru: 'Местные объявления, страницы бизнеса и сообществ, товары, события, отзывы и прямой чат для вашего района.',
+	fr: 'Annonces locales, pages d’entreprise et de communauté, produits, événements, avis et chat direct pour votre quartier.'
+}
 
 function cleanText(value) {
 	return String(value || '')
@@ -120,8 +125,9 @@ function applySeo(config = {}) {
 		return
 	}
 
+	const locale = (document.documentElement.lang || 'he').split('-')[0]
 	const title = cleanText(config.title || SITE_NAME)
-	const description = truncateText(config.description || DEFAULT_DESCRIPTION)
+	const description = truncateText(config.description || DEFAULT_DESCRIPTIONS[locale] || DEFAULT_DESCRIPTIONS.en)
 	const fullTitle = config.exactTitle || (title === SITE_NAME ? title : `${title} | ${SITE_NAME}`)
 	const canonical = absoluteUrl(config.canonical || window.location.pathname)
 	const image = absoluteUrl(config.image)
@@ -129,7 +135,6 @@ function applySeo(config = {}) {
 	const imageWidth = config.imageWidth ? String(config.imageWidth) : ''
 	const imageHeight = config.imageHeight ? String(config.imageHeight) : ''
 	const robots = config.robots || 'index,follow'
-	const locale = document.documentElement.lang || 'he'
 	const type = config.type || 'website'
 
 	document.title = fullTitle

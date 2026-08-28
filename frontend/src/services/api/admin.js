@@ -16,6 +16,10 @@ export function fetchAdminUser(id) {
 	return apiClient.get(`/admin/users/${id}`)
 }
 
+export function deleteAdminUser(id) {
+	return apiClient.delete(`/admin/users/${id}`)
+}
+
 export function banAdminUser(id, payload) {
 	return apiClient.patch(`/admin/users/${id}/ban`, payload)
 }

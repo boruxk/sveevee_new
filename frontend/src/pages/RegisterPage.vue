@@ -37,8 +37,8 @@
 		try {
 			await authStore.register({ ...form, locale: appStore.locale })
 			router.replace({ name: 'profile', query: { complete: '1' } })
-		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('auth.registerFailed') })
+		} catch {
+			$q.notify({ type: 'negative', message: t('auth.registerFailed') })
 		}
 	}
 </script>

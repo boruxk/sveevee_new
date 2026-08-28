@@ -344,12 +344,12 @@
 		<footer class="shell-footer">
 			<div class="shell-footer__inner">
 				<div class="shell-footer__brand">© {{ currentYear }} sveevee</div>
-				<nav class="shell-footer__legal" aria-label="Legal">
+				<nav class="shell-footer__legal" :aria-label="t('footer.legalLabel')">
 					<router-link v-for="link in legalLinks" :key="link.name" :to="{ name: link.name }">
 						{{ link.label }}
 					</router-link>
 				</nav>
-				<p class="shell-footer__recaptcha">This site is protected by reCAPTCHA.</p>
+				<p class="shell-footer__recaptcha">{{ t('footer.recaptchaProtected') }}</p>
 				<nav class="shell-footer__nav" :aria-label="t('footer.label')">
 					<div v-for="column in footerColumns" :key="column.title" class="shell-footer__column">
 						<h2>{{ column.title }}</h2>

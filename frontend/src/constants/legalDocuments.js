@@ -1,4 +1,4 @@
-import { getPrivacyPolicy } from '@/constants/privacyPolicy'
+import { getPrivacyPolicy } from './privacyPolicy.js'
 
 export const termsConditions = {
 	en: {
@@ -274,8 +274,9 @@ export const termsConditions = {
 				]
 			},
 			{
-				title: 'Ответственность',
+				title: 'Доступность и ответственность',
 				body: [
+					'Мы стараемся поддерживать Sveevee полезной и безопасной, однако сервис и пользовательский контент предоставляются по мере доступности. Возможны ошибки, задержки, перебои, удаление контента, изменения или потеря данных; функции также могут быть изменены или прекращены.',
 					'В максимально разрешенной законом степени Sveevee не отвечает за косвенный или последующий ущерб, пользовательский контент, действия третьих лиц или сделки пользователей. Это не исключает ответственность или права потребителя, которые нельзя законно исключить, включая ответственность за мошенничество и иные обязательные случаи.'
 				]
 			},
@@ -369,8 +370,9 @@ export const termsConditions = {
 				]
 			},
 			{
-				title: 'Responsabilité',
+				title: 'Disponibilité et responsabilité',
 				body: [
+					'Nous nous efforçons de maintenir Sveevee utile et sécurisé, mais le service et le contenu des utilisateurs sont fournis selon leur disponibilité. Des erreurs, retards, interruptions, suppressions de contenu, modifications ou pertes de données peuvent survenir, et certaines fonctionnalités peuvent être modifiées ou supprimées.',
 					'Dans la mesure maximale permise par la loi, Sveevee n’est pas responsable des pertes indirectes ou consécutives, du contenu utilisateur, du comportement de tiers ou des transactions entre utilisateurs. Rien n’exclut une responsabilité ou un droit du consommateur qui ne peut légalement l’être, notamment en cas de fraude ou autre responsabilité impérative.'
 				]
 			},

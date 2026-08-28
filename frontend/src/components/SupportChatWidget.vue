@@ -69,10 +69,10 @@
 			conversation.value = data.data
 			await chatsStore.loadConversations()
 			await scrollToBottom()
-		} catch (error) {
+		} catch {
 			if (!silent) {
 				panelOpen.value = false
-				$q.notify({ type: 'negative', message: error.response?.data?.message || t('chat.supportUnavailable') })
+				$q.notify({ type: 'negative', message: t('chat.supportUnavailable') })
 			}
 		} finally {
 			if (!silent) {
@@ -121,8 +121,8 @@
 			draft.value = ''
 			await chatsStore.loadConversations()
 			await scrollToBottom()
-		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('chat.sendFailed') })
+		} catch {
+			$q.notify({ type: 'negative', message: t('chat.sendFailed') })
 		} finally {
 			sending.value = false
 		}

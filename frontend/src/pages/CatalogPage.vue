@@ -445,6 +445,13 @@
 		return item.name
 	}
 
+	function itemLocation(city, neighborhood) {
+		return [
+			locationLabel(city, 'city', locale.value),
+			locationLabel(neighborhood, 'neighborhood', locale.value)
+		].filter(Boolean).join(', ')
+	}
+
 	function itemBody(kind, item) {
 		let text = item.public_description || item.description
 
@@ -453,7 +460,7 @@
 		}
 
 		if (kind === 'user') {
-			text = [item.profile?.city, item.profile?.neighborhood].filter(Boolean).join(', ')
+			text = itemLocation(item.profile?.city, item.profile?.neighborhood)
 		}
 
 		return truncateText(cleanText(text), 150)
@@ -501,11 +508,11 @@
 
 	function itemOwner(kind, item) {
 		if (kind === 'page') {
-			return [item.address_details?.city, item.address_details?.neighborhood].filter(Boolean).join(', ')
+			return itemLocation(item.address_details?.city, item.address_details?.neighborhood)
 		}
 
 		if (kind === 'ad') {
-			return [item.city, item.neighborhood].filter(Boolean).join(', ')
+			return itemLocation(item.city, item.neighborhood)
 		}
 
 		return item.page?.name || ''

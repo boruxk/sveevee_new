@@ -200,7 +200,7 @@
 				v-model="form.time"
 				outlined
 				mask="##:##"
-				placeholder="HH:MM"
+				:placeholder="t('validation.timePlaceholder')"
 				inputmode="numeric"
 				:label="requiredLabel('events.time')"
 				:rules="[requiredRule, timeRule]"
@@ -210,7 +210,7 @@
 				outlined
 				clearable
 				mask="##:##"
-				placeholder="HH:MM"
+				:placeholder="t('validation.timePlaceholder')"
 				inputmode="numeric"
 				:label="t('events.endTime')"
 				:rules="[optionalTimeRule]"

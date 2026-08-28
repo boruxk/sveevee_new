@@ -25,8 +25,8 @@
 		try {
 			await authStore.login(form)
 			router.push(route.query.redirect || { name: 'home' })
-		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('auth.loginFailed') })
+		} catch {
+			$q.notify({ type: 'negative', message: t('auth.loginFailed') })
 		}
 	}
 </script>

@@ -18,7 +18,10 @@
 	const ad = ref(null)
 	const loading = ref(false)
 	const ownerName = computed(() => ad.value?.page?.name || ad.value?.user?.display_name || '')
-	const locationLabel = computed(() => [ad.value?.city, ad.value?.neighborhood].filter(Boolean).join(', '))
+	const locationLabel = computed(() => [
+		localizedLocationLabel(ad.value?.city, 'city', locale.value),
+		localizedLocationLabel(ad.value?.neighborhood, 'neighborhood', locale.value)
+	].filter(Boolean).join(', '))
 	const adTopic = computed(() => catalogTopicForAdCategory(catalogGroups.value, ad.value?.category))
 	const adCatalogLinks = computed(() => {
 		if (!adTopic.value) {
@@ -100,7 +103,7 @@
 	<q-page padding class="listing-detail-page">
 		<div class="page-shell">
 			<div v-if="ad" class="listing-detail-card">
-				<nav v-if="adCatalogLinks.length" class="detail-catalog-links" aria-label="Catalog">
+				<nav v-if="adCatalogLinks.length" class="detail-catalog-links" :aria-label="t('catalog.navigationLabel')">
 					<router-link v-for="link in adCatalogLinks" :key="link.to" :to="link.to">
 						{{ link.label }}
 					</router-link>

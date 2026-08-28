@@ -31,18 +31,22 @@
 	const changing = ref(false)
 	const flag = (...points) => String.fromCodePoint(...points)
 
-	const localeOptions = computed(() => {
-		const options = [
-			{ flag: flag(0x1f1ee, 0x1f1f1), title: t('languages.he'), value: 'he' },
-			{ flag: flag(0x1f1fa, 0x1f1f8), title: t('languages.en'), value: 'en' },
-			{ flag: flag(0x1f1f7, 0x1f1fa), title: t('languages.ru'), value: 'ru' },
-			{ flag: flag(0x1f1eb, 0x1f1f7), title: t('languages.fr'), value: 'fr' }
-		]
-
-		return options.map((option) => ({
+	const allLocaleOptions = computed(() => [
+		{ flag: flag(0x1f1ee, 0x1f1f1), title: t('languages.he'), value: 'he' },
+		{ flag: flag(0x1f1fa, 0x1f1f8), title: t('languages.en'), value: 'en' },
+		{ flag: flag(0x1f1f7, 0x1f1fa), title: t('languages.ru'), value: 'ru' },
+		{ flag: flag(0x1f1eb, 0x1f1f7), title: t('languages.fr'), value: 'fr' }
+	])
+	const localeOptions = computed(() => allLocaleOptions.value
+		.filter((option) => option.value !== 'ru')
+		.map((option) => ({
 			label: props.compact ? option.flag : `${option.flag} ${option.title}`,
 			value: option.value
-		}))
+		})))
+	const selectedLocaleLabel = computed(() => {
+		const option = allLocaleOptions.value.find(({ value }) => value === appStore.locale)
+
+		return option ? (props.compact ? option.flag : `${option.flag} ${option.title}`) : appStore.locale
 	})
 
 	async function selectLocale(locale) {
@@ -86,6 +90,7 @@
 		popup-content-class="locale-switcher-menu"
 		standout="bg-white text-primary"
 		:model-value="appStore.locale"
+		:display-value="selectedLocaleLabel"
 		:options="localeOptions"
 		:loading="changing"
 		:disable="changing"

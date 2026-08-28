@@ -12,10 +12,11 @@
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import PageCreateDialog from '@/components/pages/PageCreateDialog.vue'
 	import { adRoute } from '@/constants/catalogTopics'
+	import { locationLabel } from '@/utils/locationLabels'
 
 	const route = useRoute()
 	const router = useRouter()
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const chatsStore = useChatsStore()
@@ -60,8 +61,8 @@
 		try {
 			await deleteAd(ad.id)
 			await loadAds()
-		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('ads.deleteFailed') })
+		} catch {
+			$q.notify({ type: 'negative', message: t('ads.deleteFailed') })
 		}
 	}
 
@@ -160,7 +161,10 @@
 	}
 
 	function adLocation(ad) {
-		return [ad?.city, ad?.neighborhood].filter(Boolean).join(', ')
+		return [
+			locationLabel(ad?.city, 'city', locale.value),
+			locationLabel(ad?.neighborhood, 'neighborhood', locale.value)
+		].filter(Boolean).join(', ')
 	}
 
 	async function loadPage() {

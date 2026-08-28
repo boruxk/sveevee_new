@@ -72,7 +72,7 @@
 		he: {
 			business: {
 				seoTitle: 'עמוד דוגמה לעסק עם חנות, שירותים ומודעות',
-				seoDescription: 'צפו בעמוד דוגמה לעסק ב-Sveevee עם מוצרים, שירותים, מודעות, דירוגים, כתובת, שעות פתיחה, רשתות חברתיות, צאט, WhatsApp ומפות.',
+				seoDescription: 'צפו בעמוד דוגמה לעסק ב-Sveevee עם מוצרים, שירותים, מודעות, דירוגים, כתובת, שעות פתיחה, רשתות חברתיות, צ׳אט, WhatsApp ומפות.',
 				title: 'עמוד דוגמה לעסק',
 				subtitle: 'דוגמה סטטית לעמוד עסק ב-Sveevee עם טאבים של תצוגה מקדימה, הגדרות, חנות, שירותים ומודעות.',
 				badge: 'דוגמה לעמוד עסק חינמי',
@@ -82,7 +82,7 @@
 			},
 			community: {
 				seoTitle: 'עמוד דוגמה לקהילה עם אירועים ומודעות',
-				seoDescription: 'צפו בעמוד דוגמה לקהילה ב-Sveevee עם אירועים, מודעות, דירוגים, כתובת, שעות פעילות, רשתות חברתיות, צאט, WhatsApp ומפות.',
+				seoDescription: 'צפו בעמוד דוגמה לקהילה ב-Sveevee עם אירועים, מודעות, דירוגים, כתובת, שעות פעילות, רשתות חברתיות, צ׳אט, WhatsApp ומפות.',
 				title: 'עמוד דוגמה לקהילה',
 				subtitle: 'דוגמה סטטית לעמוד קהילה ב-Sveevee עם טאבים של תצוגה מקדימה, הגדרות, אירועים ומודעות.',
 				badge: 'דוגמה לעמוד קהילה חינמי',
@@ -115,24 +115,24 @@
 		},
 		fr: {
 			business: {
-				seoTitle: 'Page exemple entreprise avec boutique, services et annonces',
-				seoDescription: 'Visualisez une page exemple entreprise Sveevee avec produits, services, annonces, avis, adresse, horaires, liens sociaux, chat, WhatsApp et cartes.',
-				title: 'Page exemple entreprise',
-				subtitle: 'Exemple statique de page entreprise Sveevee avec apercu, parametres, boutique, services et annonces.',
+				seoTitle: 'Page d’exemple d’entreprise avec boutique, services et annonces',
+				seoDescription: 'Découvrez une page d’exemple Sveevee pour une entreprise, avec produits, services, annonces, avis, adresse, horaires, liens sociaux, chat, WhatsApp et cartes.',
+				title: 'Page d’exemple d’entreprise',
+				subtitle: 'Exemple statique d’une page entreprise Sveevee avec les onglets aperçu, paramètres, boutique, services et annonces.',
 				badge: 'Exemple de page entreprise gratuite',
 				pageName: 'Ramot Local Studio',
-				pageDescription: 'Exemple de page entreprise locale avec contact, adresse, horaires, reseaux sociaux, avis, produits, services et annonces dans une page publique.',
+				pageDescription: 'Exemple de page entreprise locale réunissant contact, adresse, horaires, réseaux sociaux, avis, produits, services et annonces sur une seule page publique.',
 				allEnabled: 'Boutique, services et annonces sont actifs'
 			},
 			community: {
-				seoTitle: 'Page exemple communaute avec evenements et annonces',
-				seoDescription: 'Visualisez une page exemple communaute Sveevee avec evenements, annonces, avis, adresse, horaires, liens sociaux, chat, WhatsApp et cartes.',
-				title: 'Page exemple communaute',
-				subtitle: 'Exemple statique de page communaute Sveevee avec apercu, parametres, evenements et annonces.',
-				badge: 'Exemple de page communaute gratuite',
+				seoTitle: 'Page d’exemple de communauté avec événements et annonces',
+				seoDescription: 'Découvrez une page d’exemple Sveevee pour une communauté, avec événements, annonces, avis, adresse, horaires, liens sociaux, chat, WhatsApp et cartes.',
+				title: 'Page d’exemple de communauté',
+				subtitle: 'Exemple statique d’une page communauté Sveevee avec les onglets aperçu, paramètres, événements et annonces.',
+				badge: 'Exemple de page communauté gratuite',
 				pageName: 'Ramot Community Circle',
-				pageDescription: 'Exemple de page communaute locale avec contact, adresse, horaires, reseaux sociaux, avis, evenements et annonces dans une page publique.',
-				allEnabled: 'Evenements et annonces sont actifs'
+				pageDescription: 'Exemple de page communauté locale réunissant contact, adresse, horaires, réseaux sociaux, avis, événements et annonces sur une seule page publique.',
+				allEnabled: 'Les événements et les annonces sont activés'
 			}
 		}
 	}
@@ -185,7 +185,7 @@
 		},
 		he: {
 			seoTitle: 'עמוד דוגמה עם כל המודולים של Sveevee',
-			seoDescription: 'צפו בעמוד דוגמה מלא של Sveevee עם מוצרים, שירותים, אירועים, מודעות, דירוגים, כתובת, שעות פתיחה, רשתות חברתיות, צאט, WhatsApp ומפות.',
+			seoDescription: 'צפו בעמוד דוגמה מלא של Sveevee עם מוצרים, שירותים, אירועים, מודעות, דירוגים, כתובת, שעות פתיחה, רשתות חברתיות, צ׳אט, WhatsApp ומפות.',
 			title: 'עמוד דוגמה',
 			subtitle: 'דוגמה סטטית לעמוד Sveevee עם טאבים של תצוגה מקדימה, הגדרות, חנות, שירותים, אירועים ומודעות.',
 			register: 'הרשמה להתחלה',
@@ -201,7 +201,7 @@
 			events: 'אירועים',
 			ads: 'מודעות',
 			details: {
-				contact: 'טלפון, אימייל, WhatsApp, צאט ושיתוף מלאים.',
+				contact: 'טלפון, אימייל, WhatsApp, צ׳אט ושיתוף מלאים.',
 				address: 'הפסגה 18, רמות, ירושלים',
 				socials: 'קישורי Facebook, Instagram, TikTok ו-Telegram מלאים.',
 				hours: 'ראשון-חמישי 09:00-18:00, שישי 09:00-13:00.'
@@ -246,8 +246,8 @@
 			events: 'События',
 			ads: 'Объявления',
 			details: {
-				contact: 'Телефон, email, WhatsApp, чат и sharing заполнены.',
-				address: 'Ha-Pisga 18, Ramot, Jerusalem',
+				contact: 'Телефон, электронная почта, WhatsApp, чат и функция «Поделиться» заполнены.',
+				address: 'Ха-Писга 18, Рамот, Иерусалим',
 				socials: 'Facebook, Instagram, TikTok и Telegram заполнены.',
 				hours: 'Воскресенье-четверг 09:00-18:00, пятница 09:00-13:00.'
 			},
@@ -263,7 +263,7 @@
 					{ name: 'Координация доставки', body: 'Окна самовывоза, доставка и сообщения клиентам организованы ясно.' }
 				],
 				events: [
-					{ name: 'Пятничная встреча мастеров', body: 'Локальная встреча для handmade-товаров, соседей и продавцов.' },
+					{ name: 'Пятничная встреча мастеров', body: 'Локальная встреча для товаров ручной работы, соседей и продавцов.' },
 					{ name: 'Семейная мастерская ремонта', body: 'Принесите небольшой предмет, учитесь ремонту и знакомьтесь рядом.' }
 				],
 				ads: [
@@ -275,46 +275,46 @@
 		},
 		fr: {
 			seoTitle: 'Page exemple avec tous les modules Sveevee',
-			seoDescription: 'Visualisez une page exemple Sveevee complete avec produits, services, evenements, annonces, avis, adresse, horaires, liens sociaux, chat, WhatsApp et cartes.',
+			seoDescription: 'Découvrez une page d’exemple Sveevee complète avec produits, services, événements, annonces, avis, adresse, horaires, liens sociaux, chat, WhatsApp et cartes.',
 			title: 'Page exemple',
-			subtitle: 'Exemple statique de page Sveevee avec onglets apercu, parametres, boutique, services, evenements et annonces.',
-			register: 'S inscrire pour commencer',
+			subtitle: 'Exemple statique d’une page Sveevee avec les onglets aperçu, paramètres, boutique, services, événements et annonces.',
+			register: 'S’inscrire pour commencer',
 			badge: 'Exemple de page gratuite',
 			pageName: 'Ramot Local Studio',
-			pageDescription: 'Exemple de page locale complete avec contact, adresse, horaires, reseaux sociaux, avis, produits, services, evenements et annonces dans une page publique.',
-			location: 'Jerusalem, Ramot',
-			settingsTitle: 'Parametres remplis',
+			pageDescription: 'Exemple de page locale complète réunissant contact, adresse, horaires, réseaux sociaux, avis, produits, services, événements et annonces sur une seule page publique.',
+			location: 'Jérusalem, Ramot',
+			settingsTitle: 'Paramètres renseignés',
 			modulesTitle: 'Modules',
 			allEnabled: 'Tous les modules sont actifs',
 			products: 'Produits',
 			services: 'Services',
-			events: 'Evenements',
+			events: 'Événements',
 			ads: 'Annonces',
 			details: {
-				contact: 'Telephone, e-mail, WhatsApp, chat et partage sont remplis.',
-				address: 'Ha-Pisga 18, Ramot, Jerusalem',
+				contact: 'Le téléphone, l’e-mail, WhatsApp, le chat et le partage sont renseignés.',
+				address: '18 Ha-Pisga, Ramot, Jérusalem',
 				socials: 'Facebook, Instagram, TikTok et Telegram sont remplis.',
 				hours: 'Dimanche-jeudi 09:00-18:00, vendredi 09:00-13:00.'
 			},
 			items: {
 				products: [
 					{ name: 'Panier cadeau fait main', price: '₪120', body: 'Panier local avec plantes, savons et message personnel.' },
-					{ name: 'Etagere bureau maison', price: '₪260', body: 'Etagere compacte avec livraison dans les quartiers de Jerusalem.' },
-					{ name: 'Kit evenement de quartier', price: '₪90', body: 'Gobelets, badges, panneaux et decoration pour rencontres locales.' }
+					{ name: 'Étagère pour bureau à domicile', price: '₪260', body: 'Étagère compacte avec livraison dans les quartiers de Jérusalem.' },
+					{ name: 'Kit d’événement de quartier', price: '₪90', body: 'Gobelets, badges, panneaux et décoration pour les rencontres locales.' }
 				],
 				services: [
-					{ name: 'Creation de page entreprise', body: 'Texte, categorie, photos, horaires et premiers produits prets a publier.' },
-					{ name: 'Preparation evenement communaute', body: 'Details, lieu, horaire et annonces prepares pour les habitants.' },
-					{ name: 'Coordination livraison locale', body: 'Retraits, livraisons et messages clients organises clairement.' }
+					{ name: 'Création d’une page entreprise', body: 'Texte, catégorie, photos, horaires et premiers produits prêts à être publiés.' },
+					{ name: 'Préparation d’un événement communautaire', body: 'Détails, lieu, horaires et annonces préparés pour les habitants.' },
+					{ name: 'Coordination des livraisons locales', body: 'Retraits, livraisons et messages des clients organisés clairement.' }
 				],
 				events: [
-					{ name: 'Rencontre createurs du vendredi', body: 'Petite rencontre locale pour produits faits main, voisins et vendeurs.' },
-					{ name: 'Atelier reparation famille', body: 'Apportez un objet, apprenez les bases et rencontrez des voisins.' }
+					{ name: 'Rencontre des créateurs du vendredi', body: 'Petite rencontre locale autour de produits faits main, entre voisins et vendeurs.' },
+					{ name: 'Atelier de réparation en famille', body: 'Apportez un objet, apprenez les bases et rencontrez des voisins.' }
 				],
 				ads: [
-					{ title: 'Offre ouverture nouveaux clients', body: 'Livraison locale gratuite pour la premiere commande via la page.', type: 'business_ad' },
-					{ title: 'Benevoles recherches', body: 'Deux personnes pour accueillir les invites et organiser la table.', type: 'community_ad' },
-					{ title: 'Table de presentation occasion', body: 'Table en bois leger, bon etat, retrait a Ramot.', type: 'private_ad' }
+					{ title: 'Offre d’ouverture pour les nouveaux clients', body: 'Livraison locale gratuite pour la première commande passée via la page.', type: 'business_ad' },
+					{ title: 'Bénévoles recherchés', body: 'Deux personnes sont recherchées pour accueillir les invités et organiser la table.', type: 'community_ad' },
+					{ title: 'Table de présentation d’occasion', body: 'Table légère en bois, en bon état, à retirer à Ramot.', type: 'private_ad' }
 				]
 			}
 		}
@@ -336,7 +336,7 @@
 		width: 512,
 		height: 512,
 		sizes: '96px',
-		alt: `${typedCopy.value.pageName} logo`
+		alt: t('pages.logoAlt', { name: typedCopy.value.pageName })
 	}))
 	const bannerUrl = computed(() => bannerImage.value.image_url)
 	const logoUrl = computed(() => logoImage.value.image_url)

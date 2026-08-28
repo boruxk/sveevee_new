@@ -9,7 +9,8 @@
     "build:seo": "npm run build && cd ../backend && php artisan seo:prerender-public-pages",
     "optimize:landing-images": "node scripts/optimize-landing-images.mjs",
     "preview": "vite preview",
-    "lint": "eslint -c .eslintrc.cjs src vite.config.js --ext .js,.vue",
+    "lint:i18n": "node scripts/audit-i18n.mjs",
+    "lint": "npm run lint:i18n && eslint -c .eslintrc.cjs src vite.config.js --ext .js,.vue",
     "lint:fix": "eslint -c .eslintrc.cjs src vite.config.js --ext .js,.vue --fix"
   },
   "dependencies": {

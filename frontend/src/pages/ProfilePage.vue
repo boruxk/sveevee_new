@@ -62,12 +62,14 @@
 	))
 	const hasStoredPhoto = computed(() => Boolean(authStore.user?.profile?.photo_url) && !photo.value)
 	const flag = (...points) => String.fromCodePoint(...points)
-	const localeOptions = computed(() => [
+	const allLocaleOptions = computed(() => [
 		{ label: `${flag(0x1f1ee, 0x1f1f1)} ${t('languages.he')}`, title: t('languages.he'), value: 'he', flag: flag(0x1f1ee, 0x1f1f1) },
 		{ label: `${flag(0x1f1fa, 0x1f1f8)} ${t('languages.en')}`, title: t('languages.en'), value: 'en', flag: flag(0x1f1fa, 0x1f1f8) },
 		{ label: `${flag(0x1f1f7, 0x1f1fa)} ${t('languages.ru')}`, title: t('languages.ru'), value: 'ru', flag: flag(0x1f1f7, 0x1f1fa) },
 		{ label: `${flag(0x1f1eb, 0x1f1f7)} ${t('languages.fr')}`, title: t('languages.fr'), value: 'fr', flag: flag(0x1f1eb, 0x1f1f7) }
 	])
+	const localeOptions = computed(() => allLocaleOptions.value.filter((option) => option.value !== 'ru'))
+	const selectedLocaleLabel = computed(() => allLocaleOptions.value.find((option) => option.value === form.locale)?.label || form.locale)
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const hasPassword = computed(() => authStore.user?.has_password !== false)
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
@@ -286,6 +288,7 @@
 							options-dense
 							popup-content-class="profile-locale-select-menu"
 							popup-content-style="max-height: min(72vh, 520px); overflow-y: auto;"
+							:display-value="selectedLocaleLabel"
 							:options="localeOptions"
 							:label="t('profile.languages')"
 						>
@@ -342,10 +345,12 @@
 						:label="t('actions.save')"
 					/>
 				</q-form>
-				<div v-if="!loading" class="profile-password-gap" />
-				<q-form v-if="!loading"
+				<q-spinner v-if="loading" color="primary" />
+			</section>
+
+			<section v-if="!loading" class="soz-section-card profile-password-panel q-mt-lg">
+				<q-form v-if="hasPassword"
 					ref="passwordFormRef"
-					v-show="hasPassword"
 					greedy
 					class="profile-password-form column q-gutter-md q-pl-md"
 					@submit.prevent="savePassword()"
@@ -384,7 +389,7 @@
 						:label="t('profile.changePassword')"
 					/>
 				</q-form>
-				<div v-if="!loading && !hasPassword" class="profile-password-form column q-gutter-md q-pl-md">
+				<div v-else class="profile-password-form column q-gutter-md q-pl-md">
 					<div class="profile-password-intro">
 						<h2>{{ t('profile.passwordTitle') }}</h2>
 						<p>{{ t('profile.googlePasswordBody') }}</p>
@@ -398,7 +403,6 @@
 						:label="t('auth.forgotPassword')"
 					/>
 				</div>
-				<q-spinner v-if="loading" color="primary" />
 			</section>
 		</div>
 	</q-page>
@@ -415,7 +419,8 @@
 }
 
 .page-head,
-.profile-panel {
+.profile-panel,
+.profile-password-panel {
   padding: 28px;
 }
 
@@ -461,10 +466,6 @@
   line-height: 1.58;
 }
 
-.profile-password-gap {
-  height: 52px;
-}
-
 .profile-password-form {
   gap: 0;
 
@@ -507,7 +508,8 @@
   }
 
   .page-head,
-  .profile-panel {
+  .profile-panel,
+  .profile-password-panel {
     padding: 20px;
   }
 
@@ -524,10 +526,6 @@
 
   .form-submit {
     width: 100%;
-  }
-
-  .profile-password-gap {
-    height: 40px;
   }
 
   .profile-password-fields {

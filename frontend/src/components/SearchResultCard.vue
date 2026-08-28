@@ -4,6 +4,7 @@
 	import { adRoute, pageRoute, productRoute, userRoute } from '@/constants/catalogTopics'
 	import AdExpiryTimer from '@/components/AdExpiryTimer.vue'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
+	import { locationLabel } from '@/utils/locationLabels'
 
 	const props = defineProps({
 		item: {
@@ -12,7 +13,7 @@
 		}
 	})
 	const emit = defineEmits(['expired'])
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 
 	const value = computed(() => props.item.value || {})
 	const resultRoute = computed(() => {
@@ -84,15 +85,33 @@
 			address = value.value.page?.address_details || {}
 		}
 
-		return [address.city, address.neighborhood].filter(Boolean).join(' / ')
+		return [
+			locationLabel(address.city, 'city', locale.value),
+			locationLabel(address.neighborhood, 'neighborhood', locale.value)
+		].filter(Boolean).join(' / ')
 	})
+
+	function formatEventDate(value) {
+		if (!value) {
+			return ''
+		}
+
+		const date = new Date(`${value}T00:00:00`)
+
+		if (Number.isNaN(date.getTime())) {
+			return value
+		}
+
+		return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(date)
+	}
+
 	const detail = computed(() => {
 		if (props.item.kind === 'product') {
 			return value.value.price_label || ''
 		}
 
 		if (props.item.kind === 'event') {
-			return [value.value.date, value.value.time].filter(Boolean).join(' · ')
+			return [formatEventDate(value.value.date), value.value.time].filter(Boolean).join(' · ')
 		}
 
 		if (props.item.kind === 'service') {
@@ -112,7 +131,7 @@
 				return imagePayload(value.value.banner_url, value.value, 'banner', title.value)
 			}
 
-			return imagePayload(value.value.logo_url, value.value, 'logo', `${title.value} logo`, true)
+			return imagePayload(value.value.logo_url, value.value, 'logo', t('pages.logoAlt', { name: title.value }), true)
 		}
 
 		return imagePayload(value.value.image_url, value.value, 'image', title.value)

@@ -20,7 +20,10 @@
 	const user = ref(null)
 
 	const pages = computed(() => [user.value?.business_page, user.value?.community_page].filter(Boolean))
-	const profileLocation = computed(() => [user.value?.profile?.city, user.value?.profile?.neighborhood].filter(Boolean).join(', '))
+	const profileLocation = computed(() => [
+		locationLabel(user.value?.profile?.city, 'city', locale.value),
+		locationLabel(user.value?.profile?.neighborhood, 'neighborhood', locale.value)
+	].filter(Boolean).join(', '))
 	const userTopic = computed(() => catalogTopicByKey(catalogGroups.value, user.value?.profile?.user_type))
 
 	function userCatalogPath(city = '', neighborhood = '') {
@@ -121,7 +124,7 @@
 				</q-avatar>
 				<div>
 					<h1 class="soz-page-title">{{ user.display_name }}</h1>
-					<nav v-if="userCatalogLinks.length" class="detail-catalog-links person-catalog-links" aria-label="Catalog">
+					<nav v-if="userCatalogLinks.length" class="detail-catalog-links person-catalog-links" :aria-label="t('catalog.navigationLabel')">
 						<router-link v-for="link in userCatalogLinks" :key="link.to" :to="link.to">
 							{{ link.label }}
 						</router-link>

@@ -7,12 +7,15 @@ use App\Models\EmailBan;
 use App\Models\User;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Services\UserDeletionService;
 use Illuminate\Http\Request;
 
 class AdminUserController extends Controller
 {
-    public function __construct(private readonly PayloadService $payloads)
-    {
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly UserDeletionService $userDeletion,
+    ) {
     }
 
     public function index(Request $request)
@@ -120,5 +123,17 @@ class AdminUserController extends Controller
         EmailBan::query()->where('email', $user->email)->delete();
 
         return ApiResponseService::success($this->payloads->user($user->fresh(['profile', 'pages']), includePrivate: true), 'User restored.');
+    }
+
+    public function destroy(User $user)
+    {
+        if ($user->hasRole('admin')) {
+            return ApiResponseService::error('Admin users cannot be deleted from this screen.', status: 422);
+        }
+
+        $deletedUserId = $user->id;
+        $this->userDeletion->delete($user);
+
+        return ApiResponseService::success(['id' => $deletedUserId], 'User deleted.');
     }
 }

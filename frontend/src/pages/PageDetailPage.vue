@@ -309,7 +309,7 @@
 <template>
 	<q-page padding class="detail-page">
 		<div v-if="page" class="page-shell">
-			<nav v-if="pageCatalogLinks.length" class="detail-catalog-links" aria-label="Catalog">
+			<nav v-if="pageCatalogLinks.length" class="detail-catalog-links" :aria-label="t('catalog.navigationLabel')">
 				<router-link v-for="link in pageCatalogLinks" :key="link.to" :to="link.to">
 					{{ link.label }}
 				</router-link>

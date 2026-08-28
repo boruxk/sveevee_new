@@ -6,6 +6,7 @@
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { useAppStore } from '@/stores/app'
 	import { qrSvg } from '@/utils/qrCode'
+	import { locationLabel } from '@/utils/locationLabels'
 
 	const props = defineProps({
 		page: {
@@ -43,7 +44,7 @@
 	})
 
 	const emit = defineEmits(['show-ratings', 'rate', 'chat'])
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const $q = useQuasar()
 	const appStore = useAppStore()
 	const qrOpen = ref(false)
@@ -156,7 +157,12 @@
 			return address
 		}
 
-		return [address.street, address.number, address.neighborhood, address.city].filter(Boolean).join(', ')
+		return [
+			address.street,
+			address.number,
+			locationLabel(address.neighborhood, 'neighborhood', locale.value),
+			locationLabel(address.city, 'city', locale.value)
+		].filter(Boolean).join(', ')
 	})
 	const previewAddressMapsUrl = computed(() => {
 		if (!previewAddress.value) {
@@ -172,7 +178,7 @@
 	const previewOpeningHours = computed(() => props.page?.opening_hours || [])
 	const previewLogoUrl = computed(() => props.page?.logo_url || null)
 	const previewBannerUrl = computed(() => props.page?.banner_url || null)
-	const previewLogoAlt = computed(() => props.page?.logo_alt || `${previewTitle.value} logo`)
+	const previewLogoAlt = computed(() => props.page?.logo_alt || t('pages.logoAlt', { name: previewTitle.value }))
 	const previewBannerAlt = computed(() => props.page?.banner_alt || previewTitle.value)
 	const ratingSummary = computed(() => props.page?.rating_summary || { average: 0, count: 0 })
 	const ratingAverage = computed(() => Number(ratingSummary.value.average || 0))
@@ -183,8 +189,11 @@
 		}
 
 		return t('ratings.summary', {
-			average: ratingAverage.value.toFixed(1),
-			count: ratingCount.value
+			average: new Intl.NumberFormat(locale.value, {
+				minimumFractionDigits: 1,
+				maximumFractionDigits: 1
+			}).format(ratingAverage.value),
+			count: new Intl.NumberFormat(locale.value).format(ratingCount.value)
 		})
 	})
 	const previewStyle = computed(() => ({

@@ -195,7 +195,7 @@
 <template>
 	<q-page padding class="product-detail-page">
 		<div v-if="product" class="product-detail-shell">
-			<nav v-if="breadcrumbLinks.length > 1" class="product-detail-breadcrumb" aria-label="Breadcrumb">
+			<nav v-if="breadcrumbLinks.length > 1" class="product-detail-breadcrumb" :aria-label="t('catalog.breadcrumbLabel')">
 				<router-link v-for="link in breadcrumbLinks" :key="link.to" :to="link.to">
 					{{ link.label }}
 				</router-link>

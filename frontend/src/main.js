@@ -42,6 +42,9 @@ async function bootstrap() {
 	appStore.syncDocument(initialLocale.locale)
 
 	app.mount('#app')
+	import('@/composables/useCatalogTopics')
+		.then(({ preloadCatalogTopics }) => preloadCatalogTopics())
+		.catch(() => null)
 	installRecaptchaWarmup()
 }
 

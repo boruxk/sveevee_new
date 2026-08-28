@@ -6,6 +6,7 @@
 	import {
 		banAdminUser,
 		createBlockedTerm,
+		deleteAdminUser,
 		deleteBlockedTerm,
 		fetchAdminSettings,
 		fetchAdminSupportChats,
@@ -22,6 +23,7 @@
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 	import { catalogLabel } from '@/constants/catalogTopics'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { locationLabel } from '@/utils/locationLabels'
 
 	const defaultSettings = () => ({
 		ads: {
@@ -67,6 +69,7 @@
 	const selectedUser = ref(null)
 	const userDetailsOpen = ref(false)
 	const userDetailsLoading = ref(false)
+	const deletingUserId = ref(null)
 	const selectedConversationId = ref(null)
 	const activeSupportConversation = ref(null)
 	const supportMessage = ref('')
@@ -119,6 +122,7 @@
 		ru: 'ru-RU',
 		fr: 'fr-FR'
 	}[locale.value] || locale.value))
+	const localizedLocation = (value, type) => locationLabel(value, type, locale.value)
 	const userColumns = computed(() => [
 		{
 			name: 'name',
@@ -138,7 +142,7 @@
 			name: 'city',
 			label: t('auth.city'),
 			align: 'left',
-			field: (user) => user.profile?.city || '-',
+			field: (user) => localizedLocation(user.profile?.city, 'city') || '-',
 			sortable: false
 		},
 		{
@@ -298,8 +302,8 @@
 		try {
 			const { data } = await fetchAdminUser(row.id)
 			selectedUser.value = data.data
-		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('admin.userDetailsFailed') })
+		} catch {
+			$q.notify({ type: 'negative', message: t('admin.userDetailsFailed') })
 		} finally {
 			userDetailsLoading.value = false
 		}
@@ -329,6 +333,55 @@
 		await reloadAfterModeration()
 	}
 
+	async function deleteUser(user) {
+		deletingUserId.value = user.id
+
+		try {
+			await deleteAdminUser(user.id)
+
+			if (selectedUser.value?.id === user.id) {
+				userDetailsOpen.value = false
+				selectedUser.value = null
+			}
+
+			let page = tablePagination.value.page
+			if (userRows.value.length === 1 && page > 1) {
+				page -= 1
+			}
+
+			await loadUserTable(page)
+			$q.notify({ type: 'positive', message: t('admin.deleteUserSuccess') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.deleteUserFailed')) })
+		} finally {
+			deletingUserId.value = null
+		}
+	}
+
+	function confirmDeleteUser(user) {
+		if (!user?.id || user.role === 'admin') {
+			return
+		}
+
+		const name = user.display_name || user.name || user.email || `#${user.id}`
+
+		$q.dialog({
+			title: t('admin.deleteUserTitle'),
+			message: t('admin.deleteUserMessage', { name }),
+			persistent: true,
+			ok: {
+				label: t('actions.delete'),
+				color: 'negative',
+				unelevated: true
+			},
+			cancel: {
+				label: t('actions.cancel'),
+				color: 'primary',
+				flat: true
+			}
+		}).onOk(() => deleteUser(user))
+	}
+
 	function onTableRequest({ pagination }) {
 		loadUserTable(pagination.page || 1)
 	}
@@ -347,8 +400,8 @@
 			await refreshSupportConversations()
 			await scrollToBottom()
 			$q.notify({ type: 'positive', message: t('admin.messageSent') })
-		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('admin.messageFailed') })
+		} catch {
+			$q.notify({ type: 'negative', message: t('admin.messageFailed') })
 		}
 	}
 
@@ -572,7 +625,7 @@
 									<div>
 										<h2>{{ activeSupportUser?.display_name }}</h2>
 										<p>{{ activeSupportUser?.email }}</p>
-										<p>{{ activeSupportUser?.profile?.city || '-' }} / {{ activeSupportUser?.profile?.neighborhood || '-' }}</p>
+										<p>{{ localizedLocation(activeSupportUser?.profile?.city, 'city') || '-' }} / {{ localizedLocation(activeSupportUser?.profile?.neighborhood, 'neighborhood') || '-' }}</p>
 									</div>
 									<q-chip color="primary" text-color="white">{{ t('admin.supportInbox') }}</q-chip>
 								</header>
@@ -694,29 +747,44 @@
 
 							<template #body-cell-actions="props">
 								<q-td :props="props">
-									<q-btn v-if="!props.row.banned_at"
-										color="negative"
-										flat
-										dense
-										rounded
-										size="sm"
-										icon="block"
-										:label="t('actions.ban')"
-										:disable="props.row.role === 'admin'"
-										class="moderation-btn"
-										@click.stop="ban(props.row)"
-									/>
-									<q-btn v-else
-										color="positive"
-										flat
-										dense
-										rounded
-										size="sm"
-										icon="restart_alt"
-										:label="t('admin.unban')"
-										class="moderation-btn"
-										@click.stop="restore(props.row)"
-									/>
+									<div class="user-actions">
+										<q-btn v-if="!props.row.banned_at"
+											color="negative"
+											flat
+											dense
+											rounded
+											size="sm"
+											icon="block"
+											:label="t('actions.ban')"
+											:disable="props.row.role === 'admin'"
+											class="moderation-btn"
+											@click.stop="ban(props.row)"
+										/>
+										<q-btn v-else
+											color="positive"
+											flat
+											dense
+											rounded
+											size="sm"
+											icon="restart_alt"
+											:label="t('admin.unban')"
+											class="moderation-btn"
+											@click.stop="restore(props.row)"
+										/>
+										<q-btn
+											v-if="props.row.role !== 'admin'"
+											flat
+											round
+											dense
+											color="negative"
+											icon="delete"
+											:aria-label="t('admin.deleteUser')"
+											:loading="deletingUserId === props.row.id"
+											@click.stop="confirmDeleteUser(props.row)"
+										>
+											<q-tooltip>{{ t('admin.deleteUser') }}</q-tooltip>
+										</q-btn>
+									</div>
 								</q-td>
 							</template>
 						</q-table>
@@ -1131,8 +1199,8 @@
 									<div><dt>{{ t('admin.role') }}</dt><dd>{{ selectedUser.role || '-' }}</dd></div>
 									<div><dt>{{ t('admin.locale') }}</dt><dd>{{ selectedUser.locale || '-' }}</dd></div>
 									<div><dt>{{ t('auth.phone') }}</dt><dd>{{ selectedUser.profile?.phone || '-' }}</dd></div>
-									<div><dt>{{ t('auth.city') }}</dt><dd>{{ selectedUser.profile?.city || '-' }}</dd></div>
-									<div><dt>{{ t('auth.neighborhood') }}</dt><dd>{{ selectedUser.profile?.neighborhood || '-' }}</dd></div>
+									<div><dt>{{ t('auth.city') }}</dt><dd>{{ localizedLocation(selectedUser.profile?.city, 'city') || '-' }}</dd></div>
+									<div><dt>{{ t('auth.neighborhood') }}</dt><dd>{{ localizedLocation(selectedUser.profile?.neighborhood, 'neighborhood') || '-' }}</dd></div>
 									<div><dt>{{ t('admin.registeredAt') }}</dt><dd>{{ formatDateTime(selectedUser.created_at) }}</dd></div>
 									<div><dt>{{ t('admin.emailVerified') }}</dt><dd>{{ formatDateTime(selectedUser.email_verified_at) }}</dd></div>
 									<div><dt>{{ t('admin.status') }}</dt><dd>{{ selectedUser.banned_at ? t('admin.banned') : t('admin.active') }}</dd></div>
@@ -1146,7 +1214,7 @@
 									<article v-for="userPage in selectedUser.pages" :key="userPage.id" class="user-page-row">
 										<div>
 											<strong>{{ userPage.name || t(`pages.kinds.${userPage.type}`) }}</strong>
-											<span>{{ t(`pages.kinds.${userPage.type}`) }} - {{ userPage.address_details?.city || '-' }}</span>
+											<span>{{ t(`pages.kinds.${userPage.type}`) }} - {{ localizedLocation(userPage.address_details?.city, 'city') || '-' }}</span>
 											<small>
 												{{ t('admin.pageContentCounts', {
 													products: userPage.products?.length || 0,
@@ -1668,6 +1736,14 @@
 
 .support-empty--panel {
   min-height: 460px;
+}
+
+.user-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 116px;
 }
 
 .moderation-btn {

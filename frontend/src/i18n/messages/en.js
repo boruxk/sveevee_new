@@ -29,6 +29,8 @@ export default {
 	},
 	footer: {
 		label: 'Footer links',
+		legalLabel: 'Legal links',
+		recaptchaProtected: 'This site is protected by reCAPTCHA.',
 		explore: 'Explore',
 		marketplace: 'Marketplace',
 		community: 'Community',
@@ -47,6 +49,7 @@ export default {
 	validation: {
 		required: 'This field is required.',
 		requiredFields: 'Please fill in the required fields.',
+		timePlaceholder: 'HH:MM',
 		time24: 'Use 24h time, for example 17:30.',
 		maxCharacters: 'Max. {max} characters.',
 		charactersRemaining: '{count} of {max} characters remaining.'
@@ -106,6 +109,7 @@ export default {
 		update: 'Update',
 		edit: 'Edit',
 		delete: 'Delete',
+		cancel: 'Cancel',
 		search: 'Search',
 		clear: 'Clear',
 		readMore: 'Read more',
@@ -478,6 +482,7 @@ export default {
 		closesAt: 'Closes',
 		palette: 'Color palette',
 		logo: 'Logo',
+		logoAlt: '{name} logo',
 		banner: 'Banner',
 		uploadLogo: 'Upload logo',
 		uploadBanner: 'Upload banner',
@@ -582,6 +587,11 @@ export default {
 		totalUsers: 'Total users',
 		userDetails: 'User details',
 		userDetailsFailed: 'User details could not be loaded.',
+		deleteUser: 'Delete user',
+		deleteUserTitle: 'Delete user permanently?',
+		deleteUserMessage: 'This permanently deletes {name}, their pages, ads, products, services, events, chats, and uploaded images. This cannot be undone.',
+		deleteUserSuccess: 'User deleted.',
+		deleteUserFailed: 'User could not be deleted.',
 		accountDetails: 'Account details',
 		login: 'Login',
 		role: 'Role',
@@ -672,6 +682,8 @@ export default {
 		empty: 'No results.'
 	},
 	catalog: {
+		breadcrumbLabel: 'Breadcrumb',
+		navigationLabel: 'Catalog navigation',
 		title: 'Catalog',
 		kicker: 'Local catalog',
 		intro: 'Browse local business pages, products, services, events, ads, and people by category, city, and neighborhood.',
@@ -876,7 +888,7 @@ export default {
 		pricingKicker: 'Pricing',
 		pricingTitle: 'Simple pricing for everyone',
 		month: 'per month',
-		currency: '\u20AA',
+		currency: '₪',
 		contentKicker: 'Local discovery',
 		contentTitle: 'A neighborhood platform built for real local search',
 		contentBlocks: [

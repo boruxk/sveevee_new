@@ -8,6 +8,7 @@
 	import AdExpiryTimer from '@/components/AdExpiryTimer.vue'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { adRoute, catalogHubPath, catalogLabel, catalogPath, catalogTopicForAdCategory, pageRoute, userRoute } from '@/constants/catalogTopics'
+	import { locationLabel as localizedLocationLabel } from '@/utils/locationLabels'
 
 	const props = defineProps({
 		ad: {
@@ -57,7 +58,10 @@
 	const hasImage = computed(() => Boolean(props.ad.image_url))
 	const imageAlt = computed(() => props.ad.image_alt || props.ad.title || '')
 	const imageSizes = computed(() => props.ad.image_sizes || '(max-width: 700px) calc(100vw - 36px), 360px')
-	const locationLabel = computed(() => [props.ad.city, props.ad.neighborhood].filter(Boolean).join(', '))
+	const locationLabel = computed(() => [
+		localizedLocationLabel(props.ad.city, 'city', locale.value),
+		localizedLocationLabel(props.ad.neighborhood, 'neighborhood', locale.value)
+	].filter(Boolean).join(', '))
 	const ownerName = computed(() => props.ad.page?.name || props.ad.user?.display_name || '')
 	const badgeLabel = computed(() => [badgeTypeLabel.value, ownerName.value].filter(Boolean).join(': '))
 	const categoryTopic = computed(() => catalogTopicForAdCategory(catalogGroups.value, props.ad.category))

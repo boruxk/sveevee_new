@@ -59,8 +59,8 @@
 			emit('saved', data.data)
 			$q.notify({ type: 'positive', message: t('ratings.saved') })
 			open.value = false
-		} catch (error) {
-			$q.notify({ type: 'negative', message: error.response?.data?.message || t('ratings.saveFailed') })
+		} catch {
+			$q.notify({ type: 'negative', message: t('ratings.saveFailed') })
 		} finally {
 			saving.value = false
 		}

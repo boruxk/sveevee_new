@@ -111,10 +111,10 @@
 		fr: 'fr-FR'
 	}[locale.value] || locale.value))
 
-	function localizedChatLimit(reason, fallback = null) {
+	function localizedChatLimit(reason) {
 		const key = chatLimitMessageKeys[reason]
 
-		return key ? t(key) : fallback
+		return key ? t(key) : ''
 	}
 
 	function formatMessageTime(value) {
@@ -302,7 +302,7 @@
 			await scrollToBottom()
 		} catch (error) {
 			const reason = error.response?.data?.errors?.reason
-			$q.notify({ type: 'negative', message: localizedChatLimit(reason, error.response?.data?.message) || t('chat.sendFailed') })
+			$q.notify({ type: 'negative', message: localizedChatLimit(reason) || t('chat.sendFailed') })
 		} finally {
 			pageSending.value = false
 		}

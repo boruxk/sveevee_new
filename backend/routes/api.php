@@ -115,6 +115,7 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::delete('/blocked-terms/{blockedTerm}', [AdminBlockedTermController::class, 'destroy']);
         Route::get('/users', [AdminUserController::class, 'index']);
         Route::get('/users/{user}', [AdminUserController::class, 'show']);
+        Route::delete('/users/{user}', [AdminUserController::class, 'destroy']);
         Route::patch('/users/{user}/ban', [AdminUserController::class, 'ban']);
         Route::patch('/users/{user}/restore', [AdminUserController::class, 'restore']);
         Route::post('/users/{user}/message', [ChatController::class, 'adminSend'])->middleware('throttle:chat-send');

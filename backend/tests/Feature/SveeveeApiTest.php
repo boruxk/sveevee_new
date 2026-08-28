@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Notifications\PasswordChangedNotification;
 use App\Support\CatalogTopics;
 use App\Support\ContentModeration;
+use App\Support\PublicImageVariants;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -2636,5 +2637,93 @@ HTML);
             ->assertJsonPath('data.pages.0.id', $page->id)
             ->assertJsonPath('data.pages.0.name', 'Miri Studio')
             ->assertJsonPath('data.pages.0.type', Page::TYPE_BUSINESS);
+    }
+
+    public function test_admin_can_delete_user_content_and_media_but_not_an_admin(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create();
+        $paths = [
+            'media/profiles/user.webp',
+            'media/pages/logos/business.webp',
+            'media/pages/banners/business.webp',
+            'media/listings/ad.webp',
+            'media/pages/products/product.webp',
+            'media/pages/services/service.webp',
+            'media/pages/events/event.webp',
+        ];
+
+        $user->profile()->update(['photo_path' => $paths[0]]);
+        $page = Page::query()->create([
+            'user_id' => $user->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Deleted Business',
+            'logo_path' => $paths[1],
+            'banner_path' => $paths[2],
+        ]);
+        $ad = Ad::query()->create([
+            'user_id' => $user->id,
+            'page_id' => $page->id,
+            'type' => Ad::TYPE_BUSINESS,
+            'title' => 'Delete this ad',
+            'text' => 'Delete this ad and its media.',
+            'image_path' => $paths[3],
+            'status' => 'active',
+        ]);
+        $product = PageProduct::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Deleted product',
+            'description' => 'Product description.',
+            'price' => 10,
+            'image_path' => $paths[4],
+            'link' => 'https://example.test/product',
+        ]);
+        $service = PageService::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Deleted service',
+            'description' => 'Service description.',
+            'image_path' => $paths[5],
+        ]);
+        $event = PageEvent::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Deleted event',
+            'description' => 'Event description.',
+            'event_date' => now()->addDay()->toDateString(),
+            'event_time' => '18:00',
+            'address' => 'Jerusalem',
+            'image_path' => $paths[6],
+        ]);
+
+        $storedPaths = collect($paths)
+            ->flatMap(fn (string $path): array => [$path, ...PublicImageVariants::variantPaths($path)])
+            ->values()
+            ->all();
+
+        foreach ($storedPaths as $path) {
+            Storage::disk('public')->put($path, 'image');
+        }
+
+        Sanctum::actingAs($admin);
+
+        $this->deleteJson("/api/v1/admin/users/{$user->id}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $user->id);
+
+        $this->assertModelMissing($user);
+        $this->assertModelMissing($page);
+        $this->assertModelMissing($ad);
+        $this->assertModelMissing($product);
+        $this->assertModelMissing($service);
+        $this->assertModelMissing($event);
+
+        foreach ($storedPaths as $path) {
+            Storage::disk('public')->assertMissing($path);
+        }
+
+        $this->deleteJson("/api/v1/admin/users/{$admin->id}")
+            ->assertStatus(422);
+        $this->assertModelExists($admin);
     }
 }
