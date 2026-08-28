@@ -12,6 +12,14 @@ export function fetchAdminSupportChats() {
 	return apiClient.get('/admin/support-chats')
 }
 
+export function fetchAdminSupportChat(source, id) {
+	return apiClient.get(`/admin/support-chats/${source}/${id}`)
+}
+
+export function sendAdminSupportMessage(source, id, body) {
+	return apiClient.post(`/admin/support-chats/${source}/${id}/messages`, { body })
+}
+
 export function fetchAdminUser(id) {
 	return apiClient.get(`/admin/users/${id}`)
 }

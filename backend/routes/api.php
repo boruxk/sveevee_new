@@ -3,11 +3,13 @@
 use App\Http\Controllers\Api\AdController;
 use App\Http\Controllers\Api\AdminBlockedTermController;
 use App\Http\Controllers\Api\AdminSettingsController;
+use App\Http\Controllers\Api\AdminSupportController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\HomeFeedController;
+use App\Http\Controllers\Api\GuestSupportController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MarketController;
 use App\Http\Controllers\Api\PageController;
@@ -42,6 +44,10 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
     Route::get('/pages/{page}/ratings', [PageRatingController::class, 'index']);
     Route::get('/pages/{page}', [PageController::class, 'show']);
 
+    Route::get('/guest-support', [GuestSupportController::class, 'show'])->middleware('throttle:120,1');
+    Route::post('/guest-support', [GuestSupportController::class, 'store'])->middleware('throttle:guest-support-start');
+    Route::post('/guest-support/messages', [GuestSupportController::class, 'send'])->middleware('throttle:chat-send');
+
     Route::prefix('auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
         Route::post('/login', [AuthController::class, 'login'])->withoutMiddleware('platform.available')->middleware('throttle:auth-login');
@@ -55,6 +61,8 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
     Route::middleware('auth:sanctum')->get('/me', [AuthController::class, 'me'])->withoutMiddleware('platform.available');
 
     Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/guest-support/claim', [GuestSupportController::class, 'claim'])->middleware('throttle:10,1');
+
         Route::get('/home-feed', [HomeFeedController::class, 'index']);
 
         Route::get('/profile', [ProfileController::class, 'show']);
@@ -106,7 +114,12 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
     });
 
     Route::middleware(['auth:sanctum', 'admin'])->withoutMiddleware('platform.available')->prefix('admin')->group(function () {
-        Route::get('/support-chats', [ChatController::class, 'adminSupportIndex']);
+        Route::get('/support-chats', [AdminSupportController::class, 'index']);
+        Route::get('/support-chats/{source}/{id}', [AdminSupportController::class, 'show'])
+            ->whereIn('source', ['account', 'guest']);
+        Route::post('/support-chats/{source}/{id}/messages', [AdminSupportController::class, 'send'])
+            ->whereIn('source', ['account', 'guest'])
+            ->middleware('throttle:chat-send');
         Route::get('/settings', [AdminSettingsController::class, 'index']);
         Route::patch('/settings/{section}', [AdminSettingsController::class, 'update']);
         Route::get('/blocked-terms', [AdminBlockedTermController::class, 'index']);

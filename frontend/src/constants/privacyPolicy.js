@@ -1,7 +1,7 @@
 export const privacyPolicies = {
 	en: {
 		title: 'Privacy Policy',
-		updated: 'Last updated: August 26, 2026',
+		updated: 'Last updated: August 28, 2026',
 		intro: 'This Privacy Policy explains how Sveevee handles personal information under the Israeli Protection of Privacy Law, 5741-1981, including Amendment 13, and the regulations made under it. It applies when you visit sveevee.co.il, create an account, publish local content, operate a business or community page, or communicate through the service.',
 		sections: [
 			{
@@ -24,7 +24,8 @@ export const privacyPolicies = {
 					'Account and profile information may include email address, name, password hash, city, neighborhood, preferred language, user type, profile photo, phone number if you choose to provide it, account status, and the registration-consent indicator.',
 					'If you use Google Sign-In, we receive the Google account identifier and profile details that Google makes available for sign-in, such as email address, name, and display name.',
 					'Content and activity information includes ads, business and community page details, logos, banners, price lists, products, brands, models, prices and offers, services, events, images, ratings, reviews, personal chats, page chats, support messages, reports, views, and interactions.',
-					'Technical and security information may include IP address, browser and device details, timestamps, language, referring page, requested URLs, authentication and security events, cookies or similar identifiers, reCAPTCHA results, and aggregated analytics information.'
+					'Technical and security information may include IP address, browser and device details, timestamps, language, referring page, requested URLs, authentication and security events, cookies or similar identifiers, reCAPTCHA results, and aggregated analytics information.',
+					'When guest support is used, we collect the name provided, an optional email address, language, support messages, and a random browser-session token. The token stays in browser storage and only its one-way hash is stored on the server.'
 				]
 			},
 			{
@@ -40,6 +41,7 @@ export const privacyPolicies = {
 					'Ads, public profiles, business and community pages, products, services, events, prices, offers, ratings, reviews, public names, profile photos, city, and neighborhood may be visible to anyone. Public pages may be shared through social services and indexed, cached, or copied by search engines and other third parties.',
 					'Personal chat messages are visible to the participants in the conversation. A message sent to a business or community page is visible to the page owner or authorized page manager and appears in the sender’s personal messages as a conversation with that page.',
 					'Authorized Sveevee administrators may access messages only where reasonably necessary for security, abuse investigation, legal compliance, or technical support. Support communications are available to authorized administrators. Do not send sensitive information that is unnecessary for the conversation.',
+					'Guest-support replies are available in the same browser and the optional email address is not used for notifications or session recovery. If you explicitly connect a guest chat after signing in, its messages are copied into the support conversation attached to your account.',
 					'Chat messages may remain stored while the relevant accounts or pages are active and for a reasonable period afterward where needed for security, dispute handling, enforcement, or legal obligations.'
 				]
 			},
@@ -70,6 +72,7 @@ export const privacyPolicies = {
 					'Account and profile information is generally kept while the account remains active and afterward only where reasonably needed for account closure, security, dispute handling, enforcement, or legal obligations.',
 					'Public content is generally kept until the user removes it, the relevant page or account is deleted, or it is removed under our rules. Search-engine caches and copies controlled by third parties may remain after removal from Sveevee.',
 					'Chats are retained according to the criteria described in the chat section. Technical and security logs are kept for the shortest period reasonably needed for operations, fraud prevention, troubleshooting, and security review under the applicable log-rotation process.',
+					'Inactive guest-support records are normally deleted 90 days after their last activity or account connection. This operational period may be adjusted by an administrator; messages copied into an account chat then follow the retention rules for account chats.',
 					'Deleted information may remain in protected backups for a limited technical backup cycle before being overwritten. When information is no longer needed, we delete or anonymize it where reasonably practicable and subject to lawful retention.'
 				]
 			},
@@ -104,7 +107,7 @@ export const privacyPolicies = {
 	},
 	he: {
 		title: 'מדיניות פרטיות',
-		updated: 'עודכן לאחרונה: 26 באוגוסט 2026',
+		updated: 'עודכן לאחרונה: 28 באוגוסט 2026',
 		intro: 'מדיניות פרטיות זו מסבירה כיצד Sveevee מטפלת במידע אישי בהתאם לחוק הגנת הפרטיות, התשמ״א-1981, לרבות תיקון 13, ולתקנות מכוחו. המדיניות חלה בעת ביקור ב-sveevee.co.il, יצירת חשבון, פרסום תוכן מקומי, הפעלת עמוד עסק או קהילה ושימוש בתקשורת שבשירות.',
 		sections: [
 			{
@@ -127,7 +130,8 @@ export const privacyPolicies = {
 					'מידע חשבון ופרופיל עשוי לכלול כתובת אימייל, שם, גיבוב סיסמה, עיר, שכונה, שפה מועדפת, סוג משתמש, תמונת פרופיל, מספר טלפון אם בחרתם למסור אותו, מצב החשבון וסימון ההסכמה בהרשמה.',
 					'בכניסה באמצעות Google אנו מקבלים את מזהה חשבון Google ואת פרטי הפרופיל ש-Google מעמידה לצורך הכניסה, כגון כתובת אימייל, שם ושם תצוגה.',
 					'מידע על תוכן ופעילות כולל מודעות, פרטי עמודי עסק וקהילה, לוגואים, באנרים, מחירונים, מוצרים, מותגים, דגמים, מחירים ומבצעים, שירותים, אירועים, תמונות, דירוגים, ביקורות, צ׳אטים אישיים, צ׳אטים של עמודים, פניות לתמיכה, דיווחים, צפיות ואינטראקציות.',
-					'מידע טכני ואבטחתי עשוי לכלול כתובת IP, פרטי דפדפן ומכשיר, מועדים, שפה, עמוד מפנה, כתובות שבוקשו, אירועי התחברות ואבטחה, קובצי cookie או מזהים דומים, תוצאות reCAPTCHA ומידע אנליטי מצטבר.'
+					'מידע טכני ואבטחתי עשוי לכלול כתובת IP, פרטי דפדפן ומכשיר, מועדים, שפה, עמוד מפנה, כתובות שבוקשו, אירועי התחברות ואבטחה, קובצי cookie או מזהים דומים, תוצאות reCAPTCHA ומידע אנליטי מצטבר.',
+					'בעת שימוש בתמיכה כאורח אנו אוספים את השם שנמסר, כתובת אימייל אופציונלית, שפה, הודעות תמיכה ואסימון דפדפן אקראי. האסימון נשמר בדפדפן ובשרת נשמר רק גיבוב חד-כיווני שלו.'
 				]
 			},
 			{
@@ -143,6 +147,7 @@ export const privacyPolicies = {
 					'מודעות, פרופילים ציבוריים, עמודי עסק וקהילה, מוצרים, שירותים, אירועים, מחירים, מבצעים, דירוגים, ביקורות, שמות ציבוריים, תמונות פרופיל, עיר ושכונה עשויים להיות גלויים לכל אדם. ניתן לשתף עמודים ציבוריים בשירותים חברתיים, ומנועי חיפוש וצדדים שלישיים עשויים לאנדקס, לשמור במטמון או להעתיק אותם.',
 					'הודעות בצ׳אט אישי גלויות למשתתפים בשיחה. הודעה לעמוד עסק או קהילה גלויה לבעל העמוד או למנהל עמוד מורשה ומופיעה בהודעות האישיות של השולח כשיחה עם אותו עמוד.',
 					'מנהלי Sveevee מורשים רשאים לגשת להודעות רק כאשר הדבר נחוץ באופן סביר לצורכי אבטחה, חקירת שימוש לרעה, ציות לדין או תמיכה טכנית. פניות תמיכה זמינות למנהלים מורשים. אין לשלוח מידע רגיש שאינו נחוץ לשיחה.',
+					'תשובות לתמיכה כאורח זמינות באותו דפדפן, וכתובת האימייל האופציונלית אינה משמשת להתראות או לשחזור השיחה. אם לאחר כניסה לחשבון תבחרו במפורש לחבר את שיחת האורח, הודעותיה יועתקו לשיחת התמיכה של החשבון.',
 					'הודעות צ׳אט עשויות להישמר כל עוד החשבונות או העמודים הרלוונטיים פעילים ולמשך זמן סביר לאחר מכן, כאשר הדבר נחוץ לאבטחה, טיפול במחלוקת, אכיפה או חובה חוקית.'
 				]
 			},
@@ -173,6 +178,7 @@ export const privacyPolicies = {
 					'מידע חשבון ופרופיל נשמר בדרך כלל כל עוד החשבון פעיל, ולאחר מכן רק ככל שנחוץ באופן סביר לסגירת החשבון, אבטחה, טיפול במחלוקת, אכיפה או חובה חוקית.',
 					'תוכן ציבורי נשמר בדרך כלל עד שהמשתמש מסיר אותו, העמוד או החשבון הרלוונטי נמחקים, או שהתוכן מוסר לפי הכללים שלנו. מטמונים של מנועי חיפוש ועותקים בשליטת צדדים שלישיים עשויים להישאר לאחר הסרת התוכן מ-Sveevee.',
 					'צ׳אטים נשמרים לפי הקריטריונים שבסעיף הצ׳אט. יומנים טכניים ואבטחתיים נשמרים למשך התקופה הקצרה הנחוצה באופן סביר לתפעול, מניעת הונאה, פתרון תקלות ובדיקת אבטחה, בהתאם לתהליך סבב היומנים החל.',
+					'רשומות תמיכה לא פעילות של אורחים נמחקות בדרך כלל 90 ימים לאחר הפעילות האחרונה או לאחר חיבורן לחשבון. מנהל יכול לשנות תקופה תפעולית זו; הודעות שהועתקו לצ׳אט של חשבון כפופות לאחר מכן לכללי השמירה של צ׳אטים בחשבון.',
 					'מידע שנמחק עשוי להישאר בגיבויים מוגנים למשך מחזור גיבוי טכני מוגבל לפני שיימחק. כאשר מידע אינו נחוץ עוד, אנו מוחקים או הופכים אותו לאנונימי ככל שהדבר מעשי ובכפוף לשמירה מותרת לפי דין.'
 				]
 			},
@@ -207,7 +213,7 @@ export const privacyPolicies = {
 	},
 	ru: {
 		title: 'Политика конфиденциальности',
-		updated: 'Последнее обновление: 26 августа 2026 г.',
+		updated: 'Последнее обновление: 28 августа 2026 г.',
 		intro: 'Эта Политика конфиденциальности объясняет, как Sveevee обрабатывает персональную информацию в соответствии с Законом Израиля о защите частной жизни 5741-1981, включая Поправку 13, и принятыми на его основании правилами. Она применяется при посещении sveevee.co.il, создании аккаунта, публикации локального контента, управлении бизнес-страницей или страницей сообщества и общении через сервис.',
 		sections: [
 			{
@@ -230,7 +236,8 @@ export const privacyPolicies = {
 					'Данные аккаунта и профиля могут включать e-mail, имя, хеш пароля, город, район, предпочитаемый язык, тип пользователя, фото профиля, телефон, если вы решили его указать, статус аккаунта и отметку согласия при регистрации.',
 					'При входе через Google мы получаем идентификатор аккаунта Google и данные профиля, которые Google предоставляет для входа, например e-mail, имя и отображаемое имя.',
 					'Данные о контенте и активности включают объявления, сведения бизнес-страниц и страниц сообществ, логотипы, баннеры, прайс-листы, товары, бренды, модели, цены и предложения, услуги, события, изображения, рейтинги, отзывы, личные чаты, чаты страниц, обращения в поддержку, жалобы, просмотры и взаимодействия.',
-					'Технические данные и данные безопасности могут включать IP-адрес, сведения о браузере и устройстве, время действий, язык, страницу перехода, запрошенные URL, события входа и безопасности, cookies или похожие идентификаторы, результаты reCAPTCHA и агрегированную аналитику.'
+					'Технические данные и данные безопасности могут включать IP-адрес, сведения о браузере и устройстве, время действий, язык, страницу перехода, запрошенные URL, события входа и безопасности, cookies или похожие идентификаторы, результаты reCAPTCHA и агрегированную аналитику.',
+					'При обращении в поддержку без аккаунта мы собираем указанное имя, необязательный e-mail, язык, сообщения поддержки и случайный токен браузера. Токен хранится в браузере, а на сервере сохраняется только его односторонний хеш.'
 				]
 			},
 			{
@@ -246,6 +253,7 @@ export const privacyPolicies = {
 					'Объявления, публичные профили, бизнес-страницы и страницы сообществ, товары, услуги, события, цены, предложения, рейтинги, отзывы, публичные имена, фото профиля, город и район могут быть видны всем. Публичные страницы можно распространять через социальные сервисы; поисковые системы и другие третьи лица могут индексировать, кэшировать или копировать их.',
 					'Сообщения личного чата видны участникам разговора. Сообщение бизнес-странице или странице сообщества видно владельцу страницы или уполномоченному менеджеру и появляется в личных сообщениях отправителя как разговор с этой страницей.',
 					'Уполномоченные администраторы Sveevee могут получать доступ к сообщениям только тогда, когда это разумно необходимо для безопасности, расследования злоупотреблений, соблюдения закона или технической поддержки. Обращения в поддержку доступны уполномоченным администраторам. Не отправляйте чувствительную информацию, не нужную для разговора.',
+					'Ответы гостевой поддержки доступны в том же браузере, а необязательный e-mail не используется для уведомлений или восстановления сессии. Если после входа вы явно свяжете гостевой чат с аккаунтом, его сообщения будут скопированы в чат поддержки аккаунта.',
 					'Сообщения чата могут храниться, пока соответствующие аккаунты или страницы активны, и разумный период после этого, если это необходимо для безопасности, разрешения споров, применения правил или выполнения требований закона.'
 				]
 			},
@@ -276,6 +284,7 @@ export const privacyPolicies = {
 					'Данные аккаунта и профиля обычно хранятся, пока аккаунт активен, а после этого — только в объеме, разумно необходимом для закрытия аккаунта, безопасности, разрешения споров, применения правил или выполнения требований закона.',
 					'Публичный контент обычно хранится до его удаления пользователем, удаления соответствующей страницы или аккаунта либо удаления по нашим правилам. Кэш поисковых систем и копии под контролем третьих лиц могут оставаться после удаления из Sveevee.',
 					'Чаты хранятся по критериям, описанным в разделе о чатах. Технические журналы и журналы безопасности хранятся в течение минимального разумного срока, необходимого для работы, предотвращения мошенничества, устранения ошибок и проверки безопасности, согласно применимому процессу ротации журналов.',
+					'Неактивные записи гостевой поддержки обычно удаляются через 90 дней после последней активности или привязки к аккаунту. Администратор может изменить этот рабочий срок; сообщения, скопированные в чат аккаунта, затем подчиняются правилам хранения чатов аккаунта.',
 					'Удаленная информация может оставаться в защищенных резервных копиях в течение ограниченного технического цикла до перезаписи. Когда информация больше не нужна, мы удаляем или обезличиваем ее, когда это практически возможно и с учетом законного хранения.'
 				]
 			},
@@ -310,7 +319,7 @@ export const privacyPolicies = {
 	},
 	fr: {
 		title: 'Politique de confidentialité',
-		updated: 'Dernière mise à jour : 26 août 2026',
+		updated: 'Dernière mise à jour : 28 août 2026',
 		intro: 'Cette Politique de confidentialité explique comment Sveevee traite les informations personnelles conformément à la Loi israélienne sur la protection de la vie privée 5741-1981, y compris son amendement 13, et à ses règlements. Elle s’applique lorsque vous visitez sveevee.co.il, créez un compte, publiez du contenu local, gérez une page entreprise ou communauté, ou communiquez via le service.',
 		sections: [
 			{
@@ -333,7 +342,8 @@ export const privacyPolicies = {
 					'Les données de compte et de profil peuvent inclure l’adresse e-mail, le nom, le hachage du mot de passe, la ville, le quartier, la langue préférée, le type d’utilisateur, la photo de profil, le téléphone si vous choisissez de le fournir, le statut du compte et l’indicateur de consentement à l’inscription.',
 					'Lors d’une connexion avec Google, nous recevons l’identifiant du compte Google et les données de profil que Google fournit pour la connexion, comme l’adresse e-mail, le nom et le nom affiché.',
 					'Les données de contenu et d’activité incluent les annonces, informations des pages entreprise et communauté, logos, bannières, listes de prix, produits, marques, modèles, prix et offres, services, événements, images, notes, avis, chats personnels, chats de pages, messages au support, signalements, vues et interactions.',
-					'Les données techniques et de sécurité peuvent inclure l’adresse IP, les informations du navigateur et de l’appareil, les horodatages, la langue, la page référente, les URL demandées, les événements de connexion et de sécurité, les cookies ou identifiants similaires, les résultats reCAPTCHA et les données analytiques agrégées.'
+					'Les données techniques et de sécurité peuvent inclure l’adresse IP, les informations du navigateur et de l’appareil, les horodatages, la langue, la page référente, les URL demandées, les événements de connexion et de sécurité, les cookies ou identifiants similaires, les résultats reCAPTCHA et les données analytiques agrégées.',
+					'Lorsque le support invité est utilisé, nous collectons le nom fourni, une adresse e-mail facultative, la langue, les messages au support et un jeton aléatoire du navigateur. Le jeton reste dans le stockage du navigateur et seul son hachage à sens unique est conservé sur le serveur.'
 				]
 			},
 			{
@@ -349,6 +359,7 @@ export const privacyPolicies = {
 					'Les annonces, profils publics, pages entreprise et communauté, produits, services, événements, prix, offres, notes, avis, noms publics, photos de profil, ville et quartier peuvent être visibles par tous. Les pages publiques peuvent être partagées sur des services sociaux et indexées, mises en cache ou copiées par des moteurs de recherche et d’autres tiers.',
 					'Les messages d’un chat personnel sont visibles par les participants à la conversation. Un message envoyé à une page entreprise ou communauté est visible par son propriétaire ou son gestionnaire autorisé et apparaît dans les messages personnels de l’expéditeur comme une conversation avec cette page.',
 					'Les administrateurs Sveevee autorisés peuvent accéder aux messages uniquement lorsque cela est raisonnablement nécessaire pour la sécurité, l’enquête sur un abus, le respect de la loi ou le support technique. Les communications au support sont accessibles aux administrateurs autorisés. Ne transmettez pas d’informations sensibles inutiles à la conversation.',
+					'Les réponses du support invité sont disponibles dans le même navigateur et l’adresse e-mail facultative n’est pas utilisée pour les notifications ou la récupération de la session. Si vous choisissez explicitement d’associer le chat après connexion, ses messages sont copiés dans le chat support de votre compte.',
 					'Les messages de chat peuvent rester stockés tant que les comptes ou pages concernés sont actifs, puis pendant une durée raisonnable si cela est nécessaire à la sécurité, à la gestion d’un litige, à l’application des règles ou aux obligations légales.'
 				]
 			},
@@ -379,6 +390,7 @@ export const privacyPolicies = {
 					'Les données de compte et de profil sont généralement conservées tant que le compte est actif, puis seulement dans la mesure raisonnablement nécessaire à sa fermeture, à la sécurité, à la gestion des litiges, à l’application des règles ou aux obligations légales.',
 					'Le contenu public est généralement conservé jusqu’à sa suppression par l’utilisateur, la suppression de la page ou du compte concerné, ou son retrait selon nos règles. Les caches des moteurs de recherche et les copies contrôlées par des tiers peuvent subsister après leur suppression de Sveevee.',
 					'Les chats sont conservés selon les critères de la section consacrée aux chats. Les journaux techniques et de sécurité sont conservés pendant la durée raisonnablement la plus courte nécessaire au fonctionnement, à la prévention de la fraude, au dépannage et aux contrôles de sécurité, selon le processus de rotation applicable.',
+					'Les dossiers de support invité inactifs sont normalement supprimés 90 jours après leur dernière activité ou leur association à un compte. Un administrateur peut modifier ce délai opérationnel ; les messages copiés dans un chat de compte suivent ensuite les règles de conservation des chats de compte.',
 					'Les informations supprimées peuvent rester dans des sauvegardes protégées pendant un cycle technique limité avant leur écrasement. Lorsqu’elles ne sont plus nécessaires, nous les supprimons ou les anonymisons lorsque cela est raisonnablement possible et sous réserve des obligations légales.'
 				]
 			},

@@ -363,7 +363,7 @@
 				</nav>
 			</div>
 		</footer>
-		<SupportChatWidget v-if="authStore.isAuthenticated && !isAdmin" />
+		<SupportChatWidget v-if="!isAdmin" />
 	</q-layout>
 </template>
 

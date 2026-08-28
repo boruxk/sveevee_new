@@ -50,6 +50,7 @@ class SystemSettingsApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.settings.ads.visibility_days', 7)
             ->assertJsonPath('data.settings.chat.messages_per_minute', 30)
+            ->assertJsonPath('data.settings.chat.guest_retention_days', 90)
             ->assertJsonPath('data.catalog_topics.0.key', fn ($value) => filled($value));
 
         $this->patchJson('/api/v1/admin/settings/ads', [

@@ -35,6 +35,7 @@ class SystemSettingsService
             'chat' => [
                 'new_recipients_per_day' => 10,
                 'messages_per_minute' => 30,
+                'guest_retention_days' => 90,
             ],
             'moderation' => [
                 'products_per_business_page' => 100,

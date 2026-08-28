@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Ad;
+use App\Models\GuestSupportConversation;
 use App\Services\SeoPrerenderService;
 use App\Services\SystemSettingsService;
 use App\Support\PublicImageVariants;
@@ -30,6 +31,35 @@ Artisan::command('ads:prune-expired', function () {
 
     $this->info("Deleted {$deleted} expired ads.");
 })->purpose('Permanently delete expired ads after the configured retention period');
+
+Artisan::command('support:prune-guest-chats', function () {
+    $retentionDays = app(SystemSettingsService::class)->integer('chat.guest_retention_days', 90);
+    $cutoff = now()->subDays($retentionDays);
+    $deleted = 0;
+
+    GuestSupportConversation::query()
+        ->where(function ($query) use ($cutoff): void {
+            $query->where(function ($claimed) use ($cutoff): void {
+                $claimed->whereNotNull('claimed_at')->where('claimed_at', '<=', $cutoff);
+            })->orWhere(function ($active) use ($cutoff): void {
+                $active->whereNull('claimed_at')
+                    ->where(function ($activity) use ($cutoff): void {
+                        $activity->where('last_message_at', '<=', $cutoff)
+                            ->orWhere(function ($empty) use ($cutoff): void {
+                                $empty->whereNull('last_message_at')->where('created_at', '<=', $cutoff);
+                            });
+                    });
+            });
+        })
+        ->chunkById(100, function ($conversations) use (&$deleted): void {
+            $conversations->each(function (GuestSupportConversation $conversation) use (&$deleted): void {
+                $conversation->delete();
+                $deleted++;
+            });
+        });
+
+    $this->info("Deleted {$deleted} inactive guest support conversations.");
+})->purpose('Delete inactive guest support conversations after the configured retention period');
 
 Artisan::command('seo:prerender-public-pages {--dist= : Path to the built frontend dist directory}', function () {
     $result = app(SeoPrerenderService::class)->render($this->option('dist'));
@@ -68,3 +98,4 @@ Artisan::command('images:generate-variants {--force : Recreate existing variants
 })->purpose('Generate responsive WebP variants for existing public uploads');
 
 Schedule::command('ads:prune-expired')->hourly();
+Schedule::command('support:prune-guest-chats')->hourly();

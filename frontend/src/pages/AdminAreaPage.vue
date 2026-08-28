@@ -9,15 +9,16 @@
 		deleteAdminUser,
 		deleteBlockedTerm,
 		fetchAdminSettings,
+		fetchAdminSupportChat,
 		fetchAdminSupportChats,
 		fetchAdminUser,
 		fetchAdminUserTable,
 		fetchBlockedTerms,
 		restoreAdminUser,
+		sendAdminSupportMessage,
 		updateAdminSettings,
 		updateBlockedTerm
 	} from '@/services/api/admin'
-	import { fetchChat, sendChatMessage } from '@/services/api/chats'
 	import { useAuthStore } from '@/stores/auth'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
@@ -41,7 +42,8 @@
 		},
 		chat: {
 			new_recipients_per_day: 10,
-			messages_per_minute: 30
+			messages_per_minute: 30,
+			guest_retention_days: 90
 		},
 		moderation: {
 			products_per_business_page: 100,
@@ -70,7 +72,7 @@
 	const userDetailsOpen = ref(false)
 	const userDetailsLoading = ref(false)
 	const deletingUserId = ref(null)
-	const selectedConversationId = ref(null)
+	const selectedSupportKey = ref(null)
 	const activeSupportConversation = ref(null)
 	const supportMessage = ref('')
 	const userSearch = ref('')
@@ -112,9 +114,9 @@
 	])
 	const supportMessages = computed(() => activeSupportConversation.value?.messages || [])
 	const selectedSupportConversation = computed(() =>
-		supportConversations.value.find((conversation) => conversation.id === selectedConversationId.value) || activeSupportConversation.value || null
+		supportConversations.value.find((conversation) => conversation.support_key === selectedSupportKey.value) || activeSupportConversation.value || null
 	)
-	const activeSupportUser = computed(() => activeSupportConversation.value?.other_user || selectedSupportConversation.value?.other_user || null)
+	const activeSupportUser = computed(() => activeSupportConversation.value?.participant || selectedSupportConversation.value?.participant || null)
 	const supportComposerHint = computed(() => characterLimitHint(supportMessage.value, CHAT_MAX_LENGTH, t))
 	const intlLocale = computed(() => ({
 		he: 'he-IL',
@@ -236,15 +238,16 @@
 		supportConversations.value = data.data?.conversations || []
 	}
 
-	async function openSupportConversation(id, { refresh = true } = {}) {
-		if (!id) {
+	async function openSupportConversation(conversation, { refresh = true } = {}) {
+		if (!conversation?.id) {
 			activeSupportConversation.value = null
-			selectedConversationId.value = null
+			selectedSupportKey.value = null
 			return
 		}
 
-		selectedConversationId.value = id
-		const { data } = await fetchChat(id)
+		const source = conversation.source || 'account'
+		selectedSupportKey.value = conversation.support_key || `${source}:${conversation.id}`
+		const { data } = await fetchAdminSupportChat(source, conversation.id)
 		activeSupportConversation.value = data.data
 
 		if (refresh) {
@@ -259,10 +262,10 @@
 		try {
 			await refreshSupportConversations()
 
-			const selectedStillExists = supportConversations.value.some((conversation) => conversation.id === selectedConversationId.value)
-			const nextId = selectedStillExists ? selectedConversationId.value : supportConversations.value[0]?.id
+			const selectedStillExists = supportConversations.value.some((conversation) => conversation.support_key === selectedSupportKey.value)
+			const nextConversation = selectedStillExists ? supportConversations.value.find((conversation) => conversation.support_key === selectedSupportKey.value) : supportConversations.value[0]
 
-			await openSupportConversation(nextId, { refresh: false })
+			await openSupportConversation(nextConversation, { refresh: false })
 		} finally {
 			supportLoading.value = false
 		}
@@ -394,7 +397,11 @@
 		}
 
 		try {
-			const { data } = await sendChatMessage(activeSupportConversation.value.id, body)
+			const { data } = await sendAdminSupportMessage(
+				activeSupportConversation.value.source || 'account',
+				activeSupportConversation.value.id,
+				body
+			)
 			activeSupportConversation.value = data.data
 			supportMessage.value = ''
 			await refreshSupportConversations()
@@ -586,28 +593,31 @@
 						<section class="soz-section-card support-list">
 							<button
 								v-for="conversation in supportConversations"
-								:key="conversation.id"
+								:key="conversation.support_key"
 								type="button"
 								class="support-row"
-								:class="{ 'support-row--active': selectedConversationId === conversation.id }"
-								@click="openSupportConversation(conversation.id)"
+								:class="{ 'support-row--active': selectedSupportKey === conversation.support_key }"
+								@click="openSupportConversation(conversation)"
 							>
 								<q-avatar size="38px" color="primary" text-color="white">
 									<ResponsiveImage
-										v-if="conversation.other_user?.profile?.photo_url"
+										v-if="conversation.participant?.profile?.photo_url"
 										class="support-avatar-image"
-										:src="conversation.other_user.profile.photo_url"
-										:alt="conversation.other_user?.display_name || ''"
-										:avif-srcset="conversation.other_user.profile.photo_avif_srcset || ''"
-										:webp-srcset="conversation.other_user.profile.photo_webp_srcset || ''"
+										:src="conversation.participant.profile.photo_url"
+										:alt="conversation.participant?.display_name || ''"
+										:avif-srcset="conversation.participant.profile.photo_avif_srcset || ''"
+										:webp-srcset="conversation.participant.profile.photo_webp_srcset || ''"
 										sizes="38px"
-										:width="conversation.other_user.profile.photo_width || 96"
-										:height="conversation.other_user.profile.photo_height || 96"
+										:width="conversation.participant.profile.photo_width || 96"
+										:height="conversation.participant.profile.photo_height || 96"
 									/>
-									<span v-else>{{ conversation.other_user?.display_name?.slice(0, 1) || 'S' }}</span>
+									<span v-else>{{ conversation.participant?.display_name?.slice(0, 1) || 'S' }}</span>
 								</q-avatar>
 								<span class="support-row__copy">
-									<strong>{{ conversation.other_user?.display_name }}</strong>
+									<strong>
+										{{ conversation.participant?.display_name }}
+										<q-badge v-if="conversation.is_guest" color="secondary" rounded>{{ t('admin.guest') }}</q-badge>
+									</strong>
 									<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
 								</span>
 								<q-badge v-if="conversation.unread_count" color="negative" rounded>{{ conversation.unread_count }}</q-badge>
@@ -624,10 +634,10 @@
 								<header class="support-detail__head">
 									<div>
 										<h2>{{ activeSupportUser?.display_name }}</h2>
-										<p>{{ activeSupportUser?.email }}</p>
-										<p>{{ localizedLocation(activeSupportUser?.profile?.city, 'city') || '-' }} / {{ localizedLocation(activeSupportUser?.profile?.neighborhood, 'neighborhood') || '-' }}</p>
+										<p v-if="activeSupportUser?.email">{{ activeSupportUser.email }}</p>
+										<p v-if="!activeSupportConversation.is_guest">{{ localizedLocation(activeSupportUser?.profile?.city, 'city') || '-' }} / {{ localizedLocation(activeSupportUser?.profile?.neighborhood, 'neighborhood') || '-' }}</p>
 									</div>
-									<q-chip color="primary" text-color="white">{{ t('admin.supportInbox') }}</q-chip>
+									<q-chip color="primary" text-color="white">{{ activeSupportConversation.is_guest ? t('admin.guest') : t('admin.supportInbox') }}</q-chip>
 								</header>
 
 								<div ref="messagesEl" class="support-messages">
@@ -966,6 +976,14 @@
 								:suffix="t('admin.settings.perMinute')"
 								min="1"
 								max="1000"
+							/>
+							<q-input v-model.number="settingsForms.chat.guest_retention_days"
+								outlined
+								type="number"
+								:label="t('admin.settings.guestRetention')"
+								:suffix="t('admin.settings.days')"
+								min="1"
+								max="3650"
 							/>
 						</div>
 						<footer class="settings-section__footer">

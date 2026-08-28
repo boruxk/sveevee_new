@@ -1,5 +1,11 @@
 import apiClient from '@/services/api/client'
 
+export const guestSupportTokenStorageKey = 'sveevee-guest-support-token'
+
+const guestSupportHeaders = (token) => ({
+	'X-Guest-Support-Token': token
+})
+
 export function fetchChats() {
 	return apiClient.get('/chats')
 }
@@ -22,6 +28,22 @@ export function sendChatMessage(conversationId, body) {
 
 export function sendSupportChatMessage(body) {
 	return apiClient.post('/chats/support/messages', { body })
+}
+
+export function startGuestSupportChat(payload) {
+	return apiClient.post('/guest-support', payload)
+}
+
+export function fetchGuestSupportChat(token) {
+	return apiClient.get('/guest-support', { headers: guestSupportHeaders(token) })
+}
+
+export function sendGuestSupportMessage(token, body) {
+	return apiClient.post('/guest-support/messages', { body }, { headers: guestSupportHeaders(token) })
+}
+
+export function claimGuestSupportChat(token) {
+	return apiClient.post('/guest-support/claim', {}, { headers: guestSupportHeaders(token) })
 }
 
 export function sendChatMessageToUser(userId, body) {

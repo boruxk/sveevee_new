@@ -52,6 +52,7 @@ class AdminSettingsController extends Controller
             'chat' => [
                 'new_recipients_per_day' => ['required', 'integer', 'min:1', 'max:10000'],
                 'messages_per_minute' => ['required', 'integer', 'min:1', 'max:1000'],
+                'guest_retention_days' => ['required', 'integer', 'min:1', 'max:3650'],
             ],
             'moderation' => [
                 'products_per_business_page' => ['required', 'integer', 'min:1', 'max:100000'],
