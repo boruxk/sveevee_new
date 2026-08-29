@@ -147,6 +147,30 @@ class AiWorksApiTest extends TestCase
             ->assertJsonPath('data.type', Page::TYPE_COMMUNITY);
     }
 
+    public function test_ai_worker_can_create_multiple_pages_without_a_neighborhood(): void
+    {
+        $worker = $this->aiWorker();
+        Sanctum::actingAs($worker);
+
+        $firstPayload = $this->pagePayload();
+        $firstPayload['address']['neighborhood'] = null;
+
+        $this->postJson('/api/v1/ai-works/pages', $firstPayload)
+            ->assertCreated()
+            ->assertJsonPath('data.address_details.neighborhood', null);
+
+        $secondPayload = $this->pagePayload();
+        $secondPayload['name'] = 'Second Public Business';
+        $secondPayload['source_url'] = 'https://example.com/business-directory/second-business';
+        $secondPayload['address']['neighborhood'] = null;
+
+        $this->postJson('/api/v1/ai-works/pages', $secondPayload)
+            ->assertCreated()
+            ->assertJsonPath('data.address_details.neighborhood', null);
+
+        $this->assertDatabaseCount('pages', 2);
+    }
+
     public function test_admin_can_list_assign_and_detach_business_and_community_pages(): void
     {
         $worker = $this->aiWorker();

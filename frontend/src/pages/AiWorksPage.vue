@@ -1,5 +1,5 @@
 <script setup>
-	import { computed, onMounted, reactive, ref, toRef } from 'vue'
+	import { computed, onMounted, reactive, ref, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import {
@@ -54,6 +54,7 @@
 	const neighborhoodSelectOptions = ref([])
 	const taskForm = reactive({ id: null, title: '', text: '' })
 	const pageForm = reactive(emptyPageForm())
+	const pageCity = computed(() => pageForm.address.city)
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const {
 		cityOptions,
@@ -61,8 +62,9 @@
 		loadLocationOptions,
 		rememberLocation,
 		addOption,
-		filterOptions
-	} = useLocationOptions(toRef(pageForm.address, 'city'))
+		filterOptions,
+		hasOptionValue
+	} = useLocationOptions(pageCity)
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 	const selectedPage = computed(() => pages.value.find((page) => page.id === selectedPageId.value) || null)
 	const selectedPalette = computed(() => findPresencePalette(pageForm.palette_key))
@@ -346,10 +348,27 @@
 		})
 	}
 
+	watch(cityOptions, (options) => {
+		citySelectOptions.value = options
+	}, { immediate: true })
+
+	watch(neighborhoodOptions, (options) => {
+		neighborhoodSelectOptions.value = options
+	}, { immediate: true })
+
+	watch(() => pageForm.address.city, () => {
+		if (!pageForm.address.city) {
+			pageForm.address.neighborhood = ''
+			return
+		}
+
+		if (pageForm.address.neighborhood && !hasOptionValue(neighborhoodOptions.value, pageForm.address.neighborhood)) {
+			pageForm.address.neighborhood = ''
+		}
+	})
+
 	onMounted(async() => {
 		await Promise.all([loadTasks(), loadPages(), loadCatalogTopics(), loadLocationOptions()])
-		citySelectOptions.value = cityOptions.value
-		neighborhoodSelectOptions.value = neighborhoodOptions.value
 	})
 </script>
 
