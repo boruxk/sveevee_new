@@ -52,6 +52,7 @@
 	const showChatAction = computed(() => Boolean(page.value?.id) && !isUnclaimed.value)
 	const isPageOwner = computed(() => authStore.isAuthenticated && page.value?.user_id === authStore.user?.id)
 	const canRequestClaim = computed(() => authStore.isAuthenticated && authStore.canAccess(['user']))
+	const unclaimedDescription = computed(() => t(page.value?.source_url ? 'pageClaim.description' : 'pageClaim.detachedDescription'))
 	const claimRegisterRoute = computed(() => ({
 		name: 'register',
 		query: { redirect: route.fullPath }
@@ -111,14 +112,10 @@
 			return route.path
 		}
 
-		if (isBusinessPage.value) {
-			return publicPagePath(page.value, routeLocale.value || locale.value)
-		}
-
-		return page.value.public_path || route.path
+		return publicPagePath(page.value, routeLocale.value || locale.value)
 	})
 	const localizedAlternates = computed(() => {
-		if (!isBusinessPage.value || !page.value) {
+		if (!page.value) {
 			return null
 		}
 
@@ -127,14 +124,16 @@
 			'x-default': publicPagePath(page.value, 'he')
 		}
 	})
-	const businessSeoDescription = computed(() => {
-		if (!isBusinessPage.value || !page.value) {
+	const localizedSeoDescription = computed(() => {
+		if (!page.value) {
 			return ''
 		}
 
-		return t('seo.businessPageDescription', {
+		const key = isBusinessPage.value ? 'seo.businessPageDescription' : 'seo.communityPageDescription'
+
+		return t(key, {
 			name: page.value.name,
-			category: pageTopicLabel.value || t('pages.businessTitle'),
+			category: pageTopicLabel.value || pageTypeLabel.value,
 			city: pageCityLabel.value || pageCity.value || t('auth.city'),
 			neighborhood: pageNeighborhoodLabel.value ? ` ${pageNeighborhoodLabel.value}` : ''
 		})
@@ -147,7 +146,7 @@
 		const visibleDescription = cleanText(page.value.public_description)
 		return truncateText(
 			visibleDescription ||
-				businessSeoDescription.value ||
+				localizedSeoDescription.value ||
 				t('seo.pageDescription', { name: page.value.name, type: pageTypeLabel.value })
 		)
 	})
@@ -156,8 +155,8 @@
 			return t('seo.pageFallbackTitle')
 		}
 
-		if (isBusinessPage.value && (pageCityLabel.value || pageCity.value)) {
-			return t('seo.businessPageTitle', {
+		if (pageCityLabel.value || pageCity.value) {
+			return t(isBusinessPage.value ? 'seo.businessPageTitle' : 'seo.communityPageTitle', {
 				name: page.value.name,
 				city: pageCityLabel.value || pageCity.value
 			})
@@ -406,7 +405,7 @@
 				<div class="unclaimed-notice__copy">
 					<span class="unclaimed-notice__badge">{{ t('pageClaim.unverifiedBadge') }}</span>
 					<h2>{{ t('pageClaim.title') }}</h2>
-					<p>{{ t('pageClaim.description') }}</p>
+					<p>{{ unclaimedDescription }}</p>
 					<p class="unclaimed-notice__warning">{{ t('pageClaim.accuracyWarning') }}</p>
 					<div class="unclaimed-notice__source">
 						<a v-if="page.source_url" :href="page.source_url" target="_blank" rel="noopener noreferrer">{{ t('pageClaim.source') }}</a>

@@ -45,7 +45,7 @@
 		return `${givenName.slice(0, 1)}${familyName.slice(0, 1)}`.trim().toUpperCase() || 'S'
 	})
 	const navLinks = computed(() => [
-		{ label: t('nav.home'), name: homeRouteName.value, icon: 'home', visible: true },
+		{ label: t('nav.home'), name: homeRouteName.value, icon: 'home', visible: !isAiWorker.value },
 		{ label: t('nav.search'), name: 'search', icon: 'search', visible: true },
 		{ label: t('nav.me'), name: 'me', icon: 'forum', visible: authStore.isAuthenticated && !isPrivilegedAccount.value, badge: unreadCount.value },
 		{ label: t('nav.business'), name: 'business', icon: 'storefront', visible: authStore.isAuthenticated && !isPrivilegedAccount.value && hasBusinessPage.value },
@@ -113,14 +113,6 @@
 
 	function openProfile() {
 		router.push({ name: 'profile' })
-	}
-
-	function openAdmin() {
-		router.push({ name: 'admin-area' })
-	}
-
-	function openAiWorks() {
-		router.push({ name: 'ai-works' })
 	}
 
 	async function refreshShellUser() {
@@ -226,6 +218,36 @@
 						compact
 						class="shell-guest-locale-switcher"
 					/>
+					<q-btn
+						v-if="isAdmin"
+						:flat="!isActive('admin-area')"
+						round
+						:unelevated="isActive('admin-area')"
+						:color="isActive('admin-area') ? 'primary' : 'dark'"
+						:text-color="isActive('admin-area') ? 'white' : undefined"
+						class="shell-link privileged-nav-button"
+						:class="{ 'shell-link--active': isActive('admin-area') }"
+						icon="admin_panel_settings"
+						:to="{ name: 'admin-area' }"
+						:aria-label="t('nav.admin')"
+					>
+						<q-tooltip>{{ t('nav.admin') }}</q-tooltip>
+					</q-btn>
+					<q-btn
+						v-if="isAiWorker"
+						:flat="!isActive('ai-works')"
+						round
+						:unelevated="isActive('ai-works')"
+						:color="isActive('ai-works') ? 'primary' : 'dark'"
+						:text-color="isActive('ai-works') ? 'white' : undefined"
+						class="shell-link privileged-nav-button"
+						:class="{ 'shell-link--active': isActive('ai-works') }"
+						:to="{ name: 'ai-works' }"
+						:aria-label="t('nav.aiWorks')"
+					>
+						<AiWorksIcon :size="24" />
+						<q-tooltip>{{ t('nav.aiWorks') }}</q-tooltip>
+					</q-btn>
 
 					<q-btn v-if="authStore.isAuthenticated"
 						flat
@@ -250,14 +272,6 @@
 						</q-avatar>
 						<q-menu anchor="bottom end" self="top end" class="profile-menu">
 							<q-list padding style="min-width: 180px">
-								<q-item v-if="isAdmin" clickable v-close-popup @click="openAdmin">
-									<q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
-									<q-item-section>{{ t('nav.admin') }}</q-item-section>
-								</q-item>
-								<q-item v-if="isAiWorker" clickable v-close-popup @click="openAiWorks">
-									<q-item-section avatar><AiWorksIcon /></q-item-section>
-									<q-item-section>{{ t('nav.aiWorks') }}</q-item-section>
-								</q-item>
 								<q-item v-if="!isAiWorker" clickable v-close-popup @click="openProfile">
 									<q-item-section avatar><q-icon name="badge" /></q-item-section>
 									<q-item-section>{{ t('nav.profile') }}</q-item-section>
@@ -272,6 +286,36 @@
 				</div>
 
 				<div class="mobile-shell-actions">
+					<q-btn
+						v-if="isAdmin"
+						:flat="!isActive('admin-area')"
+						round
+						:unelevated="isActive('admin-area')"
+						:color="isActive('admin-area') ? 'primary' : 'dark'"
+						:text-color="isActive('admin-area') ? 'white' : undefined"
+						class="shell-link privileged-nav-button privileged-nav-button--mobile"
+						:class="{ 'shell-link--active': isActive('admin-area') }"
+						icon="admin_panel_settings"
+						:to="{ name: 'admin-area' }"
+						:aria-label="t('nav.admin')"
+					>
+						<q-tooltip>{{ t('nav.admin') }}</q-tooltip>
+					</q-btn>
+					<q-btn
+						v-if="isAiWorker"
+						:flat="!isActive('ai-works')"
+						round
+						:unelevated="isActive('ai-works')"
+						:color="isActive('ai-works') ? 'primary' : 'dark'"
+						:text-color="isActive('ai-works') ? 'white' : undefined"
+						class="shell-link privileged-nav-button privileged-nav-button--mobile"
+						:class="{ 'shell-link--active': isActive('ai-works') }"
+						:to="{ name: 'ai-works' }"
+						:aria-label="t('nav.aiWorks')"
+					>
+						<AiWorksIcon :size="22" />
+						<q-tooltip>{{ t('nav.aiWorks') }}</q-tooltip>
+					</q-btn>
 					<q-btn
 						flat
 						round
@@ -331,14 +375,6 @@
 									</q-item-section>
 								</q-item>
 
-								<q-item v-if="authStore.isAuthenticated && isAdmin" clickable v-close-popup @click="openAdmin">
-									<q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
-									<q-item-section>{{ t('nav.admin') }}</q-item-section>
-								</q-item>
-								<q-item v-if="authStore.isAuthenticated && isAiWorker" clickable v-close-popup @click="openAiWorks">
-									<q-item-section avatar><AiWorksIcon /></q-item-section>
-									<q-item-section>{{ t('nav.aiWorks') }}</q-item-section>
-								</q-item>
 								<q-item v-if="authStore.isAuthenticated && !isAiWorker" clickable v-close-popup @click="openProfile">
 									<q-item-section avatar><q-icon name="badge" /></q-item-section>
 									<q-item-section>{{ t('nav.profile') }}</q-item-section>
@@ -478,6 +514,18 @@
   padding: 0;
   min-width: 52px;
   min-height: 52px;
+}
+
+.privileged-nav-button {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+}
+
+.privileged-nav-button--mobile {
+  width: 44px;
+  height: 44px;
 }
 
 .shell-guest-locale-switcher {

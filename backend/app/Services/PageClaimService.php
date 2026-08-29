@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ChatMessage;
 use App\Models\Conversation;
+use App\Models\Page;
 use App\Models\PageClaimRequest;
 use App\Models\User;
 
@@ -51,7 +52,8 @@ class PageClaimService
                 'id' => $claim->page->id,
                 'name' => $claim->page->name,
                 'slug' => $claim->page->public_slug,
-                'public_path' => '/pages/'.$claim->page->public_slug,
+                'public_path' => $this->pagePath($claim->page),
+                'type' => $claim->page->type,
                 'is_unclaimed' => (bool) $claim->page->is_unclaimed,
             ] : null,
             'requester' => $claim->user ? [
@@ -68,8 +70,9 @@ class PageClaimService
     public function createdMarker(PageClaimRequest $claim): string
     {
         return "[PAGE CLAIM REQUEST #{$claim->id}]\n"
-            ."Business: {$claim->page->name}\n"
-            .'Page: '.rtrim((string) config('app.frontend_url'), '/').'/pages/'.$claim->page->public_slug."\n"
+            ."Page: {$claim->page->name}\n"
+            ."Type: {$claim->page->type}\n"
+            .'URL: '.rtrim((string) config('app.frontend_url'), '/').$this->pagePath($claim->page)."\n"
             ."Message: {$claim->message}";
     }
 
@@ -77,6 +80,11 @@ class PageClaimService
     {
         $result = $approved ? 'APPROVED' : 'CANCELLED';
 
-        return "[PAGE CLAIM {$result} #{$claim->id}]\nBusiness: {$claim->page->name}";
+        return "[PAGE CLAIM {$result} #{$claim->id}]\nPage: {$claim->page->name}\nType: {$claim->page->type}";
+    }
+
+    private function pagePath(Page $page): string
+    {
+        return $page->public_path;
     }
 }

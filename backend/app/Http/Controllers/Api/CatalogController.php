@@ -17,7 +17,6 @@ use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
 class CatalogController extends Controller
 {
@@ -26,8 +25,7 @@ class CatalogController extends Controller
     public function __construct(
         private readonly PayloadService $payloads,
         private readonly SystemSettingsService $settings,
-    ) {
-    }
+    ) {}
 
     public function index(
         Request $request,
@@ -220,7 +218,9 @@ class CatalogController extends Controller
             ])
             ->whereIn('category_key', CatalogTopics::keysForTopic($topicKey))
             ->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {
-                $page->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
+                $page
+                    ->managed()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
                 $this->inPageLocation($page, $city, $neighborhood);
             })
             ->latest();
@@ -232,7 +232,9 @@ class CatalogController extends Controller
             ->with(['page.user.profile'])
             ->whereIn('category_key', CatalogTopics::keysForTopic($topicKey))
             ->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {
-                $page->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
+                $page
+                    ->managed()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
                 $this->inPageLocation($page, $city, $neighborhood);
             })
             ->latest();
@@ -244,7 +246,9 @@ class CatalogController extends Controller
             ->with(['page.user.profile'])
             ->whereIn('category_key', CatalogTopics::keysForTopic($topicKey))
             ->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {
-                $page->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
+                $page
+                    ->managed()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
                 $this->inPageLocation($page, $city, $neighborhood);
             })
             ->orderBy('event_date')
@@ -309,19 +313,24 @@ class CatalogController extends Controller
 
     private function compactPage(Page $page): array
     {
+        $isUnclaimed = (bool) $page->is_unclaimed;
+        $logoPath = $isUnclaimed ? null : $page->logo_path;
+        $bannerPath = $isUnclaimed ? null : $page->banner_path;
+
         return [
             'id' => $page->id,
             'slug' => $page->public_slug,
-            'public_path' => '/pages/'.$page->public_slug,
-            'user_id' => $page->user_id,
+            'public_path' => $page->public_path,
+            'user_id' => $isUnclaimed ? null : $page->user_id,
             'type' => $page->type,
+            'is_unclaimed' => $isUnclaimed,
             'name' => $page->name,
             'public_description' => $page->public_description,
             'category_key' => $page->category_key,
-            'logo_url' => $page->logo_url,
-            ...$this->payloads->publicImageMeta('logo', $page->logo_path, $page->name.' logo', '96px'),
-            'banner_url' => $page->banner_url,
-            ...$this->payloads->publicImageMeta('banner', $page->banner_path, $page->name, '(max-width: 700px) calc(100vw - 28px), 1180px'),
+            'logo_url' => $isUnclaimed ? null : $page->logo_url,
+            ...$this->payloads->publicImageMeta('logo', $logoPath, $page->name.' logo', '96px'),
+            'banner_url' => $isUnclaimed ? null : $page->banner_url,
+            ...$this->payloads->publicImageMeta('banner', $bannerPath, $page->name, '(max-width: 700px) calc(100vw - 28px), 1180px'),
             'address' => $page->address,
             'address_details' => $this->pageAddress($page),
             'updated_at' => $page->updated_at?->toISOString(),

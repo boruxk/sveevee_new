@@ -53,6 +53,8 @@ export default [
 			{ path: 'ads/:id', name: 'ad-detail', component: () => import('@/pages/AdDetailPage.vue'), meta: { seo: { titleKey: 'seo.adFallbackTitle', descriptionKey: 'seo.adFallbackDescription' } } },
 			{ path: ':locale(he|en|ru|fr)/business/:id', name: 'localized-business-detail', component: pageDetailPage, meta: { seo: pageSeo } },
 			{ path: 'business/:id', name: 'business-detail', component: pageDetailPage, meta: { seo: pageSeo } },
+			{ path: ':locale(he|en|ru|fr)/community/:id', name: 'localized-community-detail', component: pageDetailPage, meta: { seo: pageSeo } },
+			{ path: 'community/:id', name: 'community-detail', component: pageDetailPage, meta: { seo: pageSeo } },
 			{ path: ':locale(he|en|ru|fr)/product/:id', name: 'localized-product-detail', component: productDetailPage, meta: { seo: productSeo } },
 			{ path: 'product/:id', name: 'product-detail', component: productDetailPage, meta: { seo: productSeo } },
 			{ path: 'pages/:id', name: 'page-detail', component: pageDetailPage, meta: { seo: pageSeo } }

@@ -8,6 +8,18 @@ export function fetchAdminUserTable(params = {}) {
 	return apiClient.get('/admin/users', { params: { paginated: 1, per_page: 50, ...params } })
 }
 
+export function fetchAdminPages(params = {}) {
+	return apiClient.get('/admin/pages', { params: { per_page: 50, ...params } })
+}
+
+export function fetchAdminPageOwnerOptions(params = {}) {
+	return apiClient.get('/admin/page-owner-options', { params })
+}
+
+export function updateAdminPageOwner(id, userId) {
+	return apiClient.patch(`/admin/pages/${id}/owner`, { user_id: userId })
+}
+
 export function fetchAdminSupportChats() {
 	return apiClient.get('/admin/support-chats')
 }

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AdController;
 use App\Http\Controllers\Api\AdminBlockedTermController;
 use App\Http\Controllers\Api\AdminPageClaimController;
+use App\Http\Controllers\Api\AdminPageController;
 use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\AdminSupportController;
 use App\Http\Controllers\Api\AdminUserController;
@@ -141,6 +142,9 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
             ->middleware('throttle:chat-send');
         Route::post('/page-claims/{claimRequest}/approve', [AdminPageClaimController::class, 'approve']);
         Route::post('/page-claims/{claimRequest}/cancel', [AdminPageClaimController::class, 'cancel']);
+        Route::get('/pages', [AdminPageController::class, 'index']);
+        Route::get('/page-owner-options', [AdminPageController::class, 'ownerOptions']);
+        Route::patch('/pages/{page}/owner', [AdminPageController::class, 'updateOwner']);
         Route::get('/settings', [AdminSettingsController::class, 'index']);
         Route::patch('/settings/{section}', [AdminSettingsController::class, 'update']);
         Route::get('/blocked-terms', [AdminBlockedTermController::class, 'index']);

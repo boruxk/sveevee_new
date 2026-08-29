@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Ad;
 use App\Models\ChatMessage;
 use App\Models\Page;
 use App\Models\PageClaimRequest;
+use App\Models\PageEvent;
+use App\Models\PageProduct;
+use App\Models\PageService;
 use App\Models\User;
 use App\Support\CatalogTopics;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -92,6 +96,205 @@ class AiWorksApiTest extends TestCase
         ])->assertStatus(409);
 
         $this->getJson("/api/v1/pages/{$pageId}/chat")->assertStatus(409);
+    }
+
+    public function test_ai_worker_can_create_a_community_page_and_a_business_owner_can_claim_it(): void
+    {
+        $worker = $this->aiWorker();
+        Sanctum::actingAs($worker);
+
+        $created = $this->postJson(
+            '/api/v1/ai-works/pages',
+            $this->pagePayload(Page::TYPE_COMMUNITY)
+        )->assertCreated()
+            ->assertJsonPath('data.type', Page::TYPE_COMMUNITY)
+            ->assertJsonPath('data.features.events', false)
+            ->assertJsonPath('data.user_id', null);
+
+        $pageId = $created->json('data.id');
+        $communityPage = Page::query()->findOrFail($pageId);
+
+        $this->assertSame('/community/'.$communityPage->public_slug, $communityPage->public_path);
+        $this->get('/sitemap.xml')
+            ->assertOk()
+            ->assertSee('/he/community/'.$communityPage->public_slug, false);
+
+        $claimant = User::factory()->create();
+        Page::query()->create([
+            'user_id' => $claimant->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Existing Business',
+            'is_unclaimed' => false,
+        ]);
+
+        Sanctum::actingAs($claimant);
+        $claimId = $this->postJson("/api/v1/pages/{$pageId}/claim-requests", [
+            'message' => 'I coordinate this community and can verify it through its official contact details.',
+        ])->assertCreated()
+            ->assertJsonPath('data.page.type', Page::TYPE_COMMUNITY)
+            ->json('data.id');
+
+        $admin = User::query()->where('email', config('sveevee.support_admin_email'))->firstOrFail();
+        Sanctum::actingAs($admin);
+        $this->postJson("/api/v1/admin/page-claims/{$claimId}/approve")
+            ->assertOk()
+            ->assertJsonPath('data.page.type', Page::TYPE_COMMUNITY);
+
+        Sanctum::actingAs($claimant);
+        $this->getJson('/api/v1/pages/community/mine')
+            ->assertOk()
+            ->assertJsonPath('data.id', $pageId)
+            ->assertJsonPath('data.type', Page::TYPE_COMMUNITY);
+    }
+
+    public function test_admin_can_list_assign_and_detach_business_and_community_pages(): void
+    {
+        $worker = $this->aiWorker();
+        Sanctum::actingAs($worker);
+        $pageId = $this->postJson(
+            '/api/v1/ai-works/pages',
+            $this->pagePayload(Page::TYPE_COMMUNITY)
+        )->assertCreated()->json('data.id');
+
+        Sanctum::actingAs(User::factory()->create());
+        $this->getJson('/api/v1/admin/pages')->assertForbidden();
+
+        $target = User::factory()->create();
+        $admin = User::query()->where('email', config('sveevee.support_admin_email'))->firstOrFail();
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/v1/admin/pages?type=community&ownership=unclaimed')
+            ->assertOk()
+            ->assertJsonPath('data.items.0.id', $pageId)
+            ->assertJsonPath('data.items.0.type', Page::TYPE_COMMUNITY)
+            ->assertJsonPath('data.items.0.owner', null);
+
+        $this->patchJson("/api/v1/admin/pages/{$pageId}/owner", ['user_id' => $target->id])
+            ->assertOk()
+            ->assertJsonPath('data.owner.id', $target->id)
+            ->assertJsonPath('data.is_unclaimed', false);
+
+        $this->assertDatabaseHas('pages', [
+            'id' => $pageId,
+            'user_id' => $target->id,
+            'type' => Page::TYPE_COMMUNITY,
+            'is_unclaimed' => false,
+        ]);
+
+        $this->patchJson("/api/v1/admin/pages/{$pageId}/owner", ['user_id' => null])
+            ->assertOk()
+            ->assertJsonPath('data.owner', null)
+            ->assertJsonPath('data.is_unclaimed', true);
+
+        $this->assertDatabaseHas('pages', [
+            'id' => $pageId,
+            'user_id' => $worker->id,
+            'type' => Page::TYPE_COMMUNITY,
+            'is_unclaimed' => true,
+        ]);
+
+        Sanctum::actingAs($worker);
+        $this->getJson('/api/v1/ai-works/pages')
+            ->assertOk()
+            ->assertJsonPath('data.pages.0.id', $pageId);
+    }
+
+    public function test_detached_pages_keep_their_content_private_until_they_are_assigned_again(): void
+    {
+        $worker = $this->aiWorker();
+        $owner = User::factory()->create();
+        $business = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Managed Business',
+            'is_unclaimed' => false,
+            'logo_path' => 'pages/managed-logo.webp',
+            'banner_path' => 'pages/managed-banner.webp',
+            'setup' => [
+                'address' => ['city' => 'Jerusalem', 'neighborhood' => 'Ramot'],
+                'features' => ['store' => true, 'services' => true, 'events' => false, 'price_list' => false],
+            ],
+        ]);
+        $community = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_COMMUNITY,
+            'name' => 'Managed Community',
+            'is_unclaimed' => false,
+            'setup' => [
+                'address' => ['city' => 'Jerusalem', 'neighborhood' => 'Ramot'],
+                'features' => ['store' => false, 'services' => false, 'events' => true, 'price_list' => false],
+            ],
+        ]);
+        $product = PageProduct::query()->create([
+            'page_id' => $business->id,
+            'name' => 'Hidden Product',
+            'description' => 'Visible only while the page is managed.',
+            'category_key' => 'products.electronics_computers.phones_tablets',
+            'image_path' => 'products/hidden-product.webp',
+            'price' => 100,
+            'link' => 'https://example.test/hidden-product',
+        ]);
+        PageService::query()->create([
+            'page_id' => $business->id,
+            'name' => 'Hidden Service',
+            'description' => 'Visible only while the page is managed.',
+            'category_key' => 'professionals.electricians',
+            'image_path' => 'services/hidden-service.webp',
+        ]);
+        PageEvent::query()->create([
+            'page_id' => $community->id,
+            'name' => 'Hidden Event',
+            'description' => 'Visible only while the page is managed.',
+            'category_key' => 'events.community_social.neighborhood_meeting',
+            'image_path' => 'events/hidden-event.webp',
+            'event_date' => now()->addWeek()->toDateString(),
+            'event_time' => '18:00',
+            'address' => 'Ramot, Jerusalem',
+        ]);
+        $ad = Ad::query()->create([
+            'user_id' => $owner->id,
+            'page_id' => $business->id,
+            'type' => Ad::TYPE_BUSINESS,
+            'title' => 'Hidden Page Ad',
+            'text' => 'Visible only while the page is managed.',
+            'status' => 'active',
+            'expires_at' => now()->addWeek(),
+            'city' => 'Jerusalem',
+            'neighborhood' => 'Ramot',
+        ]);
+
+        $admin = User::query()->where('email', config('sveevee.support_admin_email'))->firstOrFail();
+        Sanctum::actingAs($admin);
+        $this->patchJson("/api/v1/admin/pages/{$business->id}/owner", ['user_id' => null])->assertOk();
+        $this->patchJson("/api/v1/admin/pages/{$community->id}/owner", ['user_id' => null])->assertOk();
+
+        $this->assertDatabaseHas('ads', ['id' => $ad->id, 'user_id' => $worker->id]);
+        $this->getJson("/api/v1/pages/{$business->id}")
+            ->assertOk()
+            ->assertJsonPath('data.logo_url', null)
+            ->assertJsonCount(0, 'data.products')
+            ->assertJsonCount(0, 'data.services');
+        $this->getJson("/api/v1/pages/{$community->id}")
+            ->assertOk()
+            ->assertJsonCount(0, 'data.events');
+        $this->getJson('/api/v1/products/'.$product->public_slug)->assertNotFound();
+        $this->getJson('/api/v1/ads/'.$ad->public_slug)->assertNotFound();
+
+        $discovery = $this->getJson('/api/v1/search')->assertOk()->json('data');
+        $this->assertNotContains($product->id, collect($discovery['products'])->pluck('id'));
+        $this->assertNotContains($ad->id, collect($discovery['ads'])->pluck('id'));
+
+        $sitemap = $this->get('/sitemap.xml')->assertOk()->getContent();
+        $this->assertStringContainsString('/he/business/'.$business->public_slug, $sitemap);
+        $this->assertStringContainsString('/he/community/'.$community->public_slug, $sitemap);
+        $this->assertStringNotContainsString('/he/product/'.$product->public_slug, $sitemap);
+        $this->assertStringNotContainsString('/ads/'.$ad->public_slug, $sitemap);
+
+        $this->patchJson("/api/v1/admin/pages/{$business->id}/owner", ['user_id' => $owner->id])->assertOk();
+        $this->patchJson("/api/v1/admin/pages/{$community->id}/owner", ['user_id' => $owner->id])->assertOk();
+        $this->getJson('/api/v1/products/'.$product->public_slug)->assertOk();
+        $this->getJson('/api/v1/ads/'.$ad->public_slug)->assertOk();
+        $this->assertDatabaseHas('ads', ['id' => $ad->id, 'user_id' => $owner->id]);
     }
 
     public function test_claim_request_appears_in_support_and_admin_can_approve_it(): void
@@ -186,15 +389,20 @@ class AiWorksApiTest extends TestCase
         return User::query()->where('login', 'spfksfmbvpt')->firstOrFail();
     }
 
-    private function pagePayload(): array
+    private function pagePayload(string $type = Page::TYPE_BUSINESS): array
     {
+        $scope = $type === Page::TYPE_COMMUNITY
+            ? CatalogTopics::SCOPE_COMMUNITY_PAGES
+            : CatalogTopics::SCOPE_BUSINESS_PAGES;
+
         return [
-            'name' => 'Sample Public Business',
-            'public_description' => 'A basic public description from the official business directory.',
+            'type' => $type,
+            'name' => $type === Page::TYPE_COMMUNITY ? 'Sample Public Community' : 'Sample Public Business',
+            'public_description' => 'A basic public description from an official public source.',
             'contact_email' => 'contact@example.com',
             'phone' => '02-555-0100',
             'website' => 'example.com',
-            'category_key' => CatalogTopics::keysForScope(CatalogTopics::SCOPE_BUSINESS_PAGES)[0],
+            'category_key' => CatalogTopics::keysForScope($scope)[0],
             'palette_key' => 'amber-dawn',
             'source_url' => 'example.com/business-directory/sample-business',
             'source_checked_at' => now()->format('Y-m-d'),

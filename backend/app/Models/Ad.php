@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use App\Support\PublicSlug;
 use App\Support\PublicImageVariants;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Support\PublicSlug;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
@@ -15,7 +15,9 @@ class Ad extends Model
     public const IMAGE_DIRECTORY = 'media/listings';
 
     public const TYPE_PRIVATE = 'private_ad';
+
     public const TYPE_BUSINESS = 'business_ad';
+
     public const TYPE_COMMUNITY = 'community_ad';
 
     protected $fillable = [
@@ -66,7 +68,14 @@ class Ad extends Model
 
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('status', 'active')->notExpired();
+        return $query
+            ->where('status', 'active')
+            ->notExpired()
+            ->where(function (Builder $query): void {
+                $query
+                    ->whereNull('page_id')
+                    ->orWhereHas('page', fn (Builder $page) => $page->managed());
+            });
     }
 
     public function scopeNotExpired(Builder $query): Builder

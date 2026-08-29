@@ -71,7 +71,7 @@ class SitemapController extends Controller
             ->where('name', '!=', '')
             ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
             ->orderBy('id')
-            ->get(['id', 'type', 'name', 'logo_path', 'banner_path', 'updated_at'])
+            ->get(['id', 'type', 'is_unclaimed', 'name', 'logo_path', 'banner_path', 'updated_at'])
             ->each(function (Page $page) use ($entries): void {
                 if ($page->type === Page::TYPE_BUSINESS) {
                     foreach (self::LOCALES as $locale) {
@@ -81,13 +81,17 @@ class SitemapController extends Controller
                     return;
                 }
 
-                $entries->push($this->entry("/pages/{$page->public_slug}", $page->updated_at, 'weekly', '0.8', $this->pageImages($page)));
+                foreach (self::LOCALES as $locale) {
+                    $entries->push($this->entry($this->localizedCommunityPath($page, $locale), $page->updated_at, 'weekly', '0.8', $this->pageImages($page)));
+                }
             });
 
         PageProduct::query()
             ->with('page:id,user_id,type,name,setup,address')
-            ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
-            ->whereHas('page', fn ($query) => $query->where('type', Page::TYPE_BUSINESS))
+            ->whereHas('page', fn ($query) => $query
+                ->managed()
+                ->where('type', Page::TYPE_BUSINESS)
+                ->whereHas('user', fn ($user) => $user->whereNull('banned_at')))
             ->orderBy('id')
             ->get(['id', 'page_id', 'name', 'image_path', 'updated_at'])
             ->each(function (PageProduct $product) use ($entries): void {
@@ -163,7 +167,9 @@ class SitemapController extends Controller
         PageProduct::query()
             ->with('page:id,user_id,setup,address')
             ->whereNotNull('category_key')
-            ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
+            ->whereHas('page', fn ($query) => $query
+                ->managed()
+                ->whereHas('user', fn ($user) => $user->whereNull('banned_at')))
             ->orderBy('id')
             ->get(['id', 'page_id', 'category_key', 'updated_at'])
             ->each(fn (PageProduct $product) => $register(
@@ -176,7 +182,9 @@ class SitemapController extends Controller
         PageService::query()
             ->with('page:id,user_id,setup,address')
             ->whereNotNull('category_key')
-            ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
+            ->whereHas('page', fn ($query) => $query
+                ->managed()
+                ->whereHas('user', fn ($user) => $user->whereNull('banned_at')))
             ->orderBy('id')
             ->get(['id', 'page_id', 'category_key', 'updated_at'])
             ->each(fn (PageService $service) => $register(
@@ -189,7 +197,9 @@ class SitemapController extends Controller
         PageEvent::query()
             ->with('page:id,user_id,setup,address')
             ->whereNotNull('category_key')
-            ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
+            ->whereHas('page', fn ($query) => $query
+                ->managed()
+                ->whereHas('user', fn ($user) => $user->whereNull('banned_at')))
             ->orderBy('id')
             ->get(['id', 'page_id', 'category_key', 'updated_at'])
             ->each(fn (PageEvent $event) => $register(
@@ -267,7 +277,9 @@ class SitemapController extends Controller
 
         PageProduct::query()
             ->with('page:id,user_id,setup,address')
-            ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
+            ->whereHas('page', fn ($query) => $query
+                ->managed()
+                ->whereHas('user', fn ($user) => $user->whereNull('banned_at')))
             ->orderBy('id')
             ->get(['id', 'page_id', 'category_key', 'updated_at'])
             ->each(fn (PageProduct $product) => $register(
@@ -289,6 +301,11 @@ class SitemapController extends Controller
     private function localizedBusinessPath(Page $page, string $locale = 'he'): string
     {
         return "/{$locale}/business/{$page->public_slug}";
+    }
+
+    private function localizedCommunityPath(Page $page, string $locale = 'he'): string
+    {
+        return "/{$locale}/community/{$page->public_slug}";
     }
 
     private function localizedProductPath(PageProduct $product, string $locale = 'he'): string
@@ -322,6 +339,10 @@ class SitemapController extends Controller
 
     private function pageImages(Page $page): array
     {
+        if ($page->is_unclaimed) {
+            return [];
+        }
+
         return [
             $this->image($page->banner_url, $page->name),
             $this->image($page->logo_url, $page->name.' logo'),

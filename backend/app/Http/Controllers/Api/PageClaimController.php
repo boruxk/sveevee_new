@@ -29,10 +29,10 @@ class PageClaimController extends Controller
 
         if (Page::query()
             ->where('user_id', $user->id)
-            ->where('type', Page::TYPE_BUSINESS)
+            ->where('type', $page->type)
             ->where('is_unclaimed', false)
             ->exists()) {
-            return ApiResponseService::error('Your account already has a business page.', status: 409);
+            return ApiResponseService::error("Your account already has a {$page->type} page.", status: 409);
         }
 
         $request->merge(['message' => trim((string) $request->input('message'))]);

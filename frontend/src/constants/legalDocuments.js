@@ -3,7 +3,7 @@ import { getPrivacyPolicy } from './privacyPolicy.js'
 export const termsConditions = {
 	en: {
 		title: 'Terms & Conditions',
-		updated: 'Last updated: August 28, 2026',
+		updated: 'Last updated: August 29, 2026',
 		intro: 'These Terms & Conditions form a binding agreement for use of Sveevee. The Privacy Policy and Disclaimer are part of these Terms. By accessing the service, creating an account, or publishing content, you confirm that you have read and accepted them.',
 		sections: [
 			{
@@ -29,11 +29,11 @@ export const termsConditions = {
 				]
 			},
 			{
-				title: 'Unclaimed Business Pages',
+				title: 'Unclaimed Business and Community Pages',
 				body: [
-					'Sveevee may create a basic business page from business information publicly available for business purposes, where use is reasonably believed to be lawful and consistent with the source terms. Such a page is marked as unclaimed and unverified. It does not mean the business created or approved the page, verified its information, or has any relationship with Sveevee.',
-					'An unclaimed page is informational only. Page modules, ratings, chat, logos, and photos remain disabled until an administrator approves a claim. Its information may be incomplete, incorrect, or outdated and should be checked directly with the business.',
-					'The business owner, the person concerned, or an authorized representative may request ownership, correction, or removal through the claim process or at info@sveevee.co.il, subject to reasonable verification. Sveevee may update, hide, or remove information that is inaccurate, outdated, unlawful, infringing, misleading, or unsuitable for the service.',
+					'Sveevee may create a basic business or community page from information publicly available for the relevant business, organizational, or community activity, where use is reasonably believed to be lawful and consistent with the source terms. Such a page is marked as unclaimed and unverified. It does not mean the business or community created or approved the page, verified its information, or has any relationship with Sveevee.',
+					'An unclaimed page is informational only. Page modules, ratings, chat, logos, and photos remain disabled until an administrator approves a claim. Its information may be incomplete, incorrect, or outdated and should be checked directly with the business or community.',
+					'The business owner, community representative, person concerned, or another authorized representative may request ownership, correction, or removal through the claim process or at info@sveevee.co.il, subject to reasonable verification. Sveevee may update, hide, or remove information that is inaccurate, outdated, unlawful, infringing, misleading, or unsuitable for the service.',
 					'Do not copy descriptions, reviews, photos, logos, or other protected content from Google Maps, directories, websites, or any other source without appropriate permission.'
 				]
 			},
@@ -110,7 +110,7 @@ export const termsConditions = {
 	},
 	he: {
 		title: 'תנאי שימוש',
-		updated: 'עודכן לאחרונה: 28 באוגוסט 2026',
+		updated: 'עודכן לאחרונה: 29 באוגוסט 2026',
 		intro: 'תנאי שימוש אלה הם הסכם מחייב לשימוש ב-Sveevee. מדיניות הפרטיות וכתב הוויתור הם חלק מתנאים אלה. בכניסה לשירות, ביצירת חשבון או בפרסום תוכן אתם מאשרים שקראתם והסכמתם להם.',
 		sections: [
 			{
@@ -136,11 +136,11 @@ export const termsConditions = {
 				]
 			},
 			{
-				title: 'עמודי עסק שלא נדרשו על ידי בעל העסק',
+				title: 'עמודי עסק וקהילה שלא נדרשו על ידי בעליהם',
 				body: [
-					'Sveevee עשויה ליצור עמוד עסק בסיסי על סמך מידע עסקי שפורסם לציבור לצורך פעילות עסקית, כאשר קיים יסוד סביר להניח שהשימוש מותר לפי דין ותואם את תנאי המקור. עמוד כזה מסומן כעמוד שלא נדרש ולא אומת. יצירתו אינה מעידה כי העסק יצר או אישר את העמוד, אימת את המידע שבו או מקיים קשר כלשהו עם Sveevee.',
-					'עמוד שלא נדרש הוא עמוד מידע בלבד. מודולים, דירוגים, צ׳אט, לוגו ותמונות נשארים מושבתים עד שמנהל מאשר בקשת בעלות. המידע עשוי להיות חלקי, שגוי או לא מעודכן, ויש לאמתו ישירות מול בית העסק.',
-					'בעל העסק, האדם שהמידע מתייחס אליו או נציג מורשה רשאים לבקש בעלות, תיקון או הסרה באמצעות הליך בקשת הבעלות או בפנייה אל info@sveevee.co.il, בכפוף לאימות סביר. Sveevee רשאית לעדכן, להסתיר או להסיר מידע שאינו מדויק, אינו מעודכן, אינו חוקי, מפר זכויות, מטעה או אינו מתאים לשירות.',
+					'Sveevee עשויה ליצור עמוד עסק או קהילה בסיסי על סמך מידע שפורסם לציבור לצורך הפעילות העסקית, הארגונית או הקהילתית הרלוונטית, כאשר קיים יסוד סביר להניח שהשימוש מותר לפי דין ותואם את תנאי המקור. עמוד כזה מסומן כעמוד שלא נדרש ולא אומת. יצירתו אינה מעידה כי העסק או הקהילה יצרו או אישרו את העמוד, אימתו את המידע שבו או מקיימים קשר כלשהו עם Sveevee.',
+					'עמוד שלא נדרש הוא עמוד מידע בלבד. מודולים, דירוגים, צ׳אט, לוגו ותמונות נשארים מושבתים עד שמנהל מאשר בקשת בעלות. המידע עשוי להיות חלקי, שגוי או לא מעודכן, ויש לאמתו ישירות מול העסק או הקהילה.',
+					'בעל העסק, נציג הקהילה, האדם שהמידע מתייחס אליו או נציג מורשה אחר רשאים לבקש בעלות, תיקון או הסרה באמצעות הליך בקשת הבעלות או בפנייה אל info@sveevee.co.il, בכפוף לאימות סביר. Sveevee רשאית לעדכן, להסתיר או להסיר מידע שאינו מדויק, אינו מעודכן, אינו חוקי, מפר זכויות, מטעה או אינו מתאים לשירות.',
 					'אין להעתיק תיאורים, ביקורות, תמונות, לוגואים או תוכן מוגן אחר מ-Google Maps, מאתרי אינדקס, מאתרים או מכל מקור אחר ללא הרשאה מתאימה.'
 				]
 			},
@@ -217,7 +217,7 @@ export const termsConditions = {
 	},
 	ru: {
 		title: 'Условия использования',
-		updated: 'Последнее обновление: 28 августа 2026 г.',
+		updated: 'Последнее обновление: 29 августа 2026 г.',
 		intro: 'Эти Условия являются обязательным соглашением об использовании Sveevee. Политика конфиденциальности и Отказ от ответственности входят в Условия. Посещая сервис, создавая аккаунт или публикуя контент, вы подтверждаете, что прочитали и приняли их.',
 		sections: [
 			{
@@ -243,11 +243,11 @@ export const termsConditions = {
 				]
 			},
 			{
-				title: 'Невостребованные бизнес-страницы',
+				title: 'Невостребованные страницы бизнеса и сообществ',
 				body: [
-					'Sveevee может создать базовую бизнес-страницу по деловой информации, публично опубликованной для ведения бизнеса, если есть разумные основания считать использование законным и соответствующим условиям источника. Такая страница помечается как невостребованная и непроверенная. Это не означает, что бизнес создал или одобрил страницу, проверил сведения либо связан со Sveevee.',
-					'Невостребованная страница носит только информационный характер. Модули, рейтинги, чат, логотип и фотографии отключены до подтверждения запроса администратором. Информация может быть неполной, ошибочной или устаревшей, поэтому проверяйте её напрямую у бизнеса.',
-					'Владелец бизнеса, лицо, к которому относятся сведения, или уполномоченный представитель может запросить владение, исправление или удаление через процедуру запроса либо по адресу info@sveevee.co.il после разумной проверки. Sveevee может обновить, скрыть или удалить неточную, устаревшую, незаконную, нарушающую права, вводящую в заблуждение или неподходящую информацию.',
+					'Sveevee может создать базовую страницу бизнеса или сообщества по сведениям, публично опубликованным для соответствующей деловой, организационной или общественной деятельности, если есть разумные основания считать использование законным и соответствующим условиям источника. Такая страница помечается как невостребованная и непроверенная. Это не означает, что бизнес или сообщество создали или одобрили страницу, проверили сведения либо связаны со Sveevee.',
+					'Невостребованная страница носит только информационный характер. Модули, рейтинги, чат, логотип и фотографии отключены до подтверждения запроса администратором. Информация может быть неполной, ошибочной или устаревшей, поэтому проверяйте её напрямую у бизнеса или сообщества.',
+					'Владелец бизнеса, представитель сообщества, лицо, к которому относятся сведения, или другой уполномоченный представитель может запросить владение, исправление или удаление через процедуру запроса либо по адресу info@sveevee.co.il после разумной проверки. Sveevee может обновить, скрыть или удалить неточную, устаревшую, незаконную, нарушающую права, вводящую в заблуждение или неподходящую информацию.',
 					'Не копируйте описания, отзывы, фотографии, логотипы и иной защищённый контент из Google Maps, каталогов, сайтов или других источников без надлежащего разрешения.'
 				]
 			},
@@ -322,7 +322,7 @@ export const termsConditions = {
 	},
 	fr: {
 		title: 'Conditions générales',
-		updated: 'Dernière mise à jour : 28 août 2026',
+		updated: 'Dernière mise à jour : 29 août 2026',
 		intro: 'Ces Conditions constituent un accord contraignant pour l’utilisation de Sveevee. La Politique de confidentialité et l’Avertissement en font partie. En accédant au service, en créant un compte ou en publiant du contenu, vous confirmez les avoir lus et acceptés.',
 		sections: [
 			{
@@ -348,11 +348,11 @@ export const termsConditions = {
 				]
 			},
 			{
-				title: 'Pages entreprise non revendiquées',
+				title: 'Pages entreprise et communauté non revendiquées',
 				body: [
-					'Sveevee peut créer une page entreprise de base à partir d’informations professionnelles publiées à des fins commerciales, lorsqu’il existe des raisons raisonnables de croire que leur utilisation est licite et conforme aux conditions de la source. La page est indiquée comme non revendiquée et non vérifiée. Cela ne signifie pas que l’entreprise l’a créée ou approuvée, a vérifié les informations, ou entretient une relation avec Sveevee.',
-					'Une page non revendiquée est uniquement informative. Modules, notes, chat, logo et photos restent désactivés jusqu’à l’approbation d’une demande par un administrateur. Les informations peuvent être incomplètes, erronées ou obsolètes et doivent être vérifiées directement auprès de l’entreprise.',
-					'Le propriétaire, la personne concernée ou un représentant autorisé peut demander la propriété, la correction ou le retrait via la procédure de revendication ou à info@sveevee.co.il, sous réserve d’une vérification raisonnable. Sveevee peut mettre à jour, masquer ou supprimer les informations inexactes, obsolètes, illicites, contrefaisantes, trompeuses ou inadaptées au service.',
+					'Sveevee peut créer une page entreprise ou communauté de base à partir d’informations publiées pour l’activité commerciale, associative ou communautaire concernée, lorsqu’il existe des raisons raisonnables de croire que leur utilisation est licite et conforme aux conditions de la source. La page est indiquée comme non revendiquée et non vérifiée. Cela ne signifie pas que l’entreprise ou la communauté l’a créée ou approuvée, a vérifié les informations, ou entretient une relation avec Sveevee.',
+					'Une page non revendiquée est uniquement informative. Modules, notes, chat, logo et photos restent désactivés jusqu’à l’approbation d’une demande par un administrateur. Les informations peuvent être incomplètes, erronées ou obsolètes et doivent être vérifiées directement auprès de l’entreprise ou de la communauté.',
+					'Le propriétaire de l’entreprise, le représentant de la communauté, la personne concernée ou un autre représentant autorisé peut demander la propriété, la correction ou le retrait via la procédure de revendication ou à info@sveevee.co.il, sous réserve d’une vérification raisonnable. Sveevee peut mettre à jour, masquer ou supprimer les informations inexactes, obsolètes, illicites, contrefaisantes, trompeuses ou inadaptées au service.',
 					'Ne copiez pas de descriptions, avis, photos, logos ou autres contenus protégés depuis Google Maps, des annuaires, des sites ou toute autre source sans autorisation appropriée.'
 				]
 			},
@@ -430,7 +430,7 @@ export const termsConditions = {
 export const disclaimers = {
 	en: {
 		title: 'Disclaimer',
-		updated: 'Last updated: August 28, 2026',
+		updated: 'Last updated: August 29, 2026',
 		intro: 'This Disclaimer describes important limits of Sveevee’s role. It should be read with the Terms & Conditions and Privacy Policy. It does not remove any responsibility or consumer right that Israeli law does not permit us to exclude.',
 		sections: [
 			{
@@ -440,11 +440,11 @@ export const disclaimers = {
 				]
 			},
 			{
-				title: 'Unverified Business Pages',
+				title: 'Unverified Business and Community Pages',
 				body: [
-					'An unclaimed business page was created by Sveevee from business information published to the public. It is not currently managed or verified by the business, and its display does not imply affiliation, cooperation, approval, endorsement, or verification by that business.',
-					'The information can contain errors and may be incomplete, incorrect, or out of date. Verify the address, contact details, opening hours, services, and other material information directly with the business before visiting, buying, or making contact.',
-					'The business owner, the person concerned, or an authorized representative may request ownership, correction, or removal through the page claim process or at info@sveevee.co.il, subject to reasonable verification.'
+					'An unclaimed business or community page was created by Sveevee from information published to the public for the relevant activity. It is not currently managed or verified by the business or community, and its display does not imply affiliation, cooperation, approval, endorsement, or verification by it.',
+					'The information can contain errors and may be incomplete, incorrect, or out of date. Verify the address or area, contact details, opening hours, services, events, and other material information directly with the business or community before visiting, buying, attending, or making contact.',
+					'The business owner, community representative, person concerned, or another authorized representative may request ownership, correction, or removal through the page claim process or at info@sveevee.co.il, subject to reasonable verification.'
 				]
 			},
 			{
@@ -510,7 +510,7 @@ export const disclaimers = {
 	},
 	he: {
 		title: 'כתב ויתור',
-		updated: 'עודכן לאחרונה: 28 באוגוסט 2026',
+		updated: 'עודכן לאחרונה: 29 באוגוסט 2026',
 		intro: 'כתב ויתור זה מתאר מגבלות חשובות בתפקידה של Sveevee. יש לקרוא אותו יחד עם תנאי השימוש ומדיניות הפרטיות. אין בו כדי להסיר אחריות או זכות צרכנית שהדין הישראלי אינו מתיר לשלול.',
 		sections: [
 			{
@@ -520,11 +520,11 @@ export const disclaimers = {
 				]
 			},
 			{
-				title: 'עמוד עסק לא מאומת',
+				title: 'עמודי עסק וקהילה לא מאומתים',
 				body: [
-					'עמוד עסק שלא נדרש נוצר על ידי Sveevee על סמך מידע עסקי שפורסם לציבור. העמוד אינו מנוהל או מאומת בשלב זה בידי בית העסק, ואין בהצגתו כדי להעיד על קשר, שיתוף פעולה, אישור, המלצה או אימות מצד בית העסק.',
-					'המידע עלול להכיל טעויות ועשוי להיות חלקי, שגוי או לא מעודכן. לפני הגעה, רכישה או יצירת קשר יש לאמת ישירות מול בית העסק את הכתובת, פרטי הקשר, שעות הפעילות, השירותים וכל פרט מהותי אחר.',
-					'בעל העסק, האדם שהמידע מתייחס אליו או נציג מורשה רשאים לבקש בעלות, תיקון או הסרה באמצעות הליך בקשת הבעלות שבעמוד או בפנייה אל info@sveevee.co.il, בכפוף לאימות סביר.'
+					'עמוד עסק או קהילה שלא נדרש נוצר על ידי Sveevee על סמך מידע שפורסם לציבור לצורך הפעילות הרלוונטית. העמוד אינו מנוהל או מאומת בשלב זה בידי העסק או הקהילה, ואין בהצגתו כדי להעיד על קשר, שיתוף פעולה, אישור, המלצה או אימות מצדם.',
+					'המידע עלול להכיל טעויות ועשוי להיות חלקי, שגוי או לא מעודכן. לפני הגעה, רכישה, השתתפות או יצירת קשר יש לאמת ישירות מול העסק או הקהילה את הכתובת או אזור הפעילות, פרטי הקשר, שעות הפעילות, השירותים, האירועים וכל פרט מהותי אחר.',
+					'בעל העסק, נציג הקהילה, האדם שהמידע מתייחס אליו או נציג מורשה אחר רשאים לבקש בעלות, תיקון או הסרה באמצעות הליך בקשת הבעלות שבעמוד או בפנייה אל info@sveevee.co.il, בכפוף לאימות סביר.'
 				]
 			},
 			{
@@ -590,7 +590,7 @@ export const disclaimers = {
 	},
 	ru: {
 		title: 'Отказ от ответственности',
-		updated: 'Последнее обновление: 28 августа 2026 г.',
+		updated: 'Последнее обновление: 29 августа 2026 г.',
 		intro: 'Этот документ описывает важные пределы роли Sveevee. Его следует читать вместе с Условиями и Политикой конфиденциальности. Он не отменяет ответственность или права потребителя, которые нельзя исключить по закону Израиля.',
 		sections: [
 			{
@@ -600,11 +600,11 @@ export const disclaimers = {
 				]
 			},
 			{
-				title: 'Непроверенные бизнес-страницы',
+				title: 'Непроверенные страницы бизнеса и сообществ',
 				body: [
-					'Невостребованная бизнес-страница создана Sveevee по деловой информации, опубликованной для общего доступа. Сейчас она не управляется и не проверена самим бизнесом, а её показ не означает связь, сотрудничество, одобрение, рекомендацию или проверку со стороны бизнеса.',
-					'Сведения могут содержать ошибки, быть неполными, неверными или устаревшими. Перед посещением, покупкой или обращением проверяйте адрес, контакты, часы работы, услуги и иные существенные сведения непосредственно у бизнеса.',
-					'Владелец бизнеса, лицо, к которому относятся сведения, или уполномоченный представитель может запросить владение, исправление или удаление через процедуру на странице либо по адресу info@sveevee.co.il после разумной проверки.'
+					'Невостребованная страница бизнеса или сообщества создана Sveevee по сведениям, опубликованным для общего доступа в связи с соответствующей деятельностью. Сейчас она не управляется и не проверена бизнесом или сообществом, а её показ не означает связь, сотрудничество, одобрение, рекомендацию или проверку с их стороны.',
+					'Сведения могут содержать ошибки, быть неполными, неверными или устаревшими. Перед посещением, покупкой, участием или обращением проверяйте адрес или район, контакты, часы работы, услуги, события и иные существенные сведения непосредственно у бизнеса или сообщества.',
+					'Владелец бизнеса, представитель сообщества, лицо, к которому относятся сведения, или другой уполномоченный представитель может запросить владение, исправление или удаление через процедуру на странице либо по адресу info@sveevee.co.il после разумной проверки.'
 				]
 			},
 			{
@@ -664,7 +664,7 @@ export const disclaimers = {
 	},
 	fr: {
 		title: 'Avertissement',
-		updated: 'Dernière mise à jour : 28 août 2026',
+		updated: 'Dernière mise à jour : 29 août 2026',
 		intro: 'Cet Avertissement décrit les limites importantes du rôle de Sveevee. Il doit être lu avec les Conditions et la Politique de confidentialité. Il ne supprime aucune responsabilité ni aucun droit du consommateur que le droit israélien interdit d’exclure.',
 		sections: [
 			{
@@ -674,11 +674,11 @@ export const disclaimers = {
 				]
 			},
 			{
-				title: 'Pages entreprise non vérifiées',
+				title: 'Pages entreprise et communauté non vérifiées',
 				body: [
-					'Une page entreprise non revendiquée a été créée par Sveevee à partir d’informations professionnelles publiées au public. Elle n’est actuellement ni gérée ni vérifiée par l’entreprise, et son affichage n’implique aucune affiliation, coopération, approbation, recommandation ou vérification de sa part.',
-					'Les informations peuvent comporter des erreurs et être incomplètes, incorrectes ou obsolètes. Vérifiez directement auprès de l’entreprise l’adresse, les coordonnées, les horaires, les services et tout élément important avant une visite, un achat ou une prise de contact.',
-					'Le propriétaire, la personne concernée ou un représentant autorisé peut demander la propriété, la correction ou le retrait via la procédure de revendication de la page ou à info@sveevee.co.il, sous réserve d’une vérification raisonnable.'
+					'Une page entreprise ou communauté non revendiquée a été créée par Sveevee à partir d’informations publiées au public pour l’activité concernée. Elle n’est actuellement ni gérée ni vérifiée par l’entreprise ou la communauté, et son affichage n’implique aucune affiliation, coopération, approbation, recommandation ou vérification de sa part.',
+					'Les informations peuvent comporter des erreurs et être incomplètes, incorrectes ou obsolètes. Vérifiez directement auprès de l’entreprise ou de la communauté l’adresse ou la zone, les coordonnées, les horaires, les services, les événements et tout élément important avant une visite, un achat, une participation ou une prise de contact.',
+					'Le propriétaire de l’entreprise, le représentant de la communauté, la personne concernée ou un autre représentant autorisé peut demander la propriété, la correction ou le retrait via la procédure de revendication de la page ou à info@sveevee.co.il, sous réserve d’une vérification raisonnable.'
 				]
 			},
 			{

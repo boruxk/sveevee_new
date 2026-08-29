@@ -34,10 +34,10 @@ class AdminPageClaimController extends Controller
 
             if (Page::query()
                 ->where('user_id', $claim->user_id)
-                ->where('type', Page::TYPE_BUSINESS)
+                ->where('type', $page->type)
                 ->where('is_unclaimed', false)
                 ->exists()) {
-                return ['error' => 'The requester already has a business page.', 'status' => 409];
+                return ['error' => "The requester already has a {$page->type} page.", 'status' => 409];
             }
 
             $page->forceFill([
@@ -45,6 +45,7 @@ class AdminPageClaimController extends Controller
                 'is_unclaimed' => false,
                 'claimed_at' => now(),
             ])->save();
+            $page->ads()->update(['user_id' => $claim->user_id]);
 
             $claim->forceFill([
                 'status' => PageClaimRequest::STATUS_APPROVED,

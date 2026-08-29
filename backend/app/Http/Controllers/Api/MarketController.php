@@ -69,9 +69,7 @@ class MarketController extends Controller
         ]));
     }
 
-    public function __construct(private readonly PayloadService $payloads)
-    {
-    }
+    public function __construct(private readonly PayloadService $payloads) {}
 
     private function productsQuery(string $city, ?array $topic = null): Builder
     {
@@ -83,7 +81,9 @@ class MarketController extends Controller
                     ->withAvg('ratings', 'rating'),
             ])
             ->whereHas('page', function (Builder $page) use ($city): void {
-                $page->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
+                $page
+                    ->managed()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
                 $this->inPageCity($page, $city);
             })
             ->latest();
@@ -110,7 +110,7 @@ class MarketController extends Controller
         return [
             'id' => $page->id,
             'slug' => $page->public_slug,
-            'public_path' => '/pages/'.$page->public_slug,
+            'public_path' => $page->public_path,
             'type' => $page->type,
             'name' => $page->name,
             'logo_url' => $page->logo_url,

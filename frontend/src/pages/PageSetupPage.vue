@@ -231,11 +231,7 @@
 			return ''
 		}
 
-		if (isBusinessPage.value) {
-			return absoluteUrl(publicPagePath(page.value, locale.value))
-		}
-
-		return absoluteUrl(page.value.public_path || `/pages/${page.value.public_slug || page.value.id}`)
+		return absoluteUrl(publicPagePath(page.value, locale.value))
 	})
 	const previewContentPlaceholders = computed(() => {
 		if (isBusinessPage.value) {

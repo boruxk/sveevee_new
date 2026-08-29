@@ -10,6 +10,8 @@
 		createBlockedTerm,
 		deleteAdminUser,
 		deleteBlockedTerm,
+		fetchAdminPageOwnerOptions,
+		fetchAdminPages,
 		fetchAdminSettings,
 		fetchAdminSupportChat,
 		fetchAdminSupportChats,
@@ -18,6 +20,7 @@
 		fetchBlockedTerms,
 		restoreAdminUser,
 		sendAdminSupportMessage,
+		updateAdminPageOwner,
 		updateAdminSettings,
 		updateBlockedTerm
 	} from '@/services/api/admin'
@@ -58,6 +61,7 @@
 		}
 	})
 	const clone = (value) => JSON.parse(JSON.stringify(value))
+	const pagesTabIcon = 'M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z'
 
 	const { locale, t } = useI18n()
 	const route = useRoute()
@@ -65,11 +69,24 @@
 	const authStore = useAuthStore()
 	const supportLoading = ref(false)
 	const tableLoading = ref(false)
-	const adminTabNames = ['communication', 'users', 'landing-pages', 'settings']
+	const pagesLoading = ref(false)
+	const adminTabNames = ['communication', 'users', 'pages', 'landing-pages', 'settings']
 	const activeTab = ref(adminTabNames.includes(String(route.query.tab || '')) ? String(route.query.tab) : 'communication')
 	const supportConversations = ref([])
 	const userRows = ref([])
 	const totalUsers = ref(0)
+	const pageRows = ref([])
+	const totalPages = ref(0)
+	const pageSearch = ref('')
+	const appliedPageSearch = ref('')
+	const pageTypeFilter = ref('')
+	const pageOwnershipFilter = ref('')
+	const pageOwnerDialogOpen = ref(false)
+	const selectedAdminPage = ref(null)
+	const selectedPageOwnerId = ref(null)
+	const pageOwnerOptions = ref([])
+	const pageOwnerOptionsLoading = ref(false)
+	const pageOwnerSaving = ref(false)
 	const selectedUser = ref(null)
 	const userDetailsOpen = ref(false)
 	const userDetailsLoading = ref(false)
@@ -93,6 +110,11 @@
 	const blockedTermRowSaving = ref({})
 	const newBlockedTerm = ref({ term: '', locale: 'all', active: true })
 	const tablePagination = ref({
+		page: 1,
+		rowsPerPage: 50,
+		rowsNumber: 0
+	})
+	const pageTablePagination = ref({
 		page: 1,
 		rowsPerPage: 50,
 		rowsNumber: 0
@@ -166,6 +188,25 @@
 			sortable: false
 		}
 	])
+	const pageColumns = computed(() => [
+		{ name: 'name', label: t('admin.pages.name'), align: 'left', field: 'name', sortable: false },
+		{ name: 'type', label: t('admin.pages.type'), align: 'left', field: 'type', sortable: false },
+		{ name: 'location', label: t('admin.pages.location'), align: 'left', field: 'city', sortable: false },
+		{ name: 'owner', label: t('admin.pages.owner'), align: 'left', field: (page) => page.owner?.display_name || '', sortable: false },
+		{ name: 'content', label: t('admin.pages.content'), align: 'left', field: 'counts', sortable: false },
+		{ name: 'updated', label: t('admin.pages.updated'), align: 'left', field: 'updated_at', sortable: false },
+		{ name: 'actions', label: t('admin.actions'), align: 'right', field: 'actions', sortable: false }
+	])
+	const pageTypeFilterOptions = computed(() => [
+		{ label: t('admin.pages.allTypes'), value: '' },
+		{ label: t('pages.kinds.business'), value: 'business' },
+		{ label: t('pages.kinds.community'), value: 'community' }
+	])
+	const pageOwnershipFilterOptions = computed(() => [
+		{ label: t('admin.pages.allOwnerships'), value: '' },
+		{ label: t('admin.pages.managed'), value: 'managed' },
+		{ label: t('admin.pages.unclaimed'), value: 'unclaimed' }
+	])
 	const blockedLocaleOptions = computed(() => [
 		{ label: t('admin.settings.allLanguages'), value: 'all' },
 		{ label: t('languages.he'), value: 'he' },
@@ -187,6 +228,7 @@
 	const adminPageTitle = computed(() => ({
 		communication: t('admin.communication'),
 		users: t('admin.userTable'),
+		pages: t('admin.pages.title'),
 		'landing-pages': t('admin.landingPages'),
 		settings: t('admin.settings.title')
 	}[activeTab.value] || t('admin.users')))
@@ -295,6 +337,140 @@
 		} finally {
 			tableLoading.value = false
 		}
+	}
+
+	async function loadPageTable(page = pageTablePagination.value.page) {
+		pagesLoading.value = true
+		try {
+			const { data } = await fetchAdminPages({
+				page,
+				q: appliedPageSearch.value || undefined,
+				type: pageTypeFilter.value || undefined,
+				ownership: pageOwnershipFilter.value || undefined
+			})
+			const payload = data.data || {}
+			const pagination = payload.pagination || {}
+
+			pageRows.value = payload.items || []
+			totalPages.value = Number(payload.total_pages || pagination.total || pageRows.value.length)
+			pageTablePagination.value = {
+				page: pagination.current_page || page,
+				rowsPerPage: pagination.per_page || 50,
+				rowsNumber: pagination.total || pageRows.value.length
+			}
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.pages.loadFailed')) })
+		} finally {
+			pagesLoading.value = false
+		}
+	}
+
+	async function applyPageSearch() {
+		appliedPageSearch.value = String(pageSearch.value || '').trim()
+		await loadPageTable(1)
+	}
+
+	async function clearPageSearch() {
+		pageSearch.value = ''
+		await applyPageSearch()
+	}
+
+	function onPageTableRequest({ pagination }) {
+		loadPageTable(pagination.page || 1)
+	}
+
+	function pageOwnerOption(user) {
+		const conflictingPageId = user.page_ids_by_type?.[selectedAdminPage.value?.type]
+		const location = user.city ? ` · ${localizedLocation(user.city, 'city')}` : ''
+
+		return {
+			label: `${user.display_name} · ${user.email}${location}`,
+			value: user.id,
+			disable: Boolean(conflictingPageId && conflictingPageId !== selectedAdminPage.value?.id),
+			user
+		}
+	}
+
+	async function requestPageOwnerOptions(search = '') {
+		const { data } = await fetchAdminPageOwnerOptions({ q: String(search || '').trim() || undefined })
+		return (data.data?.items || []).map(pageOwnerOption)
+	}
+
+	async function filterPageOwnerOptions(value, update, abort) {
+		pageOwnerOptionsLoading.value = true
+		try {
+			const options = await requestPageOwnerOptions(value)
+			update(() => {
+				pageOwnerOptions.value = options
+			})
+		} catch {
+			abort()
+		} finally {
+			pageOwnerOptionsLoading.value = false
+		}
+	}
+
+	async function openPageOwnerDialog(page) {
+		selectedAdminPage.value = page
+		selectedPageOwnerId.value = page.owner?.id || null
+		pageOwnerDialogOpen.value = true
+		pageOwnerOptionsLoading.value = true
+
+		try {
+			pageOwnerOptions.value = await requestPageOwnerOptions()
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.pages.ownerOptionsFailed')) })
+		} finally {
+			pageOwnerOptionsLoading.value = false
+		}
+	}
+
+	async function savePageOwner() {
+		if (!selectedAdminPage.value?.id || !selectedPageOwnerId.value || pageOwnerSaving.value) {
+			return
+		}
+
+		pageOwnerSaving.value = true
+		try {
+			await updateAdminPageOwner(selectedAdminPage.value.id, selectedPageOwnerId.value)
+			pageOwnerDialogOpen.value = false
+			await Promise.all([
+				loadPageTable(pageTablePagination.value.page),
+				loadUserTable(tablePagination.value.page)
+			])
+			$q.notify({ type: 'positive', message: t('admin.pages.assigned') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.pages.assignFailed')) })
+		} finally {
+			pageOwnerSaving.value = false
+		}
+	}
+
+	async function detachPageOwner(page) {
+		try {
+			await updateAdminPageOwner(page.id, null)
+			await Promise.all([
+				loadPageTable(pageTablePagination.value.page),
+				loadUserTable(tablePagination.value.page)
+			])
+			$q.notify({ type: 'positive', message: t('admin.pages.detached') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.pages.detachFailed')) })
+		}
+	}
+
+	function confirmDetachPage(page) {
+		if (!page?.id || page.is_unclaimed) {
+			return
+		}
+
+		$q.dialog({
+			title: t('admin.pages.detachTitle'),
+			message: t('admin.pages.detachMessage', { page: page.name, user: page.owner?.display_name || '-' }),
+			persistent: true,
+			ok: { label: t('admin.pages.detach'), color: 'negative', unelevated: true },
+			cancel: { label: t('actions.cancel'), color: 'primary', flat: true }
+		}).onOk(() => detachPageOwner(page))
 	}
 
 	async function openUserDetails(_, row) {
@@ -586,6 +762,7 @@
 	onMounted(() => {
 		loadSupportConversations()
 		loadUserTable()
+		loadPageTable()
 		loadSettings()
 	})
 </script>
@@ -612,6 +789,7 @@
 			>
 				<q-tab name="communication" icon="forum" :label="t('admin.communication')" />
 				<q-tab name="users" icon="manage_accounts" :label="t('admin.userTable')" />
+				<q-tab name="pages" :icon="pagesTabIcon" :label="t('admin.pages.title')" />
 				<q-tab name="landing-pages" icon="dashboard" :label="t('admin.landingPages')" />
 				<q-tab name="settings" icon="tune" :label="t('admin.settings.title')" />
 			</q-tabs>
@@ -866,6 +1044,160 @@
 											@click.stop="confirmDeleteUser(props.row)"
 										>
 											<q-tooltip>{{ t('admin.deleteUser') }}</q-tooltip>
+										</q-btn>
+									</div>
+								</q-td>
+							</template>
+						</q-table>
+					</section>
+				</q-tab-panel>
+
+				<q-tab-panel name="pages" class="admin-panel">
+					<section class="soz-section-card table-panel page-management-panel">
+						<div class="page-table-tools">
+							<q-input
+								v-model="pageSearch"
+								outlined
+								dense
+								rounded
+								clearable
+								debounce="300"
+								class="page-search"
+								:label="t('admin.pages.search')"
+								:placeholder="t('admin.pages.searchPlaceholder')"
+								@keyup.enter="applyPageSearch"
+								@update:model-value="applyPageSearch"
+								@clear="clearPageSearch"
+							>
+								<template #prepend><q-icon name="search" /></template>
+							</q-input>
+							<q-select
+								v-model="pageTypeFilter"
+								outlined
+								dense
+								emit-value
+								map-options
+								:options="pageTypeFilterOptions"
+								:label="t('admin.pages.type')"
+								class="page-filter"
+								@update:model-value="loadPageTable(1)"
+							/>
+							<q-select
+								v-model="pageOwnershipFilter"
+								outlined
+								dense
+								emit-value
+								map-options
+								:options="pageOwnershipFilterOptions"
+								:label="t('admin.pages.ownership')"
+								class="page-filter"
+								@update:model-value="loadPageTable(1)"
+							/>
+							<div class="user-total page-total" aria-live="polite">
+								<strong>{{ totalPages.toLocaleString(intlLocale) }}</strong>
+								<span>{{ t('admin.pages.total') }}</span>
+							</div>
+						</div>
+
+						<q-table
+							v-model:pagination="pageTablePagination"
+							flat
+							:rows="pageRows"
+							:columns="pageColumns"
+							row-key="id"
+							:loading="pagesLoading"
+							:rows-per-page-options="[50]"
+							binary-state-sort
+							class="user-table page-management-table"
+							@request="onPageTableRequest"
+						>
+							<template #body-cell-name="props">
+								<q-td :props="props" class="page-name-cell" :class="`page-name-cell--${props.row.type}`">
+									<div class="page-name-content">
+										<div class="table-name">
+											<strong>{{ props.row.name || '-' }}</strong>
+											<small>#{{ props.row.id }}</small>
+										</div>
+										<q-btn flat
+											round
+											dense
+											icon="open_in_new"
+											:aria-label="t('admin.openClaimPage')"
+											:to="props.row.public_path"
+											target="_blank"
+										/>
+									</div>
+								</q-td>
+							</template>
+
+							<template #body-cell-type="props">
+								<q-td :props="props">
+									<q-chip dense class="admin-page-type" :class="`admin-page-type--${props.row.type}`">
+										<q-icon :name="props.row.type === 'community' ? 'diversity_3' : 'storefront'" />
+										{{ t(`pages.kinds.${props.row.type}`) }}
+									</q-chip>
+								</q-td>
+							</template>
+
+							<template #body-cell-location="props">
+								<q-td :props="props">
+									<div class="table-name">
+										<strong>{{ localizedLocation(props.row.city, 'city') || '-' }}</strong>
+										<small>{{ localizedLocation(props.row.neighborhood, 'neighborhood') || '-' }}</small>
+									</div>
+								</q-td>
+							</template>
+
+							<template #body-cell-owner="props">
+								<q-td :props="props">
+									<div v-if="props.row.owner" class="table-name">
+										<strong>{{ props.row.owner.display_name }}</strong>
+										<small>{{ props.row.owner.email }}</small>
+									</div>
+									<q-chip v-else dense color="warning" text-color="dark">{{ t('admin.pages.unclaimed') }}</q-chip>
+								</q-td>
+							</template>
+
+							<template #body-cell-content="props">
+								<q-td :props="props">
+									<span class="page-content-counts">
+										{{ t('admin.pageContentCounts', {
+											products: props.row.counts?.products || 0,
+											services: props.row.counts?.services || 0,
+											events: props.row.counts?.events || 0,
+											ads: props.row.counts?.ads || 0
+										}) }}
+									</span>
+								</q-td>
+							</template>
+
+							<template #body-cell-updated="props">
+								<q-td :props="props">{{ formatDateTime(props.row.updated_at) }}</q-td>
+							</template>
+
+							<template #body-cell-actions="props">
+								<q-td :props="props">
+									<div class="user-actions">
+										<q-btn
+											flat
+											round
+											color="primary"
+											icon="manage_accounts"
+											:aria-label="t('admin.pages.assign')"
+											@click="openPageOwnerDialog(props.row)"
+										>
+											<q-tooltip>{{ t('admin.pages.assign') }}</q-tooltip>
+										</q-btn>
+										<q-btn
+											v-if="!props.row.is_unclaimed"
+											flat
+											round
+											color="negative"
+											icon="close"
+											:aria-label="t('admin.pages.detach')"
+											@click="confirmDetachPage(props.row)"
+										>
+											<q-tooltip>{{ t('admin.pages.detach') }}</q-tooltip>
 										</q-btn>
 									</div>
 								</q-td>
@@ -1324,6 +1656,69 @@
 					</div>
 				</q-card>
 			</q-dialog>
+
+			<q-dialog v-model="pageOwnerDialogOpen">
+				<q-card class="page-owner-dialog">
+					<header class="user-detail-head">
+						<div>
+							<h2>{{ t('admin.pages.assignTitle') }}</h2>
+							<p>{{ selectedAdminPage?.name || '-' }}</p>
+						</div>
+						<q-btn flat
+							round
+							dense
+							icon="close"
+							:aria-label="t('actions.close')"
+							v-close-popup
+						/>
+					</header>
+					<q-card-section class="page-owner-dialog__body">
+						<q-chip
+							v-if="selectedAdminPage"
+							dense
+							class="admin-page-type"
+							:class="`admin-page-type--${selectedAdminPage.type}`"
+						>
+							<q-icon :name="selectedAdminPage.type === 'community' ? 'diversity_3' : 'storefront'" />
+							{{ t(`pages.kinds.${selectedAdminPage.type}`) }}
+						</q-chip>
+						<p>{{ t('admin.pages.assignIntro') }}</p>
+						<q-select
+							v-model="selectedPageOwnerId"
+							outlined
+							use-input
+							fill-input
+							hide-selected
+							emit-value
+							map-options
+							input-debounce="250"
+							:options="pageOwnerOptions"
+							:loading="pageOwnerOptionsLoading"
+							:label="t('admin.pages.chooseOwner')"
+							:hint="t('admin.pages.ownerHint')"
+							@filter="filterPageOwnerOptions"
+						>
+							<template #prepend><q-icon name="person" /></template>
+							<template #no-option>
+								<q-item><q-item-section class="text-grey">{{ t('admin.pages.noOwnerOptions') }}</q-item-section></q-item>
+							</template>
+						</q-select>
+					</q-card-section>
+					<q-card-actions align="right" class="page-owner-dialog__actions">
+						<q-btn flat rounded :label="t('actions.cancel')" v-close-popup />
+						<q-btn
+							unelevated
+							rounded
+							color="primary"
+							icon="save"
+							:label="t('admin.pages.assign')"
+							:loading="pageOwnerSaving"
+							:disable="!selectedPageOwnerId"
+							@click="savePageOwner"
+						/>
+					</q-card-actions>
+				</q-card>
+			</q-dialog>
 		</div>
 	</q-page>
 </template>
@@ -1442,6 +1837,67 @@
   line-height: 1;
 }
 
+.page-table-tools {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(150px, 190px) minmax(150px, 190px) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.page-search {
+  width: 100%;
+}
+
+.page-filter {
+  min-width: 0;
+}
+
+.page-name-cell {
+  border-inline-start: 4px solid transparent;
+}
+
+.page-name-cell--business {
+  border-inline-start-color: #f06a2f;
+}
+
+.page-name-cell--community {
+  border-inline-start-color: #7b3ff2;
+}
+
+.page-name-content {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 190px;
+}
+
+.admin-page-type {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.admin-page-type--business {
+  background: #f06a2f;
+}
+
+.admin-page-type--community {
+  background: #7b3ff2;
+}
+
+.admin-page-type .q-icon {
+  margin-inline-end: 5px;
+}
+
+.page-content-counts {
+  display: block;
+  max-width: 260px;
+  color: var(--soz-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: normal;
+}
+
 .user-table {
   overflow: hidden;
   border: 1px solid rgba(17, 34, 45, 0.08);
@@ -1476,6 +1932,30 @@
   border-radius: 24px !important;
   background: #fff8fb;
   overflow: hidden;
+}
+
+.page-owner-dialog {
+  width: min(620px, calc(100vw - 28px));
+  max-width: 620px;
+  border-radius: 24px !important;
+  background: #fff8fb;
+  overflow: hidden;
+}
+
+.page-owner-dialog__body {
+  display: grid;
+  gap: 14px;
+  padding: 22px 24px;
+}
+
+.page-owner-dialog__body p {
+  margin: 0;
+  color: var(--soz-muted);
+  line-height: 1.55;
+}
+
+.page-owner-dialog__actions {
+  padding: 0 24px 22px;
 }
 
 .user-detail-head {
@@ -2040,6 +2520,15 @@
   .settings-fields--four {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .page-table-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .page-search,
+  .page-total {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 700px) {
@@ -2168,6 +2657,25 @@
 
   .user-total {
     justify-content: flex-end;
+  }
+
+  .page-table-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .page-search,
+  .page-total {
+    grid-column: auto;
+  }
+
+  .page-owner-dialog {
+    width: calc(100vw - 20px);
+    border-radius: 18px !important;
+  }
+
+  .page-owner-dialog__body,
+  .page-owner-dialog__actions {
+    padding-inline: 18px;
   }
 
   .user-detail-dialog {

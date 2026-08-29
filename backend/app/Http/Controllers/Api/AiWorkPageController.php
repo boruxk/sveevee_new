@@ -28,7 +28,7 @@ class AiWorkPageController extends Controller
     public function index(Request $request)
     {
         $pages = Page::query()
-            ->where('created_by_user_id', $request->user()->id)
+            ->where('user_id', $request->user()->id)
             ->where('is_unclaimed', true)
             ->with(['user.profile', 'prices', 'products', 'services', 'events'])
             ->withCount('ratings')
@@ -46,7 +46,7 @@ class AiWorkPageController extends Controller
         $page = new Page;
         $page->user_id = $request->user()->id;
         $page->created_by_user_id = $request->user()->id;
-        $page->type = Page::TYPE_BUSINESS;
+        $page->type = $data['type'];
         $page->is_unclaimed = true;
         $this->fillPage($page, $data);
         $page->save();
@@ -57,7 +57,9 @@ class AiWorkPageController extends Controller
     public function update(Request $request, Page $page)
     {
         $this->ensureEditable($request, $page);
-        $this->fillPage($page, $this->validated($request));
+        $data = $this->validated($request);
+        $page->type = $data['type'];
+        $this->fillPage($page, $data);
         $page->save();
 
         return ApiResponseService::success($this->pagePayload($page), 'Page updated.');
@@ -73,28 +75,34 @@ class AiWorkPageController extends Controller
 
     private function validated(Request $request): array
     {
+        $pageType = trim((string) $request->input('type'));
+        $catalogScope = $pageType === Page::TYPE_COMMUNITY
+            ? CatalogTopics::SCOPE_COMMUNITY_PAGES
+            : CatalogTopics::SCOPE_BUSINESS_PAGES;
         $categoryKey = trim((string) $request->input('category_key'));
         $website = $this->normalizedUrl($request->input('website'));
         $sourceUrl = $this->normalizedUrl($request->input('source_url'));
         $request->merge([
+            'type' => $pageType,
             'name' => trim((string) $request->input('name')),
             'public_description' => trim((string) $request->input('public_description')),
             'category_key' => CatalogTopics::canonicalKeyForScope(
                 $categoryKey,
-                CatalogTopics::SCOPE_BUSINESS_PAGES
+                $catalogScope
             ) ?? $categoryKey,
             'website' => $website,
             'source_url' => $sourceUrl,
         ]);
 
         return $request->validate([
+            'type' => ['required', Rule::in([Page::TYPE_BUSINESS, Page::TYPE_COMMUNITY])],
             'name' => ['required', 'string', 'max:255', new CleanContent],
             'public_description' => ['nullable', 'string', 'max:3000', new CleanContent],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:40'],
             'whatsapp' => ['nullable', 'string', 'max:80'],
             'website' => ['nullable', 'url:http,https', 'max:2048'],
-            'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope(CatalogTopics::SCOPE_BUSINESS_PAGES))],
+            'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope($catalogScope))],
             'palette_key' => ['nullable', 'string', 'max:50'],
             'address' => ['required', 'array'],
             'address.street' => ['nullable', 'string', 'max:255'],
@@ -185,7 +193,6 @@ class AiWorkPageController extends Controller
     {
         abort_unless(
             $page->is_unclaimed
-                && $page->created_by_user_id === $request->user()->id
                 && $page->user_id === $request->user()->id,
             404
         );

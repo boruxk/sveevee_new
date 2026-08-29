@@ -152,7 +152,9 @@ class SearchController extends Controller
             ->when($topicKey, fn (Builder $query) => $query->whereIn('category_key', $topicKeys))
             ->when($term !== '', fn (Builder $query) => $this->whereListingText($query, $like))
             ->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {
-                $page->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
+                $page
+                    ->managed()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
                 $this->inPageLocation($page, $city, $neighborhood);
             })
             ->latest()
@@ -166,7 +168,9 @@ class SearchController extends Controller
             ->when($topicKey, fn (Builder $query) => $query->whereIn('category_key', $topicKeys))
             ->when($term !== '', fn (Builder $query) => $this->whereListingText($query, $like))
             ->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {
-                $page->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
+                $page
+                    ->managed()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
                 $this->inPageLocation($page, $city, $neighborhood);
             })
             ->latest()
@@ -180,7 +184,9 @@ class SearchController extends Controller
             ->when($topicKey, fn (Builder $query) => $query->whereIn('category_key', $topicKeys))
             ->when($term !== '', fn (Builder $query) => $this->whereListingText($query, $like))
             ->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {
-                $page->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
+                $page
+                    ->managed()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
                 $this->inPageLocation($page, $city, $neighborhood);
             })
             ->orderBy('event_date')
@@ -241,7 +247,9 @@ class SearchController extends Controller
                         ->withCount('ratings')
                         ->withAvg('ratings', 'rating'),
                 ])
-                ->whereHas('page.user', fn (Builder $user) => $user->whereNull('banned_at')),
+                ->whereHas('page', fn (Builder $page) => $page
+                    ->managed()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))),
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
             $city,
             $neighborhood
@@ -250,7 +258,9 @@ class SearchController extends Controller
         $services = $this->prioritizedDiscoveryItems(
             PageService::query()
                 ->with(['page.user.profile'])
-                ->whereHas('page.user', fn (Builder $user) => $user->whereNull('banned_at')),
+                ->whereHas('page', fn (Builder $page) => $page
+                    ->managed()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))),
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
             $city,
             $neighborhood
@@ -260,7 +270,9 @@ class SearchController extends Controller
             PageEvent::query()
                 ->with(['page.user.profile'])
                 ->whereDate('event_date', '>=', today())
-                ->whereHas('page.user', fn (Builder $user) => $user->whereNull('banned_at')),
+                ->whereHas('page', fn (Builder $page) => $page
+                    ->managed()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))),
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
             $city,
             $neighborhood
@@ -426,20 +438,24 @@ class SearchController extends Controller
     {
         $setup = $page->setup ?? [];
         $address = is_array($setup['address'] ?? null) ? $setup['address'] : [];
+        $isUnclaimed = (bool) $page->is_unclaimed;
+        $logoPath = $isUnclaimed ? null : $page->logo_path;
+        $bannerPath = $isUnclaimed ? null : $page->banner_path;
 
         return [
             'id' => $page->id,
             'slug' => $page->public_slug,
-            'public_path' => '/pages/'.$page->public_slug,
-            'user_id' => $page->user_id,
+            'public_path' => $page->public_path,
+            'user_id' => $isUnclaimed ? null : $page->user_id,
             'type' => $page->type,
+            'is_unclaimed' => $isUnclaimed,
             'name' => $page->name,
             'public_description' => $page->public_description,
             'category_key' => $page->category_key,
-            'logo_url' => $page->logo_url,
-            ...$this->payloads->publicImageMeta('logo', $page->logo_path, $page->name.' logo', '96px'),
-            'banner_url' => $page->banner_url,
-            ...$this->payloads->publicImageMeta('banner', $page->banner_path, $page->name, '(max-width: 700px) calc(100vw - 28px), 1180px'),
+            'logo_url' => $isUnclaimed ? null : $page->logo_url,
+            ...$this->payloads->publicImageMeta('logo', $logoPath, $page->name.' logo', '96px'),
+            'banner_url' => $isUnclaimed ? null : $page->banner_url,
+            ...$this->payloads->publicImageMeta('banner', $bannerPath, $page->name, '(max-width: 700px) calc(100vw - 28px), 1180px'),
             'address' => $page->address,
             'address_details' => [
                 'city' => $address['city'] ?? null,

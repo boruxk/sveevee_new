@@ -69,8 +69,9 @@ Artisan::command('seo:prerender-public-pages {--dist= : Path to the built fronte
     $this->line("Legal/register pages: {$result['information_pages']}");
     $this->line("Catalog hubs: {$result['catalog_hubs']}");
     $this->line("Business pages: {$result['business_pages']}");
+    $this->line("Community pages: {$result['community_pages']}");
     $this->line("Product pages: {$result['product_pages']}");
-})->purpose('Generate static HTML for marketing, legal, registration, catalog, business, and product pages');
+})->purpose('Generate static HTML for marketing, legal, registration, catalog, page, and product routes');
 
 Artisan::command('images:generate-variants {--force : Recreate existing variants}', function () {
     if (! PublicImageVariants::canGenerate()) {

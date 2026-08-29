@@ -102,7 +102,7 @@ class PayloadService
         $payload = [
             'id' => $page->id,
             'slug' => $page->public_slug,
-            'public_path' => '/pages/'.$page->public_slug,
+            'public_path' => $page->public_path,
             'user_id' => $isUnclaimed ? null : $page->user_id,
             'type' => $page->type,
             'is_unclaimed' => $isUnclaimed,
@@ -405,7 +405,7 @@ class PayloadService
             'display_name' => $page->name,
             'name' => $page->name,
             'type' => $page->type,
-            'public_path' => '/pages/'.$page->public_slug,
+            'public_path' => $page->public_path,
             'logo_url' => $page->logo_url,
             ...$this->publicImageMeta('logo', $page->logo_path, $page->name.' logo', '40px'),
         ];
@@ -432,7 +432,9 @@ class PayloadService
         $pageUnread = PageChatMessage::query()
             ->whereHas('conversation', fn ($query) => $query
                 ->where('visitor_id', $user->id)
-                ->whereHas('page.user', fn ($ownerQuery) => $ownerQuery->whereNull('banned_at')))
+                ->whereHas('page', fn ($pageQuery) => $pageQuery
+                    ->managed()
+                    ->whereHas('user', fn ($ownerQuery) => $ownerQuery->whereNull('banned_at'))))
             ->where('sender_as_page', true)
             ->whereNull('read_at')
             ->count();

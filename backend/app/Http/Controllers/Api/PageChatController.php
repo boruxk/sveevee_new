@@ -176,7 +176,7 @@ class PageChatController extends Controller
             return [
                 'can_send' => false,
                 'reason' => 'page_unclaimed',
-                'message' => 'Chat becomes available after the business claims this page.',
+                'message' => 'Chat becomes available after this page is claimed.',
             ];
         }
 
@@ -220,7 +220,7 @@ class PageChatController extends Controller
         $page->loadMissing('user');
 
         if ($page->is_unclaimed) {
-            return ApiResponseService::error('Chat becomes available after the business claims this page.', status: 409);
+            return ApiResponseService::error('Chat becomes available after this page is claimed.', status: 409);
         }
 
         if ($page->user?->banned_at) {

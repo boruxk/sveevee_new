@@ -881,6 +881,29 @@ HTML);
                     ],
                 ],
             ]);
+            $unclaimedCommunityPage = Page::query()->create([
+                'user_id' => $user->id,
+                'created_by_user_id' => $user->id,
+                'type' => Page::TYPE_COMMUNITY,
+                'is_unclaimed' => true,
+                'name' => 'Ramot Neighbors',
+                'public_description' => '',
+                'category_key' => 'community_pages.local.neighborhood_group',
+                'source_url' => 'https://example.test/ramot-neighbors',
+                'source_checked_at' => now()->toDateString(),
+                'setup' => [
+                    'address' => [
+                        'city' => 'Jerusalem',
+                        'neighborhood' => 'Ramot',
+                    ],
+                    'features' => [
+                        'store' => false,
+                        'services' => false,
+                        'events' => false,
+                        'price_list' => false,
+                    ],
+                ],
+            ]);
             $product = PageProduct::query()->create([
                 'page_id' => $page->id,
                 'name' => 'Samsung Galaxy',
@@ -896,6 +919,7 @@ HTML);
 
             $businessHtml = File::get($dist.'/he/business/'.$page->public_slug.'/index.html');
             $unclaimedBusinessHtml = File::get($dist.'/he/business/'.$unclaimedPage->public_slug.'/index.html');
+            $unclaimedCommunityHtml = File::get($dist.'/he/community/'.$unclaimedCommunityPage->public_slug.'/index.html');
             $productHtml = File::get($dist.'/he/product/'.$product->public_slug.'/index.html');
             $businessCatalogHtml = File::get($dist.'/catalog/businesses/index.html');
             $productCatalogHtml = File::get($dist.'/catalog/products/index.html');
@@ -934,6 +958,14 @@ HTML);
                 strpos($unclaimedBusinessHtml, 'יצירת קשר'),
                 strpos($unclaimedBusinessHtml, 'עמוד עסק לא מאומת')
             );
+            $this->assertStringContainsString('<h1>Ramot Neighbors</h1>', $unclaimedCommunityHtml);
+            $this->assertStringContainsString('Ramot Neighbors בJerusalem - קהילה מקומית, אירועים ויצירת קשר | Sveevee', $unclaimedCommunityHtml);
+            $this->assertStringContainsString('<meta name="robots" content="index,follow" />', $unclaimedCommunityHtml);
+            $this->assertStringContainsString('עמוד קהילה לא מאומת', $unclaimedCommunityHtml);
+            $this->assertStringContainsString('Organization', $unclaimedCommunityHtml);
+            $this->assertStringNotContainsString('LocalBusiness', $unclaimedCommunityHtml);
+            $this->assertStringNotContainsString('aggregateRating', $unclaimedCommunityHtml);
+            $this->assertStringContainsString('hreflang="en"', $unclaimedCommunityHtml);
             $this->assertStringContainsString('<h1>Samsung Galaxy</h1>', $productHtml);
             $this->assertStringContainsString('Product', $productHtml);
             $this->assertStringContainsString('Offer', $productHtml);
@@ -944,12 +976,12 @@ HTML);
             $this->assertStringContainsString('Local Storage', $privacyHtml);
             $this->assertStringContainsString('Google reCAPTCHA', $privacyHtml);
             $this->assertStringContainsString('קטינים', $privacyHtml);
-            $this->assertStringContainsString('מידע על עסקים ממקורות ציבוריים', $privacyHtml);
+            $this->assertStringContainsString('מידע על עסקים וקהילות ממקורות ציבוריים', $privacyHtml);
             $this->assertStringContainsString('<h1>תנאי שימוש</h1>', $termsHtml);
             $this->assertStringContainsString('אין לפרסם מידע אישי', $termsHtml);
-            $this->assertStringContainsString('עמודי עסק שלא נדרשו על ידי בעל העסק', $termsHtml);
+            $this->assertStringContainsString('עמודי עסק וקהילה שלא נדרשו על ידי בעליהם', $termsHtml);
             $this->assertStringContainsString('Miriam Konetski', $disclaimerHtml);
-            $this->assertStringContainsString('עמוד עסק לא מאומת', $disclaimerHtml);
+            $this->assertStringContainsString('עמודי עסק וקהילה לא מאומתים', $disclaimerHtml);
             $this->assertStringContainsString('המידע עלול להכיל טעויות', $disclaimerHtml);
             $this->assertStringContainsString('<meta name="robots" content="noindex,follow" />', $registerHtml);
             $this->assertStringNotContainsString('Homepage fallback', $privacyHtml);
@@ -1485,7 +1517,7 @@ HTML);
 
         $createdPage->assertOk()
             ->assertJsonPath('data.slug', 'miri-studio-'.$createdPage->json('data.id'))
-            ->assertJsonPath('data.public_path', '/pages/miri-studio-'.$createdPage->json('data.id'))
+            ->assertJsonPath('data.public_path', '/business/miri-studio-'.$createdPage->json('data.id'))
             ->assertJsonPath('data.palette_key', 'sea-glass')
             ->assertJsonPath('data.contact.whatsapp', '+972 50 111 2222')
             ->assertJsonPath('data.address_details.street', 'Herzl')

@@ -29,7 +29,11 @@ class PageProductController extends Controller
         $product->loadMissing(['page.user.profile']);
         $product->page?->loadCount('ratings')->loadAvg('ratings', 'rating');
 
-        if ($product->page?->type !== Page::TYPE_BUSINESS || $product->page?->user?->banned_at) {
+        if (
+            $product->page?->type !== Page::TYPE_BUSINESS
+            || $product->page?->is_unclaimed
+            || $product->page?->user?->banned_at
+        ) {
             return ApiResponseService::error('Resource not found.', status: 404);
         }
 
@@ -173,7 +177,11 @@ class PageProductController extends Controller
     {
         $product->loadMissing(['page.user']);
 
-        if ($product->page?->type !== Page::TYPE_BUSINESS || $product->page?->user?->banned_at) {
+        if (
+            $product->page?->type !== Page::TYPE_BUSINESS
+            || $product->page?->is_unclaimed
+            || $product->page?->user?->banned_at
+        ) {
             return ApiResponseService::error('Resource not found.', status: 404);
         }
 

@@ -276,11 +276,9 @@ export function publicPagePath(page, locale = '') {
 		return '/'
 	}
 
-	if (page?.type === 'business') {
-		return `${localePrefix(locale)}/business/${id}`
-	}
+	const segment = page?.type === 'community' ? 'community' : 'business'
 
-	return `/pages/${id}`
+	return `${localePrefix(locale)}/${segment}/${id}`
 }
 
 export function pageRoute(page) {
@@ -288,7 +286,7 @@ export function pageRoute(page) {
 		return { name: 'business-detail', params: { id: pageRouteParam(page) } }
 	}
 
-	return { name: 'page-detail', params: { id: pageRouteParam(page) } }
+	return { name: 'community-detail', params: { id: pageRouteParam(page) } }
 }
 
 export function productRouteParam(product) {

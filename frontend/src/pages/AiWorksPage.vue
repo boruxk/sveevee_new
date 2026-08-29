@@ -66,9 +66,14 @@
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 	const selectedPage = computed(() => pages.value.find((page) => page.id === selectedPageId.value) || null)
 	const selectedPalette = computed(() => findPresencePalette(pageForm.palette_key))
+	const pageCategoryScope = computed(() => pageForm.type === 'community' ? CATALOG_SCOPES.COMMUNITY_PAGES : CATALOG_SCOPES.BUSINESS_PAGES)
+	const pageTypeOptions = computed(() => [
+		{ label: t('pages.kinds.business'), value: 'business', icon: 'storefront' },
+		{ label: t('pages.kinds.community'), value: 'community', icon: 'diversity_3' }
+	])
 	const previewPage = computed(() => ({
 		id: selectedPage.value?.id,
-		type: 'business',
+		type: pageForm.type,
 		name: pageForm.name,
 		public_description: pageForm.public_description,
 		contact_email: pageForm.contact_email,
@@ -99,6 +104,7 @@
 
 	function emptyPageForm() {
 		return {
+			type: 'business',
 			name: '',
 			public_description: '',
 			contact_email: '',
@@ -122,6 +128,7 @@
 		const socials = value?.socials || {}
 
 		Object.assign(pageForm, empty, {
+			type: value?.type === 'community' ? 'community' : 'business',
 			name: value?.name || '',
 			public_description: value?.public_description || '',
 			contact_email: contact.email || value?.contact_email || '',
@@ -161,6 +168,7 @@
 
 	function pagePayload() {
 		return {
+			type: pageForm.type,
 			name: pageForm.name.trim(),
 			public_description: pageForm.public_description.trim() || null,
 			contact_email: pageForm.contact_email.trim() || null,
@@ -299,6 +307,15 @@
 		return t(`pages.weekdays.${weekday}`)
 	}
 
+	function changePageType(type) {
+		if (type === pageForm.type) {
+			return
+		}
+
+		pageForm.type = type
+		pageForm.category_key = ''
+	}
+
 	function categoryLabel(categoryKey) {
 		const topic = catalogTopicByKey(catalogGroups.value, categoryKey)
 
@@ -318,11 +335,15 @@
 	}
 
 	function filterCityOptions(value, update) {
-		filterOptions(cityOptions.value, value, update, (options) => { citySelectOptions.value = options })
+		update(() => {
+			citySelectOptions.value = filterOptions(cityOptions.value, value)
+		})
 	}
 
 	function filterNeighborhoodOptions(value, update) {
-		filterOptions(neighborhoodOptions.value, value, update, (options) => { neighborhoodSelectOptions.value = options })
+		update(() => {
+			neighborhoodSelectOptions.value = filterOptions(neighborhoodOptions.value, value)
+		})
 	}
 
 	onMounted(async() => {
@@ -440,6 +461,19 @@
 											<UnclaimedPageIcon />
 											<span>{{ t('aiWorks.pages.infoOnly') }}</span>
 										</section>
+										<q-btn-toggle
+											:model-value="pageForm.type"
+											spread
+											no-caps
+											rounded
+											unelevated
+											toggle-color="primary"
+											color="white"
+											text-color="dark"
+											:options="pageTypeOptions"
+											class="page-type-toggle"
+											@update:model-value="changePageType"
+										/>
 
 										<q-input v-model="pageForm.name" outlined :label="requiredLabel('pages.name')" :rules="[requiredRule]" />
 										<q-input v-model="pageForm.public_description"
@@ -449,7 +483,7 @@
 											:input-style="{ minHeight: '150px' }"
 											:label="t('pages.description')"
 										/>
-										<CatalogCategorySelect v-model="pageForm.category_key" :groups="catalogGroups" :scope="CATALOG_SCOPES.BUSINESS_PAGES" required :label="requiredLabel('catalog.category')" />
+										<CatalogCategorySelect v-model="pageForm.category_key" :groups="catalogGroups" :scope="pageCategoryScope" required :label="requiredLabel('catalog.category')" />
 
 										<section class="form-segment">
 											<h3>{{ t('aiWorks.pages.source') }}</h3>
@@ -580,6 +614,7 @@
 												<thead>
 													<tr>
 														<th>{{ t('pages.name') }}</th>
+														<th>{{ t('pages.type') }}</th>
 														<th>{{ t('auth.city') }}</th>
 														<th>{{ t('catalog.category') }}</th>
 														<th>{{ t('aiWorks.pages.source') }}</th>
@@ -590,6 +625,12 @@
 												<tbody>
 													<tr v-for="item in pages" :key="item.id">
 														<td><strong>{{ item.name }}</strong></td>
+														<td>
+															<q-badge rounded class="page-type-badge" :class="`page-type-badge--${item.type}`">
+																<q-icon :name="item.type === 'community' ? 'diversity_3' : 'storefront'" />
+																{{ t(`pages.kinds.${item.type}`) }}
+															</q-badge>
+														</td>
 														<td>{{ item.address_details?.city || '—' }}</td>
 														<td>{{ categoryLabel(item.category_key) }}</td>
 														<td>
@@ -839,6 +880,33 @@
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.78);
   box-shadow: 0 18px 42px rgba(40, 22, 93, 0.08);
+}
+
+.page-type-toggle {
+  border: 1px solid rgba(123, 63, 242, 0.16);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.page-type-toggle :deep(.q-btn) {
+  min-height: 50px;
+}
+
+.page-type-badge {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 10px;
+  color: #fff;
+  font-weight: 800;
+}
+
+.page-type-badge--business {
+  background: #f06a2f;
+}
+
+.page-type-badge--community {
+  background: #7b3ff2;
 }
 
 .page-table-scroll {

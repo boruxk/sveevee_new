@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\PublicSlug;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -97,6 +98,11 @@ class Page extends Model
         return $this->hasMany(PageConversation::class)->latest('last_message_at');
     }
 
+    public function scopeManaged(Builder $query): Builder
+    {
+        return $query->where('is_unclaimed', false);
+    }
+
     protected function logoUrl(): Attribute
     {
         return Attribute::get(fn () => $this->logo_path ? url(Storage::url($this->logo_path)) : null);
@@ -110,6 +116,15 @@ class Page extends Model
     protected function publicSlug(): Attribute
     {
         return Attribute::get(fn (): string => PublicSlug::make([$this->name], 'page', $this->id));
+    }
+
+    protected function publicPath(): Attribute
+    {
+        return Attribute::get(function (): string {
+            $segment = $this->type === self::TYPE_COMMUNITY ? 'community' : 'business';
+
+            return "/{$segment}/{$this->public_slug}";
+        });
     }
 
     public function resolveRouteBinding($value, $field = null)

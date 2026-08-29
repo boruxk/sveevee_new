@@ -57,7 +57,7 @@ class AdController extends Controller
     {
         $ad->loadMissing(['user.profile', 'page']);
 
-        if (! $ad->isVisible() || $ad->user?->banned_at) {
+        if (! $ad->isVisible() || $ad->user?->banned_at || ($ad->page_id && $ad->page?->is_unclaimed)) {
             return ApiResponseService::error('Resource not found.', status: 404);
         }
 
