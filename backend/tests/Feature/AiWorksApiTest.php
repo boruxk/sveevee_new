@@ -10,8 +10,10 @@ use App\Models\PageEvent;
 use App\Models\PageProduct;
 use App\Models\PageService;
 use App\Models\User;
+use App\Services\AiWorkPageService;
 use App\Support\CatalogTopics;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -434,6 +436,116 @@ class AiWorksApiTest extends TestCase
         $page = Page::query()->findOrFail($pageId);
         $this->assertTrue($page->is_unclaimed);
         $this->assertSame($worker->id, $page->user_id);
+    }
+
+    public function test_ai_worker_preferences_are_persisted_and_normalized(): void
+    {
+        Sanctum::actingAs($this->aiWorker());
+
+        $this->getJson('/api/v1/ai-works/preferences')
+            ->assertOk()
+            ->assertJsonPath('data.page_defaults.type', Page::TYPE_BUSINESS)
+            ->assertJsonPath('data.page_defaults.city', '');
+
+        $this->patchJson('/api/v1/ai-works/preferences', [
+            'page_defaults' => [
+                'type' => Page::TYPE_BUSINESS,
+                'city' => 'tel-aviv',
+                'neighborhood' => 'ramat-aviv',
+                'category_key' => 'Electricians',
+                'palette_key' => 'amber-dawn',
+            ],
+        ])->assertOk()
+            ->assertJsonPath('data.page_defaults.city', 'Tel Aviv')
+            ->assertJsonPath('data.page_defaults.neighborhood', 'Ramat Aviv')
+            ->assertJsonPath('data.page_defaults.category_key', 'professionals.electricians');
+
+        $this->assertDatabaseHas('ai_work_preferences', ['user_id' => $this->aiWorker()->id]);
+    }
+
+    public function test_bulk_import_creates_valid_rows_and_does_not_store_rejected_payloads(): void
+    {
+        $worker = $this->aiWorker();
+        Sanctum::actingAs($worker);
+        $existingPayload = $this->pagePayload();
+        $this->postJson('/api/v1/ai-works/pages', $existingPayload)->assertCreated();
+
+        $valid = $this->pagePayload();
+        $valid['name'] = 'Bulk Created Electrician';
+        $valid['category_key'] = 'Electricians';
+        $valid['address']['city'] = 'tel-aviv';
+        $valid['address']['neighborhood'] = 'ramat-aviv';
+        unset($valid['palette_key']);
+
+        $invalid = $this->pagePayload();
+        $invalid['name'] = 'Never Persist This Invalid Company';
+        $invalid['address']['city'] = 'Definitely Not A Real City';
+
+        $payload = [
+            'client_import_id' => 'f56e9ce4-811f-4e17-8c62-e672d9e56b48',
+            'rows' => [$existingPayload, $valid, $invalid],
+        ];
+
+        $this->postJson('/api/v1/ai-works/page-imports', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.input_count', 3)
+            ->assertJsonPath('data.created_count', 1)
+            ->assertJsonPath('data.duplicate_count', 1)
+            ->assertJsonPath('data.invalid_count', 1)
+            ->assertJsonPath('data.created_pages.0.name', 'Bulk Created Electrician')
+            ->assertJsonCount(2, 'data.skipped');
+
+        $this->assertDatabaseCount('pages', 2);
+        $this->assertDatabaseCount('ai_page_import_rows', 1);
+        $this->assertDatabaseMissing('pages', ['name' => 'Never Persist This Invalid Company']);
+        $this->assertContains(
+            Page::query()->where('name', 'Bulk Created Electrician')->value('palette_key'),
+            AiWorkPageService::PALETTE_KEYS,
+        );
+        $this->assertStringNotContainsString(
+            'Never Persist This Invalid Company',
+            (string) DB::table('ai_page_import_rows')->value('payload')
+        );
+
+        $this->postJson('/api/v1/ai-works/page-imports', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.created_count', 1);
+        $this->assertDatabaseCount('pages', 2);
+        $this->assertDatabaseCount('ai_page_imports', 1);
+    }
+
+    public function test_duplicate_detection_normalizes_unicode_punctuation_and_spacing(): void
+    {
+        Sanctum::actingAs($this->aiWorker());
+        $first = $this->pagePayload();
+        $first['name'] = 'A.B   Repairs';
+        $this->postJson('/api/v1/ai-works/pages', $first)->assertCreated();
+
+        $duplicate = $first;
+        $duplicate['name'] = 'A B Repairs';
+        $duplicate['phone'] = '(02) 555 0100';
+
+        $this->postJson('/api/v1/ai-works/pages', $duplicate)
+            ->assertStatus(409)
+            ->assertJsonPath('data.matches.0.name', 'A.B   Repairs');
+    }
+
+    public function test_ai_page_list_is_paginated_and_details_are_loaded_separately(): void
+    {
+        Sanctum::actingAs($this->aiWorker());
+        $pageId = $this->postJson('/api/v1/ai-works/pages', $this->pagePayload())
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->getJson('/api/v1/ai-works/pages?per_page=10')
+            ->assertOk()
+            ->assertJsonPath('data.pagination.total', 1)
+            ->assertJsonMissingPath('data.pages.0.opening_hours');
+
+        $this->getJson("/api/v1/ai-works/pages/{$pageId}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $pageId)
+            ->assertJsonStructure(['data' => ['opening_hours', 'socials', 'contact']]);
     }
 
     private function aiWorker(): User

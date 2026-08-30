@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Ad;
+use App\Models\AiPageImport;
 use App\Models\GuestSupportConversation;
 use App\Services\SeoPrerenderService;
 use App\Services\SystemSettingsService;
@@ -100,3 +101,10 @@ Artisan::command('images:generate-variants {--force : Recreate existing variants
 
 Schedule::command('ads:prune-expired')->hourly();
 Schedule::command('support:prune-guest-chats')->hourly();
+
+Artisan::command('ai-works:prune-page-imports', function () {
+    $deleted = AiPageImport::query()->where('expires_at', '<=', now())->delete();
+    $this->info("Deleted {$deleted} expired AI page imports.");
+})->purpose('Delete expired AI page import summaries');
+
+Schedule::command('ai-works:prune-page-imports')->daily();

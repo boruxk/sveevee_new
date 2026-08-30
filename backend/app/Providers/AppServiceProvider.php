@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Page;
 use App\Models\User;
+use App\Observers\PageObserver;
 use App\Services\SystemSettingsService;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -25,6 +27,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Page::observe(PageObserver::class);
+
         ResetPassword::createUrlUsing(function (User $user, string $token): string {
             $frontendUrl = rtrim((string) config('app.frontend_url'), '/');
 

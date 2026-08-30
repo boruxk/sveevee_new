@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\AdminSupportController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AiWorkPageController;
+use App\Http\Controllers\Api\AiWorkPageImportController;
+use App\Http\Controllers\Api\AiWorkPreferenceController;
 use App\Http\Controllers\Api\AiWorkTaskController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
@@ -127,10 +129,17 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
             Route::post('/tasks', [AiWorkTaskController::class, 'store']);
             Route::put('/tasks/{task}', [AiWorkTaskController::class, 'update']);
             Route::delete('/tasks/{task}', [AiWorkTaskController::class, 'destroy']);
+            Route::get('/preferences', [AiWorkPreferenceController::class, 'show']);
+            Route::patch('/preferences', [AiWorkPreferenceController::class, 'update'])->withoutMiddleware('recaptcha');
             Route::get('/pages', [AiWorkPageController::class, 'index']);
+            Route::post('/pages/duplicate-check', [AiWorkPageController::class, 'duplicateCheck'])->withoutMiddleware('recaptcha');
             Route::post('/pages', [AiWorkPageController::class, 'store'])->withoutMiddleware('recaptcha');
+            Route::get('/pages/{page}', [AiWorkPageController::class, 'show']);
             Route::put('/pages/{page}', [AiWorkPageController::class, 'update'])->withoutMiddleware('recaptcha');
             Route::delete('/pages/{page}', [AiWorkPageController::class, 'destroy']);
+            Route::get('/page-imports', [AiWorkPageImportController::class, 'index']);
+            Route::post('/page-imports', [AiWorkPageImportController::class, 'store'])->withoutMiddleware('recaptcha');
+            Route::get('/page-imports/{import}', [AiWorkPageImportController::class, 'show']);
         });
 
     Route::middleware(['auth:sanctum', 'admin'])->withoutMiddleware('platform.available')->prefix('admin')->group(function () {

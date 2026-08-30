@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 class Page extends Model
@@ -58,6 +59,11 @@ class Page extends Model
     public function claimRequests(): HasMany
     {
         return $this->hasMany(PageClaimRequest::class)->latest();
+    }
+
+    public function identityKey(): HasOne
+    {
+        return $this->hasOne(PageIdentityKey::class);
     }
 
     public function ads(): HasMany
