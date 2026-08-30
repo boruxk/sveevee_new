@@ -21,11 +21,11 @@ export function fetchAiWorkPages() {
 }
 
 export function createAiWorkPage(payload) {
-	return apiClient.post('/ai-works/pages', payload)
+	return apiClient.post('/ai-works/pages', payload, { recaptcha: false })
 }
 
 export function updateAiWorkPage(id, payload) {
-	return apiClient.put(`/ai-works/pages/${id}`, payload)
+	return apiClient.put(`/ai-works/pages/${id}`, payload, { recaptcha: false })
 }
 
 export function deleteAiWorkPage(id) {

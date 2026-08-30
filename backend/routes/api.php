@@ -128,8 +128,8 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
             Route::put('/tasks/{task}', [AiWorkTaskController::class, 'update']);
             Route::delete('/tasks/{task}', [AiWorkTaskController::class, 'destroy']);
             Route::get('/pages', [AiWorkPageController::class, 'index']);
-            Route::post('/pages', [AiWorkPageController::class, 'store']);
-            Route::put('/pages/{page}', [AiWorkPageController::class, 'update']);
+            Route::post('/pages', [AiWorkPageController::class, 'store'])->withoutMiddleware('recaptcha');
+            Route::put('/pages/{page}', [AiWorkPageController::class, 'update'])->withoutMiddleware('recaptcha');
             Route::delete('/pages/{page}', [AiWorkPageController::class, 'destroy']);
         });
 

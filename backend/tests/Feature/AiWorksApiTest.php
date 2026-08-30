@@ -98,6 +98,36 @@ class AiWorksApiTest extends TestCase
         $this->getJson("/api/v1/pages/{$pageId}/chat")->assertStatus(409);
     }
 
+    public function test_only_ai_page_form_saves_bypass_recaptcha(): void
+    {
+        config()->set('recaptcha.enabled', true);
+        config()->set('recaptcha.secret_key', 'test-secret');
+
+        $worker = $this->aiWorker();
+        Sanctum::actingAs($worker);
+
+        $created = $this->postJson('/api/v1/ai-works/pages', $this->pagePayload())
+            ->assertCreated();
+
+        $pageId = $created->json('data.id');
+        $updatedPayload = $this->pagePayload();
+        $updatedPayload['name'] = 'Updated Public Business';
+
+        $this->putJson("/api/v1/ai-works/pages/{$pageId}", $updatedPayload)
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Updated Public Business');
+
+        $this->postJson('/api/v1/ai-works/tasks', [
+            'title' => 'Protected mutation',
+            'text' => 'This mutation must still require reCAPTCHA.',
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.recaptcha.0', 'Missing reCAPTCHA token.');
+
+        $this->deleteJson("/api/v1/ai-works/pages/{$pageId}")
+            ->assertStatus(422)
+            ->assertJsonPath('errors.recaptcha.0', 'Missing reCAPTCHA token.');
+    }
+
     public function test_ai_worker_can_create_a_community_page_and_a_business_owner_can_claim_it(): void
     {
         $worker = $this->aiWorker();

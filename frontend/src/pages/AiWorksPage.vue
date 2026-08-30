@@ -44,6 +44,8 @@
 	const pagesLoading = ref(false)
 	const taskSaving = ref(false)
 	const pageSaving = ref(false)
+	const pageSaveError = ref('')
+	const pageValidationErrors = ref({})
 	const deleting = ref(false)
 	const taskDialogOpen = ref(false)
 	const deleteDialogOpen = ref(false)
@@ -99,6 +101,10 @@
 	}))
 	const previewShareUrl = computed(() => selectedPage.value ? absoluteUrl(publicPagePath(selectedPage.value, locale.value)) : '')
 	const taskDialogTitle = computed(() => taskForm.id ? t('aiWorks.tasks.edit') : t('aiWorks.tasks.create'))
+	const pageValidationItems = computed(() => Object.entries(pageValidationErrors.value)
+		.flatMap(([field, messages]) => (Array.isArray(messages) ? messages : [messages])
+			.filter(Boolean)
+			.map((message) => ({ field, message }))))
 
 	function today() {
 		return new Date().toISOString().slice(0, 10)
@@ -192,6 +198,79 @@
 		}
 	}
 
+	function clearPageSaveError() {
+		pageSaveError.value = ''
+		pageValidationErrors.value = {}
+	}
+
+	function pageFieldError(field) {
+		const messages = pageValidationErrors.value[field]
+
+		return Array.isArray(messages) ? String(messages[0] || '') : String(messages || '')
+	}
+
+	function pageFieldLabel(field) {
+		const labels = {
+			type: t('pages.type'),
+			name: t('pages.name'),
+			public_description: t('pages.description'),
+			contact_email: t('pages.email'),
+			phone: t('pages.tel'),
+			whatsapp: t('pages.whatsapp'),
+			website: t('pages.website'),
+			category_key: t('catalog.category'),
+			palette_key: t('pages.palette'),
+			address: t('pages.sections.address'),
+			'address.street': t('pages.street'),
+			'address.number': t('pages.number'),
+			'address.city': t('pages.city'),
+			'address.neighborhood': t('auth.neighborhood'),
+			'socials.facebook': 'Facebook',
+			'socials.instagram': 'Instagram',
+			'socials.tiktok': 'TikTok',
+			'socials.telegram': 'Telegram',
+			opening_hours: t('pages.sections.openingHours'),
+			source_url: t('aiWorks.pages.sourceUrl'),
+			source_checked_at: t('aiWorks.pages.checkedAt')
+		}
+
+		if (labels[field]) {
+			return labels[field]
+		}
+
+		const openingHoursMatch = field.match(/^opening_hours\.(\d+)\.(.+)$/)
+
+		if (openingHoursMatch) {
+			const item = pageForm.opening_hours[Number(openingHoursMatch[1])]
+			const property = openingHoursMatch[2].replaceAll('_', ' ')
+
+			return `${item ? dayLabel(item.weekday) : t('pages.sections.openingHours')} - ${property}`
+		}
+
+		return field.replaceAll('.', ' - ').replaceAll('_', ' ')
+	}
+
+	function capturePageValidationErrors(error) {
+		const errors = error.response?.status === 422 ? error.response?.data?.errors : null
+
+		if (!errors || typeof errors !== 'object' || Array.isArray(errors)) {
+			pageValidationErrors.value = {}
+			return false
+		}
+
+		pageValidationErrors.value = Object.fromEntries(
+			Object.entries(errors).filter(([field]) => field !== 'recaptcha')
+		)
+
+		return Object.keys(pageValidationErrors.value).length > 0
+	}
+
+	function upsertSavedPage(saved) {
+		pages.value = [saved, ...pages.value.filter((page) => page.id !== saved.id)]
+		selectedPageId.value = saved.id
+		replacePageForm(saved)
+	}
+
 	async function loadTasks() {
 		tasksLoading.value = true
 		try {
@@ -251,8 +330,11 @@
 	}
 
 	async function savePage() {
+		clearPageSaveError()
+
 		if (!(await validateRequiredForm(pageFormRef))) {
 			workspaceTab.value = 'settings'
+			pageSaveError.value = t('validation.requiredFields')
 			return
 		}
 
@@ -260,12 +342,19 @@
 		try {
 			const { data } = selectedPageId.value ? await updateAiWorkPage(selectedPageId.value, pagePayload()) : await createAiWorkPage(pagePayload())
 			const saved = data.data
-			selectedPageId.value = saved.id
+			upsertSavedPage(saved)
 			rememberLocation(pageForm.address.city, pageForm.address.neighborhood)
-			await loadPages()
 			$q.notify({ type: 'positive', message: t('pages.saved') })
+
+			try {
+				await loadPages()
+			} catch {
+				// The successful response already contains the complete saved page.
+			}
 		} catch (error) {
-			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('pages.saveFailed')) })
+			const hasValidationErrors = capturePageValidationErrors(error)
+			pageSaveError.value = hasValidationErrors ? `${t('pages.saveFailed')} ${t('validation.requiredFields')}` : apiErrorMessage(error, t('pages.saveFailed'))
+			$q.notify({ type: 'negative', message: pageSaveError.value })
 		} finally {
 			pageSaving.value = false
 		}
@@ -366,6 +455,12 @@
 			pageForm.address.neighborhood = ''
 		}
 	})
+
+	watch(pageForm, () => {
+		if (pageSaveError.value || pageValidationItems.value.length) {
+			clearPageSaveError()
+		}
+	}, { deep: true })
 
 	onMounted(async() => {
 		await Promise.all([loadTasks(), loadPages(), loadCatalogTopics(), loadLocationOptions()])
@@ -494,41 +589,116 @@
 											@update:model-value="changePageType"
 										/>
 
-										<q-input v-model="pageForm.name" outlined :label="requiredLabel('pages.name')" :rules="[requiredRule]" />
+										<q-input v-model="pageForm.name"
+											outlined
+											name="name"
+											:label="requiredLabel('pages.name')"
+											:rules="[requiredRule]"
+											:error="Boolean(pageFieldError('name'))"
+											:error-message="pageFieldError('name')"
+										/>
 										<q-input v-model="pageForm.public_description"
 											outlined
+											name="public_description"
 											type="textarea"
 											autogrow
 											:input-style="{ minHeight: '150px' }"
 											:label="t('pages.description')"
+											:error="Boolean(pageFieldError('public_description'))"
+											:error-message="pageFieldError('public_description')"
 										/>
-										<CatalogCategorySelect v-model="pageForm.category_key" :groups="catalogGroups" :scope="pageCategoryScope" required :label="requiredLabel('catalog.category')" />
+										<CatalogCategorySelect
+											v-model="pageForm.category_key"
+											name="category_key"
+											:groups="catalogGroups"
+											:scope="pageCategoryScope"
+											required
+											:label="requiredLabel('catalog.category')"
+											:error="Boolean(pageFieldError('category_key'))"
+											:error-message="pageFieldError('category_key')"
+										/>
 
 										<section class="form-segment">
 											<h3>{{ t('aiWorks.pages.source') }}</h3>
 											<div class="form-grid form-grid--two">
-												<q-input v-model="pageForm.source_url" outlined inputmode="url" :label="requiredLabel('aiWorks.pages.sourceUrl')" :rules="[requiredRule]" />
-												<q-input v-model="pageForm.source_checked_at" outlined type="date" :label="requiredLabel('aiWorks.pages.checkedAt')" :rules="[requiredRule]" />
+												<q-input v-model="pageForm.source_url"
+													outlined
+													name="source_url"
+													inputmode="url"
+													:label="requiredLabel('aiWorks.pages.sourceUrl')"
+													:rules="[requiredRule]"
+													:error="Boolean(pageFieldError('source_url'))"
+													:error-message="pageFieldError('source_url')"
+												/>
+												<q-input v-model="pageForm.source_checked_at"
+													outlined
+													name="source_checked_at"
+													type="date"
+													:label="requiredLabel('aiWorks.pages.checkedAt')"
+													:rules="[requiredRule]"
+													:error="Boolean(pageFieldError('source_checked_at'))"
+													:error-message="pageFieldError('source_checked_at')"
+												/>
 											</div>
 										</section>
 
 										<section class="form-segment">
 											<h3>{{ t('pages.sections.contact') }}</h3>
 											<div class="form-grid form-grid--three">
-												<q-input v-model="pageForm.phone" outlined :label="t('pages.tel')" />
-												<q-input v-model="pageForm.contact_email" outlined type="email" :label="t('pages.email')" />
-												<q-input v-model="pageForm.whatsapp" outlined :label="t('pages.whatsapp')" />
+												<q-input v-model="pageForm.phone"
+													outlined
+													name="phone"
+													:label="t('pages.tel')"
+													:error="Boolean(pageFieldError('phone'))"
+													:error-message="pageFieldError('phone')"
+												/>
+												<q-input v-model="pageForm.contact_email"
+													outlined
+													name="contact_email"
+													type="email"
+													:label="t('pages.email')"
+													:error="Boolean(pageFieldError('contact_email'))"
+													:error-message="pageFieldError('contact_email')"
+												/>
+												<q-input v-model="pageForm.whatsapp"
+													outlined
+													name="whatsapp"
+													:label="t('pages.whatsapp')"
+													:error="Boolean(pageFieldError('whatsapp'))"
+													:error-message="pageFieldError('whatsapp')"
+												/>
 											</div>
-											<q-input v-model="pageForm.website" outlined clearable inputmode="url" :label="t('pages.website')" />
+											<q-input v-model="pageForm.website"
+												outlined
+												name="website"
+												clearable
+												inputmode="url"
+												:label="t('pages.website')"
+												:error="Boolean(pageFieldError('website'))"
+												:error-message="pageFieldError('website')"
+											/>
 										</section>
 
 										<section class="form-segment">
 											<h3>{{ t('pages.sections.address') }}</h3>
 											<div class="form-grid form-grid--address">
-												<q-input v-model="pageForm.address.street" outlined :label="t('pages.street')" />
-												<q-input v-model="pageForm.address.number" outlined :label="t('pages.number')" />
+												<q-input v-model="pageForm.address.street"
+													outlined
+													name="address.street"
+													:label="t('pages.street')"
+													:error="Boolean(pageFieldError('address.street'))"
+													:error-message="pageFieldError('address.street')"
+												/>
+												<q-input v-model="pageForm.address.number"
+													outlined
+													name="address.number"
+													:label="t('pages.number')"
+													:error="Boolean(pageFieldError('address.number'))"
+													:error-message="pageFieldError('address.number')"
+												/>
 												<q-select v-model="pageForm.address.city"
 													outlined
+													name="address.city"
 													clearable
 													emit-value
 													map-options
@@ -540,11 +710,14 @@
 													:options="citySelectOptions"
 													:label="requiredLabel('pages.city')"
 													:rules="[requiredRule]"
+													:error="Boolean(pageFieldError('address.city'))"
+													:error-message="pageFieldError('address.city')"
 													@filter="filterCityOptions"
 													@new-value="addOption"
 												/>
 												<q-select v-model="pageForm.address.neighborhood"
 													outlined
+													name="address.neighborhood"
 													clearable
 													emit-value
 													map-options
@@ -556,6 +729,8 @@
 													:options="neighborhoodSelectOptions"
 													:label="t('auth.neighborhood')"
 													:disable="!pageForm.address.city"
+													:error="Boolean(pageFieldError('address.neighborhood'))"
+													:error-message="pageFieldError('address.neighborhood')"
 													@filter="filterNeighborhoodOptions"
 													@new-value="addOption"
 												/>
@@ -565,21 +740,61 @@
 										<section class="form-segment">
 											<h3>{{ t('pages.sections.socials') }}</h3>
 											<div class="form-grid form-grid--four">
-												<q-input v-model="pageForm.socials.facebook" outlined label="Facebook" />
-												<q-input v-model="pageForm.socials.instagram" outlined label="Instagram" />
-												<q-input v-model="pageForm.socials.tiktok" outlined label="TikTok" />
-												<q-input v-model="pageForm.socials.telegram" outlined label="Telegram" />
+												<q-input v-model="pageForm.socials.facebook"
+													outlined
+													name="socials.facebook"
+													label="Facebook"
+													:error="Boolean(pageFieldError('socials.facebook'))"
+													:error-message="pageFieldError('socials.facebook')"
+												/>
+												<q-input v-model="pageForm.socials.instagram"
+													outlined
+													name="socials.instagram"
+													label="Instagram"
+													:error="Boolean(pageFieldError('socials.instagram'))"
+													:error-message="pageFieldError('socials.instagram')"
+												/>
+												<q-input v-model="pageForm.socials.tiktok"
+													outlined
+													name="socials.tiktok"
+													label="TikTok"
+													:error="Boolean(pageFieldError('socials.tiktok'))"
+													:error-message="pageFieldError('socials.tiktok')"
+												/>
+												<q-input v-model="pageForm.socials.telegram"
+													outlined
+													name="socials.telegram"
+													label="Telegram"
+													:error="Boolean(pageFieldError('socials.telegram'))"
+													:error-message="pageFieldError('socials.telegram')"
+												/>
 											</div>
 										</section>
 
 										<section class="form-segment">
 											<h3>{{ t('pages.sections.openingHours') }}</h3>
 											<div class="hours-grid">
-												<div v-for="item in pageForm.opening_hours" :key="item.weekday" class="hours-row">
+												<div v-for="(item, index) in pageForm.opening_hours" :key="item.weekday" class="hours-row">
 													<strong>{{ dayLabel(item.weekday) }}</strong>
 													<q-toggle v-model="item.is_open" :label="item.is_open ? t('pages.open') : t('pages.closed')" color="primary" />
-													<q-input v-model="item.opens_at" outlined type="time" :disable="!item.is_open" :label="t('pages.opensAt')" />
-													<q-input v-model="item.closes_at" outlined type="time" :disable="!item.is_open" :label="t('pages.closesAt')" />
+													<q-input v-model="item.opens_at"
+														outlined
+														:name="`opening_hours.${index}.opens_at`"
+														type="time"
+														:disable="!item.is_open"
+														:label="t('pages.opensAt')"
+														:error="Boolean(pageFieldError(`opening_hours.${index}.opens_at`))"
+														:error-message="pageFieldError(`opening_hours.${index}.opens_at`)"
+													/>
+													<q-input v-model="item.closes_at"
+														outlined
+														:name="`opening_hours.${index}.closes_at`"
+														type="time"
+														:disable="!item.is_open"
+														:label="t('pages.closesAt')"
+														:error="Boolean(pageFieldError(`opening_hours.${index}.closes_at`))"
+														:error-message="pageFieldError(`opening_hours.${index}.closes_at`)"
+													/>
 												</div>
 											</div>
 										</section>
@@ -599,6 +814,15 @@
 												</button>
 											</div>
 										</section>
+
+										<div v-if="pageSaveError" class="page-save-error" role="alert" aria-live="assertive">
+											<strong>{{ pageSaveError }}</strong>
+											<ul v-if="pageValidationItems.length">
+												<li v-for="item in pageValidationItems" :key="`${item.field}-${item.message}`">
+													<b>{{ pageFieldLabel(item.field) }}:</b> {{ item.message }}
+												</li>
+											</ul>
+										</div>
 
 										<div class="save-row">
 											<q-btn rounded
@@ -1001,6 +1225,23 @@
   background: rgba(123, 63, 242, 0.08);
   color: var(--soz-primary-deep);
   font-weight: 750;
+}
+
+.page-save-error {
+  padding: 14px 16px;
+  border: 1px solid rgba(194, 38, 77, 0.3);
+  border-radius: 16px;
+  background: rgba(194, 38, 77, 0.08);
+  color: #8f1738;
+}
+
+.page-save-error ul {
+  margin: 8px 0 0;
+  padding-inline-start: 20px;
+}
+
+.page-save-error li + li {
+  margin-top: 4px;
 }
 
 .form-segment {

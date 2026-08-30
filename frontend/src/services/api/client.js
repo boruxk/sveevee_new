@@ -35,7 +35,7 @@ apiClient.interceptors.request.use(async(config) => {
 		config.headers['Content-Type'] = 'application/json'
 	}
 
-	if (config.recaptcha || MUTATING_METHODS.includes(method)) {
+	if (config.recaptcha !== false && (config.recaptcha || MUTATING_METHODS.includes(method))) {
 		const action = recaptchaActionFromRequest(config)
 		const recaptchaToken = await executeRecaptcha(action)
 

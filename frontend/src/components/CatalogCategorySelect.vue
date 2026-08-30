@@ -27,6 +27,18 @@
 		disabled: {
 			type: Boolean,
 			default: false
+		},
+		name: {
+			type: String,
+			default: ''
+		},
+		error: {
+			type: Boolean,
+			default: false
+		},
+		errorMessage: {
+			type: String,
+			default: ''
 		}
 	})
 
@@ -119,6 +131,9 @@
 			class="catalog-category-select__field q-select"
 			:label="fieldLabel"
 			:disable="disabled"
+			:name="name"
+			:error="error"
+			:error-message="errorMessage"
 			:rules="required ? [requiredRule] : []"
 		>
 			<template #control>
