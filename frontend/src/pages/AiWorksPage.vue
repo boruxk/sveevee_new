@@ -15,13 +15,10 @@
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
-	import { absoluteUrl } from '@/composables/useSeo'
-	import { CATALOG_SCOPES, catalogLabel, catalogTopicByKey, publicPagePath } from '@/constants/catalogTopics'
-	import { findPresencePalette, presencePalettes } from '@/constants/presencePalettes'
+	import { CATALOG_SCOPES, catalogGroupsForScope, catalogLabel, catalogTopicByKey } from '@/constants/catalogTopics'
+	import { presencePalettes } from '@/constants/presencePalettes'
 	import { apiErrorMessage } from '@/utils/apiErrors'
-	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
 	import UnclaimedPageIcon from '@/components/icons/UnclaimedPageIcon.vue'
-	import PagePreview from '@/components/pages/PagePreview.vue'
 
 	const DEFAULT_OPENING_HOURS = [
 		{ weekday: 'sunday', is_open: false, opens_at: null, closes_at: null },
@@ -52,8 +49,6 @@
 	const deleteTarget = ref(null)
 	const taskFormRef = ref(null)
 	const pageFormRef = ref(null)
-	const citySelectOptions = ref([])
-	const neighborhoodSelectOptions = ref([])
 	const taskForm = reactive({ id: null, title: '', text: '' })
 	const pageForm = reactive(emptyPageForm())
 	const pageCity = computed(() => pageForm.address.city)
@@ -63,52 +58,21 @@
 		neighborhoodOptions,
 		loadLocationOptions,
 		rememberLocation,
-		addOption,
-		filterOptions,
 		hasOptionValue
 	} = useLocationOptions(pageCity)
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 	const selectedPage = computed(() => pages.value.find((page) => page.id === selectedPageId.value) || null)
-	const selectedPalette = computed(() => findPresencePalette(pageForm.palette_key))
 	const pageCategoryScope = computed(() => pageForm.type === 'community' ? CATALOG_SCOPES.COMMUNITY_PAGES : CATALOG_SCOPES.BUSINESS_PAGES)
+	const pageCategoryGroups = computed(() => catalogGroupsForScope(catalogGroups.value, pageCategoryScope.value))
 	const pageTypeOptions = computed(() => [
 		{ label: t('pages.kinds.business'), value: 'business', icon: 'storefront' },
 		{ label: t('pages.kinds.community'), value: 'community', icon: 'diversity_3' }
 	])
-	const previewPage = computed(() => ({
-		id: selectedPage.value?.id,
-		type: pageForm.type,
-		name: pageForm.name,
-		public_description: pageForm.public_description,
-		contact_email: pageForm.contact_email,
-		phone: pageForm.phone,
-		contact: {
-			tel: pageForm.phone,
-			email: pageForm.contact_email,
-			whatsapp: pageForm.whatsapp
-		},
-		address_details: { ...pageForm.address },
-		socials: { ...pageForm.socials },
-		opening_hours: pageForm.opening_hours.map((item) => ({ ...item })),
-		website: pageForm.website,
-		category_key: pageForm.category_key || null,
-		palette_key: pageForm.palette_key,
-		is_unclaimed: true,
-		features: { store: false, services: false, events: false, price_list: false },
-		logo_url: null,
-		banner_url: null,
-		rating_summary: selectedPage.value?.rating_summary || { average: 0, count: 0 }
-	}))
-	const previewShareUrl = computed(() => selectedPage.value ? absoluteUrl(publicPagePath(selectedPage.value, locale.value)) : '')
 	const taskDialogTitle = computed(() => taskForm.id ? t('aiWorks.tasks.edit') : t('aiWorks.tasks.create'))
 	const pageValidationItems = computed(() => Object.entries(pageValidationErrors.value)
 		.flatMap(([field, messages]) => (Array.isArray(messages) ? messages : [messages])
 			.filter(Boolean)
 			.map((message) => ({ field, message }))))
-
-	function today() {
-		return new Date().toISOString().slice(0, 10)
-	}
 
 	function emptyPageForm() {
 		return {
@@ -121,8 +85,6 @@
 			website: '',
 			category_key: '',
 			palette_key: presencePalettes[0].key,
-			source_url: '',
-			source_checked_at: today(),
 			address: { street: '', number: '', city: '', neighborhood: '' },
 			socials: { facebook: '', instagram: '', tiktok: '', telegram: '' },
 			opening_hours: DEFAULT_OPENING_HOURS.map((item) => ({ ...item }))
@@ -145,8 +107,6 @@
 			website: value?.website || '',
 			category_key: value?.category_key || '',
 			palette_key: value?.palette_key || presencePalettes[0].key,
-			source_url: value?.source_url || '',
-			source_checked_at: value?.source_checked_at || today(),
 			address: { ...empty.address, ...address },
 			socials: { ...empty.socials, ...socials },
 			opening_hours: normalizedOpeningHours(value?.opening_hours)
@@ -185,8 +145,6 @@
 			website: pageForm.website.trim() || null,
 			category_key: pageForm.category_key,
 			palette_key: pageForm.palette_key,
-			source_url: pageForm.source_url.trim(),
-			source_checked_at: pageForm.source_checked_at,
 			address: Object.fromEntries(Object.entries(pageForm.address).map(([key, value]) => [key, String(value || '').trim() || null])),
 			socials: Object.fromEntries(Object.entries(pageForm.socials).map(([key, value]) => [key, String(value || '').trim() || null])),
 			opening_hours: pageForm.opening_hours.map((item) => ({
@@ -229,9 +187,7 @@
 			'socials.instagram': 'Instagram',
 			'socials.tiktok': 'TikTok',
 			'socials.telegram': 'Telegram',
-			opening_hours: t('pages.sections.openingHours'),
-			source_url: t('aiWorks.pages.sourceUrl'),
-			source_checked_at: t('aiWorks.pages.checkedAt')
+			opening_hours: t('pages.sections.openingHours')
 		}
 
 		if (labels[field]) {
@@ -413,38 +369,6 @@
 		return topic ? catalogLabel(topic.labels, locale.value) : categoryKey || '—'
 	}
 
-	function sourceLabel(value) {
-		try {
-			return new URL(value).hostname.replace(/^www\./, '')
-		} catch {
-			return value || '—'
-		}
-	}
-
-	function checkedDate(value) {
-		return String(value || '').slice(0, 10) || '—'
-	}
-
-	function filterCityOptions(value, update) {
-		update(() => {
-			citySelectOptions.value = filterOptions(cityOptions.value, value)
-		})
-	}
-
-	function filterNeighborhoodOptions(value, update) {
-		update(() => {
-			neighborhoodSelectOptions.value = filterOptions(neighborhoodOptions.value, value)
-		})
-	}
-
-	watch(cityOptions, (options) => {
-		citySelectOptions.value = options
-	}, { immediate: true })
-
-	watch(neighborhoodOptions, (options) => {
-		neighborhoodSelectOptions.value = options
-	}, { immediate: true })
-
 	watch(() => pageForm.address.city, () => {
 		if (!pageForm.address.city) {
 			pageForm.address.neighborhood = ''
@@ -540,7 +464,6 @@
 									indicator-color="transparent"
 								>
 									<q-tab name="settings" icon="settings" :label="t('pages.tabs.settings')" />
-									<q-tab name="preview" icon="visibility" :label="t('pages.tabs.preview')" />
 									<q-tab name="unclaimed-pages">
 										<span class="workspace-tab-content">
 											<UnclaimedPageIcon :size="20" />
@@ -607,40 +530,37 @@
 											:error="Boolean(pageFieldError('public_description'))"
 											:error-message="pageFieldError('public_description')"
 										/>
-										<CatalogCategorySelect
-											v-model="pageForm.category_key"
-											name="category_key"
-											:groups="catalogGroups"
-											:scope="pageCategoryScope"
-											required
+										<q-field
+											:model-value="pageForm.category_key"
+											outlined
+											stack-label
 											:label="requiredLabel('catalog.category')"
+											:rules="[requiredRule]"
 											:error="Boolean(pageFieldError('category_key'))"
 											:error-message="pageFieldError('category_key')"
-										/>
-
-										<section class="form-segment">
-											<h3>{{ t('aiWorks.pages.source') }}</h3>
-											<div class="form-grid form-grid--two">
-												<q-input v-model="pageForm.source_url"
-													outlined
-													name="source_url"
-													inputmode="url"
-													:label="requiredLabel('aiWorks.pages.sourceUrl')"
-													:rules="[requiredRule]"
-													:error="Boolean(pageFieldError('source_url'))"
-													:error-message="pageFieldError('source_url')"
-												/>
-												<q-input v-model="pageForm.source_checked_at"
-													outlined
-													name="source_checked_at"
-													type="date"
-													:label="requiredLabel('aiWorks.pages.checkedAt')"
-													:rules="[requiredRule]"
-													:error="Boolean(pageFieldError('source_checked_at'))"
-													:error-message="pageFieldError('source_checked_at')"
-												/>
-											</div>
-										</section>
+										>
+											<template #control="{ id }">
+												<select
+													:id="id"
+													v-model="pageForm.category_key"
+													name="category_key"
+													class="q-field__input ai-native-select"
+													data-testid="ai-page-category"
+													:aria-label="requiredLabel('catalog.category')"
+												>
+													<option value="" />
+													<optgroup
+														v-for="group in pageCategoryGroups"
+														:key="group.key"
+														:label="catalogLabel(group.labels, locale)"
+													>
+														<option v-for="topic in group.topics" :key="topic.key" :value="topic.key">
+															{{ catalogLabel(topic.labels, locale) }}
+														</option>
+													</optgroup>
+												</select>
+											</template>
+										</q-field>
 
 										<section class="form-segment">
 											<h3>{{ t('pages.sections.contact') }}</h3>
@@ -696,44 +616,56 @@
 													:error="Boolean(pageFieldError('address.number'))"
 													:error-message="pageFieldError('address.number')"
 												/>
-												<q-select v-model="pageForm.address.city"
+												<q-field
+													:model-value="pageForm.address.city"
 													outlined
-													name="address.city"
-													clearable
-													emit-value
-													map-options
-													use-input
-													hide-selected
-													fill-input
-													input-debounce="0"
-													new-value-mode="add-unique"
-													:options="citySelectOptions"
+													stack-label
 													:label="requiredLabel('pages.city')"
 													:rules="[requiredRule]"
 													:error="Boolean(pageFieldError('address.city'))"
 													:error-message="pageFieldError('address.city')"
-													@filter="filterCityOptions"
-													@new-value="addOption"
-												/>
-												<q-select v-model="pageForm.address.neighborhood"
+												>
+													<template #control="{ id }">
+														<select
+															:id="id"
+															v-model="pageForm.address.city"
+															name="address.city"
+															class="q-field__input ai-native-select"
+															data-testid="ai-page-city"
+															:aria-label="requiredLabel('pages.city')"
+														>
+															<option value="" />
+															<option v-for="option in cityOptions" :key="option.value" :value="option.value">
+																{{ option.label }}
+															</option>
+														</select>
+													</template>
+												</q-field>
+												<q-field
+													:model-value="pageForm.address.neighborhood"
 													outlined
-													name="address.neighborhood"
-													clearable
-													emit-value
-													map-options
-													use-input
-													hide-selected
-													fill-input
-													input-debounce="0"
-													new-value-mode="add-unique"
-													:options="neighborhoodSelectOptions"
+													stack-label
 													:label="t('auth.neighborhood')"
-													:disable="!pageForm.address.city"
 													:error="Boolean(pageFieldError('address.neighborhood'))"
 													:error-message="pageFieldError('address.neighborhood')"
-													@filter="filterNeighborhoodOptions"
-													@new-value="addOption"
-												/>
+												>
+													<template #control="{ id }">
+														<select
+															:id="id"
+															v-model="pageForm.address.neighborhood"
+															name="address.neighborhood"
+															class="q-field__input ai-native-select"
+															data-testid="ai-page-neighborhood"
+															:aria-label="t('auth.neighborhood')"
+															:disabled="!pageForm.address.city"
+														>
+															<option value="" />
+															<option v-for="option in neighborhoodOptions" :key="option.value" :value="option.value">
+																{{ option.label }}
+															</option>
+														</select>
+													</template>
+												</q-field>
 											</div>
 										</section>
 
@@ -837,18 +769,6 @@
 									</q-form>
 								</q-tab-panel>
 
-								<q-tab-panel name="preview">
-									<PagePreview
-										:page="previewPage"
-										:palette="selectedPalette"
-										:can-rate="false"
-										:can-chat="false"
-										:show-ratings="false"
-										title-tag="h2"
-										:share-url="previewShareUrl"
-									/>
-								</q-tab-panel>
-
 								<q-tab-panel name="unclaimed-pages">
 									<section class="page-table-card">
 										<q-inner-loading :showing="pagesLoading" color="primary" />
@@ -860,8 +780,6 @@
 														<th>{{ t('pages.type') }}</th>
 														<th>{{ t('auth.city') }}</th>
 														<th>{{ t('catalog.category') }}</th>
-														<th>{{ t('aiWorks.pages.source') }}</th>
-														<th>{{ t('aiWorks.pages.checkedAt') }}</th>
 														<th class="page-table__actions-heading">{{ t('admin.actions') }}</th>
 													</tr>
 												</thead>
@@ -876,19 +794,6 @@
 														</td>
 														<td>{{ item.address_details?.city || '—' }}</td>
 														<td>{{ categoryLabel(item.category_key) }}</td>
-														<td>
-															<a
-																v-if="item.source_url"
-																class="page-table__source"
-																:href="item.source_url"
-																target="_blank"
-																rel="noopener noreferrer"
-															>
-																{{ sourceLabel(item.source_url) }}
-															</a>
-															<span v-else>—</span>
-														</td>
-														<td>{{ checkedDate(item.source_checked_at) }}</td>
 														<td>
 															<div class="page-table__actions">
 																<q-btn
@@ -1186,16 +1091,6 @@
   background: rgba(123, 63, 242, 0.045);
 }
 
-.page-table__source {
-  color: var(--soz-primary-deep);
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.page-table__source:hover {
-  text-decoration: underline;
-}
-
 .page-table__actions-heading {
   width: 108px;
 }
@@ -1266,6 +1161,29 @@
 .form-grid--four,
 .form-grid--address {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ai-native-select {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--soz-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ai-native-select:disabled {
+  color: var(--soz-muted);
+  cursor: not-allowed;
+}
+
+.ai-native-select option,
+.ai-native-select optgroup {
+  background: #fff;
+  color: #11222d;
 }
 
 .hours-grid {

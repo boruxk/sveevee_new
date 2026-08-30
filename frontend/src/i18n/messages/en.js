@@ -734,7 +734,7 @@ export default {
 	},
 	aiWorks: {
 		title: 'AI Works',
-		intro: 'Manage writing assignments and create basic public-source business and community pages.',
+		intro: 'Manage writing assignments and create basic unclaimed business and community pages.',
 		tabs: {
 			tasks: 'Tasks',
 			pages: 'Pages'
@@ -757,10 +757,7 @@ export default {
 			create: 'Create page',
 			list: 'Unclaimed pages',
 			empty: 'No unclaimed pages yet.',
-			infoOnly: 'This is an informational, unclaimed page. Modules, chat, ratings, logos, and images remain disabled until an administrator approves a claim.',
-			source: 'Public source',
-			sourceUrl: 'Source URL',
-			checkedAt: 'Checked on'
+			infoOnly: 'This is an informational, unclaimed page. Modules, chat, ratings, logos, and images remain disabled until an administrator approves a claim.'
 		},
 		deleteTitle: 'Delete this item?',
 		deleteBody: 'This action cannot be undone.',
@@ -770,11 +767,8 @@ export default {
 	pageClaim: {
 		unverifiedBadge: 'Unclaimed and unverified',
 		title: 'Does this page represent you?',
-		description: 'This basic page was created by Sveevee from publicly available information and is not yet managed or verified by its owner.',
-		detachedDescription: 'This page currently has no verified manager on Sveevee and can be claimed by an authorized representative.',
+		description: 'This informational page is not currently managed or verified by the business or community. An authorized representative can request ownership.',
 		accuracyWarning: 'The information may be incomplete, incorrect, or out of date. Verify important details directly with the business or community.',
-		source: 'View public source',
-		checkedAt: 'Source last checked: {date}',
 		registerToClaim: 'Register to claim this page',
 		claimButton: 'Request ownership',
 		pending: 'Request pending',
@@ -883,7 +877,7 @@ export default {
 		adminTitle: 'Admin',
 		adminDescription: 'sveevee administration area.',
 		aiWorksTitle: 'AI Works',
-		aiWorksDescription: 'Internal Sveevee workspace for public-source business and community pages.',
+		aiWorksDescription: 'Internal Sveevee workspace for unclaimed business and community pages.',
 		userFallbackTitle: 'sveevee profile',
 		userFallbackDescription: 'View a public sveevee profile, pages, and local ads.',
 		userDescription: 'View {name} on sveevee, including public pages and local ads.',

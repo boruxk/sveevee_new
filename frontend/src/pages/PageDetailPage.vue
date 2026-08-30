@@ -52,7 +52,6 @@
 	const showChatAction = computed(() => Boolean(page.value?.id) && !isUnclaimed.value)
 	const isPageOwner = computed(() => authStore.isAuthenticated && page.value?.user_id === authStore.user?.id)
 	const canRequestClaim = computed(() => authStore.isAuthenticated && authStore.canAccess(['user']))
-	const unclaimedDescription = computed(() => t(page.value?.source_url ? 'pageClaim.description' : 'pageClaim.detachedDescription'))
 	const claimRegisterRoute = computed(() => ({
 		name: 'register',
 		query: { redirect: route.fullPath }
@@ -405,12 +404,8 @@
 				<div class="unclaimed-notice__copy">
 					<span class="unclaimed-notice__badge">{{ t('pageClaim.unverifiedBadge') }}</span>
 					<h2>{{ t('pageClaim.title') }}</h2>
-					<p>{{ unclaimedDescription }}</p>
+					<p>{{ t('pageClaim.description') }}</p>
 					<p class="unclaimed-notice__warning">{{ t('pageClaim.accuracyWarning') }}</p>
-					<div class="unclaimed-notice__source">
-						<a v-if="page.source_url" :href="page.source_url" target="_blank" rel="noopener noreferrer">{{ t('pageClaim.source') }}</a>
-						<small v-if="page.source_checked_at">{{ t('pageClaim.checkedAt', { date: page.source_checked_at }) }}</small>
-					</div>
 				</div>
 				<div class="unclaimed-notice__action">
 					<q-btn v-if="!authStore.isAuthenticated"
@@ -562,19 +557,6 @@
 }
 
 .unclaimed-notice__warning {
-  font-weight: 750;
-}
-
-.unclaimed-notice__source {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  align-items: center;
-}
-
-.unclaimed-notice__source a {
-  color: var(--soz-primary-deep);
-  font-size: 0.82rem;
   font-weight: 750;
 }
 

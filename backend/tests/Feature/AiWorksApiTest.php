@@ -32,14 +32,14 @@ class AiWorksApiTest extends TestCase
         Sanctum::actingAs($worker);
         $created = $this->postJson('/api/v1/ai-works/tasks', [
             'title' => 'Research a local business',
-            'text' => 'Use an official public source and record the source URL and check date.',
+            'text' => 'Create a concise informational page using lawful, publicly available business information.',
         ])->assertCreated()
             ->assertJsonPath('data.title', 'Research a local business');
 
         $taskId = $created->json('data.id');
         $this->putJson("/api/v1/ai-works/tasks/{$taskId}", [
             'title' => 'Research and verify a local business',
-            'text' => 'Use an official public source and record the source URL and check date.',
+            'text' => 'Create a concise informational page and verify the business details before saving.',
         ])->assertOk()
             ->assertJsonPath('data.title', 'Research and verify a local business');
 
@@ -66,8 +66,7 @@ class AiWorksApiTest extends TestCase
             ->assertJsonPath('data.features.store', false)
             ->assertJsonPath('data.features.services', false)
             ->assertJsonPath('data.logo_url', null)
-            ->assertJsonPath('data.banner_url', null)
-            ->assertJsonPath('data.source_url', 'https://example.com/business-directory/sample-business');
+            ->assertJsonPath('data.banner_url', null);
 
         $pageId = $created->json('data.id');
         $this->assertDatabaseHas('pages', [
@@ -111,11 +110,11 @@ class AiWorksApiTest extends TestCase
 
         $pageId = $created->json('data.id');
         $updatedPayload = $this->pagePayload();
-        $updatedPayload['name'] = 'Updated Public Business';
+        $updatedPayload['name'] = 'Updated Unclaimed Business';
 
         $this->putJson("/api/v1/ai-works/pages/{$pageId}", $updatedPayload)
             ->assertOk()
-            ->assertJsonPath('data.name', 'Updated Public Business');
+            ->assertJsonPath('data.name', 'Updated Unclaimed Business');
 
         $this->postJson('/api/v1/ai-works/tasks', [
             'title' => 'Protected mutation',
@@ -190,8 +189,7 @@ class AiWorksApiTest extends TestCase
             ->assertJsonPath('data.address_details.neighborhood', null);
 
         $secondPayload = $this->pagePayload();
-        $secondPayload['name'] = 'Second Public Business';
-        $secondPayload['source_url'] = 'https://example.com/business-directory/second-business';
+        $secondPayload['name'] = 'Second Unclaimed Business';
         $secondPayload['address']['neighborhood'] = null;
 
         $this->postJson('/api/v1/ai-works/pages', $secondPayload)
@@ -451,15 +449,13 @@ class AiWorksApiTest extends TestCase
 
         return [
             'type' => $type,
-            'name' => $type === Page::TYPE_COMMUNITY ? 'Sample Public Community' : 'Sample Public Business',
-            'public_description' => 'A basic public description from an official public source.',
+            'name' => $type === Page::TYPE_COMMUNITY ? 'Sample Unclaimed Community' : 'Sample Unclaimed Business',
+            'public_description' => 'A basic informational description for an unclaimed page.',
             'contact_email' => 'contact@example.com',
             'phone' => '02-555-0100',
             'website' => 'example.com',
             'category_key' => CatalogTopics::keysForScope($scope)[0],
             'palette_key' => 'amber-dawn',
-            'source_url' => 'example.com/business-directory/sample-business',
-            'source_checked_at' => now()->format('Y-m-d'),
             'address' => [
                 'street' => 'Jaffa Street',
                 'number' => '1',

@@ -734,7 +734,7 @@ export default {
 	},
 	aiWorks: {
 		title: 'Travaux IA',
-		intro: 'Gérez les tâches de rédaction et créez des pages entreprise et communauté de base à partir de sources publiques.',
+		intro: 'Gérez les tâches de rédaction et créez des pages entreprise et communauté de base non revendiquées.',
 		tabs: {
 			tasks: 'Tâches',
 			pages: 'Pages'
@@ -757,10 +757,7 @@ export default {
 			create: 'Créer une page',
 			list: 'Pages non revendiquées',
 			empty: 'Aucune page non revendiquée pour le moment.',
-			infoOnly: 'Il s’agit d’une page informative non revendiquée. Modules, chat, avis, logo et images restent désactivés jusqu’à l’approbation d’une demande par un administrateur.',
-			source: 'Source publique',
-			sourceUrl: 'URL de la source',
-			checkedAt: 'Vérifiée le'
+			infoOnly: 'Il s’agit d’une page informative non revendiquée. Modules, chat, avis, logo et images restent désactivés jusqu’à l’approbation d’une demande par un administrateur.'
 		},
 		deleteTitle: 'Supprimer cet élément ?',
 		deleteBody: 'Cette action est irréversible.',
@@ -770,11 +767,8 @@ export default {
 	pageClaim: {
 		unverifiedBadge: 'Non revendiquée et non vérifiée',
 		title: 'Cette page vous représente-t-elle ?',
-		description: 'Cette page de base a été créée par Sveevee à partir d’informations publiques. Elle n’est pas encore gérée ni vérifiée par son propriétaire.',
-		detachedDescription: 'Cette page n’a actuellement aucun gestionnaire vérifié sur Sveevee. Un représentant autorisé peut en demander la propriété.',
+		description: 'Cette page informative n’est actuellement ni gérée ni vérifiée par l’entreprise ou la communauté. Un représentant autorisé peut en demander la propriété.',
 		accuracyWarning: 'Les informations peuvent être incomplètes, erronées ou obsolètes. Vérifiez les éléments importants directement auprès de l’entreprise ou de la communauté.',
-		source: 'Voir la source publique',
-		checkedAt: 'Source vérifiée pour la dernière fois : {date}',
 		registerToClaim: 'S’inscrire pour revendiquer la page',
 		claimButton: 'Demander la propriété',
 		pending: 'Demande en attente',
@@ -883,7 +877,7 @@ export default {
 		adminTitle: 'Admin',
 		adminDescription: 'Zone d’administration sveevee.',
 		aiWorksTitle: 'Travaux IA',
-		aiWorksDescription: 'Espace interne Sveevee pour les pages entreprise et communauté issues de sources publiques.',
+		aiWorksDescription: 'Espace interne Sveevee pour les pages entreprise et communauté non revendiquées.',
 		userFallbackTitle: 'Profil sveevee',
 		userFallbackDescription: 'Consultez un profil public sveevee, ses pages et annonces locales.',
 		userDescription: 'Consultez {name} sur sveevee, avec ses pages publiques et annonces locales.',

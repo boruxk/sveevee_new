@@ -131,8 +131,6 @@ class PayloadService
             'services' => $isUnclaimed ? [] : $page->services->map(fn (PageService $service) => $this->service($service))->values()->all(),
             'events' => $isUnclaimed ? [] : $page->events->map(fn (PageEvent $event) => $this->event($event))->values()->all(),
             'setup' => [...$setup, 'features' => $features],
-            'source_url' => $isUnclaimed ? $page->source_url : null,
-            'source_checked_at' => $isUnclaimed ? $page->source_checked_at?->format('Y-m-d') : null,
             'claimed_at' => $page->claimed_at?->toISOString(),
             'owner' => ! $isUnclaimed && $page->relationLoaded('user') && $page->user
                 ? $this->user($page->user)

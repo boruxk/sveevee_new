@@ -34,9 +34,7 @@ class SeoPrerenderService
             'communityTitle' => '{name} ב{city} - קהילה מקומית, אירועים ויצירת קשר | Sveevee',
             'communityDescription' => '{name} - {category} ב{city}{neighborhood}. צפו במידע קהילתי, אירועים ודרכי יצירת קשר ב-Sveevee.',
             'unclaimedNoticeTitle' => 'עמוד עסק לא מאומת',
-            'unclaimedNoticeBody' => 'עמוד זה נוצר על ידי Sveevee ממידע עסקי שפורסם לציבור. הוא אינו מנוהל או מאומת בידי העסק, והמידע עשוי להיות חלקי, שגוי או לא מעודכן. יש לאמת פרטים חשובים ישירות מול העסק.',
             'unclaimedCommunityNoticeTitle' => 'עמוד קהילה לא מאומת',
-            'unclaimedCommunityNoticeBody' => 'עמוד זה נוצר על ידי Sveevee ממידע קהילתי שפורסם לציבור. הוא אינו מנוהל או מאומת בידי הקהילה, והמידע עשוי להיות חלקי, שגוי או לא מעודכן. יש לאמת פרטים חשובים ישירות מול הקהילה.',
             'unmanagedNoticeBody' => 'לעמוד זה אין כרגע מנהל מאומת ב-Sveevee. המידע עשוי להיות חלקי, שגוי או לא מעודכן, ונציג מורשה יכול לבקש בעלות על העמוד.',
             'productTitle' => '{name} ב{city} - מחיר ופרטי המוצר | Sveevee',
             'productDescription' => '{name} ב{city} במחיר {price}. צפו בפרטי המוצר, המוכר, המיקום, הזמינות ואפשרויות יצירת קשר ב-Sveevee.',
@@ -70,9 +68,7 @@ class SeoPrerenderService
             'communityTitle' => '{name} in {city} - local community, events, and contact | Sveevee',
             'communityDescription' => '{name} - {category} in {city}{neighborhood}. View community information, events, and contact details on Sveevee.',
             'unclaimedNoticeTitle' => 'Unverified business page',
-            'unclaimedNoticeBody' => 'This page was created by Sveevee from publicly available business information. It is not managed or verified by the business, and its information may be incomplete, incorrect, or outdated. Verify important details directly with the business.',
             'unclaimedCommunityNoticeTitle' => 'Unverified community page',
-            'unclaimedCommunityNoticeBody' => 'This page was created by Sveevee from publicly available community information. It is not managed or verified by the community, and its information may be incomplete, incorrect, or outdated. Verify important details directly with the community.',
             'unmanagedNoticeBody' => 'This page currently has no verified manager on Sveevee. Its information may be incomplete, incorrect, or outdated, and an authorized representative can request ownership.',
             'productTitle' => '{name} in {city} - price and product details | Sveevee',
             'productDescription' => '{name} in {city} for {price}. View product details, seller, location, availability, and contact options on Sveevee.',
@@ -106,9 +102,7 @@ class SeoPrerenderService
             'communityTitle' => '{name} в {city} - местное сообщество, события и контакты | Sveevee',
             'communityDescription' => '{name} - {category} в {city}{neighborhood}. Смотрите информацию о сообществе, события и контактные данные в Sveevee.',
             'unclaimedNoticeTitle' => 'Непроверенная бизнес-страница',
-            'unclaimedNoticeBody' => 'Эта страница создана Sveevee по общедоступной деловой информации. Она не управляется и не проверена бизнесом, а сведения могут быть неполными, ошибочными или устаревшими. Проверяйте важные данные непосредственно у бизнеса.',
             'unclaimedCommunityNoticeTitle' => 'Непроверенная страница сообщества',
-            'unclaimedCommunityNoticeBody' => 'Эта страница создана Sveevee по общедоступной информации о сообществе. Она не управляется и не проверена сообществом, а сведения могут быть неполными, ошибочными или устаревшими. Проверяйте важные данные непосредственно у сообщества.',
             'unmanagedNoticeBody' => 'У этой страницы сейчас нет подтверждённого управляющего в Sveevee. Сведения могут быть неполными, ошибочными или устаревшими, а уполномоченный представитель может запросить владение страницей.',
             'productTitle' => '{name} в {city} - цена и детали товара | Sveevee',
             'productDescription' => '{name} в {city} за {price}. Смотрите детали товара, продавца, местоположение, наличие и варианты связи в Sveevee.',
@@ -142,9 +136,7 @@ class SeoPrerenderService
             'communityTitle' => '{name} à {city} - communauté locale, événements et contact | Sveevee',
             'communityDescription' => '{name} - {category} à {city}{neighborhood}. Consultez les informations de la communauté, les événements et les coordonnées sur Sveevee.',
             'unclaimedNoticeTitle' => 'Page entreprise non vérifiée',
-            'unclaimedNoticeBody' => 'Cette page a été créée par Sveevee à partir d’informations professionnelles publiques. Elle n’est ni gérée ni vérifiée par l’entreprise, et ses informations peuvent être incomplètes, erronées ou obsolètes. Vérifiez les éléments importants directement auprès de l’entreprise.',
             'unclaimedCommunityNoticeTitle' => 'Page de communauté non vérifiée',
-            'unclaimedCommunityNoticeBody' => 'Cette page a été créée par Sveevee à partir d’informations publiques sur la communauté. Elle n’est ni gérée ni vérifiée par la communauté, et ses informations peuvent être incomplètes, erronées ou obsolètes. Vérifiez les éléments importants directement auprès de la communauté.',
             'unmanagedNoticeBody' => 'Cette page n’a actuellement aucun gestionnaire vérifié sur Sveevee. Ses informations peuvent être incomplètes, erronées ou obsolètes, et un représentant autorisé peut en demander la propriété.',
             'productTitle' => '{name} à {city} - prix et détails du produit | Sveevee',
             'productDescription' => '{name} à {city} pour {price}. Consultez les détails du produit, le vendeur, le lieu, la disponibilité et les options de contact sur Sveevee.',
@@ -1061,9 +1053,7 @@ class SeoPrerenderService
             $this->escape(trim((string) $event->event_date.' '.(string) $event->event_time))
         ))->implode('') : '';
         $unclaimedTitle = $copy[$page->type === Page::TYPE_COMMUNITY ? 'unclaimedCommunityNoticeTitle' : 'unclaimedNoticeTitle'];
-        $unclaimedBody = $page->source_url
-            ? $copy[$page->type === Page::TYPE_COMMUNITY ? 'unclaimedCommunityNoticeBody' : 'unclaimedNoticeBody']
-            : $copy['unmanagedNoticeBody'];
+        $unclaimedBody = $copy['unmanagedNoticeBody'];
 
         return '<main class="sveevee-prerender"><article class="sveevee-prerender__card">'
             .$this->brand()

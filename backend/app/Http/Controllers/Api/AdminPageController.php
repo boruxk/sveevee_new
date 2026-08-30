@@ -215,8 +215,6 @@ class AdminPageController extends Controller
             'category_key' => $page->category_key,
             'city' => $address['city'] ?? null,
             'neighborhood' => $address['neighborhood'] ?? null,
-            'source_url' => $page->is_unclaimed ? $page->source_url : null,
-            'source_checked_at' => $page->is_unclaimed ? $page->source_checked_at?->format('Y-m-d') : null,
             'owner' => ! $page->is_unclaimed && $page->user ? [
                 'id' => $page->user->id,
                 'display_name' => $page->user->display_name,

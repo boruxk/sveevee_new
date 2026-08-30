@@ -46,11 +46,11 @@ export const privacyPolicies = {
 				]
 			},
 			{
-				title: 'Business and Community Information from Public Sources',
+				title: 'Unclaimed Business and Community Pages',
 				body: [
-					'Sveevee may create a basic, unclaimed business or community page from information made publicly available for the relevant business, organizational, or community activity, where use of that information is reasonably believed to be lawful and consistent with the source terms. It may include a public name, category, address or service area, public phone or email, official website, opening hours, services, or events published by the business, community, or another official source.',
+					'Sveevee may create a basic, unclaimed business or community page from information made publicly available for the relevant business, organizational, or community activity, where use of that information is reasonably believed to be lawful. It may include a public name, category, address or service area, public phone or email, official website, opening hours, services, or events published for that activity.',
 					'The purpose is local discovery and search by city and neighborhood. These pages are public and may appear in Sveevee results and external search engines. They are clearly marked as unclaimed and unverified, do not include a page chat, logo, or photos before approval, and may contain incomplete, incorrect, or outdated information.',
-					'Where reasonably practicable, Sveevee records the source URL and date checked. Where information concerns an individual, sole trader, or community organizer, we aim to use only information expressly published for the relevant public activity and avoid private information that is not necessary for local discovery.',
+					'Where information concerns an individual, sole trader, or community organizer, we aim to use only information expressly published for the relevant public activity and avoid private information that is not necessary for local discovery.',
 					'The person, business, or community concerned may request access, correction, removal, or ownership of the page through the claim process or by writing to info@sveevee.co.il. We may request reasonable proof of identity or authority before disclosing, changing, removing, or transferring a page.'
 				]
 			},
@@ -161,11 +161,11 @@ export const privacyPolicies = {
 				]
 			},
 			{
-				title: 'מידע על עסקים וקהילות ממקורות ציבוריים',
+				title: 'עמודי עסק וקהילה שלא נדרשו',
 				body: [
-					'Sveevee עשויה ליצור עמוד עסק או קהילה בסיסי שלא נדרש על סמך מידע שפורסם לציבור לצורך הפעילות העסקית, הארגונית או הקהילתית הרלוונטית, כאשר קיים יסוד סביר להניח שהשימוש במידע מותר לפי דין ותואם את תנאי המקור. המידע עשוי לכלול שם ציבורי, קטגוריה, כתובת או אזור פעילות, טלפון או אימייל ציבוריים, אתר רשמי, שעות פעילות, שירותים או אירועים שפורסמו בידי העסק, הקהילה או במקור רשמי אחר.',
+					'Sveevee עשויה ליצור עמוד עסק או קהילה בסיסי שלא נדרש על סמך מידע שפורסם לציבור לצורך הפעילות העסקית, הארגונית או הקהילתית הרלוונטית, כאשר קיים יסוד סביר להניח שהשימוש במידע מותר לפי דין. המידע עשוי לכלול שם ציבורי, קטגוריה, כתובת או אזור פעילות, טלפון או אימייל ציבוריים, אתר רשמי, שעות פעילות, שירותים או אירועים שפורסמו לצורך פעילות זו.',
 					'מטרת השימוש היא גילוי וחיפוש מקומי לפי עיר ושכונה. העמודים ציבוריים ועשויים להופיע בתוצאות Sveevee ובמנועי חיפוש חיצוניים. הם מסומנים בבירור כעמודים שלא נדרשו ולא אומתו, אינם כוללים צ׳אט של העמוד, לוגו או תמונות לפני אישור, והמידע בהם עשוי להיות חלקי, שגוי או לא מעודכן.',
-					'ככל שהדבר מעשי באופן סביר, Sveevee שומרת את כתובת המקור ואת מועד בדיקתו. כאשר המידע מתייחס לאדם פרטי, לעוסק יחיד או למארגן קהילה, אנו שואפים להשתמש רק בפרטים שפורסמו במפורש לצורך הפעילות הציבורית הרלוונטית ולהימנע ממידע פרטי שאינו נחוץ לגילוי המקומי.',
+					'כאשר המידע מתייחס לאדם פרטי, לעוסק יחיד או למארגן קהילה, אנו שואפים להשתמש רק בפרטים שפורסמו במפורש לצורך הפעילות הציבורית הרלוונטית ולהימנע ממידע פרטי שאינו נחוץ לגילוי המקומי.',
 					'בעל העסק, נציג הקהילה או האדם שהמידע מתייחס אליו רשאי לבקש לעיין במידע, לתקנו, להסירו או לקבל בעלות על העמוד באמצעות הליך בקשת הבעלות או בפנייה אל info@sveevee.co.il. אנו עשויים לבקש הוכחה סבירה לזהות או להרשאה לפני מסירה, שינוי, הסרה או העברת עמוד.'
 				]
 			},
@@ -276,11 +276,11 @@ export const privacyPolicies = {
 				]
 			},
 			{
-				title: 'Информация о бизнесе и сообществах из открытых источников',
+				title: 'Невостребованные страницы бизнеса и сообществ',
 				body: [
-					'Sveevee может создать базовую невостребованную страницу бизнеса или сообщества на основе сведений, публично опубликованных для соответствующей деловой, организационной или общественной деятельности, если есть разумные основания считать использование законным и соответствующим условиям источника. Это может включать публичное название, категорию, адрес или район деятельности, публичный телефон или e-mail, официальный сайт, часы работы, услуги или события, опубликованные бизнесом, сообществом или другим официальным источником.',
+					'Sveevee может создать базовую невостребованную страницу бизнеса или сообщества на основе сведений, публично опубликованных для соответствующей деловой, организационной или общественной деятельности, если есть разумные основания считать использование законным. Это может включать публичное название, категорию, адрес или район деятельности, публичный телефон или e-mail, официальный сайт, часы работы, услуги или события, опубликованные для этой деятельности.',
 					'Цель обработки — локальный поиск по городу и району. Такие страницы публичны и могут появляться в результатах Sveevee и внешних поисковых системах. Они явно помечены как невостребованные и непроверенные, не содержат чат страницы, логотип или фотографии до подтверждения и могут включать неполные, ошибочные или устаревшие сведения.',
-					'Когда это практически разумно, Sveevee сохраняет URL источника и дату проверки. Если сведения относятся к физическому лицу, индивидуальному предпринимателю или организатору сообщества, мы стремимся использовать только данные, явно опубликованные для соответствующей публичной деятельности, и избегать частной информации, не нужной для локального поиска.',
+					'Если сведения относятся к физическому лицу, индивидуальному предпринимателю или организатору сообщества, мы стремимся использовать только данные, явно опубликованные для соответствующей публичной деятельности, и избегать частной информации, не нужной для локального поиска.',
 					'Лицо, бизнес или сообщество, к которому относятся сведения, может запросить доступ, исправление, удаление или владение страницей через процесс запроса владения либо по адресу info@sveevee.co.il. До раскрытия, изменения, удаления или передачи страницы мы можем запросить разумное подтверждение личности или полномочий.'
 				]
 			},
@@ -391,11 +391,11 @@ export const privacyPolicies = {
 				]
 			},
 			{
-				title: 'Informations sur les entreprises et communautés issues de sources publiques',
+				title: 'Pages entreprise et communauté non revendiquées',
 				body: [
-					'Sveevee peut créer une page entreprise ou communauté de base non revendiquée à partir d’informations rendues publiques pour l’activité commerciale, associative ou communautaire concernée, lorsqu’il existe des raisons raisonnables de croire que leur utilisation est licite et conforme aux conditions de la source. Elles peuvent inclure un nom public, une catégorie, une adresse ou zone d’activité, un téléphone ou e-mail public, le site officiel, les horaires, les services ou événements publiés par l’entreprise, la communauté ou une autre source officielle.',
+					'Sveevee peut créer une page entreprise ou communauté de base non revendiquée à partir d’informations rendues publiques pour l’activité commerciale, associative ou communautaire concernée, lorsqu’il existe des raisons raisonnables de croire que leur utilisation est licite. Elles peuvent inclure un nom public, une catégorie, une adresse ou zone d’activité, un téléphone ou e-mail public, le site officiel, les horaires, les services ou événements publiés pour cette activité.',
 					'La finalité est la découverte et la recherche locales par ville et quartier. Ces pages sont publiques et peuvent apparaître dans les résultats Sveevee et les moteurs de recherche externes. Elles sont clairement indiquées comme non revendiquées et non vérifiées, ne proposent ni chat de page, ni logo, ni photo avant approbation, et peuvent contenir des informations incomplètes, erronées ou obsolètes.',
-					'Lorsque cela est raisonnablement possible, Sveevee conserve l’URL de la source et la date de vérification. Si les informations concernent une personne physique, un entrepreneur individuel ou un organisateur de communauté, nous cherchons à n’utiliser que les données expressément publiées pour l’activité publique concernée et à éviter les informations privées inutiles à la découverte locale.',
+					'Si les informations concernent une personne physique, un entrepreneur individuel ou un organisateur de communauté, nous cherchons à n’utiliser que les données expressément publiées pour l’activité publique concernée et à éviter les informations privées inutiles à la découverte locale.',
 					'La personne, l’entreprise ou la communauté concernée peut demander l’accès, la correction, le retrait ou la propriété de la page via la procédure de revendication ou à info@sveevee.co.il. Nous pouvons demander une preuve raisonnable d’identité ou d’autorité avant toute communication, modification, suppression ou transmission de page.'
 				]
 			},

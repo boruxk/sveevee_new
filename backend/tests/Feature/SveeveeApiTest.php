@@ -863,11 +863,9 @@ HTML);
                 'created_by_user_id' => $user->id,
                 'type' => Page::TYPE_BUSINESS,
                 'is_unclaimed' => true,
-                'name' => 'Public Source Bakery',
+                'name' => 'Unclaimed Bakery',
                 'public_description' => '',
                 'category_key' => 'food_catering.bakery',
-                'source_url' => 'https://example.test/public-source-bakery',
-                'source_checked_at' => now()->toDateString(),
                 'setup' => [
                     'address' => [
                         'city' => 'Jerusalem',
@@ -889,8 +887,6 @@ HTML);
                 'name' => 'Ramot Neighbors',
                 'public_description' => '',
                 'category_key' => 'community_pages.local.neighborhood_group',
-                'source_url' => 'https://example.test/ramot-neighbors',
-                'source_checked_at' => now()->toDateString(),
                 'setup' => [
                     'address' => [
                         'city' => 'Jerusalem',
@@ -948,8 +944,8 @@ HTML);
             $this->assertStringContainsString('https://avi-electric.example', $businessHtml);
             $this->assertStringContainsString('sameAs', $businessHtml);
             $this->assertStringNotContainsString('Homepage fallback', $businessHtml);
-            $this->assertStringContainsString('<h1>Public Source Bakery</h1>', $unclaimedBusinessHtml);
-            $this->assertStringContainsString('Public Source Bakery בJerusalem - שירותים, ביקורות ויצירת קשר | Sveevee', $unclaimedBusinessHtml);
+            $this->assertStringContainsString('<h1>Unclaimed Bakery</h1>', $unclaimedBusinessHtml);
+            $this->assertStringContainsString('Unclaimed Bakery בJerusalem - שירותים, ביקורות ויצירת קשר | Sveevee', $unclaimedBusinessHtml);
             $this->assertStringContainsString('<meta name="robots" content="index,follow" />', $unclaimedBusinessHtml);
             $this->assertStringContainsString('עמוד עסק לא מאומת', $unclaimedBusinessHtml);
             $this->assertStringContainsString('שגוי או לא מעודכן', $unclaimedBusinessHtml);

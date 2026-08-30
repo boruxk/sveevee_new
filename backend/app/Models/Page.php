@@ -33,8 +33,6 @@ class Page extends Model
         'banner_path',
         'banner_original_name',
         'setup',
-        'source_url',
-        'source_checked_at',
         'claimed_at',
     ];
 
@@ -43,7 +41,6 @@ class Page extends Model
         return [
             'setup' => 'array',
             'is_unclaimed' => 'boolean',
-            'source_checked_at' => 'date',
             'claimed_at' => 'datetime',
         ];
     }

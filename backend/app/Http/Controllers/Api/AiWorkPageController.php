@@ -81,7 +81,6 @@ class AiWorkPageController extends Controller
             : CatalogTopics::SCOPE_BUSINESS_PAGES;
         $categoryKey = trim((string) $request->input('category_key'));
         $website = $this->normalizedUrl($request->input('website'));
-        $sourceUrl = $this->normalizedUrl($request->input('source_url'));
         $request->merge([
             'type' => $pageType,
             'name' => trim((string) $request->input('name')),
@@ -91,7 +90,6 @@ class AiWorkPageController extends Controller
                 $catalogScope
             ) ?? $categoryKey,
             'website' => $website,
-            'source_url' => $sourceUrl,
         ]);
 
         return $request->validate([
@@ -119,8 +117,6 @@ class AiWorkPageController extends Controller
             'opening_hours.*.is_open' => ['required', 'boolean'],
             'opening_hours.*.opens_at' => ['nullable', 'date_format:H:i'],
             'opening_hours.*.closes_at' => ['nullable', 'date_format:H:i'],
-            'source_url' => ['required', 'url:http,https', 'max:2048'],
-            'source_checked_at' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
         ]);
     }
 
@@ -146,8 +142,6 @@ class AiWorkPageController extends Controller
             ])->filter(fn ($value) => filled($value))->implode(', '),
             'category_key' => $data['category_key'],
             'palette_key' => $data['palette_key'] ?? 'amber-dawn',
-            'source_url' => $data['source_url'],
-            'source_checked_at' => $data['source_checked_at'],
             'setup' => [
                 'website' => $data['website'] ?? null,
                 'contact' => $contact,
