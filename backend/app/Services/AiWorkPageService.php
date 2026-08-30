@@ -123,7 +123,7 @@ class AiWorkPageService
                 'neighborhood' => $neighborhood ?? $this->nullableString($address['neighborhood'] ?? null),
             ],
             'socials' => is_array($input['socials'] ?? null) ? $input['socials'] : [],
-            'opening_hours' => is_array($input['opening_hours'] ?? null) ? $input['opening_hours'] : [],
+            'opening_hours' => $input['opening_hours'] ?? [],
         ];
 
         return Validator::make($prepared, [

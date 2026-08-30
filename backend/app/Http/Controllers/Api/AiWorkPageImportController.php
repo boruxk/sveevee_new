@@ -15,6 +15,8 @@ use Illuminate\Validation\ValidationException;
 
 class AiWorkPageImportController extends Controller
 {
+    private const MAX_ROWS = 1000;
+
     public function __construct(private readonly AiWorkPageService $pages) {}
 
     public function index(Request $request)
@@ -41,7 +43,7 @@ class AiWorkPageImportController extends Controller
     {
         $request->validate([
             'client_import_id' => ['required', 'uuid'],
-            'rows' => ['required', 'array', 'min:1', 'max:100'],
+            'rows' => ['required', 'array', 'min:1', 'max:'.self::MAX_ROWS],
             'rows.*' => ['required', 'array'],
         ]);
 
@@ -141,12 +143,27 @@ class AiWorkPageImportController extends Controller
                 'tiktok' => $socials['tiktok'] ?? $row['tiktok'] ?? null,
                 'telegram' => $socials['telegram'] ?? $row['telegram'] ?? null,
             ],
-            'opening_hours' => $row['opening_hours'] ?? [],
+            'opening_hours' => $this->normalizedOpeningHours($row['opening_hours'] ?? []),
         ];
 
         $normalized['palette_key'] = $this->pages->automaticPalette($normalized);
 
         return $normalized;
+    }
+
+    private function normalizedOpeningHours(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        if (trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return json_last_error() === JSON_ERROR_NONE && is_array($decoded) ? $decoded : $value;
     }
 
     private function payload(AiPageImport $import): array

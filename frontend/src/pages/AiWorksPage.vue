@@ -52,6 +52,7 @@
 		category_key: '',
 		palette_key: presencePalettes[0].key
 	}
+	const AI_WORK_BATCH_LIMIT = 1000
 
 	const { t, locale } = useI18n()
 	const $q = useQuasar()
@@ -88,7 +89,7 @@
 	const bulkEditError = ref('')
 	const bulkEditValidationErrors = ref([])
 	const bulkEditResult = ref(null)
-	const bulkEditMeta = reactive({ matched_count: 0, returned_count: 0, limit: 100, truncated: false, next_id_from: null })
+	const bulkEditMeta = reactive({ matched_count: 0, returned_count: 0, limit: AI_WORK_BATCH_LIMIT, truncated: false, next_id_from: null })
 	const deleting = ref(false)
 	const taskDialogOpen = ref(false)
 	const deleteDialogOpen = ref(false)
@@ -354,7 +355,7 @@
 			Object.assign(bulkEditMeta, {
 				matched_count: result.matched_count || 0,
 				returned_count: result.returned_count || 0,
-				limit: result.limit || 100,
+				limit: result.limit || AI_WORK_BATCH_LIMIT,
 				truncated: Boolean(result.truncated),
 				next_id_from: result.next_id_from || null
 			})
@@ -614,15 +615,26 @@
 			number: '10',
 			phone: '',
 			contact_email: '',
-			website: ''
+			website: '',
+			facebook: '',
+			instagram: '',
+			tiktok: '',
+			telegram: ''
 		}
+		const openingHours = DEFAULT_OPENING_HOURS.map((item) => ({ ...item }))
 
 		if (bulkMode.value === 'json') {
-			return JSON.stringify([sample], null, 2)
+			const { facebook, instagram, tiktok, telegram, ...page } = sample
+			return JSON.stringify([{
+				...page,
+				socials: { facebook, instagram, tiktok, telegram },
+				opening_hours: openingHours
+			}], null, 2)
 		}
 
-		const headers = Object.keys(sample)
-		return `${headers.join('\t')}\n${headers.map((key) => sample[key]).join('\t')}`
+		const tableSample = { ...sample, opening_hours: JSON.stringify(openingHours) }
+		const headers = Object.keys(tableSample)
+		return headers.join('\t') + '\n' + headers.map((key) => tableSample[key]).join('\t')
 	}
 
 	async function copyBulkTemplate() {
@@ -668,7 +680,7 @@
 
 		try {
 			rows = parseBulkRows()
-			if (rows.length < 1 || rows.length > 100) {
+			if (rows.length < 1 || rows.length > AI_WORK_BATCH_LIMIT) {
 				throw new Error(t('aiWorks.bulk.rowLimit'))
 			}
 		} catch (error) {

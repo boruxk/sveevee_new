@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 class AiWorkPageBulkEditController extends Controller
 {
-    private const MAX_PAGES = 100;
+    private const MAX_PAGES = 1000;
 
     public function __construct(
         private readonly AiWorkPageService $pages,

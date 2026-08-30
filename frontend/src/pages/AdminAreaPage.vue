@@ -31,6 +31,7 @@
 	import { catalogLabel } from '@/constants/catalogTopics'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { locationLabel } from '@/utils/locationLabels'
+	import DeleteIcon from '@/components/icons/DeleteIcon.vue'
 
 	const defaultSettings = () => ({
 		ads: {
@@ -1079,11 +1080,11 @@
 											round
 											dense
 											color="negative"
-											icon="delete"
 											:aria-label="t('admin.deleteUser')"
 											:loading="deletingUserId === props.row.id"
 											@click.stop="confirmDeleteUser(props.row)"
 										>
+											<DeleteIcon :size="18" />
 											<q-tooltip>{{ t('admin.deleteUser') }}</q-tooltip>
 										</q-btn>
 									</div>

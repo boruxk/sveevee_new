@@ -18,7 +18,9 @@ use App\Support\PublicImageVariants;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class AiWorksApiTest extends TestCase
@@ -281,6 +283,13 @@ class AiWorksApiTest extends TestCase
         $rows = $export->json('data.pages');
         $rows[0]['phone'] = '03-555-0101';
         $rows[0]['whatsapp'] = '97235550101';
+        $rows[0]['socials']['instagram'] = 'https://www.instagram.com/bulk-enrichment';
+        $rows[0]['opening_hours'][0] = [
+            'weekday' => 'sunday',
+            'is_open' => true,
+            'opens_at' => '10:00',
+            'closes_at' => '14:00',
+        ];
         $rows[1]['phone'] = '03-555-0102';
 
         $this->patchJson('/api/v1/ai-works/pages/bulk-edit', ['pages' => $rows])
@@ -292,6 +301,12 @@ class AiWorksApiTest extends TestCase
         $this->assertDatabaseHas('pages', ['id' => $firstId, 'phone' => '03-555-0101']);
         $this->assertDatabaseHas('pages', ['id' => $secondId, 'phone' => '03-555-0102']);
         $this->assertSame('97235550101', data_get(Page::query()->findOrFail($firstId)->setup, 'contact.whatsapp'));
+        $this->assertSame(
+            'https://www.instagram.com/bulk-enrichment',
+            data_get(Page::query()->findOrFail($firstId)->setup, 'socials.instagram')
+        );
+        $this->assertSame('10:00', data_get(Page::query()->findOrFail($firstId)->setup, 'opening_hours.0.opens_at'));
+        $this->assertSame('14:00', data_get(Page::query()->findOrFail($firstId)->setup, 'opening_hours.0.closes_at'));
         $this->assertDatabaseHas('pages', ['id' => $outsideId, 'phone' => '02-555-0100']);
     }
 
@@ -740,6 +755,18 @@ class AiWorksApiTest extends TestCase
         $valid['category_key'] = 'Electricians';
         $valid['address']['city'] = 'tel-aviv';
         $valid['address']['neighborhood'] = 'ramat-aviv';
+        $valid['socials'] = [
+            'facebook' => 'https://www.facebook.com/bulk-created-electrician',
+            'instagram' => 'https://www.instagram.com/bulk-created-electrician',
+            'tiktok' => null,
+            'telegram' => null,
+        ];
+        $valid['opening_hours'] = json_encode([[
+            'weekday' => 'sunday',
+            'is_open' => true,
+            'opens_at' => '08:30',
+            'closes_at' => '16:30',
+        ]]);
         unset($valid['palette_key']);
 
         $invalid = $this->pagePayload();
@@ -763,8 +790,19 @@ class AiWorksApiTest extends TestCase
         $this->assertDatabaseCount('pages', 2);
         $this->assertDatabaseCount('ai_page_import_rows', 1);
         $this->assertDatabaseMissing('pages', ['name' => 'Never Persist This Invalid Company']);
+        $createdPage = Page::query()->where('name', 'Bulk Created Electrician')->firstOrFail();
+        $this->assertSame(
+            'https://www.facebook.com/bulk-created-electrician',
+            data_get($createdPage->setup, 'socials.facebook')
+        );
+        $this->assertSame(
+            'https://www.instagram.com/bulk-created-electrician',
+            data_get($createdPage->setup, 'socials.instagram')
+        );
+        $this->assertSame('08:30', data_get($createdPage->setup, 'opening_hours.0.opens_at'));
+        $this->assertSame('16:30', data_get($createdPage->setup, 'opening_hours.0.closes_at'));
         $this->assertContains(
-            Page::query()->where('name', 'Bulk Created Electrician')->value('palette_key'),
+            $createdPage->palette_key,
             AiWorkPageService::PALETTE_KEYS,
         );
         $this->assertStringNotContainsString(
@@ -777,6 +815,52 @@ class AiWorksApiTest extends TestCase
             ->assertJsonPath('data.created_count', 1);
         $this->assertDatabaseCount('pages', 2);
         $this->assertDatabaseCount('ai_page_imports', 1);
+    }
+
+    public function test_bulk_import_and_edit_allow_one_thousand_rows_but_reject_one_thousand_and_one(): void
+    {
+        Sanctum::actingAs($this->aiWorker());
+
+        $this->getJson('/api/v1/ai-works/pages/bulk-edit')
+            ->assertOk()
+            ->assertJsonPath('data.limit', 1000);
+
+        $this->mock(AiWorkPageService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('automaticPalette')->times(1000)->andReturn('amber-dawn');
+            $mock->shouldReceive('validate')->times(1000)->andThrow(
+                ValidationException::withMessages(['type' => ['Invalid test row.']])
+            );
+        });
+
+        $importRows = array_fill(0, 1000, ['name' => 'Invalid import row']);
+        $this->postJson('/api/v1/ai-works/page-imports', [
+            'client_import_id' => '958b85ce-05ab-497a-a687-1b76f410cc63',
+            'rows' => $importRows,
+        ])->assertCreated()
+            ->assertJsonPath('data.input_count', 1000)
+            ->assertJsonPath('data.invalid_count', 1000);
+
+        $this->postJson('/api/v1/ai-works/page-imports', [
+            'client_import_id' => 'a9bec843-f5b0-4b11-8432-b3366329d8ea',
+            'rows' => [...$importRows, ['name' => 'Invalid import row 1001']],
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('rows');
+
+        $editRows = collect(range(1, 1000))
+            ->map(fn (int $id): array => ['id' => $id])
+            ->all();
+        $missingPagesMessage = 'One or more pages are claimed, missing, or no longer editable. Reload the JSON before saving.';
+
+        $this->patchJson('/api/v1/ai-works/pages/bulk-edit', ['pages' => $editRows])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.pages.0', $missingPagesMessage);
+
+        $tooManyResponse = $this->patchJson('/api/v1/ai-works/pages/bulk-edit', [
+            'pages' => [...$editRows, ['id' => 1001]],
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('pages');
+
+        $this->assertNotSame($missingPagesMessage, $tooManyResponse->json('errors.pages.0'));
     }
 
     public function test_duplicate_detection_normalizes_unicode_punctuation_and_spacing(): void
