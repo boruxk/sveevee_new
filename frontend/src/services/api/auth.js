@@ -10,6 +10,10 @@ export function login(payload) {
 	return apiClient.post('/auth/login', payload)
 }
 
+export function aiLogin(payload) {
+	return apiClient.post('/auth/srvfrvrvv53Ljjug5h2h9zbdw', payload, { recaptcha: false })
+}
+
 export function forgotPassword(payload) {
 	return apiClient.post('/auth/forgot-password', payload)
 }

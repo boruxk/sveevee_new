@@ -1,5 +1,5 @@
 <script setup>
-	import { reactive, ref } from 'vue'
+	import { computed, reactive, ref } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
@@ -15,6 +15,15 @@
 	const authStore = useAuthStore()
 	const formRef = ref(null)
 	const form = reactive({ email: '', password: '' })
+	const isAiLogin = computed(() => route.name === 'ai-worker-login')
+	const aiLoginCopy = Object.freeze({
+		title: 'AI Works login',
+		intro: 'Sign in to continue to the private AI workspace.',
+		identifier: 'Login',
+		password: 'Password',
+		submit: 'Sign in',
+		failed: 'AI Works login failed.'
+	})
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 
 	async function submit() {
@@ -23,11 +32,17 @@
 		}
 
 		try {
+			if (isAiLogin.value) {
+				await authStore.loginAi(form)
+				await router.replace({ name: 'ai-works' })
+				return
+			}
+
 			await authStore.login(form)
 			const defaultRoute = authStore.isAdmin ? { name: 'admin-area' } : (authStore.isAiWorker ? { name: 'ai-works' } : { name: 'home' })
-			router.push(route.query.redirect || defaultRoute)
+			await router.push(route.query.redirect || defaultRoute)
 		} catch {
-			$q.notify({ type: 'negative', message: t('auth.loginFailed') })
+			$q.notify({ type: 'negative', message: isAiLogin.value ? aiLoginCopy.failed : t('auth.loginFailed') })
 		}
 	}
 </script>
@@ -37,9 +52,10 @@
 		<div class="auth-shell">
 			<section class="soz-section-card auth-panel">
 				<div class="auth-panel__inner">
-					<h1 class="soz-page-title">{{ t('auth.loginTitle') }}</h1>
-					<GoogleAuthButton class="auth-google" />
-					<div class="auth-divider">{{ t('auth.or') }}</div>
+					<h1 class="soz-page-title">{{ isAiLogin ? aiLoginCopy.title : t('auth.loginTitle') }}</h1>
+					<p v-if="isAiLogin" class="auth-panel__intro">{{ aiLoginCopy.intro }}</p>
+					<GoogleAuthButton v-if="!isAiLogin" class="auth-google" />
+					<div v-if="!isAiLogin" class="auth-divider">{{ t('auth.or') }}</div>
 					<q-form ref="formRef" greedy class="column q-gutter-md" @submit.prevent="submit()">
 						<q-input
 							v-model="form.email"
@@ -47,17 +63,17 @@
 							name="username"
 							type="text"
 							autocomplete="username"
-							:label="requiredLabel('auth.identifier')"
+							:label="isAiLogin ? `${aiLoginCopy.identifier} *` : requiredLabel('auth.identifier')"
 							:rules="[requiredRule]"
 						/>
 						<PasswordInput
 							v-model="form.password"
 							name="password"
 							autocomplete="current-password"
-							:label="requiredLabel('auth.password')"
+							:label="isAiLogin ? `${aiLoginCopy.password} *` : requiredLabel('auth.password')"
 							:rules="[requiredRule]"
 						/>
-						<router-link class="forgot-link" :to="{ name: 'forgot-password' }">
+						<router-link v-if="!isAiLogin" class="forgot-link" :to="{ name: 'forgot-password' }">
 							{{ t('auth.forgotPassword') }}
 						</router-link>
 						<q-btn color="primary"
@@ -66,7 +82,7 @@
 							type="submit"
 							icon="login"
 							:loading="authStore.loading"
-							:label="t('nav.login')"
+							:label="isAiLogin ? aiLoginCopy.submit : t('nav.login')"
 						/>
 					</q-form>
 				</div>
@@ -100,6 +116,12 @@
 
 .auth-panel__inner h1 {
   margin-bottom: 24px;
+}
+
+.auth-panel__intro {
+  margin: -12px 0 24px;
+  color: var(--soz-muted);
+  font-size: 1rem;
 }
 
 .auth-google {

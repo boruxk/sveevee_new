@@ -59,6 +59,36 @@ class AiWorksApiTest extends TestCase
         $this->assertDatabaseMissing('ai_work_tasks', ['id' => $taskId]);
     }
 
+    public function test_dedicated_ai_login_bypasses_recaptcha_but_rejects_regular_users(): void
+    {
+        config()->set('recaptcha.enabled', true);
+        config()->set('recaptcha.secret_key', 'test-secret');
+
+        $worker = $this->aiWorker();
+        $worker->forceFill(['password' => 'AiWorker123'])->save();
+
+        $this->postJson('/api/v1/auth/srvfrvrvv53Ljjug5h2h9zbdw', [
+            'email' => $worker->login,
+            'password' => 'AiWorker123',
+        ])->assertOk()
+            ->assertJsonPath('data.user.role', 'ai_worker')
+            ->assertJsonPath('message', 'AI Works login successful.');
+
+        $regularUser = User::factory()->create(['password' => 'Regular123']);
+        $this->postJson('/api/v1/auth/srvfrvrvv53Ljjug5h2h9zbdw', [
+            'email' => $regularUser->email,
+            'password' => 'Regular123',
+        ])->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'The login or password is incorrect.');
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => $worker->login,
+            'password' => 'AiWorker123',
+        ])->assertUnprocessable()
+            ->assertJsonPath('errors.recaptcha.0', 'Missing reCAPTCHA token.');
+    }
+
     public function test_ai_worker_creates_information_only_unclaimed_pages(): void
     {
         $worker = $this->aiWorker();

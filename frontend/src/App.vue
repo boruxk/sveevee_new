@@ -15,7 +15,7 @@
 		const isLanding = route.name === 'landing'
 		const canonical = route.path
 		const legalDocument = route.meta.legalDocument ? getLegalDocument(route.meta.legalDocument, locale.value) : null
-		const title = legalDocument?.title || (seo.titleKey ? t(seo.titleKey) : t('seo.defaultTitle'))
+		const title = legalDocument?.title || seo.title || (seo.titleKey ? t(seo.titleKey) : t('seo.defaultTitle'))
 		const image = seo.image || (isLanding ? heroSeoImage : undefined)
 		const imageAlt = seo.imageAltKey ? t(seo.imageAltKey) : (image ? title : undefined)
 		const imageWidth = seo.imageWidth || (isLanding ? 1360 : undefined)
@@ -31,7 +31,7 @@
 		return {
 			title,
 			exactTitle: isLanding ? `${title} | Sveevee` : undefined,
-			description: legalDocument?.intro || (seo.descriptionKey ? t(seo.descriptionKey) : t('seo.defaultDescription')),
+			description: legalDocument?.intro || seo.description || (seo.descriptionKey ? t(seo.descriptionKey) : t('seo.defaultDescription')),
 			robots: seo.robots || (requiresAuth ? 'noindex,nofollow' : 'index,follow'),
 			type: seo.type || 'website',
 			canonical,

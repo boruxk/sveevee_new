@@ -59,6 +59,9 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
     Route::prefix('auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
         Route::post('/login', [AuthController::class, 'login'])->withoutMiddleware('platform.available')->middleware('throttle:auth-login');
+        Route::post('/srvfrvrvv53Ljjug5h2h9zbdw', [AuthController::class, 'aiLogin'])
+            ->withoutMiddleware(['platform.available', 'recaptcha'])
+            ->middleware('throttle:auth-ai-worker');
         Route::get('/google/redirect', [AuthController::class, 'redirectToGoogle'])->withoutMiddleware('platform.available')->middleware('throttle:auth-login');
         Route::get('/google/callback', [AuthController::class, 'handleGoogleCallback'])->withoutMiddleware('platform.available')->middleware('throttle:auth-login');
         Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-login');

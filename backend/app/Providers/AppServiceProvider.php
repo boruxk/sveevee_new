@@ -43,6 +43,13 @@ class AppServiceProvider extends ServiceProvider
             );
         });
 
+        RateLimiter::for('auth-ai-worker', function (Request $request) {
+            return [
+                Limit::perMinute(5)->by('ai-worker-login-minute|'.$request->ip()),
+                Limit::perHour(30)->by('ai-worker-login-hour|'.$request->ip()),
+            ];
+        });
+
         RateLimiter::for('auth-register', function (Request $request) {
             return Limit::perMinute(3)->by(
                 strtolower((string) $request->input('email')).'|'.$request->ip()

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -66,6 +67,32 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        $user = $this->userForLogin($request);
+
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        return $this->authenticated($user, 'Logged in.');
+    }
+
+    public function aiLogin(Request $request)
+    {
+        $user = $this->userForLogin($request);
+
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        if (! $user->hasRole('ai_worker')) {
+            return ApiResponseService::error('The login or password is incorrect.', status: 422);
+        }
+
+        return $this->authenticated($user, 'AI Works login successful.');
+    }
+
+    private function userForLogin(Request $request): User|JsonResponse
+    {
         $identifier = trim((string) $request->input('email'));
         $normalizedEmail = strtolower($identifier);
         $request->merge(['email' => $identifier]);
@@ -96,7 +123,7 @@ class AuthController extends Controller
             return ApiResponseService::error('This account is banned.', status: 403);
         }
 
-        return $this->authenticated($user, 'Logged in.');
+        return $user;
     }
 
     public function redirectToGoogle()

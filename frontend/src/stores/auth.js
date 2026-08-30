@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { fetchMe, login, logout, register } from '@/services/api/auth'
+import { aiLogin as aiLoginRequest, fetchMe, login, logout, register } from '@/services/api/auth'
 import { tokenStorageKey } from '@/services/api/client'
 import { setLocale } from '@/i18n'
 import { getGuestLocale } from '@/stores/app'
@@ -58,6 +58,17 @@ export const useAuthStore = defineStore('auth', {
 
 			try {
 				const { data } = await login(payload)
+				await this.persistSession(data.data)
+				return data
+			} finally {
+				this.loading = false
+			}
+		},
+		async loginAi(payload) {
+			this.loading = true
+
+			try {
+				const { data } = await aiLoginRequest(payload)
 				await this.persistSession(data.data)
 				return data
 			} finally {

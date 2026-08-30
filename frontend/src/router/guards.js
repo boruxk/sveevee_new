@@ -7,7 +7,7 @@ export async function authGuard(to) {
 
 	await Promise.all([authStore.initialize(), platformStore.initialize()])
 
-	const maintenanceAccessRoutes = ['maintenance', 'login', 'google-auth-callback']
+	const maintenanceAccessRoutes = ['maintenance', 'login', 'ai-worker-login', 'google-auth-callback']
 	const isPrivilegedWorker = authStore.isAdmin || authStore.isAiWorker
 
 	if (platformStore.isMaintenance && !isPrivilegedWorker && !maintenanceAccessRoutes.includes(to.name)) {
@@ -19,6 +19,10 @@ export async function authGuard(to) {
 
 	if (to.name === 'maintenance' && (!platformStore.isMaintenance || isPrivilegedWorker)) {
 		return { name: authStore.isAdmin ? 'admin-area' : (authStore.isAiWorker ? 'ai-works' : 'landing') }
+	}
+
+	if (to.name === 'ai-worker-login' && authStore.isAiWorker) {
+		return { name: 'ai-works' }
 	}
 
 	if (authStore.needsProfileCompletion && to.name !== 'profile') {
