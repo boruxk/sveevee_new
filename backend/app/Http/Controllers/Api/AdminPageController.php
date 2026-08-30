@@ -8,13 +8,17 @@ use App\Models\PageClaimRequest;
 use App\Models\User;
 use App\Services\ApiResponseService;
 use App\Services\PageClaimService;
+use App\Services\PageDeletionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AdminPageController extends Controller
 {
-    public function __construct(private readonly PageClaimService $claims) {}
+    public function __construct(
+        private readonly PageClaimService $claims,
+        private readonly PageDeletionService $deletions,
+    ) {}
 
     public function index(Request $request)
     {
@@ -172,6 +176,13 @@ class AdminPageController extends Controller
             $this->pagePayload($updated),
             $targetUserId === null ? 'Page detached from its user.' : 'Page assigned to user.'
         );
+    }
+
+    public function destroy(Page $page)
+    {
+        $this->deletions->delete($page);
+
+        return ApiResponseService::success(null, 'Page permanently deleted.');
     }
 
     private function resolvePendingClaims(Page $page, User $targetUser, User $admin): void

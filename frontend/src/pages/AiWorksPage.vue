@@ -9,11 +9,13 @@
 		checkAiWorkPageDuplicate,
 		deleteAiWorkPage,
 		deleteAiWorkTask,
+		fetchAiWorkBulkEditPages,
 		fetchAiWorkPage,
 		fetchAiWorkPages,
 		fetchAiWorkPreferences,
 		fetchAiWorkTasks,
 		fetchAiPageImports,
+		saveAiWorkBulkEditPages,
 		updateAiWorkPage,
 		updateAiWorkPreferences,
 		updateAiWorkTask
@@ -21,13 +23,17 @@
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
+	import { aiWorkBulkEditTask } from '@/constants/aiWorkTaskTemplates'
 	import { CATALOG_SCOPES, catalogGroupsForScope, catalogLabel, catalogTopicByKey } from '@/constants/catalogTopics'
 	import { presencePalettes } from '@/constants/presencePalettes'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
+	import BulkEditIcon from '@/components/icons/BulkEditIcon.vue'
 	import BulkImportIcon from '@/components/icons/BulkImportIcon.vue'
 	import CheckCreatePagesIcon from '@/components/icons/CheckCreatePagesIcon.vue'
 	import CopyTemplateIcon from '@/components/icons/CopyTemplateIcon.vue'
+	import JsonLoadIcon from '@/components/icons/JsonLoadIcon.vue'
+	import JsonSaveIcon from '@/components/icons/JsonSaveIcon.vue'
 	import UnclaimedPageIcon from '@/components/icons/UnclaimedPageIcon.vue'
 
 	const DEFAULT_OPENING_HOURS = [
@@ -75,6 +81,14 @@
 	const bulkError = ref('')
 	const bulkResult = ref(null)
 	const recentImports = ref([])
+	const bulkEditFilters = reactive({ city: '', neighborhood: '', category_key: '', id_from: null, id_to: null })
+	const bulkEditJson = ref('')
+	const bulkEditLoading = ref(false)
+	const bulkEditSaving = ref(false)
+	const bulkEditError = ref('')
+	const bulkEditValidationErrors = ref([])
+	const bulkEditResult = ref(null)
+	const bulkEditMeta = reactive({ matched_count: 0, returned_count: 0, limit: 100, truncated: false, next_id_from: null })
 	const deleting = ref(false)
 	const taskDialogOpen = ref(false)
 	const deleteDialogOpen = ref(false)
@@ -84,7 +98,8 @@
 	const taskForm = reactive({ id: null, title: '', text: '' })
 	const pageForm = reactive(emptyPageForm())
 	const pageCity = computed(() => pageForm.address.city)
-	const defaultsCity = computed(() => pageDefaults.city)
+	const bulkEditCity = computed(() => bulkEditFilters.city)
+	const bulkEditTaskText = computed(() => aiWorkBulkEditTask(bulkEditFilters))
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const {
 		cityOptions,
@@ -93,19 +108,16 @@
 		rememberLocation,
 		hasOptionValue
 	} = useLocationOptions(pageCity)
-	const {
-		neighborhoodOptions: defaultNeighborhoodOptions
-	} = useLocationOptions(defaultsCity)
+	const { neighborhoodOptions: bulkEditNeighborhoodOptions } = useLocationOptions(bulkEditCity)
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 	const selectedPage = computed(() => pages.value.find((page) => page.id === selectedPageId.value) || null)
 	const pageCategoryScope = computed(() => pageForm.type === 'community' ? CATALOG_SCOPES.COMMUNITY_PAGES : CATALOG_SCOPES.BUSINESS_PAGES)
 	const pageCategoryGroups = computed(() => catalogGroupsForScope(catalogGroups.value, pageCategoryScope.value))
-	const defaultCategoryScope = computed(() => pageDefaults.type === 'community' ? CATALOG_SCOPES.COMMUNITY_PAGES : CATALOG_SCOPES.BUSINESS_PAGES)
-	const defaultCategoryGroups = computed(() => catalogGroupsForScope(catalogGroups.value, defaultCategoryScope.value))
 	const pageTypeOptions = computed(() => [
 		{ label: t('pages.kinds.business'), value: 'business', icon: 'storefront' },
 		{ label: t('pages.kinds.community'), value: 'community', icon: 'diversity_3' }
 	])
+	const bulkEditCategoryScope = [CATALOG_SCOPES.BUSINESS_PAGES, CATALOG_SCOPES.COMMUNITY_PAGES]
 	const taskDialogTitle = computed(() => taskForm.id ? t('aiWorks.tasks.edit') : t('aiWorks.tasks.create'))
 	const pageValidationItems = computed(() => Object.entries(pageValidationErrors.value)
 		.flatMap(([field, messages]) => (Array.isArray(messages) ? messages : [messages])
@@ -306,6 +318,124 @@
 		}
 	}
 
+	function bulkEditParams() {
+		return Object.fromEntries(Object.entries(bulkEditFilters)
+			.map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
+			.filter(([, value]) => value !== '' && value !== null && value !== undefined))
+	}
+
+	function clearBulkEditFeedback() {
+		bulkEditError.value = ''
+		bulkEditValidationErrors.value = []
+		bulkEditResult.value = null
+	}
+
+	function captureBulkEditErrors(error) {
+		const errors = error.response?.data?.errors
+		bulkEditError.value = apiErrorMessage(error, t('aiWorks.bulkEdit.failed'))
+		if (errors && typeof errors === 'object' && !Array.isArray(errors)) {
+			bulkEditValidationErrors.value = Object.entries(errors).flatMap(([field, messages]) => (Array.isArray(messages) ? messages : [messages])
+				.filter(Boolean)
+				.map((message) => ({ field, message })))
+			return
+		}
+
+		bulkEditValidationErrors.value = []
+	}
+
+	async function loadBulkEditJson() {
+		clearBulkEditFeedback()
+		bulkEditLoading.value = true
+
+		try {
+			const { data } = await fetchAiWorkBulkEditPages(bulkEditParams())
+			const result = data.data || {}
+			bulkEditJson.value = JSON.stringify(result.pages || [], null, 2)
+			Object.assign(bulkEditMeta, {
+				matched_count: result.matched_count || 0,
+				returned_count: result.returned_count || 0,
+				limit: result.limit || 100,
+				truncated: Boolean(result.truncated),
+				next_id_from: result.next_id_from || null
+			})
+			$q.notify({ type: 'positive', message: t('aiWorks.bulkEdit.loaded', { count: bulkEditMeta.returned_count }) })
+		} catch (error) {
+			captureBulkEditErrors(error)
+		} finally {
+			bulkEditLoading.value = false
+		}
+	}
+
+	function parseBulkEditJson() {
+		const value = bulkEditJson.value.trim()
+		if (!value) {
+			throw new Error(t('aiWorks.bulkEdit.emptyJson'))
+		}
+
+		const parsed = JSON.parse(value)
+		if (!Array.isArray(parsed)) {
+			throw new Error(t('aiWorks.bulkEdit.arrayRequired'))
+		}
+		if (parsed.length < 1 || parsed.length > bulkEditMeta.limit) {
+			throw new Error(t('aiWorks.bulkEdit.rowLimit', { count: bulkEditMeta.limit }))
+		}
+		if (parsed.some((page) => !page || typeof page !== 'object' || Array.isArray(page) || !Number.isInteger(Number(page.id)))) {
+			throw new Error(t('aiWorks.bulkEdit.idRequired'))
+		}
+
+		return parsed
+	}
+
+	async function saveBulkEditJson() {
+		clearBulkEditFeedback()
+		let rows
+
+		try {
+			rows = parseBulkEditJson()
+		} catch (error) {
+			bulkEditError.value = error instanceof SyntaxError ? t('aiWorks.bulkEdit.invalidJson') : error.message
+			return
+		}
+
+		bulkEditSaving.value = true
+		try {
+			const { data } = await saveAiWorkBulkEditPages(rows)
+			const result = data.data || {}
+			bulkEditJson.value = JSON.stringify(result.pages || rows, null, 2)
+			bulkEditResult.value = result
+
+			const updatedIds = rows.map((page) => Number(page.id))
+			if (selectedPageId.value && updatedIds.includes(selectedPageId.value)) {
+				createPageDraft()
+			}
+
+			await loadPages({ page: pagePagination.current_page })
+			$q.notify({ type: 'positive', message: t('aiWorks.bulkEdit.updated', { count: result.updated_count || rows.length }) })
+		} catch (error) {
+			captureBulkEditErrors(error)
+		} finally {
+			bulkEditSaving.value = false
+		}
+	}
+
+	async function copyBulkEditTask() {
+		try {
+			await navigator.clipboard.writeText(bulkEditTaskText.value)
+			$q.notify({ type: 'positive', message: t('aiWorks.bulkEdit.taskCopied') })
+		} catch {
+			openTask()
+			taskForm.title = t('aiWorks.bulkEdit.taskTitle')
+			taskForm.text = bulkEditTaskText.value
+		}
+	}
+
+	async function loadNextBulkEditBatch() {
+		if (!bulkEditMeta.next_id_from) return
+
+		bulkEditFilters.id_from = bulkEditMeta.next_id_from
+		await loadBulkEditJson()
+	}
+
 	async function loadPreferences() {
 		try {
 			const { data } = await fetchAiWorkPreferences()
@@ -466,15 +596,6 @@
 		pageForm.category_key = ''
 	}
 
-	function changeDefaultType(type) {
-		if (type === pageDefaults.type) {
-			return
-		}
-
-		pageDefaults.type = type
-		pageDefaults.category_key = ''
-	}
-
 	function categoryLabel(categoryKey) {
 		const topic = catalogTopicByKey(catalogGroups.value, categoryKey)
 
@@ -482,14 +603,13 @@
 	}
 
 	function bulkTemplate() {
-		const categoryKey = pageDefaults.category_key || defaultCategoryGroups.value[0]?.topics?.[0]?.key || ''
 		const sample = {
-			type: pageDefaults.type,
+			type: 'business',
 			name: 'Example business',
 			public_description: 'Short public description.',
-			category_key: categoryKey,
-			city: pageDefaults.city || 'Tel Aviv',
-			neighborhood: pageDefaults.neighborhood || '',
+			category_key: 'professionals.electricians',
+			city: 'Tel Aviv',
+			neighborhood: 'Ramat Aviv',
 			street: 'Example Street',
 			number: '10',
 			phone: '',
@@ -558,7 +678,6 @@
 
 		bulkSaving.value = true
 		try {
-			await savePreferences()
 			const clientImportId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-0000-4000-8000-${Math.random().toString(16).slice(2, 14).padEnd(12, '0')}`
 			const { data } = await createAiPageImport({ client_import_id: clientImportId, rows })
 			bulkResult.value = data.data
@@ -632,9 +751,14 @@
 		() => pageForm.address.neighborhood
 	], scheduleDuplicateCheck)
 
-	watch(() => pageDefaults.city, () => {
-		if (pageDefaults.neighborhood && !hasOptionValue(defaultNeighborhoodOptions.value, pageDefaults.neighborhood)) {
-			pageDefaults.neighborhood = ''
+	watch(bulkEditCity, () => {
+		if (!bulkEditFilters.city) {
+			bulkEditFilters.neighborhood = ''
+			return
+		}
+
+		if (bulkEditFilters.neighborhood && !hasOptionValue(bulkEditNeighborhoodOptions.value, bulkEditFilters.neighborhood)) {
+			bulkEditFilters.neighborhood = ''
 		}
 	})
 
@@ -728,6 +852,12 @@
 										<span class="workspace-tab-content">
 											<BulkImportIcon :size="20" />
 											<span>{{ t('aiWorks.bulk.title') }}</span>
+										</span>
+									</q-tab>
+									<q-tab name="bulk-edit">
+										<span class="workspace-tab-content">
+											<BulkEditIcon :size="20" />
+											<span>{{ t('aiWorks.bulkEdit.title') }}</span>
 										</span>
 									</q-tab>
 									<q-tab name="unclaimed-pages">
@@ -1077,63 +1207,6 @@
 											</q-btn>
 										</header>
 
-										<section class="working-defaults">
-											<div class="working-defaults__head">
-												<div>
-													<h3>{{ t('aiWorks.bulk.defaultsTitle') }}</h3>
-													<p>{{ t('aiWorks.bulk.defaultsIntro') }}</p>
-												</div>
-												<q-btn flat
-													rounded
-													color="primary"
-													icon="save"
-													:loading="preferencesSaving"
-													:label="t('aiWorks.bulk.saveDefaults')"
-													@click="savePreferences()"
-												/>
-											</div>
-											<q-btn-toggle
-												:model-value="pageDefaults.type"
-												spread
-												no-caps
-												rounded
-												unelevated
-												toggle-color="primary"
-												color="white"
-												text-color="dark"
-												:options="pageTypeOptions"
-												class="page-type-toggle"
-												@update:model-value="changeDefaultType"
-											/>
-											<div class="form-grid form-grid--three">
-												<q-select v-model="pageDefaults.city"
-													outlined
-													clearable
-													emit-value
-													map-options
-													options-dense
-													:options="cityOptions"
-													:label="t('pages.city')"
-												/>
-												<q-select v-model="pageDefaults.neighborhood"
-													outlined
-													clearable
-													emit-value
-													map-options
-													options-dense
-													:options="defaultNeighborhoodOptions"
-													:label="t('auth.neighborhood')"
-													:disable="!pageDefaults.city"
-												/>
-												<CatalogCategorySelect
-													v-model="pageDefaults.category_key"
-													:groups="catalogGroups"
-													:scope="defaultCategoryScope"
-													:label="t('catalog.category')"
-												/>
-											</div>
-										</section>
-
 										<div class="bulk-mode-row">
 											<q-btn-toggle v-model="bulkMode"
 												no-caps
@@ -1192,6 +1265,145 @@
 												</span>
 											</q-btn>
 										</div>
+									</section>
+								</q-tab-panel>
+
+								<q-tab-panel name="bulk-edit">
+									<section class="bulk-card bulk-edit-card">
+										<header class="bulk-head">
+											<div>
+												<h2>{{ t('aiWorks.bulkEdit.title') }}</h2>
+												<p>{{ t('aiWorks.bulkEdit.intro') }}</p>
+											</div>
+											<q-btn outline rounded color="primary" @click="copyBulkEditTask">
+												<span class="svg-button-content">
+													<CopyTemplateIcon :size="20" />
+													<span>{{ t('aiWorks.bulkEdit.copyTask') }}</span>
+												</span>
+											</q-btn>
+										</header>
+
+										<section class="bulk-edit-task-note">
+											<BulkEditIcon :size="26" />
+											<div>
+												<strong>{{ t('aiWorks.bulkEdit.taskTitle') }}</strong>
+												<p>{{ t('aiWorks.bulkEdit.taskHint') }}</p>
+											</div>
+										</section>
+
+										<div class="bulk-edit-filter-grid">
+											<q-select
+												v-model="bulkEditFilters.city"
+												outlined
+												clearable
+												emit-value
+												map-options
+												options-dense
+												:options="cityOptions"
+												:label="t('pages.city')"
+											/>
+											<q-select
+												v-model="bulkEditFilters.neighborhood"
+												outlined
+												clearable
+												emit-value
+												map-options
+												options-dense
+												:options="bulkEditNeighborhoodOptions"
+												:label="t('auth.neighborhood')"
+												:disable="!bulkEditFilters.city"
+											/>
+											<CatalogCategorySelect
+												v-model="bulkEditFilters.category_key"
+												:groups="catalogGroups"
+												:scope="bulkEditCategoryScope"
+												:label="t('aiWorks.bulkEdit.categoryFilter')"
+											/>
+											<q-input
+												v-model.number="bulkEditFilters.id_from"
+												outlined
+												clearable
+												type="number"
+												min="1"
+												:label="t('aiWorks.bulkEdit.idFrom')"
+											/>
+											<q-input
+												v-model.number="bulkEditFilters.id_to"
+												outlined
+												clearable
+												type="number"
+												min="1"
+												:label="t('aiWorks.bulkEdit.idTo')"
+											/>
+										</div>
+
+										<div class="bulk-edit-load-row">
+											<span>{{ t('aiWorks.bulkEdit.filterHint') }}</span>
+											<q-btn
+												rounded
+												unelevated
+												color="primary"
+												:loading="bulkEditLoading"
+												@click="loadBulkEditJson"
+											>
+												<span class="svg-button-content">
+													<JsonLoadIcon :size="21" />
+													<span>{{ t('aiWorks.bulkEdit.loadJson') }}</span>
+												</span>
+											</q-btn>
+										</div>
+
+										<section v-if="bulkEditJson" class="bulk-edit-meta" aria-live="polite">
+											<div>
+												<strong>{{ t('aiWorks.bulkEdit.matches', { count: bulkEditMeta.matched_count }) }}</strong>
+												<span>{{ t('aiWorks.bulkEdit.loadedCount', { count: bulkEditMeta.returned_count }) }}</span>
+											</div>
+											<div v-if="bulkEditMeta.truncated" class="bulk-edit-next">
+												<span>{{ t('aiWorks.bulkEdit.truncated', { count: bulkEditMeta.limit, id: bulkEditMeta.next_id_from }) }}</span>
+												<q-btn flat rounded color="primary" :label="t('aiWorks.bulkEdit.loadNext')" @click="loadNextBulkEditBatch" />
+											</div>
+										</section>
+
+										<q-input
+											v-model="bulkEditJson"
+											outlined
+											type="textarea"
+											class="bulk-input bulk-edit-json"
+											input-class="bulk-input__control"
+											:placeholder="t('aiWorks.bulkEdit.jsonPlaceholder')"
+											@update:model-value="clearBulkEditFeedback"
+										/>
+
+										<div v-if="bulkEditError" class="page-save-error" role="alert">
+											<strong>{{ bulkEditError }}</strong>
+											<ul v-if="bulkEditValidationErrors.length">
+												<li v-for="item in bulkEditValidationErrors" :key="`${item.field}-${item.message}`">
+													{{ item.field }}: {{ item.message }}
+												</li>
+											</ul>
+										</div>
+										<section v-if="bulkEditResult" class="bulk-result" aria-live="polite">
+											<h3>{{ t('aiWorks.bulkEdit.completed') }}</h3>
+											<strong>{{ t('aiWorks.bulkEdit.updated', { count: bulkEditResult.updated_count }) }}</strong>
+										</section>
+
+										<div class="save-row bulk-edit-save-row">
+											<span>{{ t('aiWorks.bulkEdit.atomicNote') }}</span>
+											<q-btn
+												rounded
+												unelevated
+												color="primary"
+												:loading="bulkEditSaving"
+												:disable="!bulkEditJson.trim()"
+												@click="saveBulkEditJson"
+											>
+												<span class="svg-button-content">
+													<JsonSaveIcon :size="21" />
+													<span>{{ t('aiWorks.bulkEdit.saveJson') }}</span>
+												</span>
+											</q-btn>
+										</div>
+										<q-inner-loading :showing="bulkEditLoading" color="primary" />
 									</section>
 								</q-tab-panel>
 
@@ -1566,6 +1778,7 @@
 }
 
 .bulk-card {
+  position: relative;
   display: grid;
   gap: 20px;
   padding: 24px;
@@ -1575,8 +1788,79 @@
   box-shadow: 0 18px 42px rgba(40, 22, 93, 0.08);
 }
 
+.bulk-edit-task-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-inline-start: 3px solid var(--q-primary);
+  background: rgba(124, 58, 237, 0.045);
+}
+
+.bulk-edit-task-note strong,
+.bulk-edit-task-note p {
+  margin: 0;
+}
+
+.bulk-edit-task-note p {
+  margin-top: 2px;
+  color: var(--soz-muted);
+  font-size: 0.9rem;
+}
+
+.bulk-edit-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.bulk-edit-load-row,
+.bulk-edit-meta,
+.bulk-edit-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.bulk-edit-load-row > span,
+.bulk-edit-save-row > span {
+  color: var(--soz-muted);
+  font-size: 0.9rem;
+}
+
+.bulk-edit-meta {
+  padding: 12px 14px;
+  border: 1px solid rgba(17, 34, 45, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.bulk-edit-meta > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.bulk-edit-meta span {
+  color: var(--soz-muted);
+  font-size: 0.86rem;
+}
+
+.bulk-edit-next {
+  justify-content: flex-end;
+}
+
+.bulk-edit-json :deep(textarea) {
+  min-height: 520px !important;
+}
+
+.bulk-edit-save-row {
+  align-items: center;
+  justify-content: space-between;
+}
+
 .bulk-head,
-.working-defaults__head,
 .bulk-mode-row,
 .page-list-toolbar {
   display: flex;
@@ -1586,24 +1870,14 @@
 }
 
 .bulk-head h2,
-.working-defaults h3,
 .bulk-result h3 {
   margin: 0;
   color: var(--soz-ink);
 }
 
-.bulk-head p,
-.working-defaults p {
+.bulk-head p {
   margin: 5px 0 0;
   color: var(--soz-muted);
-}
-
-.working-defaults {
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-  border-radius: 18px;
-  background: rgba(123, 63, 242, 0.06);
 }
 
 .bulk-mode-row {
@@ -1862,7 +2136,6 @@
   }
 
   .bulk-head,
-  .working-defaults__head,
   .page-list-toolbar,
   .import-history__row {
     align-items: stretch;
@@ -1885,6 +2158,27 @@
   .form-grid--four,
   .form-grid--address {
     grid-template-columns: 1fr;
+  }
+
+  .bulk-edit-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bulk-edit-load-row,
+  .bulk-edit-meta,
+  .bulk-edit-next,
+  .bulk-edit-save-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bulk-edit-load-row .q-btn,
+  .bulk-edit-save-row .q-btn {
+    width: 100%;
+  }
+
+  .bulk-edit-json :deep(textarea) {
+    min-height: 420px !important;
   }
 
   .hours-row {

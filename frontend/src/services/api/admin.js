@@ -20,6 +20,10 @@ export function updateAdminPageOwner(id, userId) {
 	return apiClient.patch(`/admin/pages/${id}/owner`, { user_id: userId })
 }
 
+export function deleteAdminPage(id) {
+	return apiClient.delete(`/admin/pages/${id}`)
+}
+
 export function fetchAdminSupportChats() {
 	return apiClient.get('/admin/support-chats')
 }

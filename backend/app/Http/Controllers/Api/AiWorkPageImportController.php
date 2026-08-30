@@ -6,7 +6,6 @@ use App\Exceptions\ExactPageDuplicateException;
 use App\Http\Controllers\Controller;
 use App\Models\AiPageImport;
 use App\Models\AiPageImportRow;
-use App\Models\AiWorkPreference;
 use App\Models\Page;
 use App\Services\AiWorkPageService;
 use App\Services\ApiResponseService;
@@ -62,8 +61,6 @@ class AiWorkPageImportController extends Controller
             'input_count' => count($request->input('rows')),
             'expires_at' => now()->addDays(30),
         ]);
-        $preference = AiWorkPreference::query()->where('user_id', $request->user()->id)->first();
-        $preferences = $preference?->page_defaults ?? $this->pages->defaultPreferences();
         $created = [];
         $skipped = [];
         $duplicateCount = 0;
@@ -71,7 +68,7 @@ class AiWorkPageImportController extends Controller
 
         foreach (array_values($request->input('rows')) as $index => $rawRow) {
             $position = $index + 1;
-            $input = $this->normalizedRow($rawRow, $preferences);
+            $input = $this->normalizedRow($rawRow);
 
             try {
                 $data = $this->pages->validate($input);
@@ -118,16 +115,16 @@ class AiWorkPageImportController extends Controller
         ], 'Import completed.', 201);
     }
 
-    private function normalizedRow(array $row, array $defaults): array
+    private function normalizedRow(array $row): array
     {
         $address = is_array($row['address'] ?? null) ? $row['address'] : [];
         $socials = is_array($row['socials'] ?? null) ? $row['socials'] : [];
 
         $normalized = [
-            'type' => $row['type'] ?? $defaults['type'] ?? Page::TYPE_BUSINESS,
+            'type' => $row['type'] ?? '',
             'name' => $row['name'] ?? $row['title'] ?? '',
             'public_description' => $row['public_description'] ?? $row['description'] ?? null,
-            'category_key' => $row['category_key'] ?? $row['category'] ?? $defaults['category_key'] ?? '',
+            'category_key' => $row['category_key'] ?? $row['category'] ?? '',
             'contact_email' => $row['contact_email'] ?? $row['email'] ?? null,
             'phone' => $row['phone'] ?? null,
             'whatsapp' => $row['whatsapp'] ?? null,
@@ -135,8 +132,8 @@ class AiWorkPageImportController extends Controller
             'address' => [
                 'street' => $address['street'] ?? $row['street'] ?? null,
                 'number' => $address['number'] ?? $row['number'] ?? null,
-                'city' => $address['city'] ?? $row['city'] ?? $defaults['city'] ?? '',
-                'neighborhood' => $address['neighborhood'] ?? $row['neighborhood'] ?? $defaults['neighborhood'] ?? null,
+                'city' => $address['city'] ?? $row['city'] ?? '',
+                'neighborhood' => $address['neighborhood'] ?? $row['neighborhood'] ?? null,
             ],
             'socials' => [
                 'facebook' => $socials['facebook'] ?? $row['facebook'] ?? null,
@@ -147,10 +144,7 @@ class AiWorkPageImportController extends Controller
             'opening_hours' => $row['opening_hours'] ?? [],
         ];
 
-        $normalized['palette_key'] = $this->pages->automaticPalette(
-            $normalized,
-            $row['palette_key'] ?? $row['palette'] ?? null,
-        );
+        $normalized['palette_key'] = $this->pages->automaticPalette($normalized);
 
         return $normalized;
     }

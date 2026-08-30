@@ -402,7 +402,6 @@
 
 			<section v-if="isUnclaimed" class="unclaimed-notice">
 				<div class="unclaimed-notice__copy">
-					<span class="unclaimed-notice__badge">{{ t('pageClaim.unverifiedBadge') }}</span>
 					<h2>{{ t('pageClaim.title') }}</h2>
 					<p>{{ t('pageClaim.description') }}</p>
 					<p class="unclaimed-notice__warning">{{ t('pageClaim.accuracyWarning') }}</p>
@@ -410,7 +409,8 @@
 				<div class="unclaimed-notice__action">
 					<q-btn v-if="!authStore.isAuthenticated"
 						rounded
-						unelevated
+						outline
+						no-caps
 						color="primary"
 						icon="person_add"
 						:label="t('pageClaim.registerToClaim')"
@@ -418,7 +418,8 @@
 					/>
 					<q-btn v-else-if="canRequestClaim"
 						rounded
-						unelevated
+						outline
+						no-caps
 						color="primary"
 						icon="verified_user"
 						:disable="claimSent"
@@ -518,20 +519,19 @@
 
 .unclaimed-notice {
   display: flex;
-  gap: 24px;
+  gap: 18px;
   align-items: center;
   justify-content: space-between;
-  margin-top: 24px;
-  padding: 24px;
-  border: 1px solid rgba(123, 63, 242, 0.2);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 16px 36px rgba(40, 22, 93, 0.08);
+  margin-top: 20px;
+  padding: 16px 18px;
+  border: 1px solid rgba(17, 34, 45, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.36);
 }
 
 .unclaimed-notice__copy {
   display: grid;
-  gap: 8px;
+  gap: 4px;
   max-width: 850px;
 }
 
@@ -543,25 +543,27 @@
 .unclaimed-notice__copy p,
 .unclaimed-notice__copy small {
   color: var(--soz-muted);
-  line-height: 1.55;
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
-.unclaimed-notice__badge {
-  width: max-content;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(123, 63, 242, 0.11);
-  color: var(--soz-primary-deep);
-  font-size: 0.78rem;
-  font-weight: 850;
+.unclaimed-notice__copy h2 {
+  color: rgba(17, 34, 45, 0.82);
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .unclaimed-notice__warning {
-  font-weight: 750;
+  font-weight: 600;
 }
 
 .unclaimed-notice__action {
   flex: 0 0 auto;
+}
+
+.unclaimed-notice__action .q-btn {
+  min-height: 40px;
+  font-size: 0.86rem;
 }
 
 .claim-dialog-card {
@@ -735,7 +737,7 @@
 
   .unclaimed-notice {
     align-items: stretch;
-    padding: 18px;
+		padding: 14px;
     flex-direction: column;
   }
 

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AdminPageController;
 use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\AdminSupportController;
 use App\Http\Controllers\Api\AdminUserController;
+use App\Http\Controllers\Api\AiWorkPageBulkEditController;
 use App\Http\Controllers\Api\AiWorkPageController;
 use App\Http\Controllers\Api\AiWorkPageImportController;
 use App\Http\Controllers\Api\AiWorkPreferenceController;
@@ -133,6 +134,8 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
             Route::patch('/preferences', [AiWorkPreferenceController::class, 'update'])->withoutMiddleware('recaptcha');
             Route::get('/pages', [AiWorkPageController::class, 'index']);
             Route::post('/pages/duplicate-check', [AiWorkPageController::class, 'duplicateCheck'])->withoutMiddleware('recaptcha');
+            Route::get('/pages/bulk-edit', [AiWorkPageBulkEditController::class, 'export']);
+            Route::patch('/pages/bulk-edit', [AiWorkPageBulkEditController::class, 'update'])->withoutMiddleware('recaptcha');
             Route::post('/pages', [AiWorkPageController::class, 'store'])->withoutMiddleware('recaptcha');
             Route::get('/pages/{page}', [AiWorkPageController::class, 'show']);
             Route::put('/pages/{page}', [AiWorkPageController::class, 'update'])->withoutMiddleware('recaptcha');
@@ -154,6 +157,7 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::get('/pages', [AdminPageController::class, 'index']);
         Route::get('/page-owner-options', [AdminPageController::class, 'ownerOptions']);
         Route::patch('/pages/{page}/owner', [AdminPageController::class, 'updateOwner']);
+        Route::delete('/pages/{page}', [AdminPageController::class, 'destroy']);
         Route::get('/settings', [AdminSettingsController::class, 'index']);
         Route::patch('/settings/{section}', [AdminSettingsController::class, 'update']);
         Route::get('/blocked-terms', [AdminBlockedTermController::class, 'index']);

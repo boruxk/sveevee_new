@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Services\AiWorkPageService;
 use App\Services\ApiResponseService;
+use App\Services\PageDeletionService;
 use App\Services\PageIdentityService;
 use App\Services\PayloadService;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ class AiWorkPageController extends Controller
 {
     public function __construct(
         private readonly AiWorkPageService $pages,
+        private readonly PageDeletionService $deletions,
         private readonly PageIdentityService $identities,
         private readonly PayloadService $payloads,
     ) {}
@@ -95,7 +97,7 @@ class AiWorkPageController extends Controller
     public function destroy(Request $request, Page $page)
     {
         $this->ensureEditable($request, $page);
-        $page->delete();
+        $this->deletions->delete($page);
 
         return ApiResponseService::success(null, 'Page deleted.');
     }

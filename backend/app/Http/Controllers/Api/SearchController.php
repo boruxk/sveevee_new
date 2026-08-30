@@ -67,7 +67,9 @@ class SearchController extends Controller
                 ? $this->nullableString($request->query('preferred_neighborhood'))
                 : null;
 
-            return $this->discovery($preferredCity, $preferredNeighborhood);
+            $page = max(1, $request->integer('page', 1));
+
+            return $this->discovery($preferredCity, $preferredNeighborhood, $page);
         }
 
         if (! $hasSearchCriteria) {
@@ -228,18 +230,20 @@ class SearchController extends Controller
         ]);
     }
 
-    private function discovery(?string $city, ?string $neighborhood)
+    private function discovery(?string $city, ?string $neighborhood, int $page)
     {
-        $pages = $this->prioritizedDiscoveryItems(
+        $pageResults = $this->prioritizedDiscoveryPage(
             Page::query()
                 ->with(['user.profile'])
                 ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at')),
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inPageLocation($query, $tierCity, $tierNeighborhood),
             $city,
-            $neighborhood
-        )->map(fn (Page $page): array => $this->compactPage($page));
+            $neighborhood,
+            $page
+        );
+        $pages = $pageResults['items']->map(fn (Page $page): array => $this->compactPage($page));
 
-        $products = $this->prioritizedDiscoveryItems(
+        $productResults = $this->prioritizedDiscoveryPage(
             PageProduct::query()
                 ->with([
                     'page' => fn ($page) => $page
@@ -252,10 +256,12 @@ class SearchController extends Controller
                     ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))),
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
             $city,
-            $neighborhood
-        )->map(fn (PageProduct $product): array => $this->withCompactPage($this->payloads->product($product), $product->page));
+            $neighborhood,
+            $page
+        );
+        $products = $productResults['items']->map(fn (PageProduct $product): array => $this->withCompactPage($this->payloads->product($product), $product->page));
 
-        $services = $this->prioritizedDiscoveryItems(
+        $serviceResults = $this->prioritizedDiscoveryPage(
             PageService::query()
                 ->with(['page.user.profile'])
                 ->whereHas('page', fn (Builder $page) => $page
@@ -263,10 +269,12 @@ class SearchController extends Controller
                     ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))),
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
             $city,
-            $neighborhood
-        )->map(fn (PageService $service): array => $this->withCompactPage($this->payloads->service($service), $service->page));
+            $neighborhood,
+            $page
+        );
+        $services = $serviceResults['items']->map(fn (PageService $service): array => $this->withCompactPage($this->payloads->service($service), $service->page));
 
-        $events = $this->prioritizedDiscoveryItems(
+        $eventResults = $this->prioritizedDiscoveryPage(
             PageEvent::query()
                 ->with(['page.user.profile'])
                 ->whereDate('event_date', '>=', today())
@@ -275,18 +283,32 @@ class SearchController extends Controller
                     ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))),
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
             $city,
-            $neighborhood
-        )->map(fn (PageEvent $event): array => $this->withCompactPage($this->payloads->event($event), $event->page));
+            $neighborhood,
+            $page
+        );
+        $events = $eventResults['items']->map(fn (PageEvent $event): array => $this->withCompactPage($this->payloads->event($event), $event->page));
 
-        $ads = $this->prioritizedDiscoveryItems(
+        $adResults = $this->prioritizedDiscoveryPage(
             Ad::query()
                 ->with(['user.profile', 'page'])
                 ->active()
                 ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at')),
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $query->inLocation($tierCity, $tierNeighborhood),
             $city,
-            $neighborhood
-        )->map(fn (Ad $ad): array => $this->payloads->ad($ad));
+            $neighborhood,
+            $page
+        );
+        $ads = $adResults['items']->map(fn (Ad $ad): array => $this->payloads->ad($ad));
+
+        $scopeResults = [
+            'pages' => $pageResults,
+            'products' => $productResults,
+            'services' => $serviceResults,
+            'events' => $eventResults,
+            'ads' => $adResults,
+        ];
+        $lastPage = max(array_column($scopeResults, 'last_page'));
+        $scopeTotals = collect($scopeResults)->map(fn (array $result): int => $result['total'])->all();
 
         return ApiResponseService::success([
             'users' => [],
@@ -302,26 +324,62 @@ class SearchController extends Controller
                 'city' => $city,
                 'neighborhood' => $neighborhood,
             ],
+            'pagination' => [
+                'current_page' => $page,
+                'per_scope' => self::DISCOVERY_LIMIT,
+                'total' => array_sum($scopeTotals),
+                'scope_totals' => $scopeTotals,
+                'last_page' => $lastPage,
+                'has_more' => $page < $lastPage,
+                'next_page' => $page < $lastPage ? $page + 1 : null,
+            ],
         ]);
+    }
+
+    private function prioritizedDiscoveryPage(
+        Builder $query,
+        callable $applyLocation,
+        ?string $city,
+        ?string $neighborhood,
+        int $page
+    ): array {
+        $total = (clone $query)->count();
+        $lastPage = max(1, (int) ceil($total / self::DISCOVERY_LIMIT));
+        $offset = ($page - 1) * self::DISCOVERY_LIMIT;
+
+        if ($offset >= $total) {
+            return ['items' => collect(), 'total' => $total, 'last_page' => $lastPage];
+        }
+
+        $items = $this->prioritizedDiscoveryItems(
+            $query,
+            $applyLocation,
+            $city,
+            $neighborhood,
+            min($total, $page * self::DISCOVERY_LIMIT)
+        )->slice($offset, self::DISCOVERY_LIMIT)->values();
+
+        return ['items' => $items, 'total' => $total, 'last_page' => $lastPage];
     }
 
     private function prioritizedDiscoveryItems(
         Builder $query,
         callable $applyLocation,
         ?string $city,
-        ?string $neighborhood
+        ?string $neighborhood,
+        int $limit
     ): Collection {
         $items = collect();
 
         if ($city && $neighborhood) {
-            $this->appendDiscoveryTier($items, $query, $applyLocation, $city, $neighborhood);
+            $this->appendDiscoveryTier($items, $query, $applyLocation, $city, $neighborhood, $limit);
         }
 
         if ($city) {
-            $this->appendDiscoveryTier($items, $query, $applyLocation, $city, null);
+            $this->appendDiscoveryTier($items, $query, $applyLocation, $city, null, $limit);
         }
 
-        $this->appendDiscoveryTier($items, $query, $applyLocation, null, null);
+        $this->appendDiscoveryTier($items, $query, $applyLocation, null, null, $limit);
 
         return $items;
     }
@@ -331,9 +389,10 @@ class SearchController extends Controller
         Builder $query,
         callable $applyLocation,
         ?string $city,
-        ?string $neighborhood
+        ?string $neighborhood,
+        int $limit
     ): void {
-        $remaining = self::DISCOVERY_LIMIT - $items->count();
+        $remaining = $limit - $items->count();
 
         if ($remaining <= 0) {
             return;

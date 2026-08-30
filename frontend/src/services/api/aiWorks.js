@@ -32,6 +32,14 @@ export function updateAiWorkPage(id, payload) {
 	return apiClient.put(`/ai-works/pages/${id}`, payload, { recaptcha: false })
 }
 
+export function fetchAiWorkBulkEditPages(params = {}) {
+	return apiClient.get('/ai-works/pages/bulk-edit', { params })
+}
+
+export function saveAiWorkBulkEditPages(pages) {
+	return apiClient.patch('/ai-works/pages/bulk-edit', { pages }, { recaptcha: false })
+}
+
 export function deleteAiWorkPage(id) {
 	return apiClient.delete(`/ai-works/pages/${id}`)
 }

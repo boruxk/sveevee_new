@@ -664,7 +664,12 @@ export default {
 			detached: 'La page a été détachée et replacée parmi les pages non revendiquées.',
 			detachFailed: 'Impossible de détacher la page.',
 			detachTitle: 'Détacher la page de l’utilisateur ?',
-			detachMessage: 'Détacher « {page} » de {user} ? Elle redeviendra une page non revendiquée.'
+			detachMessage: 'Détacher « {page} » de {user} ? Elle redeviendra une page non revendiquée.',
+			deletePermanently: 'Supprimer définitivement',
+			deleteTitle: 'Supprimer définitivement la page ?',
+			deleteMessage: 'Supprimer « {page} » ainsi que toutes ses annonces, produits, services, événements, évaluations, discussions et images ? Cette action est irréversible.',
+			deleted: 'Page supprimée définitivement.',
+			deleteFailed: 'Impossible de supprimer la page.'
 		},
 		settings: {
 			title: 'Paramètres',
@@ -765,15 +770,12 @@ export default {
 		},
 		bulk: {
 			title: 'Import groupé',
-			intro: 'Collez jusqu’à 100 pages d’entreprise ou de communauté au format JSON ou dans un tableau séparé par tabulations.',
+			intro: 'Chaque ligne doit contenir type, name, category_key et city. Le quartier est facultatif. Collez jusqu’à 100 lignes au format JSON ou dans un tableau séparé par tabulations.',
 			table: 'Table',
 			limit: 'Maximum 100 lignes par import.',
 			copyTemplate: 'Copier le modèle',
 			templateCopied: 'Modèle copié.',
-			defaultsTitle: 'Valeurs de travail',
-			defaultsIntro: 'Ces valeurs complètent les champs manquants et restent disponibles à la prochaine connexion.',
-			saveDefaults: 'Enregistrer les valeurs',
-			defaultsFailed: 'Les valeurs de travail n’ont pas pu être enregistrées.',
+			defaultsFailed: 'Les valeurs enregistrées du formulaire individuel n’ont pas pu être mises à jour.',
 			jsonPlaceholder: 'Collez un tableau JSON ici...',
 			tablePlaceholder: 'Collez ici un tableau avec en-tête séparé par tabulations...',
 			emptyInput: 'Collez d’abord au moins une ligne.',
@@ -790,6 +792,35 @@ export default {
 			skippedRow: 'Ligne {row} : {name} ({reason})',
 			recent: 'Imports récents',
 			historySummary: '{created} créées, {duplicates} doublons, {invalid} invalides'
+		},
+		bulkEdit: {
+			title: 'Modification groupée',
+			intro: 'Filtrez les pages non revendiquées, chargez leurs informations modifiables en JSON, enrichissez-les et enregistrez-les.',
+			copyTask: 'Copier la tâche de modification IA',
+			taskTitle: 'Rechercher et enrichir les pages non revendiquées',
+			taskHint: 'La tâche copiée explique à ChatGPT Work comment rechercher, modifier ce JSON et l’enregistrer sans étape de validation humaine.',
+			taskCopied: 'Tâche de modification IA copiée.',
+			categoryFilter: 'Catégorie',
+			idFrom: 'ID de début',
+			idTo: 'ID de fin',
+			filterHint: 'Tous les filtres sont facultatifs. Seules les pages non revendiquées de ce compte AI Works peuvent être chargées.',
+			loadJson: 'Charger le JSON',
+			loaded: '{count} pages chargées en JSON.',
+			matches: '{count} pages correspondantes',
+			loadedCount: '{count} chargées dans l’éditeur',
+			truncated: 'Seules les {count} premières pages ont été chargées. Continuez à partir de l’ID {id}.',
+			loadNext: 'Charger le lot suivant',
+			jsonPlaceholder: 'Définissez les filtres et chargez les pages. Le tableau JSON modifiable apparaîtra ici.',
+			emptyJson: 'Chargez ou collez d’abord au moins une page.',
+			arrayRequired: 'Le JSON doit être un seul tableau d’objets de page.',
+			rowLimit: 'Le JSON doit contenir entre 1 et {count} pages.',
+			idRequired: 'Chaque ligne JSON doit conserver l’identifiant numérique de sa page.',
+			invalidJson: 'Le JSON n’est pas valide.',
+			atomicNote: 'Toutes les lignes sont d’abord validées. Si une ligne échoue, aucune page n’est modifiée.',
+			saveJson: 'Valider et enregistrer le JSON',
+			completed: 'Modification groupée terminée',
+			updated: '{count} pages mises à jour.',
+			failed: 'Les pages JSON n’ont pas pu être mises à jour.'
 		},
 		duplicates: {
 			exact: 'Cette page existe déjà et ne peut pas être créée à nouveau.'
@@ -827,6 +858,7 @@ export default {
 		advanced: 'Recherche avancée',
 		hideAdvanced: 'Masquer la recherche avancée',
 		chooseType: 'Que voulez-vous rechercher ?',
+		loadMore: 'Charger plus de résultats',
 		empty: 'Aucun résultat.'
 	},
 	catalog: {

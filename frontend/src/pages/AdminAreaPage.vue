@@ -8,6 +8,7 @@
 		banAdminUser,
 		cancelPageClaim,
 		createBlockedTerm,
+		deleteAdminPage,
 		deleteAdminUser,
 		deleteBlockedTerm,
 		fetchAdminPageOwnerOptions,
@@ -87,6 +88,7 @@
 	const pageOwnerOptions = ref([])
 	const pageOwnerOptionsLoading = ref(false)
 	const pageOwnerSaving = ref(false)
+	const deletingPageId = ref(null)
 	const selectedUser = ref(null)
 	const userDetailsOpen = ref(false)
 	const userDetailsLoading = ref(false)
@@ -471,6 +473,45 @@
 			ok: { label: t('admin.pages.detach'), color: 'negative', unelevated: true },
 			cancel: { label: t('actions.cancel'), color: 'primary', flat: true }
 		}).onOk(() => detachPageOwner(page))
+	}
+
+	async function deletePagePermanently(page) {
+		deletingPageId.value = page.id
+
+		try {
+			await deleteAdminPage(page.id)
+
+			if (selectedAdminPage.value?.id === page.id) {
+				pageOwnerDialogOpen.value = false
+				selectedAdminPage.value = null
+			}
+
+			let targetPage = pageTablePagination.value.page
+			if (pageRows.value.length === 1 && targetPage > 1) {
+				targetPage -= 1
+			}
+
+			await loadPageTable(targetPage)
+			$q.notify({ type: 'positive', message: t('admin.pages.deleted') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.pages.deleteFailed')) })
+		} finally {
+			deletingPageId.value = null
+		}
+	}
+
+	function confirmDeletePage(page) {
+		if (!page?.id || deletingPageId.value) {
+			return
+		}
+
+		$q.dialog({
+			title: t('admin.pages.deleteTitle'),
+			message: t('admin.pages.deleteMessage', { page: page.name }),
+			persistent: true,
+			ok: { label: t('admin.pages.deletePermanently'), color: 'negative', unelevated: true },
+			cancel: { label: t('actions.cancel'), color: 'primary', flat: true }
+		}).onOk(() => deletePagePermanently(page))
 	}
 
 	async function openUserDetails(_, row) {
@@ -1198,6 +1239,18 @@
 											@click="confirmDetachPage(props.row)"
 										>
 											<q-tooltip>{{ t('admin.pages.detach') }}</q-tooltip>
+										</q-btn>
+										<q-btn
+											flat
+											round
+											color="negative"
+											icon="delete_forever"
+											:loading="deletingPageId === props.row.id"
+											:disable="Boolean(deletingPageId)"
+											:aria-label="t('admin.pages.deletePermanently')"
+											@click="confirmDeletePage(props.row)"
+										>
+											<q-tooltip>{{ t('admin.pages.deletePermanently') }}</q-tooltip>
 										</q-btn>
 									</div>
 								</q-td>

@@ -20,6 +20,7 @@
 	const router = useRouter()
 	const authStore = useAuthStore()
 	const loading = ref(false)
+	const loadingMore = ref(false)
 	const hasSearched = ref(false)
 	const discoveryMode = ref(false)
 	const q = ref(queryValue(route.query.q))
@@ -31,6 +32,7 @@
 		category: queryValue(route.query.category)
 	})
 	const discoveryLocation = reactive({ city: '', neighborhood: '' })
+	const discoveryPagination = reactive({ current_page: 1, last_page: 1, total: 0, has_more: false, next_page: null })
 	const advancedOpen = ref(false)
 	const results = reactive({ users: [], pages: [], products: [], services: [], events: [], ads: [] })
 	const searchResults = computed(() => [
@@ -86,13 +88,28 @@
 		hasOptionValue
 	} = useLocationOptions(toRef(filters, 'city'))
 
-	function applyResults(payload = {}) {
-		results.users = payload.users || []
-		results.pages = payload.pages || []
-		results.products = payload.products || []
-		results.services = payload.services || []
-		results.events = payload.events || []
-		results.ads = payload.ads || []
+	function mergeById(current, incoming) {
+		const items = new Map(current.map((item) => [String(item.id), item]))
+		incoming.forEach((item) => items.set(String(item.id), item))
+
+		return [...items.values()]
+	}
+
+	function applyResults(payload = {}, { append = false } = {}) {
+		for (const key of Object.keys(results)) {
+			const incoming = payload[key] || []
+			results[key] = append ? mergeById(results[key], incoming) : incoming
+		}
+	}
+
+	function applyDiscoveryPagination(payload = {}) {
+		Object.assign(discoveryPagination, {
+			current_page: 1,
+			last_page: 1,
+			total: 0,
+			has_more: false,
+			next_page: null
+		}, payload)
 	}
 
 	function hasSearchCriteria(params) {
@@ -140,25 +157,43 @@
 		return rightTime - leftTime || String(right.id).localeCompare(String(left.id))
 	}
 
-	async function loadDiscovery() {
+	async function loadDiscovery({ page = 1, append = false } = {}) {
 		const profile = authStore.user?.profile || {}
 		const preferredCity = profile.city || ''
 
-		loading.value = true
+		if (append) {
+			loadingMore.value = true
+		} else {
+			loading.value = true
+		}
 		try {
 			const { data } = await searchEverything({
 				discover: 1,
+				page,
 				preferred_city: preferredCity,
 				preferred_neighborhood: preferredCity ? profile.neighborhood || '' : ''
 			})
-			applyResults(data.data)
+			applyResults(data.data, { append })
+			applyDiscoveryPagination(data.data?.pagination)
 			discoveryLocation.city = data.data?.preferred_location?.city || ''
 			discoveryLocation.neighborhood = data.data?.preferred_location?.neighborhood || ''
 			discoveryMode.value = true
 			hasSearched.value = false
 		} finally {
-			loading.value = false
+			if (append) {
+				loadingMore.value = false
+			} else {
+				loading.value = false
+			}
 		}
+	}
+
+	function loadMoreDiscovery() {
+		if (!discoveryMode.value || loadingMore.value || !discoveryPagination.has_more) {
+			return
+		}
+
+		return loadDiscovery({ page: discoveryPagination.next_page, append: true })
 	}
 
 	async function submit() {
@@ -184,6 +219,7 @@
 			})
 			const { data } = await searchEverything(params)
 			applyResults(data.data)
+			applyDiscoveryPagination()
 			discoveryLocation.city = ''
 			discoveryLocation.neighborhood = ''
 			discoveryMode.value = false
@@ -375,6 +411,23 @@
 						@expired="removeExpiredAd"
 					/>
 				</div>
+				<div v-if="discoveryMode && combinedResults.length > 0 && discoveryPagination.has_more" class="discovery-load-more">
+					<q-btn
+						outline
+						rounded
+						no-caps
+						color="primary"
+						:loading="loadingMore"
+						@click="loadMoreDiscovery"
+					>
+						<span class="discovery-load-more__content">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path d="m6 9 6 6 6-6" />
+							</svg>
+							<span>{{ t('search.loadMore') }}</span>
+						</span>
+					</q-btn>
+				</div>
 			</section>
 		</div>
 	</q-page>
@@ -543,6 +596,34 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
+}
+
+.discovery-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.discovery-load-more .q-btn {
+  min-height: 48px;
+  padding-inline: 24px;
+}
+
+.discovery-load-more__content {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+  font-weight: 760;
+}
+
+.discovery-load-more__content svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .empty-state {

@@ -6,14 +6,18 @@ use App\Models\Ad;
 use App\Models\ChatMessage;
 use App\Models\Page;
 use App\Models\PageClaimRequest;
+use App\Models\PageConversation;
 use App\Models\PageEvent;
 use App\Models\PageProduct;
+use App\Models\PageRating;
 use App\Models\PageService;
 use App\Models\User;
 use App\Services\AiWorkPageService;
 use App\Support\CatalogTopics;
+use App\Support\PublicImageVariants;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -201,6 +205,112 @@ class AiWorksApiTest extends TestCase
         $this->assertDatabaseCount('pages', 2);
     }
 
+    public function test_ai_worker_exports_filtered_pages_as_json_and_saves_enriched_data(): void
+    {
+        $worker = $this->aiWorker();
+        Sanctum::actingAs($worker);
+
+        $firstPayload = $this->pagePayload();
+        $firstPayload['name'] = 'Bulk Enrichment First Business';
+        $firstPayload['phone'] = null;
+        $firstPayload['address']['city'] = 'Tel Aviv';
+        $firstPayload['address']['neighborhood'] = 'Ramat Aviv';
+        $firstId = $this->postJson('/api/v1/ai-works/pages', $firstPayload)
+            ->assertCreated()
+            ->json('data.id');
+
+        $secondPayload = $this->pagePayload();
+        $secondPayload['name'] = 'Bulk Enrichment Second Business';
+        $secondPayload['phone'] = null;
+        $secondPayload['address']['city'] = 'Tel Aviv';
+        $secondPayload['address']['neighborhood'] = 'Ramat Aviv';
+        $secondId = $this->postJson('/api/v1/ai-works/pages', $secondPayload)
+            ->assertCreated()
+            ->json('data.id');
+
+        $outsidePayload = $this->pagePayload();
+        $outsidePayload['name'] = 'Outside Bulk Enrichment Business';
+        $outsideId = $this->postJson('/api/v1/ai-works/pages', $outsidePayload)
+            ->assertCreated()
+            ->json('data.id');
+
+        $export = $this->getJson('/api/v1/ai-works/pages/bulk-edit?'.http_build_query([
+            'city' => 'Tel Aviv',
+            'neighborhood' => 'Ramat Aviv',
+            'category_key' => $firstPayload['category_key'],
+            'id_from' => $firstId,
+            'id_to' => $secondId,
+        ]))->assertOk()
+            ->assertJsonPath('data.matched_count', 2)
+            ->assertJsonPath('data.returned_count', 2)
+            ->assertJsonPath('data.truncated', false)
+            ->assertJsonPath('data.pages.0.id', $firstId)
+            ->assertJsonPath('data.pages.1.id', $secondId)
+            ->assertJsonMissingPath('data.pages.0.palette_key');
+
+        $rows = $export->json('data.pages');
+        $rows[0]['phone'] = '03-555-0101';
+        $rows[0]['whatsapp'] = '97235550101';
+        $rows[1]['phone'] = '03-555-0102';
+
+        $this->patchJson('/api/v1/ai-works/pages/bulk-edit', ['pages' => $rows])
+            ->assertOk()
+            ->assertJsonPath('data.updated_count', 2)
+            ->assertJsonPath('data.pages.0.phone', '03-555-0101')
+            ->assertJsonPath('data.pages.1.phone', '03-555-0102');
+
+        $this->assertDatabaseHas('pages', ['id' => $firstId, 'phone' => '03-555-0101']);
+        $this->assertDatabaseHas('pages', ['id' => $secondId, 'phone' => '03-555-0102']);
+        $this->assertSame('97235550101', data_get(Page::query()->findOrFail($firstId)->setup, 'contact.whatsapp'));
+        $this->assertDatabaseHas('pages', ['id' => $outsideId, 'phone' => '02-555-0100']);
+    }
+
+    public function test_ai_worker_json_edit_is_atomic_and_rejects_claimed_or_invalid_pages(): void
+    {
+        $worker = $this->aiWorker();
+        Sanctum::actingAs($worker);
+
+        $firstPayload = $this->pagePayload();
+        $firstPayload['name'] = 'Atomic Bulk First Business';
+        $firstId = $this->postJson('/api/v1/ai-works/pages', $firstPayload)
+            ->assertCreated()
+            ->json('data.id');
+
+        $secondPayload = $this->pagePayload();
+        $secondPayload['name'] = 'Atomic Bulk Second Business';
+        $secondId = $this->postJson('/api/v1/ai-works/pages', $secondPayload)
+            ->assertCreated()
+            ->json('data.id');
+
+        $rows = $this->getJson('/api/v1/ai-works/pages/bulk-edit?'.http_build_query([
+            'id_from' => $firstId,
+            'id_to' => $secondId,
+        ]))->assertOk()->json('data.pages');
+
+        $invalidRows = $rows;
+        $invalidRows[0]['phone'] = '02-555-9991';
+        $invalidRows[1]['contact_email'] = 'not-an-email';
+
+        $this->patchJson('/api/v1/ai-works/pages/bulk-edit', ['pages' => $invalidRows])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('pages.1.contact_email');
+
+        $this->assertDatabaseHas('pages', ['id' => $firstId, 'phone' => '02-555-0100']);
+
+        Page::query()->findOrFail($secondId)->forceFill([
+            'user_id' => User::factory()->create()->id,
+            'is_unclaimed' => false,
+            'claimed_at' => now(),
+        ])->save();
+
+        $rows[0]['phone'] = '02-555-9991';
+        $this->patchJson('/api/v1/ai-works/pages/bulk-edit', ['pages' => $rows])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('pages');
+
+        $this->assertDatabaseHas('pages', ['id' => $firstId, 'phone' => '02-555-0100']);
+    }
+
     public function test_admin_can_list_assign_and_detach_business_and_community_pages(): void
     {
         $worker = $this->aiWorker();
@@ -251,6 +361,94 @@ class AiWorksApiTest extends TestCase
         $this->getJson('/api/v1/ai-works/pages')
             ->assertOk()
             ->assertJsonPath('data.pages.0.id', $pageId);
+    }
+
+    public function test_admin_permanently_deletes_a_page_with_content_chats_and_media_variants(): void
+    {
+        Storage::fake('public');
+        $owner = User::factory()->create();
+        $visitor = User::factory()->create();
+        $page = Page::query()->create([
+            'user_id' => $owner->id,
+            'type' => Page::TYPE_BUSINESS,
+            'name' => 'Delete Complete Business',
+            'category_key' => 'shopping_retail.sales_special_offers',
+            'logo_path' => 'pages/logos/delete-logo.webp',
+            'banner_path' => 'pages/banners/delete-banner.webp',
+            'setup' => ['address' => ['city' => 'Jerusalem', 'neighborhood' => 'Ramot']],
+        ]);
+        $ad = Ad::query()->create([
+            'user_id' => $owner->id,
+            'page_id' => $page->id,
+            'type' => Ad::TYPE_BUSINESS,
+            'title' => 'Delete page ad',
+            'text' => 'This ad belongs to the deleted page.',
+            'image_path' => 'media/listings/delete-ad.webp',
+            'status' => 'active',
+        ]);
+        $product = PageProduct::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Delete product',
+            'description' => 'Delete product description.',
+            'category_key' => 'products.software.games',
+            'image_path' => 'products/delete-product.webp',
+            'price' => 20,
+            'link' => 'https://example.test/delete-product',
+        ]);
+        $service = PageService::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Delete service',
+            'description' => 'Delete service description.',
+            'category_key' => 'services.home_repairs.handyman',
+            'image_path' => 'services/delete-service.webp',
+        ]);
+        $event = PageEvent::query()->create([
+            'page_id' => $page->id,
+            'name' => 'Delete event',
+            'description' => 'Delete event description.',
+            'category_key' => 'events.community_social.community_festival',
+            'image_path' => 'events/delete-event.webp',
+            'event_date' => now()->addWeek()->toDateString(),
+            'event_time' => '18:00',
+            'address' => 'Jerusalem',
+        ]);
+        $rating = PageRating::query()->create([
+            'page_id' => $page->id,
+            'user_id' => $visitor->id,
+            'rating' => 5,
+            'comment' => 'This rating must be removed.',
+        ]);
+        $conversation = PageConversation::query()->create([
+            'page_id' => $page->id,
+            'visitor_id' => $visitor->id,
+        ]);
+
+        $originalPaths = [
+            $page->logo_path,
+            $page->banner_path,
+            $ad->image_path,
+            $product->image_path,
+            $service->image_path,
+            $event->image_path,
+        ];
+        $allPaths = collect($originalPaths)->flatMap(fn (string $path): array => [
+            $path,
+            ...PublicImageVariants::variantPaths($path),
+        ])->unique()->values();
+        $allPaths->each(fn (string $path) => Storage::disk('public')->put($path, 'image'));
+
+        $admin = User::query()->where('email', config('sveevee.support_admin_email'))->firstOrFail();
+        Sanctum::actingAs($admin);
+        $this->deleteJson("/api/v1/admin/pages/{$page->id}")->assertOk();
+
+        $this->assertDatabaseMissing('pages', ['id' => $page->id]);
+        $this->assertDatabaseMissing('ads', ['id' => $ad->id]);
+        $this->assertDatabaseMissing('page_products', ['id' => $product->id]);
+        $this->assertDatabaseMissing('page_services', ['id' => $service->id]);
+        $this->assertDatabaseMissing('page_events', ['id' => $event->id]);
+        $this->assertDatabaseMissing('page_ratings', ['id' => $rating->id]);
+        $this->assertDatabaseMissing('page_conversations', ['id' => $conversation->id]);
+        $allPaths->each(fn (string $path) => Storage::disk('public')->assertMissing($path));
     }
 
     public function test_detached_pages_keep_their_content_private_until_they_are_assigned_again(): void
@@ -461,6 +659,43 @@ class AiWorksApiTest extends TestCase
             ->assertJsonPath('data.page_defaults.category_key', 'professionals.electricians');
 
         $this->assertDatabaseHas('ai_work_preferences', ['user_id' => $this->aiWorker()->id]);
+    }
+
+    public function test_bulk_import_never_fills_required_row_fields_from_saved_preferences(): void
+    {
+        $worker = $this->aiWorker();
+        Sanctum::actingAs($worker);
+
+        $this->patchJson('/api/v1/ai-works/preferences', [
+            'page_defaults' => [
+                'type' => Page::TYPE_BUSINESS,
+                'city' => 'Tel Aviv',
+                'neighborhood' => 'Ramat Aviv',
+                'category_key' => 'professionals.electricians',
+                'palette_key' => 'amber-dawn',
+            ],
+        ])->assertOk();
+
+        $this->postJson('/api/v1/ai-works/page-imports', [
+            'client_import_id' => '1ec946a1-aa8b-4103-b0c7-aaf403bb1e8c',
+            'rows' => [[
+                'name' => 'Missing Required Bulk Fields',
+                'public_description' => 'This row must not inherit bulk defaults.',
+            ]],
+        ])->assertCreated()
+            ->assertJsonPath('data.created_count', 0)
+            ->assertJsonPath('data.invalid_count', 1)
+            ->assertJsonPath('data.skipped.0.reason', 'invalid')
+            ->assertJsonStructure([
+                'data' => [
+                    'skipped' => [[
+                        'fields' => ['type', 'category_key', 'address.city'],
+                    ]],
+                ],
+            ]);
+
+        $this->assertDatabaseMissing('pages', ['name' => 'Missing Required Bulk Fields']);
+        $this->assertDatabaseCount('ai_page_import_rows', 0);
     }
 
     public function test_bulk_import_creates_valid_rows_and_does_not_store_rejected_payloads(): void

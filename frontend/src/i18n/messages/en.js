@@ -664,7 +664,12 @@ export default {
 			detached: 'Page detached and returned to the unclaimed pages.',
 			detachFailed: 'Page could not be detached.',
 			detachTitle: 'Detach page from user?',
-			detachMessage: 'Detach “{page}” from {user}? It will become an unclaimed page.'
+			detachMessage: 'Detach “{page}” from {user}? It will become an unclaimed page.',
+			deletePermanently: 'Delete permanently',
+			deleteTitle: 'Permanently delete page?',
+			deleteMessage: 'Delete “{page}” and all of its ads, products, services, events, ratings, chats, and images? This cannot be undone.',
+			deleted: 'Page permanently deleted.',
+			deleteFailed: 'Page could not be deleted.'
 		},
 		settings: {
 			title: 'Settings',
@@ -765,15 +770,12 @@ export default {
 		},
 		bulk: {
 			title: 'Bulk Import',
-			intro: 'Paste up to 100 business or community pages as JSON or a tab-separated table.',
+			intro: 'Each row must include type, name, category_key, and city. Neighborhood is optional. Paste up to 100 rows as JSON or a tab-separated table.',
 			table: 'Table',
 			limit: 'Maximum 100 rows per import.',
 			copyTemplate: 'Copy template',
 			templateCopied: 'Template copied.',
-			defaultsTitle: 'Working defaults',
-			defaultsIntro: 'These values fill missing fields and remain available after the next login.',
-			saveDefaults: 'Save defaults',
-			defaultsFailed: 'Working defaults could not be saved.',
+			defaultsFailed: 'Saved values for the single-page form could not be updated.',
 			jsonPlaceholder: 'Paste a JSON array here...',
 			tablePlaceholder: 'Paste a tab-separated table with a header row here...',
 			emptyInput: 'Paste at least one row first.',
@@ -790,6 +792,35 @@ export default {
 			skippedRow: 'Row {row}: {name} ({reason})',
 			recent: 'Recent imports',
 			historySummary: '{created} created, {duplicates} duplicates, {invalid} invalid'
+		},
+		bulkEdit: {
+			title: 'Bulk Edit',
+			intro: 'Filter unclaimed pages, load their editable information as JSON, enrich it, and save it back.',
+			copyTask: 'Copy AI edit task',
+			taskTitle: 'Research and enrich unclaimed pages',
+			taskHint: 'The copied task tells ChatGPT Work how to research, edit this JSON, and save it without a human review step.',
+			taskCopied: 'AI edit task copied.',
+			categoryFilter: 'Category',
+			idFrom: 'ID from',
+			idTo: 'ID to',
+			filterHint: 'All filters are optional. Only unclaimed pages from this AI Works account can be loaded.',
+			loadJson: 'Load JSON',
+			loaded: '{count} pages loaded as JSON.',
+			matches: '{count} matching pages',
+			loadedCount: '{count} loaded into the editor',
+			truncated: 'Only the first {count} pages were loaded. Continue from ID {id}.',
+			loadNext: 'Load next batch',
+			jsonPlaceholder: 'Set filters and load pages. The editable JSON array appears here.',
+			emptyJson: 'Load or paste at least one page first.',
+			arrayRequired: 'The JSON must be one array of page objects.',
+			rowLimit: 'The JSON must contain between 1 and {count} pages.',
+			idRequired: 'Every JSON row must keep its numeric page id.',
+			invalidJson: 'The JSON is not valid.',
+			atomicNote: 'All rows are validated first. If one row fails, no page is changed.',
+			saveJson: 'Validate & save JSON',
+			completed: 'Bulk edit completed',
+			updated: '{count} pages updated.',
+			failed: 'The JSON pages could not be updated.'
 		},
 		duplicates: {
 			exact: 'This page already exists and cannot be created again.'
@@ -827,6 +858,7 @@ export default {
 		advanced: 'Advanced search',
 		hideAdvanced: 'Hide advanced search',
 		chooseType: 'What do you want to search?',
+		loadMore: 'Load more results',
 		empty: 'No results.'
 	},
 	catalog: {

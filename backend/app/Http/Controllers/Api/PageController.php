@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Services\ApiResponseService;
+use App\Services\PageDeletionService;
 use App\Services\PayloadService;
 use App\Support\CatalogTopics;
 use Illuminate\Http\Request;
@@ -25,7 +26,10 @@ class PageController extends Controller
         ['weekday' => 'saturday', 'is_open' => false, 'opens_at' => null, 'closes_at' => null],
     ];
 
-    public function __construct(private readonly PayloadService $payloads) {}
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly PageDeletionService $deletions,
+    ) {}
 
     public function mine(Request $request, string $type)
     {
@@ -188,8 +192,7 @@ class PageController extends Controller
             return ApiResponseService::error('This action is unauthorized.', status: 403);
         }
 
-        $page->ads()->get()->each->delete();
-        $page->delete();
+        $this->deletions->delete($page);
 
         return ApiResponseService::success(null, 'Page deleted.');
     }

@@ -664,7 +664,12 @@ export default {
 			detached: 'העמוד נותק והוחזר לרשימת העמודים שלא נדרשו.',
 			detachFailed: 'לא ניתן לנתק את העמוד.',
 			detachTitle: 'לנתק את העמוד מהמשתמש?',
-			detachMessage: 'לנתק את ”{page}” מ-{user}? העמוד יחזור להיות עמוד שלא נדרש.'
+			detachMessage: 'לנתק את ”{page}” מ-{user}? העמוד יחזור להיות עמוד שלא נדרש.',
+			deletePermanently: 'מחיקה לצמיתות',
+			deleteTitle: 'למחוק את העמוד לצמיתות?',
+			deleteMessage: 'למחוק את ”{page}” ואת כל המודעות, המוצרים, השירותים, האירועים, הדירוגים, הצ׳אטים והתמונות שלו? לא ניתן לבטל פעולה זו.',
+			deleted: 'העמוד נמחק לצמיתות.',
+			deleteFailed: 'לא ניתן היה למחוק את העמוד.'
 		},
 		settings: {
 			title: 'הגדרות',
@@ -765,15 +770,12 @@ export default {
 		},
 		bulk: {
 			title: 'ייבוא מרוכז',
-			intro: 'הדביקו עד 100 עמודי עסק או קהילה כ-JSON או כטבלה מופרדת בטאבים.',
+			intro: 'כל שורה חייבת לכלול סוג, שם, category_key ועיר. שכונה היא אופציונלית. ניתן להדביק עד 100 שורות כ-JSON או כטבלה מופרדת בטאבים.',
 			table: 'טבלה',
 			limit: 'עד 100 שורות בכל ייבוא.',
 			copyTemplate: 'העתקת תבנית',
 			templateCopied: 'התבנית הועתקה.',
-			defaultsTitle: 'ברירות מחדל לעבודה',
-			defaultsIntro: 'ערכים אלה משלימים שדות חסרים ונשמרים גם לאחר הכניסה הבאה.',
-			saveDefaults: 'שמירת ברירות מחדל',
-			defaultsFailed: 'לא ניתן היה לשמור את ברירות המחדל.',
+			defaultsFailed: 'לא ניתן היה לעדכן את הערכים השמורים בטופס העמוד היחיד.',
 			jsonPlaceholder: 'הדביקו כאן מערך JSON...',
 			tablePlaceholder: 'הדביקו כאן טבלה מופרדת בטאבים עם שורת כותרות...',
 			emptyInput: 'יש להדביק לפחות שורה אחת.',
@@ -790,6 +792,35 @@ export default {
 			skippedRow: 'שורה {row}: {name} ({reason})',
 			recent: 'ייבואים אחרונים',
 			historySummary: '{created} נוצרו, {duplicates} כפילויות, {invalid} לא תקינים'
+		},
+		bulkEdit: {
+			title: 'עריכה מרוכזת',
+			intro: 'סננו עמודים שלא נדרשו, טענו את המידע הניתן לעריכה כ-JSON, העשירו אותו ושמרו בחזרה.',
+			copyTask: 'העתקת משימת עריכה ל-AI',
+			taskTitle: 'מחקר והעשרת עמודים שלא נדרשו',
+			taskHint: 'המשימה המועתקת מסבירה ל-ChatGPT Work כיצד לחקור, לערוך את ה-JSON ולשמור ללא שלב בדיקה אנושי.',
+			taskCopied: 'משימת העריכה ל-AI הועתקה.',
+			categoryFilter: 'קטגוריה',
+			idFrom: 'מזהה מ-',
+			idTo: 'מזהה עד',
+			filterHint: 'כל המסננים אופציונליים. ניתן לטעון רק עמודים שלא נדרשו ושייכים לחשבון AI Works זה.',
+			loadJson: 'טעינת JSON',
+			loaded: 'נטענו {count} עמודים כ-JSON.',
+			matches: '{count} עמודים תואמים',
+			loadedCount: '{count} נטענו לעורך',
+			truncated: 'נטענו רק {count} העמודים הראשונים. המשיכו ממזהה {id}.',
+			loadNext: 'טעינת האצווה הבאה',
+			jsonPlaceholder: 'הגדירו מסננים וטענו עמודים. מערך ה-JSON הניתן לעריכה יופיע כאן.',
+			emptyJson: 'תחילה יש לטעון או להדביק לפחות עמוד אחד.',
+			arrayRequired: 'ה-JSON חייב להיות מערך אחד של אובייקטי עמודים.',
+			rowLimit: 'ה-JSON חייב להכיל בין עמוד אחד ל-{count} עמודים.',
+			idRequired: 'בכל שורת JSON חייב להישאר המזהה המספרי של העמוד.',
+			invalidJson: 'ה-JSON אינו תקין.',
+			atomicNote: 'כל השורות נבדקות תחילה. אם שורה אחת נכשלת, אף עמוד לא משתנה.',
+			saveJson: 'אימות ושמירת JSON',
+			completed: 'העריכה המרוכזת הושלמה',
+			updated: 'עודכנו {count} עמודים.',
+			failed: 'לא ניתן היה לעדכן את עמודי ה-JSON.'
 		},
 		duplicates: {
 			exact: 'עמוד זה כבר קיים ולא ניתן ליצור אותו שוב.'
@@ -827,6 +858,7 @@ export default {
 		advanced: 'חיפוש מתקדם',
 		hideAdvanced: 'הסתר חיפוש מתקדם',
 		chooseType: 'מה לחפש?',
+		loadMore: 'טעינת תוצאות נוספות',
 		empty: 'אין תוצאות.'
 	},
 	catalog: {

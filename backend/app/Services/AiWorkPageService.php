@@ -216,6 +216,76 @@ class AiWorkPageService
         ];
     }
 
+    public function editableData(Page $page): array
+    {
+        $setup = is_array($page->setup) ? $page->setup : [];
+        $contact = is_array($setup['contact'] ?? null) ? $setup['contact'] : [];
+        $address = is_array($setup['address'] ?? null) ? $setup['address'] : [];
+        $socials = is_array($setup['socials'] ?? null) ? $setup['socials'] : [];
+
+        return [
+            'type' => $page->type,
+            'name' => $page->name,
+            'public_description' => $page->public_description,
+            'contact_email' => $page->contact_email ?? ($contact['email'] ?? null),
+            'phone' => $page->phone ?? ($contact['tel'] ?? null),
+            'whatsapp' => $contact['whatsapp'] ?? null,
+            'website' => $setup['website'] ?? null,
+            'category_key' => $page->category_key,
+            'palette_key' => $page->palette_key,
+            'address' => [
+                'street' => $address['street'] ?? null,
+                'number' => $address['number'] ?? null,
+                'city' => $address['city'] ?? null,
+                'neighborhood' => $address['neighborhood'] ?? null,
+            ],
+            'socials' => $socials,
+            'opening_hours' => is_array($setup['opening_hours'] ?? null) ? $setup['opening_hours'] : [],
+        ];
+    }
+
+    public function bulkEditableData(Page $page): array
+    {
+        $data = $this->editableData($page);
+        unset($data['palette_key']);
+
+        return [
+            'id' => $page->id,
+            ...$data,
+        ];
+    }
+
+    public function validateBulkEditFilters(array $input): array
+    {
+        $cities = $this->cities();
+        $city = filled($input['city'] ?? null)
+            ? $this->canonicalValue($input['city'], $cities)
+            : null;
+        $neighborhoods = $city ? $this->neighborhoods($city) : [];
+        $neighborhood = filled($input['neighborhood'] ?? null)
+            ? $this->canonicalValue($input['neighborhood'], $neighborhoods)
+            : null;
+        $categoryKeys = array_values(array_unique([
+            ...CatalogTopics::keysForScope(CatalogTopics::SCOPE_BUSINESS_PAGES),
+            ...CatalogTopics::keysForScope(CatalogTopics::SCOPE_COMMUNITY_PAGES),
+        ]));
+        $category = trim((string) ($input['category_key'] ?? ''));
+
+        return Validator::make([
+            'city' => $city ?? trim((string) ($input['city'] ?? '')),
+            'neighborhood' => $neighborhood ?? trim((string) ($input['neighborhood'] ?? '')),
+            'category_key' => $category,
+            'id_from' => filled($input['id_from'] ?? null) ? $input['id_from'] : null,
+            'id_to' => filled($input['id_to'] ?? null) ? $input['id_to'] : null,
+        ], [
+            'city' => ['nullable', 'required_with:neighborhood', Rule::in($cities)],
+            'neighborhood' => ['nullable', Rule::in($neighborhoods)],
+            'category_key' => ['nullable', Rule::in($categoryKeys)],
+            'id_from' => ['nullable', 'integer', 'min:1'],
+            'id_to' => ['nullable', 'integer', 'min:1', 'gte:id_from'],
+        ])->validate();
+    }
+
     public function defaultPreferences(): array
     {
         return [

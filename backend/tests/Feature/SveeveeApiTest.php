@@ -1915,6 +1915,63 @@ HTML);
         }
     }
 
+    public function test_public_search_discovery_paginates_through_all_unclaimed_pages(): void
+    {
+        $worker = User::factory()->create();
+
+        foreach (range(1, 45) as $number) {
+            Page::query()->create([
+                'user_id' => $worker->id,
+                'created_by_user_id' => $worker->id,
+                'type' => Page::TYPE_BUSINESS,
+                'is_unclaimed' => true,
+                'name' => "Unclaimed Business {$number}",
+                'public_description' => "Public business information {$number}.",
+                'category_key' => 'shopping_retail.sales_special_offers',
+                'setup' => [
+                    'address' => [
+                        'city' => 'Tel Aviv',
+                        'neighborhood' => 'Ramat Aviv',
+                    ],
+                ],
+            ]);
+        }
+
+        $first = $this->getJson('/api/v1/search?discover=1&page=1')
+            ->assertOk()
+            ->assertJsonCount(20, 'data.pages')
+            ->assertJsonPath('data.pagination.current_page', 1)
+            ->assertJsonPath('data.pagination.per_scope', 20)
+            ->assertJsonPath('data.pagination.total', 45)
+            ->assertJsonPath('data.pagination.scope_totals.pages', 45)
+            ->assertJsonPath('data.pagination.last_page', 3)
+            ->assertJsonPath('data.pagination.has_more', true)
+            ->assertJsonPath('data.pagination.next_page', 2);
+
+        $second = $this->getJson('/api/v1/search?discover=1&page=2')
+            ->assertOk()
+            ->assertJsonCount(20, 'data.pages')
+            ->assertJsonPath('data.pagination.current_page', 2)
+            ->assertJsonPath('data.pagination.has_more', true)
+            ->assertJsonPath('data.pagination.next_page', 3);
+
+        $third = $this->getJson('/api/v1/search?discover=1&page=3')
+            ->assertOk()
+            ->assertJsonCount(5, 'data.pages')
+            ->assertJsonPath('data.pagination.current_page', 3)
+            ->assertJsonPath('data.pagination.has_more', false)
+            ->assertJsonPath('data.pagination.next_page', null);
+
+        $ids = collect([
+            ...$first->json('data.pages'),
+            ...$second->json('data.pages'),
+            ...$third->json('data.pages'),
+        ])->pluck('id');
+
+        $this->assertCount(45, $ids);
+        $this->assertCount(45, $ids->unique());
+    }
+
     public function test_ads_expire_after_one_week_and_are_pruned_after_retention_period(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-01 10:00:00'));
