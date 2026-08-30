@@ -1322,6 +1322,7 @@ HTML);
             'name' => 'Electric Studio',
             'public_description' => 'Local electrical work.',
             'category_key' => 'professionals.electricians',
+            'palette_key' => 'sea-glass',
             'setup' => [
                 'address' => [
                     'city' => 'Haifa',
@@ -1355,7 +1356,8 @@ HTML);
             ->assertJsonCount(1, 'data.pages')
             ->assertJsonCount(0, 'data.services')
             ->assertJsonCount(0, 'data.ads')
-            ->assertJsonPath('data.pages.0.slug', $page->public_slug);
+            ->assertJsonPath('data.pages.0.slug', $page->public_slug)
+            ->assertJsonPath('data.pages.0.palette_key', 'sea-glass');
 
         $this->getJson('/api/v1/search?scope=services&category=services.home_repairs')
             ->assertOk()

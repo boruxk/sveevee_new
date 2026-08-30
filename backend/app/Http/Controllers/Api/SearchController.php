@@ -452,6 +452,7 @@ class SearchController extends Controller
             'name' => $page->name,
             'public_description' => $page->public_description,
             'category_key' => $page->category_key,
+            'palette_key' => $page->palette_key,
             'logo_url' => $isUnclaimed ? null : $page->logo_url,
             ...$this->payloads->publicImageMeta('logo', $logoPath, $page->name.' logo', '96px'),
             'banner_url' => $isUnclaimed ? null : $page->banner_url,

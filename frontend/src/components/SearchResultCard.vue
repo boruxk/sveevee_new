@@ -2,6 +2,7 @@
 	import { computed } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { adRoute, pageRoute, productRoute, userRoute } from '@/constants/catalogTopics'
+	import { findPresencePalette } from '@/constants/presencePalettes'
 	import AdExpiryTimer from '@/components/AdExpiryTimer.vue'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { locationLabel } from '@/utils/locationLabels'
@@ -57,6 +58,35 @@
 
 		return value.value.name || ''
 	})
+	const pagePalette = computed(() => findPresencePalette(value.value.palette_key))
+	const pageBanner = computed(() => imagePayload(value.value.banner_url, value.value, 'banner', title.value))
+	const pageLogo = computed(() => imagePayload(
+		value.value.logo_url,
+		value.value,
+		'logo',
+		t('pages.logoAlt', { name: title.value }),
+		true
+	))
+	const pageInitials = computed(() => String(title.value || 'S')
+		.trim()
+		.split(/\s+/)
+		.slice(0, 2)
+		.map((part) => Array.from(part)[0] || '')
+		.join('')
+		.toLocaleUpperCase(locale.value))
+	const cardStyle = computed(() => {
+		if (props.item.kind === 'page') {
+			return { '--result-accent': pagePalette.value.accent }
+		}
+
+		return undefined
+	})
+	const pageMediaStyle = computed(() => ({
+		'--page-banner': pagePalette.value.hero,
+		'--page-overlay': pagePalette.value.overlay,
+		'--page-logo-bg': pagePalette.value.dark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.92)',
+		'--page-logo-color': pagePalette.value.dark ? pagePalette.value.surface : pagePalette.value.accent
+	}))
 	const description = computed(() => {
 		if (props.item.kind === 'ad') {
 			return value.value.text || ''
@@ -126,14 +156,6 @@
 			return imagePayload(profile.photo_url, profile, 'photo', title.value, true)
 		}
 
-		if (props.item.kind === 'page') {
-			if (value.value.banner_url) {
-				return imagePayload(value.value.banner_url, value.value, 'banner', title.value)
-			}
-
-			return imagePayload(value.value.logo_url, value.value, 'logo', t('pages.logoAlt', { name: title.value }), true)
-		}
-
 		return imagePayload(value.value.image_url, value.value, 'image', title.value)
 	})
 
@@ -155,20 +177,59 @@
 		:to="resultRoute"
 		class="search-result-card"
 		:class="`search-result-card--${item.kind}`"
+		:style="cardStyle"
 	>
-		<div class="search-result-card__media" :class="{ 'search-result-card__media--contain': media.contain }">
-			<ResponsiveImage
-				v-if="media.src"
-				class="search-result-card__image"
-				:src="media.src"
-				:alt="media.alt"
-				:avif-srcset="media.avifSrcset"
-				:webp-srcset="media.webpSrcset"
-				sizes="(max-width: 700px) 112px, 190px"
-				:width="media.width"
-				:height="media.height"
-			/>
-			<q-icon v-else :name="typeIcon" size="42px" />
+		<div
+			class="search-result-card__media"
+			:class="{
+				'search-result-card__media--contain': item.kind !== 'page' && media.contain,
+				'search-result-card__media--page': item.kind === 'page',
+				'search-result-card__media--page-has-banner': item.kind === 'page' && pageBanner.src
+			}"
+			:style="item.kind === 'page' ? pageMediaStyle : undefined"
+		>
+			<template v-if="item.kind === 'page'">
+				<ResponsiveImage
+					v-if="pageBanner.src"
+					class="search-result-card__page-banner"
+					:src="pageBanner.src"
+					:alt="pageBanner.alt"
+					:avif-srcset="pageBanner.avifSrcset"
+					:webp-srcset="pageBanner.webpSrcset"
+					sizes="(max-width: 700px) 112px, 190px"
+					:width="pageBanner.width"
+					:height="pageBanner.height"
+				/>
+				<div class="search-result-card__page-overlay" />
+				<div class="search-result-card__page-logo">
+					<ResponsiveImage
+						v-if="pageLogo.src"
+						class="search-result-card__page-logo-image"
+						:src="pageLogo.src"
+						:alt="pageLogo.alt"
+						:avif-srcset="pageLogo.avifSrcset"
+						:webp-srcset="pageLogo.webpSrcset"
+						sizes="(max-width: 700px) 68px, 92px"
+						:width="pageLogo.width"
+						:height="pageLogo.height"
+					/>
+					<span v-else>{{ pageInitials }}</span>
+				</div>
+			</template>
+			<template v-else>
+				<ResponsiveImage
+					v-if="media.src"
+					class="search-result-card__image"
+					:src="media.src"
+					:alt="media.alt"
+					:avif-srcset="media.avifSrcset"
+					:webp-srcset="media.webpSrcset"
+					sizes="(max-width: 700px) 112px, 190px"
+					:width="media.width"
+					:height="media.height"
+				/>
+				<q-icon v-else :name="typeIcon" size="42px" />
+			</template>
 		</div>
 
 		<div class="search-result-card__copy">
@@ -234,6 +295,60 @@
   overflow: hidden;
   background: color-mix(in srgb, var(--result-accent) 7%, rgba(255, 255, 255, 0.86));
   color: var(--result-accent);
+}
+
+.search-result-card__media--page {
+  position: relative;
+  isolation: isolate;
+  background: var(--page-banner);
+}
+
+.search-result-card__page-banner,
+.search-result-card__page-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.search-result-card__page-banner {
+  --responsive-image-fit: cover;
+}
+
+.search-result-card__page-overlay {
+  z-index: 1;
+  background: var(--page-overlay);
+}
+
+.search-result-card__media--page-has-banner .search-result-card__page-overlay {
+  background: linear-gradient(135deg, rgba(17, 34, 45, 0.08), rgba(17, 34, 45, 0.32));
+}
+
+.search-result-card__page-logo {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 92px;
+  height: 92px;
+  overflow: hidden;
+  place-items: center;
+  border: 3px solid rgba(255, 255, 255, 0.76);
+  border-radius: 26px;
+  background: var(--page-logo-bg);
+  box-shadow: 0 14px 30px rgba(17, 34, 45, 0.22);
+  color: var(--page-logo-color);
+  font-size: 2rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1;
+  backdrop-filter: blur(10px);
+}
+
+.search-result-card__page-logo-image {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  --responsive-image-fit: cover;
 }
 
 .search-result-card__image {
@@ -343,6 +458,14 @@
 
   .search-result-card__media--contain {
     padding: 16px;
+  }
+
+  .search-result-card__page-logo {
+    width: 68px;
+    height: 68px;
+    border-width: 2px;
+    border-radius: 19px;
+    font-size: 1.45rem;
   }
 
   .search-result-card__copy {

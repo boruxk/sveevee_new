@@ -136,8 +136,9 @@
 			:error-message="errorMessage"
 			:rules="required ? [requiredRule] : []"
 		>
-			<template #control>
+			<template #control="{ id }">
 				<button
+					:id="id"
 					type="button"
 					class="catalog-category-select__trigger"
 					:disabled="disabled"

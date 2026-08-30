@@ -757,7 +757,7 @@
   position: absolute;
   z-index: 1;
   top: 50%;
-  right: 0;
+  right: -2.5%;
   width: 90%;
   transform: translateY(-50%);
   pointer-events: none;
@@ -780,7 +780,7 @@
 
 .landing-page--rtl .landing-hero__visual {
   right: auto;
-  left: 0;
+  left: -2.5%;
   -webkit-mask-image: linear-gradient(to left, transparent 0%, transparent 14%, rgba(0, 0, 0, 0.42) 34%, #000000 62%, #000000 100%);
   mask-image: linear-gradient(to left, transparent 0%, transparent 14%, rgba(0, 0, 0, 0.42) 34%, #000000 62%, #000000 100%);
 }
