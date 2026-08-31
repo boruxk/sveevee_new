@@ -153,8 +153,16 @@
 
 		const leftTime = Date.parse(left.value.created_at || '') || 0
 		const rightTime = Date.parse(right.value.created_at || '') || 0
+		if (leftTime !== rightTime) {
+			return rightTime - leftTime
+		}
 
-		return rightTime - leftTime || String(right.id).localeCompare(String(left.id))
+		const kindDifference = right.kind.localeCompare(left.kind)
+		if (kindDifference !== 0) {
+			return kindDifference
+		}
+
+		return Number(right.value.id || 0) - Number(left.value.id || 0)
 	}
 
 	async function loadDiscovery({ page = 1, append = false } = {}) {

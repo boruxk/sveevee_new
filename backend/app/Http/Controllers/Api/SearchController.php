@@ -232,18 +232,18 @@ class SearchController extends Controller
 
     private function discovery(?string $city, ?string $neighborhood, int $page)
     {
-        $pageResults = $this->prioritizedDiscoveryPage(
+        $candidateLimit = $page * self::DISCOVERY_LIMIT;
+        $pageResults = $this->prioritizedDiscoveryScope(
             Page::query()
                 ->with(['user.profile'])
                 ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at')),
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inPageLocation($query, $tierCity, $tierNeighborhood),
             $city,
             $neighborhood,
-            $page
+            $candidateLimit
         );
-        $pages = $pageResults['items']->map(fn (Page $page): array => $this->compactPage($page));
 
-        $productResults = $this->prioritizedDiscoveryPage(
+        $productResults = $this->prioritizedDiscoveryScope(
             PageProduct::query()
                 ->with([
                     'page' => fn ($page) => $page
@@ -257,11 +257,10 @@ class SearchController extends Controller
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
             $city,
             $neighborhood,
-            $page
+            $candidateLimit
         );
-        $products = $productResults['items']->map(fn (PageProduct $product): array => $this->withCompactPage($this->payloads->product($product), $product->page));
 
-        $serviceResults = $this->prioritizedDiscoveryPage(
+        $serviceResults = $this->prioritizedDiscoveryScope(
             PageService::query()
                 ->with(['page.user.profile'])
                 ->whereHas('page', fn (Builder $page) => $page
@@ -270,11 +269,10 @@ class SearchController extends Controller
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
             $city,
             $neighborhood,
-            $page
+            $candidateLimit
         );
-        $services = $serviceResults['items']->map(fn (PageService $service): array => $this->withCompactPage($this->payloads->service($service), $service->page));
 
-        $eventResults = $this->prioritizedDiscoveryPage(
+        $eventResults = $this->prioritizedDiscoveryScope(
             PageEvent::query()
                 ->with(['page.user.profile'])
                 ->whereDate('event_date', '>=', today())
@@ -284,11 +282,10 @@ class SearchController extends Controller
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
             $city,
             $neighborhood,
-            $page
+            $candidateLimit
         );
-        $events = $eventResults['items']->map(fn (PageEvent $event): array => $this->withCompactPage($this->payloads->event($event), $event->page));
 
-        $adResults = $this->prioritizedDiscoveryPage(
+        $adResults = $this->prioritizedDiscoveryScope(
             Ad::query()
                 ->with(['user.profile', 'page'])
                 ->active()
@@ -296,9 +293,8 @@ class SearchController extends Controller
             fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $query->inLocation($tierCity, $tierNeighborhood),
             $city,
             $neighborhood,
-            $page
+            $candidateLimit
         );
-        $ads = $adResults['items']->map(fn (Ad $ad): array => $this->payloads->ad($ad));
 
         $scopeResults = [
             'pages' => $pageResults,
@@ -307,16 +303,56 @@ class SearchController extends Controller
             'events' => $eventResults,
             'ads' => $adResults,
         ];
-        $lastPage = max(array_column($scopeResults, 'last_page'));
         $scopeTotals = collect($scopeResults)->map(fn (array $result): int => $result['total'])->all();
+        $total = array_sum($scopeTotals);
+        $lastPage = max(1, (int) ceil($total / self::DISCOVERY_LIMIT));
+        $offset = ($page - 1) * self::DISCOVERY_LIMIT;
+        $candidates = collect();
+
+        foreach ($scopeResults as $scope => $result) {
+            $kind = rtrim($scope, 's');
+
+            foreach ($result['items'] as $model) {
+                $candidates->push($this->discoveryCandidate($kind, $model, $city, $neighborhood));
+            }
+        }
+
+        $batch = $candidates
+            ->sort(function (array $left, array $right): int {
+                $priority = $left['priority'] <=> $right['priority'];
+                if ($priority !== 0) {
+                    return $priority;
+                }
+
+                $createdAt = $right['created_at'] <=> $left['created_at'];
+                if ($createdAt !== 0) {
+                    return $createdAt;
+                }
+
+                $kind = strcmp($right['kind'], $left['kind']);
+
+                return $kind !== 0
+                    ? $kind
+                    : (int) $right['model']->getKey() <=> (int) $left['model']->getKey();
+            })
+            ->values()
+            ->slice($offset, self::DISCOVERY_LIMIT)
+            ->values();
+        $grouped = [
+            'pages' => [],
+            'products' => [],
+            'services' => [],
+            'events' => [],
+            'ads' => [],
+        ];
+
+        foreach ($batch as $candidate) {
+            $grouped[$candidate['kind'].'s'][] = $this->discoveryValue($candidate['kind'], $candidate['model']);
+        }
 
         return ApiResponseService::success([
             'users' => [],
-            'pages' => $pages->values(),
-            'products' => $products->values(),
-            'services' => $services->values(),
-            'events' => $events->values(),
-            'ads' => $ads->values(),
+            ...$grouped,
             'topic' => null,
             'scope' => null,
             'mode' => 'discovery',
@@ -326,8 +362,8 @@ class SearchController extends Controller
             ],
             'pagination' => [
                 'current_page' => $page,
-                'per_scope' => self::DISCOVERY_LIMIT,
-                'total' => array_sum($scopeTotals),
+                'per_page' => self::DISCOVERY_LIMIT,
+                'total' => $total,
                 'scope_totals' => $scopeTotals,
                 'last_page' => $lastPage,
                 'has_more' => $page < $lastPage,
@@ -336,30 +372,66 @@ class SearchController extends Controller
         ]);
     }
 
-    private function prioritizedDiscoveryPage(
+    private function prioritizedDiscoveryScope(
         Builder $query,
         callable $applyLocation,
         ?string $city,
         ?string $neighborhood,
-        int $page
+        int $limit
     ): array {
         $total = (clone $query)->count();
-        $lastPage = max(1, (int) ceil($total / self::DISCOVERY_LIMIT));
-        $offset = ($page - 1) * self::DISCOVERY_LIMIT;
+        $items = $total === 0
+            ? collect()
+            : $this->prioritizedDiscoveryItems($query, $applyLocation, $city, $neighborhood, min($total, $limit));
 
-        if ($offset >= $total) {
-            return ['items' => collect(), 'total' => $total, 'last_page' => $lastPage];
+        return ['items' => $items, 'total' => $total];
+    }
+
+    private function discoveryCandidate(string $kind, $model, ?string $city, ?string $neighborhood): array
+    {
+        return [
+            'kind' => $kind,
+            'model' => $model,
+            'priority' => $this->discoveryPriority($kind, $model, $city, $neighborhood),
+            'created_at' => $model->created_at?->getTimestamp() ?? 0,
+        ];
+    }
+
+    private function discoveryPriority(string $kind, $model, ?string $city, ?string $neighborhood): int
+    {
+        if (! $city) {
+            return 0;
         }
 
-        $items = $this->prioritizedDiscoveryItems(
-            $query,
-            $applyLocation,
-            $city,
-            $neighborhood,
-            min($total, $page * self::DISCOVERY_LIMIT)
-        )->slice($offset, self::DISCOVERY_LIMIT)->values();
+        if ($kind === 'ad') {
+            $itemCity = $this->nullableString($model->city);
+            $itemNeighborhood = $this->nullableString($model->neighborhood);
+            $matchesCity = $itemCity === $city;
+        } else {
+            $page = $kind === 'page' ? $model : $model->page;
+            $address = is_array($page?->setup['address'] ?? null) ? $page->setup['address'] : [];
+            $itemCity = $this->nullableString($address['city'] ?? null);
+            $itemNeighborhood = $this->nullableString($address['neighborhood'] ?? null);
+            $matchesCity = $itemCity === $city
+                || ($page && mb_stripos((string) $page->address, $city) !== false);
+        }
 
-        return ['items' => $items, 'total' => $total, 'last_page' => $lastPage];
+        if (! $matchesCity) {
+            return $neighborhood ? 2 : 1;
+        }
+
+        return $neighborhood && $itemNeighborhood !== $neighborhood ? 1 : 0;
+    }
+
+    private function discoveryValue(string $kind, $model): array
+    {
+        return match ($kind) {
+            'page' => $this->compactPage($model),
+            'product' => $this->withCompactPage($this->payloads->product($model), $model->page),
+            'service' => $this->withCompactPage($this->payloads->service($model), $model->page),
+            'event' => $this->withCompactPage($this->payloads->event($model), $model->page),
+            'ad' => $this->payloads->ad($model),
+        };
     }
 
     private function prioritizedDiscoveryItems(

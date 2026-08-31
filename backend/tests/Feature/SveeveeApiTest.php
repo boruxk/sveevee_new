@@ -1998,7 +1998,7 @@ HTML);
             ->assertOk()
             ->assertJsonCount(20, 'data.pages')
             ->assertJsonPath('data.pagination.current_page', 1)
-            ->assertJsonPath('data.pagination.per_scope', 20)
+            ->assertJsonPath('data.pagination.per_page', 20)
             ->assertJsonPath('data.pagination.total', 45)
             ->assertJsonPath('data.pagination.scope_totals.pages', 45)
             ->assertJsonPath('data.pagination.last_page', 3)
@@ -2027,6 +2027,110 @@ HTML);
 
         $this->assertCount(45, $ids);
         $this->assertCount(45, $ids->unique());
+    }
+
+    public function test_public_search_discovery_paginates_one_combined_feed_instead_of_each_scope(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-27 12:00:00'));
+
+        try {
+            $owner = User::factory()->create();
+            $managedPage = Page::query()->create([
+                'user_id' => $owner->id,
+                'type' => Page::TYPE_BUSINESS,
+                'name' => 'Older managed page',
+                'public_description' => 'Hosts older discovery content.',
+                'category_key' => 'shopping_retail.sales_special_offers',
+                'setup' => [
+                    'address' => [
+                        'city' => 'Tel Aviv',
+                        'neighborhood' => 'Ramat Aviv',
+                    ],
+                ],
+            ]);
+            $managedPage->forceFill([
+                'created_at' => Carbon::parse('2026-08-01 09:00:00'),
+                'updated_at' => Carbon::parse('2026-08-01 09:00:00'),
+            ])->saveQuietly();
+
+            foreach (range(1, 45) as $number) {
+                Page::query()->create([
+                    'user_id' => $owner->id,
+                    'created_by_user_id' => $owner->id,
+                    'type' => Page::TYPE_BUSINESS,
+                    'is_unclaimed' => true,
+                    'name' => "Newest unclaimed page {$number}",
+                    'public_description' => "New public business information {$number}.",
+                    'category_key' => 'shopping_retail.sales_special_offers',
+                    'setup' => [
+                        'address' => [
+                            'city' => 'Tel Aviv',
+                            'neighborhood' => 'Ramat Aviv',
+                        ],
+                    ],
+                ]);
+            }
+
+            foreach (range(1, 21) as $number) {
+                $createdAt = Carbon::parse('2026-08-20 08:00:00')->addMinutes($number);
+                $product = PageProduct::query()->create([
+                    'page_id' => $managedPage->id,
+                    'name' => "Older product {$number}",
+                    'description' => "Older product description {$number}.",
+                    'category_key' => 'products.software.games',
+                    'image_path' => "products/older-{$number}.webp",
+                    'price' => $number,
+                    'link' => "https://example.test/older-product-{$number}",
+                ]);
+                $service = PageService::query()->create([
+                    'page_id' => $managedPage->id,
+                    'name' => "Older service {$number}",
+                    'description' => "Older service description {$number}.",
+                    'category_key' => 'services.home_repairs.handyman',
+                    'image_path' => "services/older-{$number}.webp",
+                ]);
+                $ad = Ad::query()->create([
+                    'user_id' => $owner->id,
+                    'type' => Ad::TYPE_PRIVATE,
+                    'title' => "Older ad {$number}",
+                    'text' => "Older ad description {$number}.",
+                    'status' => 'active',
+                    'city' => 'Tel Aviv',
+                    'neighborhood' => 'Ramat Aviv',
+                ]);
+
+                foreach ([$product, $service, $ad] as $model) {
+                    $model->forceFill(['created_at' => $createdAt, 'updated_at' => $createdAt])->saveQuietly();
+                }
+            }
+
+            $first = $this->getJson('/api/v1/search?discover=1&page=1')
+                ->assertOk()
+                ->assertJsonCount(20, 'data.pages')
+                ->assertJsonCount(0, 'data.products')
+                ->assertJsonCount(0, 'data.services')
+                ->assertJsonCount(0, 'data.ads')
+                ->assertJsonPath('data.pagination.per_page', 20)
+                ->assertJsonPath('data.pagination.total', 109)
+                ->assertJsonPath('data.pagination.last_page', 6)
+                ->assertJsonPath('data.pagination.next_page', 2);
+
+            $second = $this->getJson('/api/v1/search?discover=1&page=2')
+                ->assertOk()
+                ->assertJsonCount(20, 'data.pages')
+                ->assertJsonCount(0, 'data.products')
+                ->assertJsonCount(0, 'data.services')
+                ->assertJsonCount(0, 'data.ads')
+                ->assertJsonPath('data.pagination.current_page', 2)
+                ->assertJsonPath('data.pagination.next_page', 3);
+
+            $firstIds = collect($first->json('data.pages'))->pluck('id');
+            $secondIds = collect($second->json('data.pages'))->pluck('id');
+
+            $this->assertCount(40, $firstIds->merge($secondIds)->unique());
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_ads_expire_after_one_week_and_are_pruned_after_retention_period(): void
