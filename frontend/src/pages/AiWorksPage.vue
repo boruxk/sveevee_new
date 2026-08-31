@@ -27,6 +27,7 @@
 	import { CATALOG_SCOPES, catalogGroupsForScope, catalogLabel, catalogTopicByKey } from '@/constants/catalogTopics'
 	import { presencePalettes } from '@/constants/presencePalettes'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import BusinessDetailsFields from '@/components/pages/BusinessDetailsFields.vue'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
 	import BulkEditIcon from '@/components/icons/BulkEditIcon.vue'
 	import BulkImportIcon from '@/components/icons/BulkImportIcon.vue'
@@ -139,7 +140,9 @@
 			palette_key: defaults.palette_key,
 			address: { street: '', number: '', city: defaults.city, neighborhood: defaults.neighborhood },
 			socials: { facebook: '', instagram: '', tiktok: '', telegram: '' },
-			opening_hours: DEFAULT_OPENING_HOURS.map((item) => ({ ...item }))
+			opening_hours: DEFAULT_OPENING_HOURS.map((item) => ({ ...item })),
+			service_areas: [],
+			specialties: []
 		}
 	}
 
@@ -161,7 +164,9 @@
 			palette_key: value?.palette_key || presencePalettes[0].key,
 			address: { ...empty.address, ...address },
 			socials: { ...empty.socials, ...socials },
-			opening_hours: normalizedOpeningHours(value?.opening_hours)
+			opening_hours: normalizedOpeningHours(value?.opening_hours),
+			service_areas: Array.isArray(value?.service_areas) ? [...value.service_areas] : [],
+			specialties: Array.isArray(value?.specialties) ? [...value.specialties] : []
 		})
 	}
 
@@ -213,6 +218,8 @@
 			palette_key: pageForm.palette_key,
 			address: Object.fromEntries(Object.entries(pageForm.address).map(([key, value]) => [key, String(value || '').trim() || null])),
 			socials: Object.fromEntries(Object.entries(pageForm.socials).map(([key, value]) => [key, String(value || '').trim() || null])),
+			service_areas: pageForm.type === 'business' ? [...pageForm.service_areas] : [],
+			specialties: pageForm.type === 'business' ? [...pageForm.specialties] : [],
 			opening_hours: pageForm.opening_hours.map((item) => ({
 				weekday: item.weekday,
 				is_open: Boolean(item.is_open),
@@ -253,7 +260,9 @@
 			'socials.instagram': 'Instagram',
 			'socials.tiktok': 'TikTok',
 			'socials.telegram': 'Telegram',
-			opening_hours: t('pages.sections.openingHours')
+			opening_hours: t('pages.sections.openingHours'),
+			service_areas: t('pages.sections.serviceAreas'),
+			specialties: t('pages.sections.specialties')
 		}
 
 		if (labels[field]) {
@@ -619,7 +628,9 @@
 			facebook: '',
 			instagram: '',
 			tiktok: '',
-			telegram: ''
+			telegram: '',
+			service_areas: ['Tel Aviv', 'Jerusalem'],
+			specialties: ['Electrical repairs', 'Lighting installation']
 		}
 		const openingHours = DEFAULT_OPENING_HOURS.map((item) => ({ ...item }))
 
@@ -632,7 +643,12 @@
 			}], null, 2)
 		}
 
-		const tableSample = { ...sample, opening_hours: JSON.stringify(openingHours) }
+		const tableSample = {
+			...sample,
+			service_areas: JSON.stringify(sample.service_areas),
+			specialties: JSON.stringify(sample.specialties),
+			opening_hours: JSON.stringify(openingHours)
+		}
 		const headers = Object.keys(tableSample)
 		return headers.join('\t') + '\n' + headers.map((key) => tableSample[key]).join('\t')
 	}
@@ -1150,6 +1166,13 @@
 												</div>
 											</div>
 										</section>
+
+										<BusinessDetailsFields
+											v-if="pageForm.type === 'business'"
+											v-model:service-areas="pageForm.service_areas"
+											v-model:specialties="pageForm.specialties"
+											:city-options="cityOptions"
+										/>
 
 										<section class="form-segment">
 											<h3>{{ t('pages.palette') }}</h3>

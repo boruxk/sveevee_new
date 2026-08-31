@@ -104,6 +104,27 @@ class AiWorkPageService
             : null;
         $website = $this->normalizedUrl($input['website'] ?? null);
         $category = $this->categoryKey($input['category_key'] ?? $input['category'] ?? null, $scope);
+        $serviceAreas = $this->listInput($input['service_areas'] ?? []);
+        $specialties = $this->listInput($input['specialties'] ?? []);
+
+        if ($type === Page::TYPE_BUSINESS) {
+            if (is_array($serviceAreas)) {
+                $serviceAreas = collect($serviceAreas)
+                    ->map(fn ($value) => is_string($value)
+                        ? ($this->canonicalValue($value, $cities) ?? trim($value))
+                        : $value)
+                    ->all();
+            }
+
+            if (is_array($specialties)) {
+                $specialties = collect($specialties)
+                    ->map(fn ($value) => is_string($value) ? trim($value) : $value)
+                    ->all();
+            }
+        } else {
+            $serviceAreas = [];
+            $specialties = [];
+        }
 
         $prepared = [
             ...$input,
@@ -124,6 +145,8 @@ class AiWorkPageService
             ],
             'socials' => is_array($input['socials'] ?? null) ? $input['socials'] : [],
             'opening_hours' => $input['opening_hours'] ?? [],
+            'service_areas' => $serviceAreas,
+            'specialties' => $specialties,
         ];
 
         return Validator::make($prepared, [
@@ -151,6 +174,10 @@ class AiWorkPageService
             'opening_hours.*.is_open' => ['required', 'boolean'],
             'opening_hours.*.opens_at' => ['nullable', 'date_format:H:i'],
             'opening_hours.*.closes_at' => ['nullable', 'date_format:H:i'],
+            'service_areas' => ['nullable', 'array', 'max:10'],
+            'service_areas.*' => ['required', 'string', 'max:120', 'distinct:ignore_case', Rule::in($cities)],
+            'specialties' => ['nullable', 'array', 'max:50'],
+            'specialties.*' => ['required', 'string', 'max:120', 'distinct:ignore_case', new CleanContent],
         ])->validate();
     }
 
@@ -241,6 +268,12 @@ class AiWorkPageService
             ],
             'socials' => $socials,
             'opening_hours' => is_array($setup['opening_hours'] ?? null) ? $setup['opening_hours'] : [],
+            'service_areas' => $page->type === Page::TYPE_BUSINESS
+                ? $this->normalizedStringList($setup['service_areas'] ?? [], 10)
+                : [],
+            'specialties' => $page->type === Page::TYPE_BUSINESS
+                ? $this->normalizedStringList($setup['specialties'] ?? [], 50)
+                : [],
         ];
     }
 
@@ -357,6 +390,12 @@ class AiWorkPageService
                     'telegram' => $this->nullableString($data['socials']['telegram'] ?? null),
                 ],
                 'opening_hours' => $this->openingHours($data['opening_hours'] ?? []),
+                'service_areas' => $data['type'] === Page::TYPE_BUSINESS
+                    ? $this->normalizedStringList($data['service_areas'] ?? [], 10)
+                    : [],
+                'specialties' => $data['type'] === Page::TYPE_BUSINESS
+                    ? $this->normalizedStringList($data['specialties'] ?? [], 50)
+                    : [],
                 'features' => ['store' => false, 'services' => false, 'events' => false, 'price_list' => false],
             ],
             'logo_path' => null,
@@ -431,6 +470,37 @@ class AiWorkPageService
         $value = trim((string) $value);
 
         return $value === '' ? null : (preg_match('~^https?://~i', $value) ? $value : 'https://'.$value);
+    }
+
+    private function listInput(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $value = trim($value);
+        if ($value === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+
+        return preg_split('/\s*,\s*/u', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    }
+
+    private function normalizedStringList(mixed $values, int $limit): array
+    {
+        return collect(is_array($values) ? $values : [])
+            ->filter(fn ($value): bool => is_string($value) || is_numeric($value))
+            ->map(fn ($value): string => trim((string) $value))
+            ->filter()
+            ->unique(fn (string $value): string => mb_strtolower($value, 'UTF-8'))
+            ->take($limit)
+            ->values()
+            ->all();
     }
 
     private function nullableString(mixed $value): ?string

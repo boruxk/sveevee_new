@@ -144,6 +144,8 @@ class AiWorkPageImportController extends Controller
                 'telegram' => $socials['telegram'] ?? $row['telegram'] ?? null,
             ],
             'opening_hours' => $this->normalizedOpeningHours($row['opening_hours'] ?? []),
+            'service_areas' => $this->normalizedList($row['service_areas'] ?? $row['serviceAreas'] ?? []),
+            'specialties' => $this->normalizedList($row['specialties'] ?? []),
         ];
 
         $normalized['palette_key'] = $this->pages->automaticPalette($normalized);
@@ -164,6 +166,24 @@ class AiWorkPageImportController extends Controller
         $decoded = json_decode($value, true);
 
         return json_last_error() === JSON_ERROR_NONE && is_array($decoded) ? $decoded : $value;
+    }
+
+    private function normalizedList(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $value = trim($value);
+        if ($value === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return json_last_error() === JSON_ERROR_NONE && is_array($decoded)
+            ? $decoded
+            : (preg_split('/\s*,\s*/u', $value, -1, PREG_SPLIT_NO_EMPTY) ?: []);
     }
 
     private function payload(AiPageImport $import): array

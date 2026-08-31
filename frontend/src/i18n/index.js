@@ -27,6 +27,23 @@ const i18n = createI18n({
 	messages: { he }
 })
 
+if (import.meta.hot) {
+	const hotLocales = ['he', 'en', 'ru', 'fr']
+
+	import.meta.hot.accept([
+		'./messages/he.js',
+		'./messages/en.js',
+		'./messages/ru.js',
+		'./messages/fr.js'
+	], (modules) => {
+		modules.forEach((messageModule, index) => {
+			if (messageModule?.default) {
+				i18n.global.setLocaleMessage(hotLocales[index], messageModule.default)
+			}
+		})
+	})
+}
+
 export function getSupportedLocale(locale) {
 	return supportedLocales.includes(locale) ? locale : 'he'
 }

@@ -55,7 +55,7 @@ class AiWorkPageBulkEditController extends Controller
     {
         $data = $request->validate([
             'pages' => ['required', 'array', 'min:1', 'max:'.self::MAX_PAGES],
-            'pages.*' => ['required', 'array:id,type,name,public_description,contact_email,phone,whatsapp,website,category_key,address,socials,opening_hours'],
+            'pages.*' => ['required', 'array:id,type,name,public_description,contact_email,phone,whatsapp,website,category_key,address,socials,opening_hours,service_areas,specialties'],
             'pages.*.id' => ['required', 'integer', 'min:1', 'distinct'],
             'pages.*.type' => ['sometimes', 'string'],
             'pages.*.name' => ['sometimes', 'string'],
@@ -69,6 +69,8 @@ class AiWorkPageBulkEditController extends Controller
             'pages.*.socials' => ['sometimes', 'array:facebook,instagram,tiktok,telegram'],
             'pages.*.opening_hours' => ['sometimes', 'array'],
             'pages.*.opening_hours.*' => ['array:weekday,is_open,opens_at,closes_at'],
+            'pages.*.service_areas' => ['sometimes', 'array', 'max:10'],
+            'pages.*.specialties' => ['sometimes', 'array', 'max:50'],
         ]);
 
         try {
@@ -162,6 +164,14 @@ class AiWorkPageBulkEditController extends Controller
 
         if (array_key_exists('opening_hours', $row)) {
             $input['opening_hours'] = $row['opening_hours'];
+        }
+
+        if (array_key_exists('service_areas', $row)) {
+            $input['service_areas'] = $row['service_areas'];
+        }
+
+        if (array_key_exists('specialties', $row)) {
+            $input['specialties'] = $row['specialties'];
         }
 
         return $input;

@@ -103,6 +103,9 @@ class AiWorksApiTest extends TestCase
             ->assertJsonPath('data.owner', null)
             ->assertJsonPath('data.features.store', false)
             ->assertJsonPath('data.features.services', false)
+            ->assertJsonPath('data.service_areas.0', 'Jerusalem')
+            ->assertJsonPath('data.service_areas.1', 'Tel Aviv')
+            ->assertJsonPath('data.specialties.0', 'Electrical repairs')
             ->assertJsonPath('data.logo_url', null)
             ->assertJsonPath('data.banner_url', null);
 
@@ -284,6 +287,8 @@ class AiWorksApiTest extends TestCase
         $rows[0]['phone'] = '03-555-0101';
         $rows[0]['whatsapp'] = '97235550101';
         $rows[0]['socials']['instagram'] = 'https://www.instagram.com/bulk-enrichment';
+        $rows[0]['service_areas'] = ['Tel Aviv', 'Haifa'];
+        $rows[0]['specialties'] = ['Emergency electrical repairs', 'Lighting installation'];
         $rows[0]['opening_hours'][0] = [
             'weekday' => 'sunday',
             'is_open' => true,
@@ -296,6 +301,8 @@ class AiWorksApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.updated_count', 2)
             ->assertJsonPath('data.pages.0.phone', '03-555-0101')
+            ->assertJsonPath('data.pages.0.service_areas.1', 'Haifa')
+            ->assertJsonPath('data.pages.0.specialties.0', 'Emergency electrical repairs')
             ->assertJsonPath('data.pages.1.phone', '03-555-0102');
 
         $this->assertDatabaseHas('pages', ['id' => $firstId, 'phone' => '03-555-0101']);
@@ -307,6 +314,11 @@ class AiWorksApiTest extends TestCase
         );
         $this->assertSame('10:00', data_get(Page::query()->findOrFail($firstId)->setup, 'opening_hours.0.opens_at'));
         $this->assertSame('14:00', data_get(Page::query()->findOrFail($firstId)->setup, 'opening_hours.0.closes_at'));
+        $this->assertSame(['Tel Aviv', 'Haifa'], data_get(Page::query()->findOrFail($firstId)->setup, 'service_areas'));
+        $this->assertSame(
+            ['Emergency electrical repairs', 'Lighting installation'],
+            data_get(Page::query()->findOrFail($firstId)->setup, 'specialties')
+        );
         $this->assertDatabaseHas('pages', ['id' => $outsideId, 'phone' => '02-555-0100']);
     }
 
@@ -335,10 +347,11 @@ class AiWorksApiTest extends TestCase
         $invalidRows = $rows;
         $invalidRows[0]['phone'] = '02-555-9991';
         $invalidRows[1]['contact_email'] = 'not-an-email';
+        $invalidRows[1]['specialties'] = ['what the fuck'];
 
         $this->patchJson('/api/v1/ai-works/pages/bulk-edit', ['pages' => $invalidRows])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('pages.1.contact_email');
+            ->assertJsonValidationErrors(['pages.1.contact_email', 'pages.1.specialties.0']);
 
         $this->assertDatabaseHas('pages', ['id' => $firstId, 'phone' => '02-555-0100']);
 
@@ -767,6 +780,8 @@ class AiWorksApiTest extends TestCase
             'opens_at' => '08:30',
             'closes_at' => '16:30',
         ]]);
+        $valid['service_areas'] = json_encode(['tel-aviv', 'Jerusalem']);
+        $valid['specialties'] = 'Electrical repairs, Lighting installation';
         unset($valid['palette_key']);
 
         $invalid = $this->pagePayload();
@@ -801,6 +816,8 @@ class AiWorksApiTest extends TestCase
         );
         $this->assertSame('08:30', data_get($createdPage->setup, 'opening_hours.0.opens_at'));
         $this->assertSame('16:30', data_get($createdPage->setup, 'opening_hours.0.closes_at'));
+        $this->assertSame(['Tel Aviv', 'Jerusalem'], data_get($createdPage->setup, 'service_areas'));
+        $this->assertSame(['Electrical repairs', 'Lighting installation'], data_get($createdPage->setup, 'specialties'));
         $this->assertContains(
             $createdPage->palette_key,
             AiWorkPageService::PALETTE_KEYS,
@@ -925,6 +942,8 @@ class AiWorksApiTest extends TestCase
             ],
             'socials' => [],
             'opening_hours' => [],
+            'service_areas' => $type === Page::TYPE_BUSINESS ? ['Jerusalem', 'Tel Aviv'] : [],
+            'specialties' => $type === Page::TYPE_BUSINESS ? ['Electrical repairs', 'Lighting installation'] : [],
         ];
     }
 }
