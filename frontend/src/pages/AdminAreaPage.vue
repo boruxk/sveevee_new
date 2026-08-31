@@ -1244,13 +1244,14 @@
 										<q-btn
 											flat
 											round
+											dense
 											color="negative"
-											icon="delete_forever"
 											:loading="deletingPageId === props.row.id"
 											:disable="Boolean(deletingPageId)"
 											:aria-label="t('admin.pages.deletePermanently')"
 											@click="confirmDeletePage(props.row)"
 										>
+											<DeleteIcon :size="18" />
 											<q-tooltip>{{ t('admin.pages.deletePermanently') }}</q-tooltip>
 										</q-btn>
 									</div>
