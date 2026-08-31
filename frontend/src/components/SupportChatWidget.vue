@@ -468,10 +468,10 @@
 .support-widget__trigger {
   min-height: 56px;
   padding-inline: 22px;
-  background: var(--soz-action-gradient);
+  background: linear-gradient(135deg, #7b3ff2 0%, #5f28c6 100%);
   color: #fff;
-  font-weight: 900;
-  box-shadow: 0 18px 34px rgba(245, 66, 145, 0.28);
+  font-weight: 800;
+  box-shadow: 0 12px 24px rgba(66, 20, 143, 0.2);
 }
 
 .support-widget__panel {

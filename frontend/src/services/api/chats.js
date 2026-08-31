@@ -31,15 +31,15 @@ export function sendSupportChatMessage(body) {
 }
 
 export function startGuestSupportChat(payload) {
-	return apiClient.post('/guest-support', payload)
+	return apiClient.post('/guest-support', payload, { skipAuth: true })
 }
 
 export function fetchGuestSupportChat(token) {
-	return apiClient.get('/guest-support', { headers: guestSupportHeaders(token) })
+	return apiClient.get('/guest-support', { headers: guestSupportHeaders(token), skipAuth: true })
 }
 
 export function sendGuestSupportMessage(token, body) {
-	return apiClient.post('/guest-support/messages', { body }, { headers: guestSupportHeaders(token) })
+	return apiClient.post('/guest-support/messages', { body }, { headers: guestSupportHeaders(token), skipAuth: true })
 }
 
 export function claimGuestSupportChat(token) {

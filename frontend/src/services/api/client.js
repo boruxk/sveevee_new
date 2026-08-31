@@ -25,7 +25,7 @@ apiClient.interceptors.request.use(async(config) => {
 	const token = localStorage.getItem(TOKEN_KEY)
 	const method = (config.method || 'get').toLowerCase()
 
-	if (token) {
+	if (token && !config.skipAuth) {
 		config.headers.Authorization = `Bearer ${token}`
 	}
 
