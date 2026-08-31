@@ -497,6 +497,9 @@ export default {
 		street: 'Улица',
 		number: 'Номер',
 		city: 'Город',
+		serviceAreasCount: 'Выбрано городов ({count}/{max})',
+		specialties: 'Специализации',
+		specialtiesPlaceholder: 'Ремонт, установка, обслуживание',
 		opensAt: 'Открытие',
 		closesAt: 'Закрытие',
 		palette: 'Цветовая палитра',
@@ -531,7 +534,9 @@ export default {
 			contact: 'Контакты',
 			address: 'Адрес',
 			socials: 'Соцсети',
-			openingHours: 'Часы работы'
+			openingHours: 'Часы работы',
+			serviceAreas: 'Зоны обслуживания',
+			specialties: 'Специализации'
 		},
 		previewFallbacks: {
 			business: 'Покажите идентичность бизнеса, доступность и способы связи на одной цельной странице.',
@@ -953,7 +958,7 @@ export default {
 		productFallbackTitle: 'Товар sveevee',
 		productFallbackDescription: 'Просмотрите местный товар для продажи в sveevee.',
 		businessPageTitle: '{name} в {city} - услуги, отзывы и контакт',
-		businessPageDescription: '{name} - {category} в {city}{neighborhood}. Смотрите услуги, часы работы, рейтинги и контактные данные в sveevee.',
+		businessPageDescription: '{name} - {category} в {city}{neighborhood}. Смотрите специализации, зоны обслуживания, часы работы, рейтинги и контактные данные в sveevee.',
 		communityPageTitle: '{name} в {city} - события, новости и контакты',
 		communityPageDescription: '{name} - {category} в {city}{neighborhood}. Смотрите события, новости, рейтинги и контактные данные в sveevee.',
 		productPageTitle: '{name} в {city} - цена и детали товара',

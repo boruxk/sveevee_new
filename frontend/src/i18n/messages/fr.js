@@ -497,6 +497,9 @@ export default {
 		street: 'Rue',
 		number: 'Numéro',
 		city: 'Ville',
+		serviceAreasCount: 'Villes sélectionnées ({count}/{max})',
+		specialties: 'Spécialités',
+		specialtiesPlaceholder: 'Réparation, installation, entretien',
 		opensAt: 'Ouverture',
 		closesAt: 'Fermeture',
 		palette: 'Palette de couleurs',
@@ -531,7 +534,9 @@ export default {
 			contact: 'Contact',
 			address: 'Adresse',
 			socials: 'Réseaux sociaux',
-			openingHours: 'Horaires'
+			openingHours: 'Horaires',
+			serviceAreas: 'Zones desservies',
+			specialties: 'Spécialités'
 		},
 		previewFallbacks: {
 			business: 'Montrez votre identité d’entreprise, vos disponibilités et vos contacts sur une page cohérente.',
@@ -953,7 +958,7 @@ export default {
 		productFallbackTitle: 'Produit sveevee',
 		productFallbackDescription: 'Consultez un produit local à vendre sur sveevee.',
 		businessPageTitle: '{name} à {city} - services, avis et contact',
-		businessPageDescription: '{name} - {category} à {city}{neighborhood}. Consultez les services, horaires, notes et coordonnées sur sveevee.',
+		businessPageDescription: '{name} - {category} à {city}{neighborhood}. Consultez les spécialités, zones desservies, horaires, notes et coordonnées sur sveevee.',
 		communityPageTitle: '{name} à {city} - événements, actualités et contact',
 		communityPageDescription: '{name} - {category} à {city}{neighborhood}. Consultez les événements, actualités, notes et coordonnées sur sveevee.',
 		productPageTitle: '{name} à {city} - prix et détails du produit',

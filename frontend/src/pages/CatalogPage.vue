@@ -52,6 +52,7 @@
 		scopeForHub.value ? scopedCatalogGroups.get(scopeForHub.value) || [] : catalogGroups.value
 	))
 	const isDirectory = computed(() => !route.params.topicSlug || Boolean(scopeHubSlug.value))
+	const isRootTopic = computed(() => !isDirectory.value && !route.params.citySlug && !route.params.neighborhoodSlug)
 	const hub = computed(() => directory.value?.hub || null)
 	const groups = computed(() => directory.value.groups || [])
 	const popularTopics = computed(() => directory.value.popular_topics || [])
@@ -166,7 +167,7 @@
 		].filter(Boolean)
 	})
 	const robots = computed(() => {
-		if (isDirectory.value) {
+		if (isDirectory.value || isRootTopic.value) {
 			return 'index,follow'
 		}
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Http\Controllers\Controller;
 use App\Models\Page;
+use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PageDeletionService;
 use App\Services\PayloadService;
@@ -77,8 +78,12 @@ class PageController extends Controller
             'banner_remove' => ['nullable', 'boolean'],
         ]);
 
-        $setup = $this->normalizedSetup($request->input('setup'));
+        $decodedSetup = $this->decodedSetup($request->input('setup'));
+        $this->validateBusinessDetails($decodedSetup, $type);
+        $setup = $this->normalizedSetup($decodedSetup);
         $setup['website'] = $data['website'] ?? null;
+        $setup['service_areas'] = $type === Page::TYPE_BUSINESS ? $setup['service_areas'] : [];
+        $setup['specialties'] = $type === Page::TYPE_BUSINESS ? $setup['specialties'] : [];
         $setup['features'] = [
             'store' => $type === Page::TYPE_BUSINESS ? $setup['features']['store'] : false,
             'services' => $type === Page::TYPE_BUSINESS ? $setup['features']['services'] : false,
@@ -226,15 +231,7 @@ class PageController extends Controller
 
     private function normalizedSetup(mixed $setup): array
     {
-        if (is_array($setup)) {
-            $decoded = $setup;
-        } elseif (is_string($setup) && trim($setup) !== '') {
-            $decoded = json_decode($setup, true);
-
-            $decoded = is_array($decoded) ? $decoded : [];
-        } else {
-            $decoded = [];
-        }
+        $decoded = $this->decodedSetup($setup);
 
         $contact = is_array($decoded['contact'] ?? null) ? $decoded['contact'] : [];
         $address = is_array($decoded['address'] ?? null) ? $decoded['address'] : [];
@@ -262,6 +259,8 @@ class PageController extends Controller
                 'telegram' => $this->nullableString($socials['telegram'] ?? null),
             ],
             'opening_hours' => $this->normalizedOpeningHours($decoded['opening_hours'] ?? []),
+            'service_areas' => $this->normalizedStringList($decoded['service_areas'] ?? [], 10),
+            'specialties' => $this->normalizedStringList($decoded['specialties'] ?? [], 50),
             'features' => [
                 'store' => $this->booleanValue($features['store'] ?? null, false),
                 'services' => $this->booleanValue($features['services'] ?? null, false),
@@ -273,6 +272,47 @@ class PageController extends Controller
                 'description' => $this->nullableString($services['description'] ?? null),
             ],
         ]);
+    }
+
+    private function decodedSetup(mixed $setup): array
+    {
+        if (is_array($setup)) {
+            return $setup;
+        }
+
+        if (! is_string($setup) || trim($setup) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($setup, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function validateBusinessDetails(array $setup, string $type): void
+    {
+        if ($type !== Page::TYPE_BUSINESS) {
+            return;
+        }
+
+        validator($setup, [
+            'service_areas' => ['nullable', 'array', 'max:10'],
+            'service_areas.*' => ['required', 'string', 'max:255', 'distinct'],
+            'specialties' => ['nullable', 'array', 'max:50'],
+            'specialties.*' => ['required', 'string', 'max:120', 'distinct', new CleanContent],
+        ])->validate();
+    }
+
+    private function normalizedStringList(mixed $values, int $limit): array
+    {
+        return collect(is_array($values) ? $values : [])
+            ->filter(fn ($value) => is_string($value) || is_numeric($value))
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->unique(fn (string $value) => mb_strtolower($value, 'UTF-8'))
+            ->take($limit)
+            ->values()
+            ->all();
     }
 
     private function booleanValue(mixed $value, bool $default): bool

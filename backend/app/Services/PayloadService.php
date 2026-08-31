@@ -96,6 +96,12 @@ class PayloadService
         $contact = $this->pageContact($page, $setup);
         $addressDetails = $this->pageAddress($setup);
         $socials = $this->pageSocials($setup);
+        $serviceAreas = $page->type === Page::TYPE_BUSINESS
+            ? $this->normalizedStringList($setup['service_areas'] ?? [], 10)
+            : [];
+        $specialties = $page->type === Page::TYPE_BUSINESS
+            ? $this->normalizedStringList($setup['specialties'] ?? [], 50)
+            : [];
         $page->loadMissing(['prices', 'products', 'services', 'events']);
         $page->products->each(fn (PageProduct $product) => $product->setRelation('page', $page));
 
@@ -117,6 +123,8 @@ class PayloadService
             'address_details' => $addressDetails,
             'socials' => $socials,
             'opening_hours' => $this->normalizedOpeningHours($setup['opening_hours'] ?? []),
+            'service_areas' => $serviceAreas,
+            'specialties' => $specialties,
             'features' => $features,
             'palette_key' => $page->palette_key,
             'logo_url' => $isUnclaimed ? null : $page->logo_url,
@@ -130,7 +138,12 @@ class PayloadService
             'products' => $isUnclaimed ? [] : $page->products->map(fn (PageProduct $product) => $this->product($product))->values()->all(),
             'services' => $isUnclaimed ? [] : $page->services->map(fn (PageService $service) => $this->service($service))->values()->all(),
             'events' => $isUnclaimed ? [] : $page->events->map(fn (PageEvent $event) => $this->event($event))->values()->all(),
-            'setup' => [...$setup, 'features' => $features],
+            'setup' => [
+                ...$setup,
+                'service_areas' => $serviceAreas,
+                'specialties' => $specialties,
+                'features' => $features,
+            ],
             'claimed_at' => $page->claimed_at?->toISOString(),
             'owner' => ! $isUnclaimed && $page->relationLoaded('user') && $page->user
                 ? $this->user($page->user)
@@ -629,6 +642,18 @@ class PayloadService
                     'closes_at' => $isOpen ? ($item['closes_at'] ?? $default['closes_at']) : null,
                 ];
             })
+            ->values()
+            ->all();
+    }
+
+    private function normalizedStringList(mixed $values, int $limit): array
+    {
+        return collect(is_array($values) ? $values : [])
+            ->filter(fn ($value) => is_string($value) || is_numeric($value))
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->unique(fn (string $value) => mb_strtolower($value, 'UTF-8'))
+            ->take($limit)
             ->values()
             ->all();
     }

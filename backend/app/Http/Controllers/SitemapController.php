@@ -123,6 +123,11 @@ class SitemapController extends Controller
     private function catalogEntries(): Collection
     {
         $paths = [];
+
+        CatalogTopics::all()->each(function (array $topic) use (&$paths): void {
+            $paths[CatalogTopics::catalogPath($topic)] = now();
+        });
+
         $register = function (?string $topicKey, ?string $city, ?string $neighborhood, ?Carbon $updatedAt) use (&$paths): void {
             $topic = CatalogTopics::findByKey($topicKey);
 

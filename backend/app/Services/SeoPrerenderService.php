@@ -30,7 +30,7 @@ class SeoPrerenderService
         'he' => [
             'site' => 'Sveevee',
             'businessTitle' => '{name} ב{city} - שירותים, ביקורות ויצירת קשר | Sveevee',
-            'businessDescription' => '{name} - {category} ב{city}{neighborhood}. צפו בשירותים, שעות פעילות, אזורי שירות, ביקורות ופרטי יצירת קשר ב-Sveevee.',
+            'businessDescription' => '{name} - {category} ב{city}{neighborhood}. צפו בתחומי התמחות, אזורי שירות, שעות פעילות, ביקורות ופרטי יצירת קשר ב-Sveevee.',
             'communityTitle' => '{name} ב{city} - קהילה מקומית, אירועים ויצירת קשר | Sveevee',
             'communityDescription' => '{name} - {category} ב{city}{neighborhood}. צפו במידע קהילתי, אירועים ודרכי יצירת קשר ב-Sveevee.',
             'unclaimedNoticeTitle' => 'עמוד עסק לא מאומת',
@@ -45,6 +45,8 @@ class SeoPrerenderService
             'phone' => 'טלפון',
             'email' => 'אימייל',
             'openingHours' => 'שעות פעילות',
+            'serviceAreas' => 'אזורי שירות',
+            'specialties' => 'תחומי התמחות',
             'rating' => 'ביקורות',
             'products' => 'מוצרים',
             'priceList' => 'מחירון',
@@ -64,7 +66,7 @@ class SeoPrerenderService
         'en' => [
             'site' => 'Sveevee',
             'businessTitle' => '{name} in {city} - services, reviews, and contact | Sveevee',
-            'businessDescription' => '{name} - {category} in {city}{neighborhood}. View services, opening hours, ratings, and contact details on Sveevee.',
+            'businessDescription' => '{name} - {category} in {city}{neighborhood}. View specialties, service areas, opening hours, ratings, and contact details on Sveevee.',
             'communityTitle' => '{name} in {city} - local community, events, and contact | Sveevee',
             'communityDescription' => '{name} - {category} in {city}{neighborhood}. View community information, events, and contact details on Sveevee.',
             'unclaimedNoticeTitle' => 'Unverified business page',
@@ -79,6 +81,8 @@ class SeoPrerenderService
             'phone' => 'Phone',
             'email' => 'Email',
             'openingHours' => 'Opening hours',
+            'serviceAreas' => 'Service areas',
+            'specialties' => 'Specialties',
             'rating' => 'Reviews',
             'products' => 'Products',
             'priceList' => 'Price list',
@@ -98,7 +102,7 @@ class SeoPrerenderService
         'ru' => [
             'site' => 'Sveevee',
             'businessTitle' => '{name} в {city} - услуги, отзывы и контакт | Sveevee',
-            'businessDescription' => '{name} - {category} в {city}{neighborhood}. Смотрите услуги, часы работы, рейтинги и контактные данные в Sveevee.',
+            'businessDescription' => '{name} - {category} в {city}{neighborhood}. Смотрите специализации, зоны обслуживания, часы работы, рейтинги и контактные данные в Sveevee.',
             'communityTitle' => '{name} в {city} - местное сообщество, события и контакты | Sveevee',
             'communityDescription' => '{name} - {category} в {city}{neighborhood}. Смотрите информацию о сообществе, события и контактные данные в Sveevee.',
             'unclaimedNoticeTitle' => 'Непроверенная бизнес-страница',
@@ -113,6 +117,8 @@ class SeoPrerenderService
             'phone' => 'Телефон',
             'email' => 'Эл. почта',
             'openingHours' => 'Часы работы',
+            'serviceAreas' => 'Зоны обслуживания',
+            'specialties' => 'Специализации',
             'rating' => 'Отзывы',
             'products' => 'Товары',
             'priceList' => 'Прайс-лист',
@@ -132,7 +138,7 @@ class SeoPrerenderService
         'fr' => [
             'site' => 'Sveevee',
             'businessTitle' => '{name} à {city} - services, avis et contact | Sveevee',
-            'businessDescription' => '{name} - {category} à {city}{neighborhood}. Consultez les services, horaires, notes et coordonnées sur Sveevee.',
+            'businessDescription' => '{name} - {category} à {city}{neighborhood}. Consultez les spécialités, zones desservies, horaires, notes et coordonnées sur Sveevee.',
             'communityTitle' => '{name} à {city} - communauté locale, événements et contact | Sveevee',
             'communityDescription' => '{name} - {category} à {city}{neighborhood}. Consultez les informations de la communauté, les événements et les coordonnées sur Sveevee.',
             'unclaimedNoticeTitle' => 'Page entreprise non vérifiée',
@@ -147,6 +153,8 @@ class SeoPrerenderService
             'phone' => 'Téléphone',
             'email' => 'E-mail',
             'openingHours' => 'Horaires',
+            'serviceAreas' => 'Zones desservies',
+            'specialties' => 'Spécialités',
             'rating' => 'Avis',
             'products' => 'Produits',
             'priceList' => 'Liste de prix',
@@ -181,6 +189,7 @@ class SeoPrerenderService
         $marketingPages = 0;
         $informationPages = 0;
         $catalogHubs = 0;
+        $catalogTopics = 0;
         $businessPages = 0;
         $communityPages = 0;
         $productPages = 0;
@@ -199,6 +208,14 @@ class SeoPrerenderService
             $catalogHubs++;
             $files[] = $this->writePage($dist, $hub['path'], $this->catalogHubHtml($indexHtml, $hub, 'he'));
         });
+
+        CatalogTopics::all()
+            ->unique('slug')
+            ->each(function (array $topic) use ($dist, $indexHtml, &$files, &$catalogTopics): void {
+                $catalogTopics++;
+                $path = CatalogTopics::catalogPath($topic);
+                $files[] = $this->writePage($dist, $path, $this->catalogTopicHtml($indexHtml, $topic, 'he'));
+            });
 
         Page::query()
             ->with(['prices', 'products', 'services', 'events', 'user.profile'])
@@ -263,6 +280,7 @@ class SeoPrerenderService
             'marketing_pages' => $marketingPages,
             'information_pages' => $informationPages,
             'catalog_hubs' => $catalogHubs,
+            'catalog_topics' => $catalogTopics,
             'business_pages' => $businessPages,
             'community_pages' => $communityPages,
             'product_pages' => $productPages,
@@ -297,6 +315,16 @@ class SeoPrerenderService
         return $this->decorateIndex($indexHtml, $meta, $this->catalogHubBody($hub, $locale, $meta), [
             $this->catalogHubSchema($meta),
             $this->catalogHubItemListSchema($hub, $locale),
+            $this->breadcrumbSchema($meta['breadcrumbs']),
+        ]);
+    }
+
+    private function catalogTopicHtml(string $indexHtml, array $topic, string $locale): string
+    {
+        $meta = $this->catalogTopicMeta($topic, $locale);
+
+        return $this->decorateIndex($indexHtml, $meta, $this->catalogTopicBody($topic, $locale, $meta), [
+            $this->catalogHubSchema($meta),
             $this->breadcrumbSchema($meta['breadcrumbs']),
         ]);
     }
@@ -905,6 +933,44 @@ class SeoPrerenderService
         ];
     }
 
+    private function catalogTopicMeta(array $topic, string $locale): array
+    {
+        $label = $this->translated($topic['labels'] ?? [], $locale);
+        $path = CatalogTopics::catalogPath($topic);
+        $description = match ($locale) {
+            'he' => 'עסקים, מוצרים, שירותים, אירועים, מודעות ואנשים מקומיים בתחום '.$label.' ב-Sveevee.',
+            'ru' => 'Местные компании, товары, услуги, события, объявления и люди в категории '.$label.' на Sveevee.',
+            'fr' => 'Entreprises, produits, services, événements, annonces et personnes locales dans la catégorie '.$label.' sur Sveevee.',
+            default => 'Local businesses, products, services, events, ads, and people in '.$label.' on Sveevee.',
+        };
+
+        return [
+            'locale' => $locale,
+            'dir' => $this->direction($locale),
+            'type' => 'website',
+            'title' => $label.' | Sveevee',
+            'description' => $this->truncate($description),
+            'canonical' => $this->absoluteUrl($path),
+            'image' => $this->absoluteUrl('/favicon.png'),
+            'image_alt' => 'Sveevee',
+            'image_width' => null,
+            'image_height' => null,
+            'alternates' => [],
+            'label' => $label,
+            'path' => $path,
+            'breadcrumbs' => [
+                [
+                    'label' => 'Sveevee',
+                    'path' => '/',
+                ],
+                [
+                    'label' => $label,
+                    'path' => $path,
+                ],
+            ],
+        ];
+    }
+
     private function businessMeta(Page $page, string $locale): array
     {
         $address = $this->pageAddress($page);
@@ -1030,6 +1096,16 @@ class SeoPrerenderService
             ! $page->is_unclaimed && $this->ratingText($page, $locale) ? [$copy['rating'], $this->ratingText($page, $locale)] : null,
         ];
         $hours = $this->openingHoursText($page, $locale);
+        $serviceAreas = $page->type === Page::TYPE_BUSINESS ? collect($page->setup['service_areas'] ?? [])
+            ->filter(fn ($value): bool => is_string($value) && filled($value))
+            ->take(10)
+            ->map(fn (string $value): string => '<li>'.$this->escape(trim($value)).'</li>')
+            ->implode('') : '';
+        $specialties = $page->type === Page::TYPE_BUSINESS ? collect($page->setup['specialties'] ?? [])
+            ->filter(fn ($value): bool => is_string($value) && filled($value))
+            ->take(50)
+            ->map(fn (string $value): string => '<li>'.$this->escape(trim($value)).'</li>')
+            ->implode('') : '';
         $website = trim((string) data_get($page->setup, 'website', ''));
         $prices = ! $page->is_unclaimed && data_get($page->setup, 'features.price_list', false) ? $page->prices->take(12)->map(fn ($price): string => sprintf(
             '<li><strong>%s</strong><span>%s</span></li>',
@@ -1065,6 +1141,8 @@ class SeoPrerenderService
             .($website ? $this->section($copy['website'], '<p><a href="'.$this->escapeAttribute($website).'">'.$this->escape($website).'</a></p>') : '')
             .$this->section($copy['contact'], $this->definitionList($contactRows))
             .($hours ? $this->section($copy['openingHours'], '<p>'.$this->escape($hours).'</p>') : '')
+            .($serviceAreas ? $this->section($copy['serviceAreas'], '<ul>'.$serviceAreas.'</ul>') : '')
+            .($specialties ? $this->section($copy['specialties'], '<ul>'.$specialties.'</ul>') : '')
             .($prices ? $this->section($copy['priceList'], '<ul>'.$prices.'</ul>') : '')
             .($products ? $this->section($copy['products'], '<ul>'.$products.'</ul>') : '')
             .($services ? $this->section($copy['services'], '<ul>'.$services.'</ul>') : '')
@@ -1139,6 +1217,33 @@ class SeoPrerenderService
             .'</article></main>';
     }
 
+    private function catalogTopicBody(array $topic, string $locale, array $meta): string
+    {
+        $related = CatalogTopics::all()
+            ->where('group_key', $topic['group_key'] ?? null)
+            ->reject(fn (array $item): bool => $item['key'] === $topic['key'])
+            ->take(12)
+            ->map(fn (array $item): string => sprintf(
+                '<li><a href="%s">%s</a></li>',
+                $this->escapeAttribute(CatalogTopics::catalogPath($item)),
+                $this->escape($this->translated($item['labels'] ?? [], $locale))
+            ))
+            ->implode('');
+
+        $relatedSection = $related === '' ? '' : $this->section(
+            $this->translated($topic['group_labels'] ?? [], $locale),
+            '<ul>'.$related.'</ul>'
+        );
+
+        return '<main class="sveevee-prerender"><article class="sveevee-prerender__card">'
+            .$this->brand()
+            .$this->breadcrumbHtml($meta['breadcrumbs'])
+            .'<h1>'.$this->escape($meta['label']).'</h1>'
+            .'<p class="sveevee-prerender__lead">'.$this->escape($meta['description']).'</p>'
+            .$relatedSection
+            .'</article></main>';
+    }
+
     private function businessSchema(Page $page, string $locale, array $meta): array
     {
         $website = trim((string) data_get($page->setup, 'website', ''));
@@ -1155,6 +1260,18 @@ class SeoPrerenderService
             'sameAs' => $website ? [$website] : null,
             'address' => $this->addressSchema($meta['address']),
             'openingHoursSpecification' => $page->type === Page::TYPE_BUSINESS ? $this->openingHoursSchema($page) : null,
+            'areaServed' => $page->type === Page::TYPE_BUSINESS ? collect($page->setup['service_areas'] ?? [])
+                ->filter(fn ($value): bool => is_string($value) && filled($value))
+                ->take(10)
+                ->map(fn (string $city): array => ['@type' => 'City', 'name' => trim($city)])
+                ->values()
+                ->all() : null,
+            'serviceType' => $page->type === Page::TYPE_BUSINESS ? collect($page->setup['specialties'] ?? [])
+                ->filter(fn ($value): bool => is_string($value) && filled($value))
+                ->take(50)
+                ->map(fn (string $value): string => trim($value))
+                ->values()
+                ->all() : null,
             'aggregateRating' => $page->is_unclaimed ? null : $this->ratingSchema($page),
         ];
 

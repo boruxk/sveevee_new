@@ -188,6 +188,16 @@
 			opens: item.opens_at,
 			closes: item.closes_at
 		})))
+	const structuredServiceAreas = computed(() => (page.value?.service_areas || [])
+		.map((city) => String(city || '').trim())
+		.filter(Boolean)
+		.map((city) => ({
+			'@type': 'City',
+			name: city
+		})))
+	const structuredSpecialties = computed(() => (page.value?.specialties || [])
+		.map((specialty) => String(specialty || '').trim())
+		.filter(Boolean))
 	const breadcrumbJsonLd = computed(() => {
 		if (!page.value) {
 			return null
@@ -234,6 +244,8 @@
 			sameAs: page.value.website ? [page.value.website] : undefined,
 			address: structuredAddress.value,
 			openingHoursSpecification: isBusinessPage.value && structuredOpeningHours.value.length ? structuredOpeningHours.value : undefined,
+			areaServed: isBusinessPage.value && structuredServiceAreas.value.length ? structuredServiceAreas.value : undefined,
+			serviceType: isBusinessPage.value && structuredSpecialties.value.length ? structuredSpecialties.value : undefined,
 			aggregateRating: page.value.rating_summary?.count > 0 ? {
 				'@type': 'AggregateRating',
 				ratingValue: page.value.rating_summary.average,

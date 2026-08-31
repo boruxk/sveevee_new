@@ -14,7 +14,9 @@
 	import PriceListIcon from '@/components/icons/PriceListIcon.vue'
 	import ServiceCard from '@/components/services/ServiceCard.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
+	import BusinessDetailsFields from '@/components/pages/BusinessDetailsFields.vue'
 	import { imageObjectForJsonLd, versionedPublicImage } from '@/utils/responsiveImages'
+	import { locationOption } from '@/utils/locationLabels'
 
 	const { locale, t } = useI18n()
 	const route = useRoute()
@@ -369,6 +371,22 @@
 		{ weekday: 'friday', is_open: true, opens_at: '09:00', closes_at: '13:00' },
 		{ weekday: 'saturday', is_open: false, opens_at: null, closes_at: null }
 	])
+	const exampleSpecialties = {
+		en: ['Custom gift baskets', 'Local delivery', 'Event packages'],
+		he: ['סלי מתנה בהתאמה אישית', 'משלוחים מקומיים', 'חבילות לאירועים'],
+		ru: ['Подарочные наборы на заказ', 'Местная доставка', 'Наборы для мероприятий'],
+		fr: ['Paniers cadeaux sur mesure', 'Livraison locale', 'Formules événementielles']
+	}
+	const demoServiceAreas = computed(() => isCommunityExample.value ? [] : ['Jerusalem', 'Tel Aviv', 'Maale Adumim'])
+	const demoServiceAreaOptions = computed(() => demoServiceAreas.value
+		.map((city) => locationOption(city, 'city', locale.value)))
+	const demoSpecialties = computed(() => {
+		if (isCommunityExample.value) {
+			return []
+		}
+
+		return exampleSpecialties[locale.value] || exampleSpecialties.en
+	})
 	const locationParts = computed(() => copy.value.location.split(',').map((part) => part.trim()).filter(Boolean))
 	const demoAddress = computed(() => ({
 		street: 'Ha-Pisga',
@@ -392,6 +410,8 @@
 		},
 		address: demoAddress.value,
 		opening_hours: openingHours.value,
+		service_areas: demoServiceAreas.value,
+		specialties: demoSpecialties.value,
 		palette_key: palette.value.key
 	}))
 	const demoCityOptions = computed(() => demoAddress.value.city ? [demoAddress.value.city] : [])
@@ -424,6 +444,8 @@
 			neighborhood: demoAddress.value.neighborhood
 		},
 		opening_hours: openingHours.value,
+		service_areas: demoServiceAreas.value,
+		specialties: demoSpecialties.value,
 		features: {
 			store: !isCommunityExample.value,
 			services: !isCommunityExample.value,
@@ -816,6 +838,14 @@
 												</div>
 											</div>
 										</section>
+
+										<BusinessDetailsFields
+											v-if="!isCommunityExample"
+											:service-areas="demoForm.service_areas"
+											:specialties="demoForm.specialties"
+											:city-options="demoServiceAreaOptions"
+											disabled
+										/>
 
 										<div class="upload-group q-mt-md">
 											<div class="upload-row">

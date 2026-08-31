@@ -125,7 +125,7 @@ class CatalogController extends Controller
             'neighborhood_slug' => CatalogTopics::locationSlug($neighborhood),
             'title_he' => $this->titleHe($topic, $city, $neighborhood),
             'description_he' => $this->descriptionHe($topic, $city, $neighborhood),
-            'indexable' => $total > 0,
+            'indexable' => (! filled($city) && ! filled($neighborhood)) || $total > 0,
             'total_count' => $total,
             'counts' => $counts,
             'segments' => $segments,

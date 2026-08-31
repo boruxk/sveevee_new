@@ -497,6 +497,9 @@ export default {
 		street: 'רחוב',
 		number: 'מספר',
 		city: 'עיר',
+		serviceAreasCount: 'ערים שנבחרו ({count}/{max})',
+		specialties: 'תחומי התמחות',
+		specialtiesPlaceholder: 'תיקונים, התקנות, תחזוקה',
 		opensAt: 'פתיחה',
 		closesAt: 'סגירה',
 		palette: 'פלטת צבעים',
@@ -531,7 +534,9 @@ export default {
 			contact: 'יצירת קשר',
 			address: 'כתובת',
 			socials: 'רשתות חברתיות',
-			openingHours: 'שעות פתיחה'
+			openingHours: 'שעות פתיחה',
+			serviceAreas: 'אזורי שירות',
+			specialties: 'תחומי התמחות'
 		},
 		previewFallbacks: {
 			business: 'הציגו זהות עסקית, זמינות ודרכי קשר בתוך עמוד אחד עקבי.',
@@ -953,7 +958,7 @@ export default {
 		productFallbackTitle: 'מוצר ב-Sveevee',
 		productFallbackDescription: 'צפו במוצר מקומי למכירה ב-Sveevee.',
 		businessPageTitle: '{name} ב{city} - שירותים, ביקורות ויצירת קשר',
-		businessPageDescription: '{name} - {category} ב{city}{neighborhood}. צפו בשירותים, שעות פעילות, אזורי שירות, ביקורות ופרטי יצירת קשר ב-Sveevee.',
+		businessPageDescription: '{name} - {category} ב{city}{neighborhood}. צפו בתחומי התמחות, אזורי שירות, שעות פעילות, ביקורות ופרטי יצירת קשר ב-Sveevee.',
 		communityPageTitle: '{name} ב{city} - אירועים, עדכונים ויצירת קשר',
 		communityPageDescription: '{name} - {category} ב{city}{neighborhood}. צפו באירועים, עדכונים, דירוגים ופרטי יצירת קשר ב-Sveevee.',
 		productPageTitle: '{name} ב{city} - מחיר ופרטי המוצר',

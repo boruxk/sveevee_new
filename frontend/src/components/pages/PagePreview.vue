@@ -180,6 +180,29 @@
 		.replace(/^https?:\/\//i, '')
 		.replace(/\/$/, ''))
 	const previewOpeningHours = computed(() => props.page?.opening_hours || [])
+	const previewServiceAreas = computed(() => {
+		if (pageType.value !== 'business') {
+			return []
+		}
+
+		const values = props.page?.service_areas || props.page?.setup?.service_areas || []
+
+		return [...new Set((Array.isArray(values) ? values : [])
+			.map((value) => String(value || '').trim())
+			.filter(Boolean))]
+			.map((value) => locationLabel(value, 'city', locale.value))
+	})
+	const previewSpecialties = computed(() => {
+		if (pageType.value !== 'business') {
+			return []
+		}
+
+		const values = props.page?.specialties || props.page?.setup?.specialties || []
+
+		return [...new Set((Array.isArray(values) ? values : [])
+			.map((value) => String(value || '').trim())
+			.filter(Boolean))]
+	})
 	const previewLogoUrl = computed(() => props.page?.logo_url || null)
 	const previewBannerUrl = computed(() => props.page?.banner_url || null)
 	const previewLogoAlt = computed(() => props.page?.logo_alt || t('pages.logoAlt', { name: previewTitle.value }))
@@ -573,6 +596,20 @@
 							</div>
 						</div>
 						<div v-else class="text-body2 page-preview__empty">{{ t('pages.noOpeningHours') }}</div>
+					</div>
+
+					<div v-if="previewServiceAreas.length" class="page-preview__detail-card">
+						<div class="page-preview__section-title">{{ t('pages.sections.serviceAreas') }}</div>
+						<div class="page-preview__tag-list">
+							<span v-for="area in previewServiceAreas" :key="area" class="page-preview__tag">{{ area }}</span>
+						</div>
+					</div>
+
+					<div v-if="previewSpecialties.length" class="page-preview__detail-card">
+						<div class="page-preview__section-title">{{ t('pages.sections.specialties') }}</div>
+						<div class="page-preview__tag-list">
+							<span v-for="specialty in previewSpecialties" :key="specialty" class="page-preview__tag">{{ specialty }}</span>
+						</div>
 					</div>
 
 					<div v-if="showRatings" class="page-preview__detail-card">
@@ -999,6 +1036,27 @@
   display: grid;
   gap: 10px;
   margin-top: 14px;
+}
+
+.page-preview__tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.page-preview__tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 1px solid color-mix(in srgb, var(--presence-accent) 22%, var(--presence-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--presence-card) 88%, var(--presence-accent) 12%);
+  color: var(--presence-ink);
+  font-size: 0.9rem;
+  font-weight: 720;
+  line-height: 1.25;
 }
 
 .page-preview__detail-row {

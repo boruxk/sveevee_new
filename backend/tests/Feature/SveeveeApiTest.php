@@ -856,6 +856,8 @@ HTML);
                     'opening_hours' => [
                         ['weekday' => 'monday', 'is_open' => true, 'opens_at' => '09:00', 'closes_at' => '17:00'],
                     ],
+                    'service_areas' => ['Jerusalem', 'Tel Aviv'],
+                    'specialties' => ['Emergency electrical repairs', 'Lighting installation'],
                 ],
             ]);
             $unclaimedPage = Page::query()->create([
@@ -920,6 +922,7 @@ HTML);
             $businessCatalogHtml = File::get($dist.'/catalog/businesses/index.html');
             $productCatalogHtml = File::get($dist.'/catalog/products/index.html');
             $adsCatalogHtml = File::get($dist.'/catalog/ads/index.html');
+            $hobbiesCatalogHtml = File::get($dist.'/catalog/hobbies-crafts/index.html');
             $privacyHtml = File::get($dist.'/privacy/index.html');
             $termsHtml = File::get($dist.'/terms/index.html');
             $disclaimerHtml = File::get($dist.'/disclaimer/index.html');
@@ -933,9 +936,12 @@ HTML);
             $this->assertStringContainsString('<h1>'.$adsHub['labels']['he'].'</h1>', $adsCatalogHtml);
             $this->assertStringContainsString('CollectionPage', $businessCatalogHtml);
             $this->assertStringContainsString('ItemList', $productCatalogHtml);
+            $this->assertStringContainsString('<meta name="robots" content="index,follow" />', $hobbiesCatalogHtml);
+            $this->assertStringContainsString('<h1>'.CatalogTopics::findBySlug('hobbies-crafts')['labels']['he'].'</h1>', $hobbiesCatalogHtml);
             $this->assertStringNotContainsString('Homepage fallback', $businessCatalogHtml);
             $this->assertStringNotContainsString('Homepage fallback', $productCatalogHtml);
             $this->assertStringNotContainsString('Homepage fallback', $adsCatalogHtml);
+            $this->assertStringNotContainsString('Homepage fallback', $hobbiesCatalogHtml);
             $this->assertStringContainsString('<h1>Avi Electric</h1>', $businessHtml);
             $this->assertStringContainsString('LocalBusiness', $businessHtml);
             $this->assertStringContainsString('addressCountry', $businessHtml);
@@ -943,6 +949,10 @@ HTML);
             $this->assertStringContainsString('02-1234567', $businessHtml);
             $this->assertStringContainsString('https://avi-electric.example', $businessHtml);
             $this->assertStringContainsString('sameAs', $businessHtml);
+            $this->assertStringContainsString('אזורי שירות', $businessHtml);
+            $this->assertStringContainsString('Emergency electrical repairs', $businessHtml);
+            $this->assertStringContainsString('areaServed', $businessHtml);
+            $this->assertStringContainsString('serviceType', $businessHtml);
             $this->assertStringNotContainsString('Homepage fallback', $businessHtml);
             $this->assertStringContainsString('<h1>Unclaimed Bakery</h1>', $unclaimedBusinessHtml);
             $this->assertStringContainsString('Unclaimed Bakery בJerusalem - שירותים, ביקורות ויצירת קשר | Sveevee', $unclaimedBusinessHtml);
@@ -1210,6 +1220,11 @@ HTML);
             ->assertOk()
             ->assertJsonPath('data.indexable', false)
             ->assertJsonPath('data.total_count', 0);
+
+        $this->getJson('/api/v1/catalog/hobbies-crafts')
+            ->assertOk()
+            ->assertJsonPath('data.indexable', true)
+            ->assertJsonPath('data.total_count', 0);
     }
 
     public function test_market_api_filters_products_by_city_and_type(): void
@@ -1370,7 +1385,7 @@ HTML);
             ->assertJsonValidationErrors('category');
     }
 
-    public function test_sitemap_includes_only_non_empty_catalog_pages(): void
+    public function test_sitemap_includes_all_root_topics_and_only_non_empty_location_pages(): void
     {
         config()->set('app.url', 'https://sveevee.co.il');
 
@@ -1398,9 +1413,11 @@ HTML);
             ->assertSee('https://sveevee.co.il/catalog/ads', false)
             ->assertSee('https://sveevee.co.il/catalog/people', false)
             ->assertSee('https://sveevee.co.il/catalog/electricians', false)
+            ->assertSee('https://sveevee.co.il/catalog/hobbies-crafts', false)
             ->assertSee('https://sveevee.co.il/catalog/haifa/electricians', false)
             ->assertSee('https://sveevee.co.il/catalog/haifa/hadar/electricians', false)
-            ->assertDontSee('https://sveevee.co.il/catalog/home-repair-services', false);
+            ->assertDontSee('https://sveevee.co.il/catalog/home-repair-services', false)
+            ->assertDontSee('https://sveevee.co.il/catalog/tel-aviv/hobbies-crafts', false);
     }
 
     public function test_sitemap_includes_non_empty_market_pages(): void
@@ -1506,6 +1523,8 @@ HTML);
                 'opening_hours' => [
                     ['weekday' => 'monday', 'is_open' => true, 'opens_at' => '08:30', 'closes_at' => '16:00'],
                 ],
+                'service_areas' => ['Haifa', 'Tel Aviv'],
+                'specialties' => ['Brand identity', 'Storefront design'],
                 'features' => [
                     'store' => false,
                     'services' => true,
@@ -1524,6 +1543,12 @@ HTML);
             ->assertJsonPath('data.setup.website', 'https://studio.example')
             ->assertJsonPath('data.opening_hours.1.weekday', 'monday')
             ->assertJsonPath('data.opening_hours.1.opens_at', '08:30')
+            ->assertJsonPath('data.service_areas.0', 'Haifa')
+            ->assertJsonPath('data.service_areas.1', 'Tel Aviv')
+            ->assertJsonPath('data.specialties.0', 'Brand identity')
+            ->assertJsonPath('data.specialties.1', 'Storefront design')
+            ->assertJsonPath('data.setup.service_areas.0', 'Haifa')
+            ->assertJsonPath('data.setup.specialties.0', 'Brand identity')
             ->assertJsonPath('data.features.store', false)
             ->assertJsonPath('data.features.services', true)
             ->assertJsonPath('data.features.events', false)
@@ -1572,6 +1597,38 @@ HTML);
 
         $this->assertFalse(Storage::disk('public')->exists('pages/logos/logo.png'));
         $this->assertFalse(Storage::disk('public')->exists('pages/banners/banner.png'));
+    }
+
+    public function test_business_service_areas_and_specialties_are_validated(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $basePayload = [
+            'name' => 'Clean Business',
+            'category_key' => 'professionals.electricians',
+        ];
+
+        $this->postJson('/api/v1/pages/business', [
+            ...$basePayload,
+            'setup' => [
+                'service_areas' => collect(range(1, 11))->map(fn (int $index) => 'City '.$index)->all(),
+            ],
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('service_areas');
+
+        $this->postJson('/api/v1/pages/business', [
+            ...$basePayload,
+            'setup' => json_encode([
+                'specialties' => ['what the fuck'],
+            ], JSON_THROW_ON_ERROR),
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('specialties.0');
+
+        $this->assertDatabaseMissing('pages', [
+            'user_id' => $user->id,
+            'name' => 'Clean Business',
+        ]);
     }
 
     public function test_ads_use_owner_location_and_search_by_location(): void

@@ -30,6 +30,7 @@
 	import ServiceCard from '@/components/services/ServiceCard.vue'
 	import ServiceComposer from '@/components/services/ServiceComposer.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
+	import BusinessDetailsFields from '@/components/pages/BusinessDetailsFields.vue'
 	import PageRatingsDialog from '@/components/ratings/PageRatingsDialog.vue'
 	import ChatBlock from '@/components/ChatBlock.vue'
 	import PriceListIcon from '@/components/icons/PriceListIcon.vue'
@@ -55,6 +56,7 @@
 	const logoUploading = ref(false)
 	const bannerUploading = ref(false)
 	const formRef = ref(null)
+	const businessDetailsRef = ref(null)
 	const adDialogOpen = ref(false)
 	const productDialogOpen = ref(false)
 	const priceDialogOpen = ref(false)
@@ -94,6 +96,8 @@
 			neighborhood: ''
 		},
 		opening_hours: [],
+		service_areas: [],
+		specialties: [],
 		features: {
 			store: false,
 			services: false,
@@ -214,6 +218,8 @@
 		},
 		website: normalizedWebsite(form.website),
 		opening_hours: form.opening_hours.map((item) => ({ ...item })),
+		service_areas: isBusinessPage.value ? [...form.service_areas] : [],
+		specialties: isBusinessPage.value ? [...form.specialties] : [],
 		features: {
 			store: form.features.store,
 			services: form.features.services,
@@ -377,6 +383,12 @@
 		form.address.city = address.city || ''
 		form.address.neighborhood = address.neighborhood || ''
 		form.opening_hours = normalizedOpeningHours(value?.opening_hours || setup.opening_hours)
+		form.service_areas = []
+		form.specialties = []
+		if (isBusinessPage.value) {
+			form.service_areas = [...(value?.service_areas || setup.service_areas || [])]
+			form.specialties = [...(value?.specialties || setup.specialties || [])]
+		}
 		form.features.store = featureFlag(value, 'store', false)
 		form.features.services = featureFlag(value, 'services', false)
 		form.features.events = featureFlag(value, 'events', false)
@@ -427,6 +439,8 @@
 					opens_at: item.is_open ? item.opens_at || null : null,
 					closes_at: item.is_open ? item.closes_at || null : null
 				})),
+				service_areas: isBusinessPage.value ? [...form.service_areas] : [],
+				specialties: isBusinessPage.value ? [...form.specialties] : [],
 				features: {
 					store: form.features.store,
 					services: form.features.services,
@@ -453,6 +467,7 @@
 
 	async function save(options = {}) {
 		const notify = options.notify !== false
+		businessDetailsRef.value?.commitPending()
 
 		if (options.validate !== false && formRef.value && !(await validateRequiredForm(formRef))) {
 			return false
@@ -1215,6 +1230,14 @@
 												</div>
 											</div>
 										</section>
+
+										<BusinessDetailsFields
+											v-if="isBusinessPage"
+											ref="businessDetailsRef"
+											v-model:service-areas="form.service_areas"
+											v-model:specialties="form.specialties"
+											:city-options="cityOptions"
+										/>
 
 										<div class="upload-group q-mt-md">
 											<div class="upload-row">

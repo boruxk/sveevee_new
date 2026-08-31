@@ -10,6 +10,7 @@
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
+	import BusinessDetailsFields from '@/components/pages/BusinessDetailsFields.vue'
 	import { CATALOG_SCOPES } from '@/constants/catalogTopics'
 
 	const DEFAULT_OPENING_HOURS = [
@@ -39,6 +40,7 @@
 	const authStore = useAuthStore()
 	const saving = ref(false)
 	const formRef = ref(null)
+	const businessDetailsRef = ref(null)
 	const citySelectOptions = ref([])
 	const neighborhoodSelectOptions = ref([])
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
@@ -55,6 +57,8 @@
 			neighborhood: ''
 		},
 		opening_hours: DEFAULT_OPENING_HOURS.map((item) => ({ ...item })),
+		service_areas: [],
+		specialties: [],
 		category_key: '',
 		palette_key: 'amber-dawn',
 		logo: null,
@@ -96,6 +100,8 @@
 		form.address.city = authStore.user?.profile?.city || ''
 		form.address.neighborhood = authStore.user?.profile?.neighborhood || ''
 		form.opening_hours = DEFAULT_OPENING_HOURS.map((item) => ({ ...item }))
+		form.service_areas = []
+		form.specialties = []
 		form.category_key = ''
 		form.palette_key = 'amber-dawn'
 		form.logo = null
@@ -128,7 +134,9 @@
 					is_open: item.is_open,
 					opens_at: item.is_open ? item.opens_at || null : null,
 					closes_at: item.is_open ? item.closes_at || null : null
-				}))
+				})),
+				service_areas: props.type === 'business' ? [...form.service_areas] : [],
+				specialties: props.type === 'business' ? [...form.specialties] : []
 			},
 			logo: form.logo,
 			banner: form.banner
@@ -136,6 +144,8 @@
 	}
 
 	async function submit() {
+		businessDetailsRef.value?.commitPending()
+
 		if (!(await validateRequiredForm(formRef))) {
 			return
 		}
@@ -289,6 +299,14 @@
 							</div>
 						</div>
 					</section>
+
+					<BusinessDetailsFields
+						v-if="props.type === 'business'"
+						ref="businessDetailsRef"
+						v-model:service-areas="form.service_areas"
+						v-model:specialties="form.specialties"
+						:city-options="cityOptions"
+					/>
 
 					<div class="upload-row">
 						<q-file v-model="form.logo"
