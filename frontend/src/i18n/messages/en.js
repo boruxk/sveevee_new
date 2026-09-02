@@ -860,6 +860,7 @@ export default {
 	},
 	pageClaim: {
 		unverifiedBadge: 'Unclaimed and unverified',
+		unlockTitle: 'Claim to unlock',
 		title: 'Does this page represent you?',
 		description: 'This informational page is not currently managed or verified by the business or community. An authorized representative can request ownership.',
 		accuracyWarning: 'The information may be incomplete, incorrect, or out of date. Verify important details directly with the business or community.',

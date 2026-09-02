@@ -726,11 +726,15 @@
   top: 24px;
   right: 24px;
   z-index: 3;
-  max-width: calc(100% - 48px);
+  width: min(430px, calc(100% - 48px));
 }
 
 .page-preview__hero-action :deep(.q-btn) {
   max-width: 100%;
+}
+
+.page-preview--has-hero-action .page-preview__intro {
+  padding-top: 200px;
 }
 
 :global([dir="rtl"]) .page-preview__hero-actions {
@@ -1297,11 +1301,11 @@
   .page-preview__hero-action {
     top: 16px;
     right: 16px;
-    max-width: calc(100% - 32px);
+    width: calc(100% - 32px);
   }
 
   .page-preview--has-hero-action .page-preview__intro {
-    padding-top: 76px;
+    padding-top: 230px;
   }
 
   :global([dir="rtl"]) .page-preview__hero-actions {

@@ -79,6 +79,18 @@
 	const hasPreviewContent = computed(() => hasPriceList.value || hasStoreProducts.value || hasBusinessServices.value || hasCommunityEvents.value)
 	const routeLocale = computed(() => String(route.params.locale || ''))
 	const isBusinessPage = computed(() => page.value?.type === 'business')
+	const showBannerClaimAction = computed(() => !authStore.isAuthenticated || canRequestClaim.value)
+	const claimUnlockFeatures = computed(() => [
+		...(isBusinessPage.value ? [
+			{ key: 'store', icon: 'storefront', labelKey: 'businessFeatures.store' },
+			{ key: 'services', icon: 'design_services', labelKey: 'businessFeatures.services' },
+			{ key: 'price-list', icon: 'receipt_long', labelKey: 'businessFeatures.priceList' }
+		] : [
+			{ key: 'events', icon: 'event', labelKey: 'businessFeatures.events' }
+		]),
+		{ key: 'ratings', icon: 'reviews', labelKey: 'ratings.title' },
+		{ key: 'chat', icon: 'chat_bubble', labelKey: 'chat.title' }
+	])
 	const existingBusinessPage = computed(() => authStore.user?.business_page || null)
 	const requiresBusinessPageReplacement = computed(() => (
 		isBusinessPage.value &&
@@ -430,28 +442,37 @@
 				@rate="reviewDialogOpen = true"
 				@chat="openChat"
 			>
-				<template v-if="isUnclaimed" #heroAction>
-					<q-btn v-if="!authStore.isAuthenticated"
-						class="banner-claim-button"
-						rounded
-						unelevated
-						no-caps
-						color="primary"
-						icon="person_add"
-						:label="t('pageClaim.claimButton')"
-						:to="claimRegisterRoute"
-					/>
-					<q-btn v-else-if="canRequestClaim"
-						class="banner-claim-button"
-						rounded
-						unelevated
-						no-caps
-						color="primary"
-						icon="verified_user"
-						:disable="claimSent"
-						:label="claimSent ? t('pageClaim.pending') : t('pageClaim.claimButton')"
-						@click="openClaimDialog"
-					/>
+				<template v-if="isUnclaimed && showBannerClaimAction" #heroAction>
+					<div class="banner-claim-panel">
+						<p class="banner-claim-panel__title">{{ t('pageClaim.unlockTitle') }}</p>
+						<ul class="banner-claim-features" :aria-label="t('pageClaim.unlockTitle')">
+							<li v-for="feature in claimUnlockFeatures" :key="feature.key">
+								<q-icon :name="feature.icon" size="18px" aria-hidden="true" />
+								<span>{{ t(feature.labelKey) }}</span>
+							</li>
+						</ul>
+						<q-btn v-if="!authStore.isAuthenticated"
+							class="banner-claim-button"
+							rounded
+							unelevated
+							no-caps
+							color="primary"
+							icon="person_add"
+							:label="t('pageClaim.claimButton')"
+							:to="claimRegisterRoute"
+						/>
+						<q-btn v-else-if="canRequestClaim"
+							class="banner-claim-button"
+							rounded
+							unelevated
+							no-caps
+							color="primary"
+							icon="verified_user"
+							:disable="claimSent"
+							:label="claimSent ? t('pageClaim.pending') : t('pageClaim.claimButton')"
+							@click="openClaimDialog"
+						/>
+					</div>
 				</template>
 				<template #afterInfo>
 					<section v-if="hasPriceList" class="preview-section">
@@ -658,9 +679,59 @@
 }
 
 .banner-claim-button {
+  width: 100%;
   min-height: 42px;
   max-width: 100%;
   box-shadow: 0 12px 28px rgba(17, 34, 45, 0.2);
+}
+
+.banner-claim-panel {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 14px 34px rgba(17, 34, 45, 0.18);
+  color: rgba(17, 34, 45, 0.9);
+  text-align: start;
+  backdrop-filter: blur(16px);
+}
+
+.banner-claim-panel__title {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.banner-claim-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 7px 10px;
+  margin: 0 0 11px;
+  padding: 0;
+  list-style: none;
+}
+
+.banner-claim-features li {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  min-width: 0;
+  color: rgba(17, 34, 45, 0.76);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.banner-claim-features .q-icon {
+  flex: 0 0 auto;
+  color: var(--presence-accent);
+}
+
+.banner-claim-features span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .claim-dialog-card {
@@ -840,6 +911,12 @@
 
   .unclaimed-notice__action .q-btn {
     width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .banner-claim-features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

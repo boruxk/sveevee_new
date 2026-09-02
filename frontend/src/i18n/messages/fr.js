@@ -860,6 +860,7 @@ export default {
 	},
 	pageClaim: {
 		unverifiedBadge: 'Non revendiquée et non vérifiée',
+		unlockTitle: 'Revendiquer pour débloquer',
 		title: 'Cette page vous représente-t-elle ?',
 		description: 'Cette page informative n’est actuellement ni gérée ni vérifiée par l’entreprise ou la communauté. Un représentant autorisé peut en demander la propriété.',
 		accuracyWarning: 'Les informations peuvent être incomplètes, erronées ou obsolètes. Vérifiez les éléments importants directement auprès de l’entreprise ou de la communauté.',
