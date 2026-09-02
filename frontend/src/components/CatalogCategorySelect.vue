@@ -132,9 +132,9 @@
 			:label="fieldLabel"
 			:disable="disabled"
 			:name="name"
-			:error="error"
-			:error-message="errorMessage"
-			:rules="required ? [requiredRule] : []"
+			:error="error ? true : null"
+			:error-message="error ? errorMessage : undefined"
+			:rules="required ? [requiredRule] : undefined"
 		>
 			<template #control="{ id }">
 				<button
