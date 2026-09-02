@@ -27,6 +27,7 @@ set_env MAIL_MAILER "$mode"
 set_env MAIL_SCHEME null
 set_env MAIL_HOST 127.0.0.1
 set_env MAIL_PORT 25
+set_env MAIL_AUTO_TLS false
 set_env MAIL_USERNAME null
 set_env MAIL_PASSWORD null
 set_env MAIL_EHLO_DOMAIN sveevee.co.il
