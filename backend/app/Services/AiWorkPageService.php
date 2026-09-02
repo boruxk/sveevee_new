@@ -407,6 +407,10 @@ class AiWorkPageService
 
     private function openingHours(array $openingHours): array
     {
+        if ($openingHours === []) {
+            return [];
+        }
+
         $items = collect($openingHours)->filter(fn ($item) => is_array($item) && filled($item['weekday'] ?? null))->keyBy('weekday');
 
         return collect(self::DEFAULT_OPENING_HOURS)->map(function (array $default) use ($items): array {

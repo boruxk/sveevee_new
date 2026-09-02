@@ -48,6 +48,7 @@ class PageClaimService
             'id' => $claim->id,
             'status' => $claim->status,
             'message' => $claim->message,
+            'replace_existing' => (bool) $claim->replace_existing,
             'page' => $claim->page ? [
                 'id' => $claim->page->id,
                 'name' => $claim->page->name,
@@ -73,6 +74,7 @@ class PageClaimService
             ."Page: {$claim->page->name}\n"
             ."Type: {$claim->page->type}\n"
             .'URL: '.rtrim((string) config('app.frontend_url'), '/').$this->pagePath($claim->page)."\n"
+            .'Replace existing business page: '.($claim->replace_existing ? 'yes' : 'no')."\n"
             ."Message: {$claim->message}";
     }
 

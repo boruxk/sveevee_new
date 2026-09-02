@@ -20,12 +20,14 @@ class PageClaimRequest extends Model
         'reviewed_by_user_id',
         'status',
         'message',
+        'replace_existing',
         'reviewed_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'replace_existing' => 'boolean',
             'reviewed_at' => 'datetime',
         ];
     }

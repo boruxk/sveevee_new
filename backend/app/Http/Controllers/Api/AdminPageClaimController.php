@@ -7,12 +7,16 @@ use App\Models\Page;
 use App\Models\PageClaimRequest;
 use App\Services\ApiResponseService;
 use App\Services\PageClaimService;
+use App\Services\PageDeletionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AdminPageClaimController extends Controller
 {
-    public function __construct(private readonly PageClaimService $claims) {}
+    public function __construct(
+        private readonly PageClaimService $claims,
+        private readonly PageDeletionService $pageDeletion,
+    ) {}
 
     public function approve(Request $request, PageClaimRequest $claimRequest)
     {
@@ -32,12 +36,26 @@ class AdminPageClaimController extends Controller
                 return ['error' => 'This page is already managed.', 'status' => 409];
             }
 
-            if (Page::query()
+            $existingPages = Page::query()
                 ->where('user_id', $claim->user_id)
                 ->where('type', $page->type)
                 ->where('is_unclaimed', false)
-                ->exists()) {
+                ->whereKeyNot($page->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            if ($existingPages->isNotEmpty() && $page->type !== Page::TYPE_BUSINESS) {
                 return ['error' => "The requester already has a {$page->type} page.", 'status' => 409];
+            }
+
+            $mediaPaths = [];
+
+            foreach ($existingPages as $existingPage) {
+                $mediaPaths = [
+                    ...$mediaPaths,
+                    ...$this->pageDeletion->deleteInCurrentTransaction($existingPage),
+                ];
             }
 
             $page->forceFill([
@@ -65,12 +83,17 @@ class AdminPageClaimController extends Controller
 
             $this->appendReviewMessage($claim, true);
 
-            return ['claim' => $claim->fresh(['page', 'user.profile', 'reviewedBy.profile'])];
+            return [
+                'claim' => $claim->fresh(['page', 'user.profile', 'reviewedBy.profile']),
+                'media_paths' => array_values(array_unique($mediaPaths)),
+            ];
         });
 
         if (isset($result['error'])) {
             return ApiResponseService::error($result['error'], status: $result['status']);
         }
+
+        $this->pageDeletion->deleteMedia($result['media_paths']);
 
         return ApiResponseService::success(
             $this->claims->requestPayload($result['claim']),

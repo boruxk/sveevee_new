@@ -344,17 +344,22 @@
 									<q-icon :name="emailStatusIcon" size="18px" />
 									{{ emailStatusLabel }}
 								</span>
-								<q-btn
+								<div
 									v-if="effectiveEmailStatus === 'unverified' && emailMatchesSaved && emailVerification.can_resend"
-									flat
-									dense
-									no-caps
-									color="primary"
-									icon="mark_email_read"
-									:loading="verificationSending"
-									:label="verificationActionLabel"
-									@click="sendEmailVerification"
-								/>
+									class="email-verification-action"
+								>
+									<q-btn
+										flat
+										dense
+										no-caps
+										color="primary"
+										icon="mark_email_read"
+										:loading="verificationSending"
+										:label="verificationActionLabel"
+										@click="sendEmailVerification"
+									/>
+									<span class="email-verification-spam-hint">{{ t('profile.emailVerification.spamHint') }}</span>
+								</div>
 							</div>
 						</div>
 						<q-input class="col-12 col-md-4"
@@ -607,6 +612,21 @@
   gap: 6px;
   font-size: 0.84rem;
   font-weight: 700;
+}
+
+.email-verification-action {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+
+.email-verification-spam-hint {
+  max-width: 120px;
+  color: var(--soz-muted);
+  font-size: 0.72rem;
+  line-height: 1.25;
 }
 
 .profile-section-intro h2 {

@@ -11,14 +11,30 @@ final class PageDeletionService
 {
     public function delete(Page $page): void
     {
+        $mediaPaths = DB::transaction(fn (): array => $this->deleteInCurrentTransaction($page));
+
+        $this->deleteMedia($mediaPaths);
+    }
+
+    /** @return list<string> */
+    public function deleteInCurrentTransaction(Page $page): array
+    {
+        if (DB::transactionLevel() < 1) {
+            throw new \LogicException('Page deletion must run inside a database transaction.');
+        }
+
         $page->loadMissing(['ads', 'products', 'services', 'events']);
         $mediaPaths = $this->mediaPaths($page);
 
-        DB::transaction(function () use ($page): void {
-            $page->ads()->delete();
-            $page->delete();
-        });
+        $page->ads()->delete();
+        $page->delete();
 
+        return $mediaPaths;
+    }
+
+    /** @param list<string> $mediaPaths */
+    public function deleteMedia(array $mediaPaths): void
+    {
         if ($mediaPaths !== []) {
             Storage::disk('public')->delete($mediaPaths);
         }

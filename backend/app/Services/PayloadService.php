@@ -132,7 +132,9 @@ class PayloadService
             'contact' => $contact,
             'address_details' => $addressDetails,
             'socials' => $socials,
-            'opening_hours' => $this->normalizedOpeningHours($setup['opening_hours'] ?? []),
+            'opening_hours' => $isUnclaimed && empty($setup['opening_hours'])
+                ? []
+                : $this->normalizedOpeningHours($setup['opening_hours'] ?? []),
             'service_areas' => $serviceAreas,
             'specialties' => $specialties,
             'features' => $features,

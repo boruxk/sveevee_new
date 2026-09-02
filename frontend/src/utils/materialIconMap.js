@@ -61,6 +61,7 @@ import {
 	matUnfoldLess,
 	matUnfoldMore,
 	matVerified,
+	matVerifiedUser,
 	matVisibility,
 	matVisibilityOff
 } from '@quasar/extras/material-icons'
@@ -128,6 +129,7 @@ const materialIcons = {
 	unfold_less: matUnfoldLess,
 	unfold_more: matUnfoldMore,
 	verified: matVerified,
+	verified_user: matVerifiedUser,
 	visibility: matVisibility,
 	visibility_off: matVisibilityOff
 }

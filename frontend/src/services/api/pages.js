@@ -68,6 +68,9 @@ export function savePageRating(id, payload) {
 	return apiClient.put(`/pages/${id}/ratings/me`, payload)
 }
 
-export function requestPageClaim(id, message) {
-	return apiClient.post(`/pages/${id}/claim-requests`, { message })
+export function requestPageClaim(id, message, replaceExisting = false) {
+	return apiClient.post(`/pages/${id}/claim-requests`, {
+		message,
+		replace_existing: replaceExisting
+	})
 }

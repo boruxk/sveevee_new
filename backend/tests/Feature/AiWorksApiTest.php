@@ -107,7 +107,8 @@ class AiWorksApiTest extends TestCase
             ->assertJsonPath('data.service_areas.1', 'Tel Aviv')
             ->assertJsonPath('data.specialties.0', 'Electrical repairs')
             ->assertJsonPath('data.logo_url', null)
-            ->assertJsonPath('data.banner_url', null);
+            ->assertJsonPath('data.banner_url', null)
+            ->assertJsonCount(0, 'data.opening_hours');
 
         $pageId = $created->json('data.id');
         $this->assertDatabaseHas('pages', [
@@ -122,7 +123,8 @@ class AiWorksApiTest extends TestCase
             ->assertJsonPath('data.user_id', null)
             ->assertJsonPath('data.rating_summary.count', 0)
             ->assertJsonCount(0, 'data.products')
-            ->assertJsonCount(0, 'data.services');
+            ->assertJsonCount(0, 'data.services')
+            ->assertJsonCount(0, 'data.opening_hours');
 
         $page = Page::query()->findOrFail($pageId);
         $this->get('/sitemap.xml')
@@ -667,6 +669,117 @@ class AiWorksApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.id', $pageId)
             ->assertJsonPath('data.is_unclaimed', false);
+    }
+
+    public function test_existing_business_page_requires_confirmation_before_a_claim_request_is_created(): void
+    {
+        $worker = $this->aiWorker();
+        Sanctum::actingAs($worker);
+        $pageId = $this->postJson('/api/v1/ai-works/pages', $this->pagePayload())
+            ->assertCreated()
+            ->json('data.id');
+
+        $claimant = User::factory()->create();
+        $existingPage = Page::query()->create([
+            'user_id' => $claimant->id,
+            'type' => Page::TYPE_BUSINESS,
+            'is_unclaimed' => false,
+            'name' => 'Existing Managed Business',
+            'setup' => [],
+        ]);
+        Sanctum::actingAs($claimant);
+
+        $claimPayload = [
+            'message' => 'I can provide proof that I represent the business being claimed.',
+        ];
+
+        $this->postJson("/api/v1/pages/{$pageId}/claim-requests", $claimPayload)
+            ->assertStatus(409)
+            ->assertJsonPath('data.requires_replacement_confirmation', true)
+            ->assertJsonPath('data.existing_page.id', $existingPage->id);
+        $this->assertDatabaseCount('page_claim_requests', 0);
+
+        $claim = $this->postJson("/api/v1/pages/{$pageId}/claim-requests", [
+            ...$claimPayload,
+            'replace_existing' => true,
+        ])->assertCreated()
+            ->assertJsonPath('data.replace_existing', true);
+
+        $this->assertDatabaseHas('page_claim_requests', [
+            'id' => $claim->json('data.id'),
+            'replace_existing' => true,
+        ]);
+    }
+
+    public function test_admin_approval_always_replaces_an_existing_business_page(): void
+    {
+        Storage::fake('public');
+        $worker = $this->aiWorker();
+        Sanctum::actingAs($worker);
+        $pageId = $this->postJson('/api/v1/ai-works/pages', $this->pagePayload())
+            ->assertCreated()
+            ->json('data.id');
+
+        $claimant = User::factory()->create();
+        Sanctum::actingAs($claimant);
+        $claimId = $this->postJson("/api/v1/pages/{$pageId}/claim-requests", [
+            'message' => 'I own this business and can verify it through an official channel.',
+        ])->assertCreated()
+            ->assertJsonPath('data.replace_existing', false)
+            ->json('data.id');
+
+        $logoPath = 'pages/existing-business-logo.jpg';
+        Storage::disk('public')->put($logoPath, 'existing-logo');
+        $existingPage = Page::query()->create([
+            'user_id' => $claimant->id,
+            'type' => Page::TYPE_BUSINESS,
+            'is_unclaimed' => false,
+            'name' => 'Business Created While Claim Was Pending',
+            'logo_path' => $logoPath,
+            'setup' => [],
+        ]);
+
+        $admin = User::query()->where('email', config('sveevee.support_admin_email'))->firstOrFail();
+        Sanctum::actingAs($admin);
+        $this->postJson("/api/v1/admin/page-claims/{$claimId}/approve")
+            ->assertOk()
+            ->assertJsonPath('data.status', PageClaimRequest::STATUS_APPROVED)
+            ->assertJsonPath('data.page.id', $pageId);
+
+        $this->assertDatabaseMissing('pages', ['id' => $existingPage->id]);
+        $this->assertDatabaseHas('pages', [
+            'id' => $pageId,
+            'user_id' => $claimant->id,
+            'is_unclaimed' => false,
+        ]);
+        Storage::disk('public')->assertMissing($logoPath);
+    }
+
+    public function test_an_existing_community_page_cannot_be_replaced_through_a_claim(): void
+    {
+        $worker = $this->aiWorker();
+        Sanctum::actingAs($worker);
+        $pageId = $this->postJson(
+            '/api/v1/ai-works/pages',
+            $this->pagePayload(Page::TYPE_COMMUNITY)
+        )->assertCreated()->json('data.id');
+
+        $claimant = User::factory()->create();
+        Page::query()->create([
+            'user_id' => $claimant->id,
+            'type' => Page::TYPE_COMMUNITY,
+            'is_unclaimed' => false,
+            'name' => 'Existing Managed Community',
+            'setup' => [],
+        ]);
+        Sanctum::actingAs($claimant);
+
+        $this->postJson("/api/v1/pages/{$pageId}/claim-requests", [
+            'message' => 'I represent this community.',
+            'replace_existing' => true,
+        ])->assertStatus(409);
+
+        $this->assertDatabaseCount('page_claim_requests', 0);
     }
 
     public function test_admin_can_reject_a_claim_without_transferring_the_page(): void

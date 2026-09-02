@@ -46,6 +46,7 @@
 	const claimMessage = ref('')
 	const claimSending = ref(false)
 	const claimSent = ref(false)
+	const replacementConfirmed = ref(false)
 	const selectedPalette = computed(() => findPresencePalette(page.value?.palette_key))
 	const isUnclaimed = computed(() => Boolean(page.value?.is_unclaimed))
 	const canRate = computed(() => !isUnclaimed.value && authStore.isAuthenticated && page.value?.user_id !== authStore.user?.id)
@@ -78,6 +79,12 @@
 	const hasPreviewContent = computed(() => hasPriceList.value || hasStoreProducts.value || hasBusinessServices.value || hasCommunityEvents.value)
 	const routeLocale = computed(() => String(route.params.locale || ''))
 	const isBusinessPage = computed(() => page.value?.type === 'business')
+	const existingBusinessPage = computed(() => authStore.user?.business_page || null)
+	const requiresBusinessPageReplacement = computed(() => (
+		isBusinessPage.value &&
+		Boolean(existingBusinessPage.value) &&
+		Number(existingBusinessPage.value.id) !== Number(page.value?.id)
+	))
 	const pageTypeLabel = computed(() => t(`pages.kinds.${page.value?.type || 'business'}`))
 	const pageAddress = computed(() => page.value?.address_details || {})
 	const pageTopic = computed(() => catalogTopicByKey(catalogGroups.value, page.value?.category_key))
@@ -318,6 +325,45 @@
 		pageChatDialogOpen.value = true
 	}
 
+	function showBusinessReplacementWarning(existingName = '') {
+		$q.dialog({
+			title: t('pageClaim.replaceTitle'),
+			message: t('pageClaim.replaceMessage', {
+				page: existingName || t('pages.kinds.business'),
+				target: page.value?.name || t('pages.kinds.business')
+			}),
+			persistent: true,
+			ok: {
+				label: t('pageClaim.replaceConfirm'),
+				color: 'negative',
+				unelevated: true
+			},
+			cancel: {
+				label: t('actions.cancel'),
+				color: 'primary',
+				flat: true
+			}
+		}).onOk(() => {
+			replacementConfirmed.value = true
+			claimDialogOpen.value = true
+		})
+	}
+
+	function openClaimDialog() {
+		if (!canRequestClaim.value || claimSent.value) {
+			return
+		}
+
+		replacementConfirmed.value = false
+
+		if (requiresBusinessPageReplacement.value) {
+			showBusinessReplacementWarning(existingBusinessPage.value?.name)
+			return
+		}
+
+		claimDialogOpen.value = true
+	}
+
 	async function submitClaimRequest() {
 		const message = claimMessage.value.trim()
 
@@ -327,12 +373,21 @@
 
 		claimSending.value = true
 		try {
-			await requestPageClaim(page.value.id, message)
+			await requestPageClaim(page.value.id, message, replacementConfirmed.value)
 			claimSent.value = true
 			claimDialogOpen.value = false
 			claimMessage.value = ''
+			replacementConfirmed.value = false
 			$q.notify({ type: 'positive', message: t('pageClaim.sent') })
 		} catch (error) {
+			const replacementData = error?.response?.data?.data
+
+			if (replacementData?.requires_replacement_confirmation && !replacementConfirmed.value) {
+				claimDialogOpen.value = false
+				showBusinessReplacementWarning(replacementData.existing_page?.name)
+				return
+			}
+
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('pageClaim.sendFailed')) })
 		} finally {
 			claimSending.value = false
@@ -366,6 +421,7 @@
 				:can-rate="canRate"
 				:can-chat="showChatAction"
 				:show-ratings="!isUnclaimed"
+				:show-empty-details="isUnclaimed"
 				:has-after-info="hasPreviewContent"
 				:title-tag="isBusinessPage ? 'h1' : 'h2'"
 				:description-fallback="businessSeoDescription"
@@ -374,6 +430,29 @@
 				@rate="reviewDialogOpen = true"
 				@chat="openChat"
 			>
+				<template v-if="isUnclaimed" #heroAction>
+					<q-btn v-if="!authStore.isAuthenticated"
+						class="banner-claim-button"
+						rounded
+						unelevated
+						no-caps
+						color="primary"
+						icon="person_add"
+						:label="t('pageClaim.claimButton')"
+						:to="claimRegisterRoute"
+					/>
+					<q-btn v-else-if="canRequestClaim"
+						class="banner-claim-button"
+						rounded
+						unelevated
+						no-caps
+						color="primary"
+						icon="verified_user"
+						:disable="claimSent"
+						:label="claimSent ? t('pageClaim.pending') : t('pageClaim.claimButton')"
+						@click="openClaimDialog"
+					/>
+				</template>
 				<template #afterInfo>
 					<section v-if="hasPriceList" class="preview-section">
 						<h2>{{ t('priceList.title') }}</h2>
@@ -436,7 +515,7 @@
 						icon="verified_user"
 						:disable="claimSent"
 						:label="claimSent ? t('pageClaim.pending') : t('pageClaim.claimButton')"
-						@click="claimDialogOpen = true"
+						@click="openClaimDialog"
 					/>
 				</div>
 			</section>
@@ -576,6 +655,12 @@
 .unclaimed-notice__action .q-btn {
   min-height: 40px;
   font-size: 0.86rem;
+}
+
+.banner-claim-button {
+  min-height: 42px;
+  max-width: 100%;
+  box-shadow: 0 12px 28px rgba(17, 34, 45, 0.2);
 }
 
 .claim-dialog-card {

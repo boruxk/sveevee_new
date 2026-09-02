@@ -27,29 +27,50 @@ class PageClaimController extends Controller
             return ApiResponseService::error('This page is already managed.', status: 409);
         }
 
-        if (Page::query()
-            ->where('user_id', $user->id)
-            ->where('type', $page->type)
-            ->where('is_unclaimed', false)
-            ->exists()) {
-            return ApiResponseService::error("Your account already has a {$page->type} page.", status: 409);
-        }
-
         $request->merge(['message' => trim((string) $request->input('message'))]);
         $data = $request->validate([
             'message' => ['required', 'string', 'max:2000', new CleanContent],
+            'replace_existing' => ['sometimes', 'boolean'],
         ]);
+        $replacementConfirmed = $request->boolean('replace_existing');
         $supportAdmin = $this->claims->supportAdmin();
 
         if (! $supportAdmin || $supportAdmin->banned_at) {
             return ApiResponseService::error('Support chat is not available right now.', status: 503);
         }
 
-        $result = DB::transaction(function () use ($page, $user, $supportAdmin, $data): array {
+        $result = DB::transaction(function () use ($page, $user, $supportAdmin, $data, $replacementConfirmed): array {
             $lockedPage = Page::query()->lockForUpdate()->findOrFail($page->id);
 
             if (! $lockedPage->is_unclaimed) {
                 return ['error' => 'This page is already managed.', 'status' => 409];
+            }
+
+            $existingPage = Page::query()
+                ->where('user_id', $user->id)
+                ->where('type', $lockedPage->type)
+                ->where('is_unclaimed', false)
+                ->whereKeyNot($lockedPage->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingPage && $lockedPage->type !== Page::TYPE_BUSINESS) {
+                return ['error' => "Your account already has a {$lockedPage->type} page.", 'status' => 409];
+            }
+
+            if ($existingPage && ! $replacementConfirmed) {
+                return [
+                    'error' => 'Confirm that your existing business page may be replaced.',
+                    'status' => 409,
+                    'data' => [
+                        'requires_replacement_confirmation' => true,
+                        'existing_page' => [
+                            'id' => $existingPage->id,
+                            'name' => $existingPage->name,
+                        ],
+                    ],
+                ];
             }
 
             $pending = PageClaimRequest::query()
@@ -69,6 +90,7 @@ class PageClaimController extends Controller
                 'conversation_id' => $conversation->id,
                 'status' => PageClaimRequest::STATUS_PENDING,
                 'message' => $data['message'],
+                'replace_existing' => (bool) $existingPage,
             ]);
             $claim->setRelation('page', $lockedPage);
             $this->claims->appendMessage($conversation, $user, $this->claims->createdMarker($claim));
@@ -77,7 +99,11 @@ class PageClaimController extends Controller
         });
 
         if (isset($result['error'])) {
-            return ApiResponseService::error($result['error'], status: $result['status']);
+            return ApiResponseService::error(
+                $result['error'],
+                status: $result['status'],
+                data: $result['data'] ?? null
+            );
         }
 
         return ApiResponseService::success(

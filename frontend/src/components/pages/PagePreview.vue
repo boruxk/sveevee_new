@@ -44,6 +44,10 @@
 		showRatings: {
 			type: Boolean,
 			default: true
+		},
+		showEmptyDetails: {
+			type: Boolean,
+			default: false
 		}
 	})
 
@@ -343,7 +347,11 @@
 </script>
 
 <template>
-	<article class="page-preview" :class="previewClasses" :style="previewStyle">
+	<article
+		class="page-preview"
+		:class="[previewClasses, { 'page-preview--has-hero-action': Boolean($slots.heroAction) }]"
+		:style="previewStyle"
+	>
 		<div class="page-preview__hero">
 			<ResponsiveImage
 				v-if="previewBannerUrl"
@@ -360,6 +368,9 @@
 			/>
 			<div v-else class="page-preview__banner" />
 			<div class="page-preview__overlay" />
+			<div v-if="$slots.heroAction" class="page-preview__hero-action">
+				<slot name="heroAction" />
+			</div>
 
 			<div class="page-preview__intro">
 				<q-avatar class="page-preview__logo" size="96px" square>
@@ -520,7 +531,8 @@
 								<span v-else>{{ item.value }}</span>
 							</div>
 						</div>
-						<div v-else class="text-body2 page-preview__empty">{{ t('pages.noContact') }}</div>
+						<div v-else-if="!showEmptyDetails" class="text-body2 page-preview__empty">{{ t('pages.noContact') }}</div>
+						<div v-else class="page-preview__empty-slot" aria-hidden="true" />
 					</div>
 
 					<div class="page-preview__detail-card">
@@ -534,12 +546,13 @@
 							<q-icon name="place" size="20px" />
 							<span>{{ previewAddress }}</span>
 						</a>
-						<div v-else class="text-body2 page-preview__empty">{{ t('pages.noAddress') }}</div>
+						<div v-else-if="!showEmptyDetails" class="text-body2 page-preview__empty">{{ t('pages.noAddress') }}</div>
+						<div v-else class="page-preview__empty-slot" aria-hidden="true" />
 					</div>
 
-					<div v-if="previewWebsiteHref" class="page-preview__detail-card">
+					<div v-if="previewWebsiteHref || showEmptyDetails" class="page-preview__detail-card">
 						<div class="page-preview__section-title">{{ t('pages.website') }}</div>
-						<a
+						<a v-if="previewWebsiteHref"
 							class="page-preview__website-link"
 							:href="previewWebsiteHref"
 							target="_blank"
@@ -548,11 +561,12 @@
 							<q-icon name="language" size="20px" />
 							<span>{{ previewWebsiteLabel }}</span>
 						</a>
+						<div v-else class="page-preview__empty-slot" aria-hidden="true" />
 					</div>
 
-					<div v-if="previewSocials.length" class="page-preview__detail-card">
+					<div v-if="previewSocials.length || showEmptyDetails" class="page-preview__detail-card">
 						<div class="page-preview__section-title">{{ t('pages.sections.socials') }}</div>
-						<div class="page-preview__social-list">
+						<div v-if="previewSocials.length" class="page-preview__social-list">
 							<a v-for="item in previewSocials"
 								:key="item.platform"
 								class="page-preview__social-link"
@@ -583,6 +597,7 @@
 								<span>{{ item.label }}</span>
 							</a>
 						</div>
+						<div v-else class="page-preview__empty-slot" aria-hidden="true" />
 					</div>
 				</div>
 
@@ -595,21 +610,24 @@
 								<span>{{ item.is_open ? `${item.opens_at} - ${item.closes_at}` : t('pages.closed') }}</span>
 							</div>
 						</div>
-						<div v-else class="text-body2 page-preview__empty">{{ t('pages.noOpeningHours') }}</div>
+						<div v-else-if="!showEmptyDetails" class="text-body2 page-preview__empty">{{ t('pages.noOpeningHours') }}</div>
+						<div v-else class="page-preview__empty-slot" aria-hidden="true" />
 					</div>
 
-					<div v-if="previewServiceAreas.length" class="page-preview__detail-card">
+					<div v-if="pageType === 'business' && (previewServiceAreas.length || showEmptyDetails)" class="page-preview__detail-card">
 						<div class="page-preview__section-title">{{ t('pages.sections.serviceAreas') }}</div>
-						<div class="page-preview__tag-list">
+						<div v-if="previewServiceAreas.length" class="page-preview__tag-list">
 							<span v-for="area in previewServiceAreas" :key="area" class="page-preview__tag">{{ area }}</span>
 						</div>
+						<div v-else class="page-preview__empty-slot" aria-hidden="true" />
 					</div>
 
-					<div v-if="previewSpecialties.length" class="page-preview__detail-card">
+					<div v-if="pageType === 'business' && (previewSpecialties.length || showEmptyDetails)" class="page-preview__detail-card">
 						<div class="page-preview__section-title">{{ t('pages.sections.specialties') }}</div>
-						<div class="page-preview__tag-list">
+						<div v-if="previewSpecialties.length" class="page-preview__tag-list">
 							<span v-for="specialty in previewSpecialties" :key="specialty" class="page-preview__tag">{{ specialty }}</span>
 						</div>
+						<div v-else class="page-preview__empty-slot" aria-hidden="true" />
 					</div>
 
 					<div v-if="showRatings" class="page-preview__detail-card">
@@ -701,6 +719,18 @@
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+.page-preview__hero-action {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 3;
+  max-width: calc(100% - 48px);
+}
+
+.page-preview__hero-action :deep(.q-btn) {
+  max-width: 100%;
 }
 
 :global([dir="rtl"]) .page-preview__hero-actions {
@@ -1038,6 +1068,11 @@
   margin-top: 14px;
 }
 
+.page-preview__empty-slot {
+  min-height: 22px;
+  margin-top: 14px;
+}
+
 .page-preview__tag-list {
   display: flex;
   flex-wrap: wrap;
@@ -1226,6 +1261,10 @@
     align-items: flex-start;
   }
 
+  .page-preview--has-hero-action .page-preview__intro {
+    padding-top: 88px;
+  }
+
   .page-preview__hero,
   .page-preview__intro {
     min-height: 280px;
@@ -1253,6 +1292,16 @@
   .page-preview__hero-actions {
     right: 16px;
     bottom: 16px;
+  }
+
+  .page-preview__hero-action {
+    top: 16px;
+    right: 16px;
+    max-width: calc(100% - 32px);
+  }
+
+  .page-preview--has-hero-action .page-preview__intro {
+    padding-top: 76px;
   }
 
   :global([dir="rtl"]) .page-preview__hero-actions {
