@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+
+repo=/var/www/sveevee
+backend="$repo/backend"
+archive=/tmp/sveevee-email-deploy.tar.gz
+
+cd "$backend"
+sudo /usr/sbin/runuser -u www-data -- /usr/bin/php artisan down --retry=60
+trap 'cd "$backend" && sudo /usr/sbin/runuser -u www-data -- /usr/bin/php artisan up >/dev/null 2>&1 || true' EXIT
+
+cd "$repo"
+tar -xzf "$archive"
+
+sudo install -o root -g root -m 0700 \
+    "$repo/ops/mailserver/bin/configure-app-mail" \
+    /usr/local/sbin/configure-app-mail
+sudo /usr/local/sbin/configure-app-mail log
+
+cd "$backend"
+sudo chown -R www-data:www-data "$backend/storage" "$backend/bootstrap/cache"
+/usr/bin/composer dump-autoload --no-dev --optimize --no-scripts
+sudo /usr/sbin/runuser -u www-data -- /usr/bin/php artisan package:discover
+sudo /usr/sbin/runuser -u www-data -- /usr/bin/php artisan optimize:clear
+sudo /usr/sbin/runuser -u www-data -- /usr/bin/php artisan migrate --force
+sudo /usr/sbin/runuser -u www-data -- /usr/bin/php artisan config:cache
+sudo /usr/sbin/runuser -u www-data -- /usr/bin/php artisan event:cache
+sudo /usr/sbin/runuser -u www-data -- /usr/bin/php artisan route:cache
+sudo /usr/sbin/runuser -u www-data -- /usr/bin/php artisan view:cache
+
+sudo supervisorctl restart sveevee-worker:*
+
+sudo /usr/sbin/runuser -u www-data -- /usr/bin/php artisan up
+trap - EXIT

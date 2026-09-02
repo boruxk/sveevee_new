@@ -8,7 +8,15 @@
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { useCredentialRules } from '@/composables/useCredentialRules'
-	import { deleteProfilePhoto, fetchProfile, updateProfile, updateProfilePassword, uploadProfilePhoto } from '@/services/api/profile'
+	import {
+		deleteProfilePhoto,
+		fetchProfile,
+		sendProfileEmailVerification,
+		updateProfile,
+		updateProfileEmailPreferences,
+		updateProfilePassword,
+		uploadProfilePhoto
+	} from '@/services/api/profile'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import PasswordInput from '@/components/PasswordInput.vue'
@@ -26,6 +34,18 @@
 	const loading = ref(false)
 	const saving = ref(false)
 	const passwordSaving = ref(false)
+	const verificationSending = ref(false)
+	const emailPreferenceSaving = ref(false)
+	const emailChatNotifications = ref(false)
+	const savedEmailChatNotifications = ref(false)
+	const savedEmail = ref('')
+	const verificationRequested = ref(false)
+	const emailVerification = ref({
+		status: 'unverified',
+		verified_at: null,
+		can_resend: true,
+		last_sent_at: null
+	})
 	const photoDeleting = ref(false)
 	const formRef = ref(null)
 	const cityFieldRef = ref(null)
@@ -79,9 +99,33 @@
 	const { requiredLabel, requiredRule, validateRequiredForm } = useRequiredFields(t, $q)
 	const { emailRule, passwordRule, matchingPasswordRule } = useCredentialRules(t)
 	const passwordConfirmationRule = matchingPasswordRule(() => passwordForm.password)
+	const normalizedFormEmail = computed(() => form.email.trim().toLowerCase())
+	const emailMatchesSaved = computed(() => normalizedFormEmail.value === savedEmail.value)
+	const effectiveEmailStatus = computed(() => (
+		emailMatchesSaved.value ? emailVerification.value.status : 'unverified'
+	))
+	const emailIsVerified = computed(() => effectiveEmailStatus.value === 'verified')
+	const emailStatusIcon = computed(() => ({
+		verified: 'verified',
+		bounced: 'error',
+		unverified: 'mark_email_unread'
+	}[effectiveEmailStatus.value] || 'mark_email_unread'))
+	const emailStatusColor = computed(() => ({
+		verified: 'positive',
+		bounced: 'negative',
+		unverified: 'warning'
+	}[effectiveEmailStatus.value] || 'warning'))
+	const emailStatusLabel = computed(() => t(`profile.emailVerification.status.${effectiveEmailStatus.value}`))
+	const verificationActionLabel = computed(() => (
+		verificationRequested.value || emailVerification.value.last_sent_at ? t('profile.emailVerification.resend') : t('profile.emailVerification.send')
+	))
+	const emailFeatureTooltip = computed(() => (
+		effectiveEmailStatus.value === 'bounced' ? t('profile.emailVerification.bouncedRequirement') : t('profile.emailVerification.required')
+	))
 
 	function hydrate(profile) {
 		form.email = profile?.email || authStore.user?.email || ''
+		savedEmail.value = form.email.trim().toLowerCase()
 		form.given_name = authStore.user?.given_name || ''
 		form.family_name = authStore.user?.family_name || ''
 		form.phone = profile?.phone || ''
@@ -89,6 +133,15 @@
 		form.neighborhood = profile?.neighborhood || ''
 		form.user_type = profile?.user_type || ''
 		form.locale = profile?.locale || authStore.user?.locale || appStore.locale
+		emailVerification.value = profile?.email_verification || {
+			status: 'unverified',
+			verified_at: null,
+			can_resend: true,
+			last_sent_at: null
+		}
+		emailChatNotifications.value = Boolean(profile?.email_chat_notifications)
+		savedEmailChatNotifications.value = emailChatNotifications.value
+		verificationRequested.value = Boolean(emailVerification.value.last_sent_at)
 	}
 
 	async function load() {
@@ -164,6 +217,46 @@
 		}
 	}
 
+	async function sendEmailVerification() {
+		if (!emailMatchesSaved.value || !emailVerification.value.can_resend) {
+			return
+		}
+
+		verificationSending.value = true
+		try {
+			const { data } = await sendProfileEmailVerification()
+			emailVerification.value = data.data?.email_verification || emailVerification.value
+			verificationRequested.value = true
+			$q.notify({ type: 'positive', message: t('profile.emailVerification.sent') })
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('profile.emailVerification.sendFailed')) })
+		} finally {
+			verificationSending.value = false
+		}
+	}
+
+	async function saveEmailChatNotifications(value) {
+		if (!emailIsVerified.value || emailPreferenceSaving.value) {
+			emailChatNotifications.value = savedEmailChatNotifications.value
+			return
+		}
+
+		emailChatNotifications.value = value
+		emailPreferenceSaving.value = true
+		try {
+			const { data } = await updateProfileEmailPreferences(value)
+			emailChatNotifications.value = Boolean(data.data?.email_chat_notifications)
+			savedEmailChatNotifications.value = emailChatNotifications.value
+			await authStore.refreshUser()
+			$q.notify({ type: 'positive', message: t('profile.notificationsSaved') })
+		} catch (error) {
+			emailChatNotifications.value = savedEmailChatNotifications.value
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('profile.notificationsSaveFailed')) })
+		} finally {
+			emailPreferenceSaving.value = false
+		}
+	}
+
 	function filterCityOptions(value, update) {
 		update(() => {
 			citySelectOptions.value = filterOptions(cityOptions.value, value)
@@ -204,6 +297,18 @@
 			await nextTick()
 			await cityFieldRef.value?.validate()
 		}
+
+		if (route.query.emailVerification) {
+			const status = route.query.emailVerification
+			const positive = status === 'verified'
+			$q.notify({
+				type: positive ? 'positive' : 'negative',
+				message: t(`profile.emailVerification.result.${status}`)
+			})
+			const query = { ...route.query }
+			delete query.emailVerification
+			await router.replace({ query })
+		}
 	})
 </script>
 
@@ -226,13 +331,32 @@
 				</div>
 				<q-form v-if="!loading" ref="formRef" greedy class="column q-gutter-md q-pl-md q-pt-lg" @submit.prevent="save()">
 					<div class="row q-col-gutter-md q-pb-md">
-						<q-input class="col-12 col-md-4"
-							v-model="form.email"
-							outlined
-							type="email"
-							:label="requiredLabel('auth.email')"
-							:rules="[requiredRule, emailRule]"
-						/>
+						<div class="col-12 col-md-4 profile-email-field">
+							<q-input
+								v-model="form.email"
+								outlined
+								type="email"
+								:label="requiredLabel('auth.email')"
+								:rules="[requiredRule, emailRule]"
+							/>
+							<div class="email-verification-state">
+								<span class="email-verification-status" :class="`text-${emailStatusColor}`">
+									<q-icon :name="emailStatusIcon" size="18px" />
+									{{ emailStatusLabel }}
+								</span>
+								<q-btn
+									v-if="effectiveEmailStatus === 'unverified' && emailMatchesSaved && emailVerification.can_resend"
+									flat
+									dense
+									no-caps
+									color="primary"
+									icon="mark_email_read"
+									:loading="verificationSending"
+									:label="verificationActionLabel"
+									@click="sendEmailVerification"
+								/>
+							</div>
+						</div>
 						<q-input class="col-12 col-md-4"
 							v-model="form.given_name"
 							outlined
@@ -355,6 +479,28 @@
 				<q-spinner v-if="loading" color="primary" />
 			</section>
 
+			<section v-if="!loading" class="soz-section-card profile-notifications-panel q-mt-lg">
+				<div class="profile-section-intro">
+					<h2>{{ t('profile.notificationsTitle') }}</h2>
+				</div>
+				<div
+					class="notification-toggle-wrap"
+					:class="{ 'notification-toggle-wrap--disabled': !emailIsVerified }"
+					:tabindex="emailIsVerified ? undefined : 0"
+					:aria-disabled="!emailIsVerified"
+				>
+					<q-toggle
+						:model-value="emailChatNotifications"
+						color="primary"
+						:label="t('profile.chatEmailNotifications')"
+						:disable="!emailIsVerified || emailPreferenceSaving"
+						@update:model-value="saveEmailChatNotifications"
+					/>
+					<q-spinner v-if="emailPreferenceSaving" size="20px" color="primary" />
+					<q-tooltip v-if="!emailIsVerified">{{ emailFeatureTooltip }}</q-tooltip>
+				</div>
+			</section>
+
 			<section v-if="!loading" class="soz-section-card profile-password-panel q-mt-lg">
 				<q-form v-if="hasPassword"
 					ref="passwordFormRef"
@@ -428,6 +574,7 @@
 
 .page-head,
 .profile-panel,
+.profile-notifications-panel,
 .profile-password-panel {
   padding: 28px;
 }
@@ -438,6 +585,51 @@
 
 .form-submit {
   margin-inline-start: 0 !important;
+}
+
+.profile-email-field {
+  min-width: 0;
+}
+
+.email-verification-state {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: -10px;
+}
+
+.email-verification-status {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.profile-section-intro h2 {
+  margin: 0 0 18px;
+  font-size: 1.35rem;
+  line-height: 1.25;
+}
+
+.notification-toggle-wrap {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 12px;
+  outline: none;
+}
+
+.notification-toggle-wrap--disabled {
+  cursor: help;
+}
+
+.notification-toggle-wrap--disabled:focus-visible {
+  outline: 2px solid rgba(109, 55, 133, 0.4);
+  outline-offset: 4px;
 }
 
 .profile-completion-banner {
@@ -525,6 +717,7 @@
 
   .page-head,
   .profile-panel,
+  .profile-notifications-panel,
   .profile-password-panel {
     padding: 20px;
   }

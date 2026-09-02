@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ChatEmailNotificationState;
 use App\Models\ChatMessage;
 use App\Models\Conversation;
 use App\Models\User;
@@ -18,8 +19,7 @@ class ChatController extends Controller
     public function __construct(
         private readonly PayloadService $payloads,
         private readonly SystemSettingsService $settings,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -201,7 +201,7 @@ class ChatController extends Controller
     private function sendIntoConversation(Request $request, Conversation $conversation, bool $enforceLimits)
     {
         $data = $request->validate([
-            'body' => ['required', 'string', 'max:5000', new CleanContent()],
+            'body' => ['required', 'string', 'max:5000', new CleanContent],
         ]);
 
         if ($enforceLimits) {
@@ -325,6 +325,11 @@ class ChatController extends Controller
             ->where('sender_id', '!=', $user->id)
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
+
+        ChatEmailNotificationState::query()
+            ->where('conversation_id', $conversation->id)
+            ->where('recipient_id', $user->id)
+            ->delete();
     }
 
     private function isSupportConversation(Conversation $conversation): bool

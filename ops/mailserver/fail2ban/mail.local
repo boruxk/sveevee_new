@@ -1,0 +1,25 @@
+[DEFAULT]
+bantime = 1h
+findtime = 10m
+maxretry = 5
+backend = systemd
+
+[sshd]
+enabled = true
+
+[postfix-sasl]
+enabled = true
+port = smtp,submission,submissions
+filter = postfix[mode=auth]
+
+[dovecot]
+enabled = true
+port = imaps
+filter = dovecot-sveevee
+
+[roundcube-auth]
+enabled = true
+port = http,https
+filter = roundcube-auth
+backend = auto
+logpath = /var/log/roundcube/errors.log

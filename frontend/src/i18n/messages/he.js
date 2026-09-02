@@ -581,7 +581,29 @@ export default {
 		passwordSaved: 'הסיסמה שונתה. שלחנו אישור באימייל.',
 		passwordSaveFailed: 'לא ניתן לשנות את הסיסמה.',
 		completeTitle: 'השלמת פרופיל',
-		completeBody: 'לפני שתמשיך, מלא את שדות החובה בפרופיל.'
+		completeBody: 'לפני שתמשיך, מלא את שדות החובה בפרופיל.',
+		notificationsTitle: 'התראות',
+		chatEmailNotifications: 'שליחת אימייל כשמתקבלת הודעת צ׳אט חדשה',
+		notificationsSaved: 'הגדרות ההתראות נשמרו.',
+		notificationsSaveFailed: 'לא ניתן לשמור את הגדרות ההתראות.',
+		emailVerification: {
+			status: {
+				unverified: 'האימייל לא אומת',
+				verified: 'האימייל אומת',
+				bounced: 'לא ניתן לקבל הודעות באימייל'
+			},
+			send: 'אימות האימייל',
+			resend: 'שליחה מחדש',
+			sent: 'אימייל האימות נשלח.',
+			sendFailed: 'לא ניתן לשלוח את אימייל האימות.',
+			required: 'יש לאמת תחילה את כתובת האימייל.',
+			bouncedRequirement: 'יש לשנות ולאמת תחילה את כתובת האימייל.',
+			result: {
+				verified: 'כתובת האימייל אומתה.',
+				invalid: 'קישור האימות אינו תקין או שפג תוקפו.',
+				bounced: 'לא ניתן לקבל הודעות בכתובת האימייל הזו.'
+			}
+		}
 	},
 	admin: {
 		users: 'משתמשים',

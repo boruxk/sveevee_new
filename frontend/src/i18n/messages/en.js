@@ -581,7 +581,29 @@ export default {
 		passwordSaved: 'Password changed. We sent you a confirmation email.',
 		passwordSaveFailed: 'Password could not be changed.',
 		completeTitle: 'Complete your profile',
-		completeBody: 'Before you continue, fill in the required profile fields.'
+		completeBody: 'Before you continue, fill in the required profile fields.',
+		notificationsTitle: 'Notifications',
+		chatEmailNotifications: 'Email me when I receive a new chat message',
+		notificationsSaved: 'Notification settings saved.',
+		notificationsSaveFailed: 'Notification settings could not be saved.',
+		emailVerification: {
+			status: {
+				unverified: 'Email not verified',
+				verified: 'Email verified',
+				bounced: 'Email cannot receive messages'
+			},
+			send: 'Verify email',
+			resend: 'Send again',
+			sent: 'Verification email sent.',
+			sendFailed: 'Verification email could not be sent.',
+			required: 'Verify your email address first.',
+			bouncedRequirement: 'Change and verify your email address first.',
+			result: {
+				verified: 'Your email address has been verified.',
+				invalid: 'This verification link is invalid or has expired.',
+				bounced: 'This email address cannot receive messages.'
+			}
+		}
 	},
 	admin: {
 		users: 'Users',

@@ -1,0 +1,3 @@
+root: info@sveevee.co.il
+postmaster: info@sveevee.co.il
+bounce: "|/usr/local/sbin/sveevee-bounce"

@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+token="${EXTENSION:-}"
+
+case "$token" in
+    ''|*[!A-Za-z0-9]*) exit 67 ;;
+esac
+
+[ "${#token}" -eq 48 ] || exit 67
+
+cd /var/www/sveevee/backend
+exec /usr/bin/php -d pcre.jit=0 artisan mail:ingest-bounce "$token"

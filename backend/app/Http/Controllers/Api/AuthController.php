@@ -61,6 +61,7 @@ class AuthController extends Controller
             'city' => $data['city'] ?? null,
             'neighborhood' => $data['neighborhood'] ?? null,
         ]);
+        $user->sendEmailVerificationNotification();
 
         return $this->authenticated($user, 'Account created.', 201);
     }

@@ -1,12 +1,13 @@
 <?php
 
+use App\Http\Middleware\EnsureEmailIsVerified;
+use App\Http\Middleware\EnsurePlatformIsAvailable;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureUserIsAdmin;
-use App\Http\Middleware\EnsurePlatformIsAvailable;
 use App\Http\Middleware\VerifyRecaptcha;
 use App\Services\ApiResponseService;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -29,10 +30,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureUserIsAdmin::class,
             'platform.available' => EnsurePlatformIsAvailable::class,
             'recaptcha' => VerifyRecaptcha::class,
+            'email.verified' => EnsureEmailIsVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->render(function (\Throwable $exception, Request $request) {
+        $exceptions->render(function (Throwable $exception, Request $request) {
             if (! $request->is('api/*') && ! $request->expectsJson()) {
                 return null;
             }

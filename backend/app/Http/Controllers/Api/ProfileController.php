@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Http\Controllers\Controller;
 use App\Models\Ad;
+use App\Models\ChatEmailNotificationState;
 use App\Models\EmailBan;
 use App\Notifications\PasswordChangedNotification;
 use App\Services\ApiResponseService;
+use App\Services\EmailVerificationService;
 use App\Services\PayloadService;
 use App\Support\UserTypes;
 use Illuminate\Http\Request;
@@ -19,13 +21,17 @@ class ProfileController extends Controller
 {
     use HandlesUploadedImages;
 
-    public function __construct(private readonly PayloadService $payloads) {}
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly EmailVerificationService $emailVerification,
+    ) {}
 
     public function show(Request $request)
     {
         return ApiResponseService::success($this->payloads->profile(
             $request->user()->profile,
-            $request->user()
+            $request->user(),
+            includePrivate: true,
         ));
     }
 
@@ -52,6 +58,8 @@ class ProfileController extends Controller
             return ApiResponseService::error('This email address is banned.', status: 403);
         }
 
+        $emailChanged = $user->email !== $data['email'];
+
         $user->forceFill([
             'email' => $data['email'],
             'given_name' => $data['given_name'],
@@ -74,7 +82,14 @@ class ProfileController extends Controller
                 'neighborhood' => $data['neighborhood'] ?? null,
             ]);
 
-        return ApiResponseService::success($this->payloads->profile($profile, $user->fresh()), 'Profile saved.');
+        if ($emailChanged) {
+            $user->fresh()->sendEmailVerificationNotification();
+        }
+
+        return ApiResponseService::success(
+            $this->payloads->profile($profile->fresh(), $user->fresh(), includePrivate: true),
+            'Profile saved.'
+        );
     }
 
     public function updateLocale(Request $request)
@@ -88,7 +103,7 @@ class ProfileController extends Controller
         $user = $user->fresh();
 
         return ApiResponseService::success([
-            'profile' => $this->payloads->profile($user->profile, $user),
+            'profile' => $this->payloads->profile($user->profile, $user, includePrivate: true),
             'user' => $this->payloads->user($user, includePrivate: true),
         ], 'Profile saved.');
     }
@@ -128,7 +143,7 @@ class ProfileController extends Controller
         ]);
 
         return ApiResponseService::success([
-            'profile' => $this->payloads->profile($profile, $request->user()),
+            'profile' => $this->payloads->profile($profile, $request->user(), includePrivate: true),
             'user' => $this->payloads->user($request->user()->fresh(), includePrivate: true),
         ], 'Photo uploaded.');
     }
@@ -148,8 +163,37 @@ class ProfileController extends Controller
         $user = $request->user()->fresh();
 
         return ApiResponseService::success([
-            'profile' => $this->payloads->profile($user->profile, $user),
+            'profile' => $this->payloads->profile($user->profile, $user, includePrivate: true),
             'user' => $this->payloads->user($user, includePrivate: true),
         ], 'Photo deleted.');
+    }
+
+    public function updateEmailPreferences(Request $request)
+    {
+        $data = $request->validate([
+            'chat_notifications' => ['required', 'boolean'],
+        ]);
+        $user = $request->user()->loadMissing('profile');
+
+        if ($data['chat_notifications'] && ! $this->emailVerification->canUseEmailFeatures($user)) {
+            return ApiResponseService::error(
+                'A verified email address is required.',
+                status: 409,
+                data: ['email_verification' => $this->emailVerification->payload($user)]
+            );
+        }
+
+        $profile = $user->profile()->updateOrCreate([], [
+            'email_chat_notifications' => $data['chat_notifications'],
+        ]);
+
+        if (! $data['chat_notifications']) {
+            ChatEmailNotificationState::query()->where('recipient_id', $user->id)->delete();
+        }
+
+        return ApiResponseService::success(
+            $this->payloads->profile($profile, $user->fresh(), includePrivate: true),
+            'Email preferences saved.'
+        );
     }
 }

@@ -17,7 +17,15 @@ class UserProfile extends Model
         'city',
         'neighborhood',
         'user_type',
+        'email_chat_notifications',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'email_chat_notifications' => 'boolean',
+        ];
+    }
 
     public function user(): BelongsTo
     {

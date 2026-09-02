@@ -1,0 +1,78 @@
+compatibility_level = 3.9
+
+myhostname = mail.sveevee.co.il
+mydomain = sveevee.co.il
+myorigin = $mydomain
+mydestination = $myhostname, localhost.$mydomain, localhost
+inet_interfaces = all
+inet_protocols = ipv4
+mynetworks = 127.0.0.0/8
+mynetworks_style = host
+relayhost =
+relay_domains =
+
+smtpd_banner = $myhostname ESMTP
+biff = no
+append_dot_mydomain = no
+readme_directory = no
+recipient_delimiter = +
+mailbox_size_limit = 0
+message_size_limit = 26214400
+disable_vrfy_command = yes
+smtpd_helo_required = yes
+smtpd_delay_reject = yes
+strict_rfc821_envelopes = yes
+
+alias_maps = hash:/etc/aliases
+alias_database = hash:/etc/aliases
+local_recipient_maps = proxy:unix:passwd.byname, $alias_maps
+default_privs = www-data
+
+virtual_mailbox_domains = sveevee.co.il
+virtual_mailbox_maps = hash:/etc/postfix/vmailbox
+virtual_alias_maps = hash:/etc/postfix/virtual
+virtual_transport = lmtp:unix:private/dovecot-lmtp
+virtual_uid_maps = static:5000
+virtual_gid_maps = static:5000
+
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_auth_enable = no
+smtpd_sasl_security_options = noanonymous
+smtpd_sasl_tls_security_options = noanonymous
+smtpd_sender_login_maps = hash:/etc/postfix/sender_login
+
+smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
+smtpd_recipient_restrictions = reject_non_fqdn_recipient, reject_unknown_recipient_domain, permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
+smtpd_sender_restrictions = reject_non_fqdn_sender, reject_unknown_sender_domain
+smtpd_helo_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_invalid_helo_hostname, reject_non_fqdn_helo_hostname
+
+smtpd_client_connection_count_limit = 20
+smtpd_client_connection_rate_limit = 30
+smtpd_error_sleep_time = 1s
+smtpd_soft_error_limit = 10
+smtpd_hard_error_limit = 20
+anvil_rate_time_unit = 60s
+
+smtpd_tls_cert_file = /etc/letsencrypt/live/mail.sveevee.co.il/fullchain.pem
+smtpd_tls_key_file = /etc/letsencrypt/live/mail.sveevee.co.il/privkey.pem
+smtpd_tls_security_level = may
+smtpd_tls_auth_only = yes
+smtpd_tls_received_header = yes
+smtpd_tls_loglevel = 1
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+smtp_tls_security_level = may
+smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+smtp_tls_loglevel = 1
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+tls_preempt_cipherlist = no
+
+smtpd_milters = inet:127.0.0.1:11332
+non_smtpd_milters = inet:127.0.0.1:11332
+milter_protocol = 6
+milter_default_action = tempfail
+
+maximal_queue_lifetime = 5d
+bounce_queue_lifetime = 2d
+delay_warning_time = 4h
+

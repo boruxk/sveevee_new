@@ -1,0 +1,38 @@
+#!/bin/sh
+set -eu
+
+env_file=/var/www/sveevee/backend/.env
+mode="${1:-log}"
+
+case "$mode" in
+    log|smtp) ;;
+    *)
+        printf 'Usage: %s [log|smtp]\n' "$0" >&2
+        exit 64
+        ;;
+esac
+
+set_env() {
+    key="$1"
+    value="$2"
+
+    if grep -q "^${key}=" "$env_file"; then
+        sed -i "s#^${key}=.*#${key}=${value}#" "$env_file"
+    else
+        printf '%s=%s\n' "$key" "$value" >> "$env_file"
+    fi
+}
+
+set_env MAIL_MAILER "$mode"
+set_env MAIL_SCHEME null
+set_env MAIL_HOST 127.0.0.1
+set_env MAIL_PORT 25
+set_env MAIL_USERNAME null
+set_env MAIL_PASSWORD null
+set_env MAIL_EHLO_DOMAIN sveevee.co.il
+set_env MAIL_FROM_ADDRESS no-reply@sveevee.co.il
+set_env MAIL_FROM_NAME Sveevee
+set_env MAIL_REPLY_TO_ADDRESS info@sveevee.co.il
+set_env MAIL_REPLY_TO_NAME '"Sveevee Support"'
+set_env MAIL_BOUNCE_DOMAIN mail.sveevee.co.il
+set_env MAIL_CHAT_NOTIFICATION_DELAY 5

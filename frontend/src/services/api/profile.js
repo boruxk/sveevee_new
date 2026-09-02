@@ -17,6 +17,16 @@ export function updateProfilePassword(payload) {
 	return apiClient.put('/profile/password', payload)
 }
 
+export function sendProfileEmailVerification() {
+	return apiClient.post('/profile/email-verification')
+}
+
+export function updateProfileEmailPreferences(chatNotifications) {
+	return apiClient.put('/profile/email-preferences', {
+		chat_notifications: chatNotifications
+	})
+}
+
 export async function uploadProfilePhoto(file) {
 	const formData = new FormData()
 	await appendImageFile(formData, 'photo', file)

@@ -1,0 +1,80 @@
+#!/bin/sh
+set -eu
+
+maildir=/var/vmail/sveevee.co.il/info/Maildir
+logdir=/root/mail-stack-tests
+password="$(cat /root/info-mailbox-initial-password)"
+mkdir -p "$logdir"
+chmod 0700 "$logdir"
+
+before="$(find "$maildir/new" "$maildir/cur" -type f 2>/dev/null | wc -l)"
+if ! swaks \
+    --server 127.0.0.1 \
+    --port 25 \
+    --from setup-test@sveevee.co.il \
+    --to info@sveevee.co.il \
+    --header 'Subject: Sveevee mail stack integration test' \
+    --body 'Internal setup verification.' \
+    --timeout 20 > "$logdir/swaks-local-delivery.log" 2>&1; then
+    printf '%s\n' 'Local SMTP injection failed' >&2
+    exit 1
+fi
+attempt=0
+after="$before"
+while [ "$after" -le "$before" ] && [ "$attempt" -lt 10 ]; do
+    sleep 1
+    attempt="$((attempt + 1))"
+    after="$(find "$maildir/new" "$maildir/cur" -type f 2>/dev/null | wc -l)"
+done
+
+[ "$after" -gt "$before" ]
+printf 'Local delivery verified (%s -> %s messages)\n' "$before" "$after"
+
+latest="$(find "$maildir/new" "$maildir/cur" -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -n 1 | cut -d' ' -f2-)"
+grep -q '^DKIM-Signature:' "$latest"
+printf '%s\n' 'DKIM signing verified'
+
+swaks \
+    --server mail.sveevee.co.il \
+    --port 587 \
+    --tls \
+    --auth LOGIN \
+    --auth-user info@sveevee.co.il \
+    --auth-password "$password" \
+    --quit-after AUTH \
+    --timeout 20 > "$logdir/swaks-submission-587.log" 2>&1
+printf '%s\n' 'SMTP STARTTLS authentication verified'
+
+swaks \
+    --server mail.sveevee.co.il \
+    --port 465 \
+    --tls-on-connect \
+    --auth LOGIN \
+    --auth-user info@sveevee.co.il \
+    --auth-password "$password" \
+    --quit-after AUTH \
+    --timeout 20 > "$logdir/swaks-submission-465.log" 2>&1
+printf '%s\n' 'SMTPS authentication verified'
+
+curl \
+    --silent \
+    --show-error \
+    --fail \
+    --url imaps://mail.sveevee.co.il/INBOX \
+    --user "info@sveevee.co.il:$password" \
+    --list-only > "$logdir/imap-list-test.log"
+printf '%s\n' 'IMAPS authentication verified'
+
+if swaks \
+    --server 185.163.118.100 \
+    --port 25 \
+    --from relay-test@gmail.com \
+    --to outside@gmail.com \
+    --quit-after RCPT \
+    --timeout 20 > "$logdir/swaks-open-relay.log" 2>&1; then
+    printf '%s\n' 'Open relay test unexpectedly accepted the recipient' >&2
+    exit 1
+fi
+
+grep -q 'Relay access denied' "$logdir/swaks-open-relay.log"
+printf '%s\n' 'Open relay rejection verified'

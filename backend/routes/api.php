@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\AiWorkTaskController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\EmailVerificationController;
 use App\Http\Controllers\Api\GuestSupportController;
 use App\Http\Controllers\Api\HomeFeedController;
 use App\Http\Controllers\Api\LocationController;
@@ -34,6 +35,10 @@ use App\Http\Controllers\Api\SearchController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(function () {
+    Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->whereNumber('id')
+        ->name('email-verification.verify')
+        ->withoutMiddleware(['platform.available', 'recaptcha']);
     Route::get('/platform-status', PlatformStatusController::class)->withoutMiddleware('platform.available');
     Route::get('/catalog', [CatalogController::class, 'index']);
     Route::get('/catalog/{topicSlug}', [CatalogController::class, 'index']);
@@ -82,6 +87,9 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
         Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
         Route::delete('/profile/photo', [ProfileController::class, 'destroyPhoto']);
+        Route::post('/profile/email-verification', [EmailVerificationController::class, 'send'])
+            ->middleware('throttle:3,60');
+        Route::put('/profile/email-preferences', [ProfileController::class, 'updateEmailPreferences']);
 
         Route::get('/pages/{type}/mine', [PageController::class, 'mine']);
         Route::post('/pages/{type}', [PageController::class, 'upsert']);

@@ -113,4 +113,15 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    'reply_to' => [
+        'address' => env('MAIL_REPLY_TO_ADDRESS', 'info@sveevee.co.il'),
+        'name' => env('MAIL_REPLY_TO_NAME', 'Sveevee Support'),
+    ],
+
+    'bounce_domain' => env('MAIL_BOUNCE_DOMAIN', 'mail.sveevee.co.il'),
+
+    'chat_notifications' => [
+        'delay_minutes' => (int) env('MAIL_CHAT_NOTIFICATION_DELAY', 5),
+    ],
+
 ];

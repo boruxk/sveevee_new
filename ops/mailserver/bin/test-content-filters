@@ -1,0 +1,47 @@
+#!/bin/sh
+set -eu
+
+testdir=/root/mail-stack-tests
+eicar="$testdir/eicar.com"
+mkdir -p "$testdir"
+chmod 0700 "$testdir"
+trap 'rm -f "$eicar"' EXIT
+
+printf '%s%s\n' \
+    'X5O!P%@AP[4\PZX54(P^)7CC)7}$EIC' \
+    'AR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > "$eicar"
+
+if clamdscan --fdpass "$eicar" > "$testdir/clamav-eicar.log" 2>&1; then
+    printf '%s\n' 'ClamAV unexpectedly accepted the EICAR test file' >&2
+    exit 1
+fi
+grep -q 'Eicar-Signature FOUND' "$testdir/clamav-eicar.log"
+printf '%s\n' 'ClamAV EICAR detection verified'
+
+if swaks \
+    --server 127.0.0.1 \
+    --port 25 \
+    --from filter-test@gmail.com \
+    --to info@sveevee.co.il \
+    --header 'Subject: Sveevee malware filter test' \
+    --attach "@$eicar" \
+    --timeout 30 > "$testdir/rspamd-eicar.log" 2>&1; then
+    printf '%s\n' 'SMTP malware test was unexpectedly accepted' >&2
+    exit 1
+fi
+grep -q 'malware detected' "$testdir/rspamd-eicar.log"
+printf '%s\n' 'Rspamd malware rejection verified'
+
+if swaks \
+    --server 127.0.0.1 \
+    --port 25 \
+    --from filter-test@gmail.com \
+    --to info@sveevee.co.il \
+    --header 'Subject: Sveevee spam filter test' \
+    --body 'XJS*C4JDBQADN1.NSBN3*2IDNEN*GTUBE-STANDARD-ANTI-UBE-TEST-EMAIL*C.34X' \
+    --timeout 30 > "$testdir/rspamd-gtube.log" 2>&1; then
+    printf '%s\n' 'SMTP GTUBE spam test was unexpectedly accepted' >&2
+    exit 1
+fi
+grep -q 'Gtube pattern' "$testdir/rspamd-gtube.log"
+printf '%s\n' 'Rspamd GTUBE spam rejection verified'

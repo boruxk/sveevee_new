@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use App\Jobs\SendEmailVerificationEmail;
 use App\Support\PublicSlug;
+use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,9 +15,9 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, MustVerifyEmailTrait, Notifiable;
 
     protected $fillable = [
         'name',
@@ -97,6 +100,21 @@ class User extends Authenticatable
         return $this->hasMany(ChatMessage::class, 'sender_id');
     }
 
+    public function emailDeliveries(): HasMany
+    {
+        return $this->hasMany(EmailDelivery::class);
+    }
+
+    public function chatEmailNotificationStates(): HasMany
+    {
+        return $this->hasMany(ChatEmailNotificationState::class, 'recipient_id');
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        SendEmailVerificationEmail::dispatch($this->id, $this->email);
+    }
+
     public function pageConversationsAsVisitor(): HasMany
     {
         return $this->hasMany(PageConversation::class, 'visitor_id');
@@ -157,6 +175,19 @@ class User extends Authenticatable
         static::saving(function (User $user): void {
             $user->email = strtolower(trim((string) $user->email));
             $user->name = $user->name ?: trim((string) $user->given_name.' '.(string) $user->family_name);
+
+            if ($user->exists && $user->isDirty('email')) {
+                $user->email_verified_at = null;
+            }
+        });
+
+        static::updated(function (User $user): void {
+            if (! $user->wasChanged('email')) {
+                return;
+            }
+
+            $user->profile()->update(['email_chat_notifications' => false]);
+            $user->chatEmailNotificationStates()->delete();
         });
 
         static::created(function (User $user): void {

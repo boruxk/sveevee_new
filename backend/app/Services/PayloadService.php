@@ -28,7 +28,10 @@ class PayloadService
         ['weekday' => 'saturday', 'is_open' => false, 'opens_at' => null, 'closes_at' => null],
     ];
 
-    public function __construct(private readonly SystemSettingsService $settings) {}
+    public function __construct(
+        private readonly SystemSettingsService $settings,
+        private readonly EmailVerificationService $emailVerification,
+    ) {}
 
     public function user(User $user, bool $includePrivate = false): array
     {
@@ -44,7 +47,7 @@ class PayloadService
             'display_name' => $user->display_name,
             'role' => $user->role,
             'role_names' => $user->role_names,
-            'profile' => $this->profile($user->profile, $user),
+            'profile' => $this->profile($user->profile, $user, $includePrivate),
             'business_page' => $this->firstPageOfType($user, 'business'),
             'community_page' => $this->firstPageOfType($user, 'community'),
         ];
@@ -62,9 +65,9 @@ class PayloadService
         return $payload;
     }
 
-    public function profile(?UserProfile $profile, ?User $user = null): array
+    public function profile(?UserProfile $profile, ?User $user = null, bool $includePrivate = false): array
     {
-        return [
+        $payload = [
             'email' => $user?->email,
             'photo_url' => $profile?->photo_url,
             ...$this->publicImageMeta('photo', $profile?->photo_path, $user?->display_name, '96px'),
@@ -75,6 +78,13 @@ class PayloadService
             'user_type' => $profile?->user_type,
             'locale' => $user?->locale,
         ];
+
+        if ($includePrivate && $user) {
+            $payload['email_verification'] = $this->emailVerification->payload($user);
+            $payload['email_chat_notifications'] = (bool) $profile?->email_chat_notifications;
+        }
+
+        return $payload;
     }
 
     public function page(?Page $page, bool $withAds = false): ?array

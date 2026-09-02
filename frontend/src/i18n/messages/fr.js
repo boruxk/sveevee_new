@@ -581,7 +581,29 @@ export default {
 		passwordSaved: 'Mot de passe changé. Une confirmation a été envoyée par e-mail.',
 		passwordSaveFailed: 'Le mot de passe n’a pas pu être changé.',
 		completeTitle: 'Complétez votre profil',
-		completeBody: 'Avant de continuer, remplissez les champs obligatoires du profil.'
+		completeBody: 'Avant de continuer, remplissez les champs obligatoires du profil.',
+		notificationsTitle: 'Notifications',
+		chatEmailNotifications: 'M’envoyer un e-mail pour tout nouveau message de chat',
+		notificationsSaved: 'Les réglages de notification ont été enregistrés.',
+		notificationsSaveFailed: 'Les réglages de notification n’ont pas pu être enregistrés.',
+		emailVerification: {
+			status: {
+				unverified: 'E-mail non confirmé',
+				verified: 'E-mail confirmé',
+				bounced: 'L’adresse ne peut pas recevoir de messages'
+			},
+			send: 'Confirmer l’e-mail',
+			resend: 'Renvoyer',
+			sent: 'L’e-mail de confirmation a été envoyé.',
+			sendFailed: 'L’e-mail de confirmation n’a pas pu être envoyé.',
+			required: 'Confirmez d’abord votre adresse e-mail.',
+			bouncedRequirement: 'Modifiez et confirmez d’abord votre adresse e-mail.',
+			result: {
+				verified: 'Votre adresse e-mail a été confirmée.',
+				invalid: 'Ce lien de confirmation est invalide ou a expiré.',
+				bounced: 'Cette adresse e-mail ne peut pas recevoir de messages.'
+			}
+		}
 	},
 	admin: {
 		users: 'Utilisateurs',
