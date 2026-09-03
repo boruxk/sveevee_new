@@ -93,6 +93,11 @@
 		{ key: 'ratings', icon: 'reviews', labelKey: 'ratings.title' },
 		{ key: 'chat', icon: 'chat_bubble', labelKey: 'chat.title' }
 	])
+	const claimUnlockFreeCharacters = computed(() => Array.from(t('pageClaim.unlockFree')))
+	const claimButtonLabel = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimButton') : t('pageClaim.claimButton'))
+	const claimRegisterLabel = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimButton') : t('pageClaim.registerToClaim'))
+	const claimPendingLabel = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimPending') : t('pageClaim.pending'))
+	const claimActionHint = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimHint') : '')
 	const existingBusinessPage = computed(() => authStore.user?.business_page || null)
 	const requiresBusinessPageReplacement = computed(() => (
 		isBusinessPage.value &&
@@ -447,7 +452,15 @@
 					<div class="banner-claim-panel">
 						<p class="banner-claim-panel__title">
 							<span>{{ t('pageClaim.unlockTitle') }}</span>
-							<strong>{{ t('pageClaim.unlockFree') }}</strong>
+							<strong class="banner-claim-panel__free" :aria-label="t('pageClaim.unlockFree')">
+								<span
+									v-for="(character, index) in claimUnlockFreeCharacters"
+									:key="`${character}-${index}`"
+									class="banner-claim-panel__free-letter"
+									:style="{ animationDelay: `${index * 90}ms` }"
+									aria-hidden="true"
+								>{{ character }}</span>
+							</strong>
 						</p>
 						<ul class="banner-claim-features" :aria-label="t('pageClaim.unlockTitle')">
 							<li v-for="feature in claimUnlockFeatures" :key="feature.key">
@@ -455,27 +468,30 @@
 								<span>{{ t(feature.labelKey) }}</span>
 							</li>
 						</ul>
-						<q-btn v-if="!authStore.isAuthenticated"
-							class="banner-claim-button"
-							rounded
-							unelevated
-							no-caps
-							color="primary"
-							icon="person_add"
-							:label="t('pageClaim.claimButton')"
-							:to="claimRegisterRoute"
-						/>
-						<q-btn v-else-if="canRequestClaim"
-							class="banner-claim-button"
-							rounded
-							unelevated
-							no-caps
-							color="primary"
-							icon="verified_user"
-							:disable="claimSent"
-							:label="claimSent ? t('pageClaim.pending') : t('pageClaim.claimButton')"
-							@click="openClaimDialog"
-						/>
+						<div v-if="!authStore.isAuthenticated || canRequestClaim" class="banner-claim-panel__action">
+							<q-btn v-if="!authStore.isAuthenticated"
+								class="banner-claim-button"
+								rounded
+								unelevated
+								no-caps
+								color="primary"
+								icon="person_add"
+								:label="claimRegisterLabel"
+								:to="claimRegisterRoute"
+							/>
+							<q-btn v-else
+								class="banner-claim-button"
+								rounded
+								unelevated
+								no-caps
+								color="primary"
+								icon="verified_user"
+								:disable="claimSent"
+								:label="claimSent ? claimPendingLabel : claimButtonLabel"
+								@click="openClaimDialog"
+							/>
+							<small v-if="claimActionHint" class="claim-action-hint">{{ claimActionHint }}</small>
+						</div>
 					</div>
 				</template>
 				<template #afterInfo>
@@ -529,7 +545,7 @@
 						no-caps
 						color="primary"
 						icon="person_add"
-						:label="t('pageClaim.registerToClaim')"
+						:label="claimRegisterLabel"
 						:to="claimRegisterRoute"
 					/>
 					<q-btn v-else-if="canRequestClaim"
@@ -539,9 +555,10 @@
 						color="primary"
 						icon="verified_user"
 						:disable="claimSent"
-						:label="claimSent ? t('pageClaim.pending') : t('pageClaim.claimButton')"
+						:label="claimSent ? claimPendingLabel : claimButtonLabel"
 						@click="openClaimDialog"
 					/>
+					<small v-if="claimActionHint && (!authStore.isAuthenticated || canRequestClaim)" class="claim-action-hint">{{ claimActionHint }}</small>
 				</div>
 			</section>
 
@@ -733,7 +750,9 @@
 }
 
 .unclaimed-notice__action {
+  display: grid;
   flex: 0 0 auto;
+  gap: 6px;
 }
 
 .unclaimed-notice__action .q-btn {
@@ -746,6 +765,19 @@
   min-height: 42px;
   max-width: 100%;
   box-shadow: 0 12px 28px rgba(17, 34, 45, 0.2);
+}
+
+.banner-claim-panel__action {
+  display: grid;
+  gap: 6px;
+}
+
+.claim-action-hint {
+  color: rgba(17, 34, 45, 0.66);
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
 }
 
 .banner-claim-panel {
@@ -771,40 +803,32 @@
   line-height: 1.2;
 }
 
-.banner-claim-panel__title strong {
-  display: inline-block;
-  background: linear-gradient(
-    105deg,
-    var(--soz-primary) 0%,
-    var(--soz-primary) 34%,
-    var(--soz-orange) 48%,
-    var(--soz-primary) 62%,
-    var(--soz-primary) 100%
-  );
-  background-position: 100% 50%;
-  background-size: 250% 100%;
-  background-clip: text;
-  color: transparent;
+.banner-claim-panel__free {
+  display: inline-flex;
+  direction: inherit;
+  color: var(--soz-primary);
   font-weight: 900;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: bannerClaimFreeWave 2.8s ease-in-out infinite;
+  unicode-bidi: isolate;
 }
 
-@keyframes bannerClaimFreeWave {
+@keyframes bannerClaimFreeLetterWave {
   0%,
-  10% {
-    background-position: 100% 50%;
-  }
-
-  50%,
-  60% {
-    background-position: 0% 50%;
-  }
-
+  55%,
   100% {
-    background-position: 100% 50%;
+    color: var(--soz-primary);
   }
+
+  20%,
+  35% {
+    color: var(--soz-orange);
+  }
+}
+
+.banner-claim-panel__free-letter {
+  display: inline-block;
+  color: var(--soz-primary);
+  white-space: pre;
+  animation: bannerClaimFreeLetterWave 1.8s ease-in-out infinite;
 }
 
 .banner-claim-features {
@@ -1096,11 +1120,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .banner-claim-panel__title strong {
-    background: none;
-    color: var(--soz-primary);
-    -webkit-text-fill-color: currentColor;
+  .banner-claim-panel__free-letter {
     animation: none;
+  }
+
+  .banner-claim-panel__free-letter:nth-child(odd) {
+    color: var(--soz-orange);
   }
 }
 

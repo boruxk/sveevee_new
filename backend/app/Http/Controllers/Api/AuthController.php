@@ -260,6 +260,8 @@ class AuthController extends Controller
 
     private function authenticated(User $user, string $message, int $status = 200)
     {
+        $user->forceFill(['last_seen_at' => now()])->saveQuietly();
+
         return ApiResponseService::success([
             'token' => $this->createAuthToken($user),
             'user' => $this->payloads->user($user->fresh(), includePrivate: true),

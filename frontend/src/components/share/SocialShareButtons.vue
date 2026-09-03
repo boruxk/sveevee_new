@@ -21,6 +21,7 @@
 	const shareText = computed(() => [props.title, props.url].filter(Boolean).join(' '))
 	const whatsappUrl = computed(() => `https://wa.me/?text=${encodeURIComponent(shareText.value)}`)
 	const facebookUrl = computed(() => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(props.url)}`)
+	const xUrl = computed(() => `https://x.com/intent/post?text=${encodeURIComponent(props.title)}&url=${encodeURIComponent(props.url)}`)
 	const telegramUrl = computed(() => `https://t.me/share/url?url=${encodeURIComponent(props.url)}&text=${encodeURIComponent(props.title)}`)
 	const qrCode = computed(() => qrSvg(props.url))
 
@@ -129,6 +130,13 @@
 			<q-tooltip>TikTok</q-tooltip>
 		</button>
 
+		<button type="button" class="social-share-button" :aria-label="t('pages.socials.x')" @click="openUrl(xUrl)">
+			<svg class="social-share-icon social-share-icon--x" viewBox="0 0 24 24" aria-hidden="true">
+				<path d="M18.24 2.25h3.31l-7.23 8.26 8.51 11.24h-6.66l-5.21-6.82-5.97 6.82H1.68l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23Zm-1.16 17.52h1.83L7.08 4.13H5.12l11.96 15.64Z" />
+			</svg>
+			<q-tooltip>{{ t('pages.socials.x') }}</q-tooltip>
+		</button>
+
 		<button type="button" class="social-share-button" aria-label="Telegram" @click="openUrl(telegramUrl)">
 			<svg class="social-share-icon social-share-icon--telegram" viewBox="0 0 24 24" aria-hidden="true">
 				<circle cx="12" cy="12" r="10" />
@@ -204,6 +212,7 @@
 .social-share-icon--tiktok .social-share-icon__shadow-a { fill: #25f4ee; }
 .social-share-icon--tiktok .social-share-icon__shadow-b { fill: #fe2c55; }
 .social-share-icon--tiktok > path:last-child { fill: #111111; }
+.social-share-icon--x path { fill: #111111; }
 .social-share-icon--telegram circle { fill: #229ed9; }
 .social-share-icon--telegram path { fill: #ffffff; }
 .social-share-icon--copy rect,

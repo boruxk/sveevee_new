@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import {
 	fetchChat,
 	fetchChats,
+	deleteChat,
 	markChatRead,
 	sendChatMessage,
 	sendChatMessageToUser,
@@ -54,6 +55,21 @@ export const useChatsStore = defineStore('chats', {
 					...(privatePayload.conversations || []),
 					...(pagePayload.conversations || [])
 				].sort((left, right) => conversationTimestamp(right) - conversationTimestamp(left))
+				if (this.activeConversation?.id) {
+					const listedActive = this.conversations.find((conversation) => (
+						String(conversation.id) === String(this.activeConversation.id) &&
+						Boolean(conversation.is_page_chat) === Boolean(this.activeConversation.is_page_chat)
+					))
+					if (listedActive) {
+						this.activeConversation = {
+							...this.activeConversation,
+							other_user: listedActive.other_user,
+							latest_message: listedActive.latest_message,
+							last_message_at: listedActive.last_message_at,
+							unread_count: listedActive.unread_count
+						}
+					}
+				}
 				this.syncUnread(privatePayload.unread_count ?? pagePayload.unread_count ?? 0)
 				return this.conversations
 			} finally {
@@ -80,6 +96,25 @@ export const useChatsStore = defineStore('chats', {
 			this.activeConversation = data.data
 			await this.loadConversations()
 			return this.activeConversation
+		},
+		async refreshActiveConversation() {
+			if (!this.activeConversation?.id) {
+				return this.activeConversation
+			}
+
+			try {
+				const response = this.activeConversation.is_page_chat ? await fetchPageConversation(this.activeConversation.id) : await fetchChat(this.activeConversation.id)
+
+				this.activeConversation = response.data.data
+				return this.activeConversation
+			} catch (error) {
+				if (error.response?.status === 404) {
+					this.activeConversation = null
+					return null
+				}
+
+				throw error
+			}
 		},
 		async send(body, userId = null) {
 			if (!String(body || '').trim()) {
@@ -115,6 +150,18 @@ export const useChatsStore = defineStore('chats', {
 				this.syncUnread(data.data?.unread_count || 0)
 			}
 			await this.loadConversations()
+		},
+		async deleteConversation(id, mode) {
+			const { data } = await deleteChat(id, mode)
+			this.conversations = this.conversations.filter((conversation) => (
+				conversation.is_page_chat || String(conversation.id) !== String(id)
+			))
+			if (!this.activeConversation?.is_page_chat && String(this.activeConversation?.id) === String(id)) {
+				this.activeConversation = null
+			}
+			this.syncUnread(data.data?.unread_count || 0)
+			await this.loadConversations()
+			return data.data
 		},
 		clearActive() {
 			this.activeConversation = null

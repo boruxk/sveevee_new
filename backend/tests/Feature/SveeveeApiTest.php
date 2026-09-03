@@ -408,6 +408,113 @@ class SveeveeApiTest extends TestCase
         ])->assertCreated();
     }
 
+    public function test_presence_heartbeat_is_visible_in_private_chats_and_admin_users(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $sender = User::factory()->create();
+        $recipient = User::factory()->create([
+            'email' => 'online-recipient@example.test',
+            'last_seen_at' => now()->subMinutes(4),
+        ]);
+
+        Sanctum::actingAs($sender);
+        $this->postJson("/api/v1/chats/users/{$recipient->id}/messages", [
+            'body' => 'Are you there?',
+        ])->assertCreated()
+            ->assertJsonPath('data.other_user.presence.is_online', false);
+
+        Sanctum::actingAs($recipient);
+        $this->postJson('/api/v1/presence/heartbeat')
+            ->assertOk()
+            ->assertJsonPath('data.is_online', true);
+
+        $this->assertNotNull($recipient->fresh()->last_seen_at);
+
+        Sanctum::actingAs($sender);
+        $this->getJson('/api/v1/chats')
+            ->assertOk()
+            ->assertJsonPath('data.conversations.0.other_user.presence.is_online', true)
+            ->assertJsonMissingPath('data.conversations.0.other_user.presence.last_seen_at');
+
+        Sanctum::actingAs($admin);
+        $this->getJson('/api/v1/admin/users?paginated=1&q=online-recipient%40example.test')
+            ->assertOk()
+            ->assertJsonPath('data.items.0.presence.is_online', true);
+    }
+
+    public function test_private_chat_can_be_deleted_for_self_and_then_for_everyone(): void
+    {
+        $sender = User::factory()->create();
+        $recipient = User::factory()->create();
+
+        Sanctum::actingAs($sender);
+        $created = $this->postJson("/api/v1/chats/users/{$recipient->id}/messages", [
+            'body' => 'First message',
+        ])->assertCreated();
+        $conversationId = $created->json('data.id');
+
+        Sanctum::actingAs($recipient);
+        $this->postJson("/api/v1/chats/{$conversationId}/messages", [
+            'body' => 'First reply',
+        ])->assertCreated();
+
+        Sanctum::actingAs($sender);
+        $this->deleteJson("/api/v1/chats/{$conversationId}", ['mode' => 'self'])
+            ->assertOk()
+            ->assertJsonPath('data.mode', 'self');
+
+        $this->getJson('/api/v1/chats')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.conversations');
+
+        Sanctum::actingAs($recipient);
+        $this->getJson("/api/v1/chats/{$conversationId}")
+            ->assertOk()
+            ->assertJsonCount(2, 'data.messages');
+
+        $this->postJson("/api/v1/chats/{$conversationId}/messages", [
+            'body' => 'A new message',
+        ])->assertCreated();
+
+        Sanctum::actingAs($sender);
+        $this->getJson("/api/v1/chats/{$conversationId}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data.messages')
+            ->assertJsonPath('data.messages.0.body', 'A new message');
+
+        $this->deleteJson("/api/v1/chats/{$conversationId}", ['mode' => 'everyone'])
+            ->assertOk()
+            ->assertJsonPath('data.mode', 'everyone');
+
+        $this->assertDatabaseMissing('conversations', ['id' => $conversationId]);
+        $this->assertDatabaseMissing('chat_messages', ['conversation_id' => $conversationId]);
+
+        Sanctum::actingAs($recipient);
+        $this->getJson('/api/v1/chats')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.conversations');
+    }
+
+    public function test_support_chat_cannot_be_deleted_from_private_chat_controls(): void
+    {
+        $supportAdmin = User::query()->where('email', 'support@sveevee.local')->firstOrFail();
+        $user = User::factory()->create();
+
+        Sanctum::actingAs($user);
+        $created = $this->postJson('/api/v1/chats/support/messages', [
+            'body' => 'Please keep this support history.',
+        ])->assertCreated();
+
+        $this->deleteJson('/api/v1/chats/'.$created->json('data.id'), ['mode' => 'everyone'])
+            ->assertUnprocessable();
+
+        $this->assertDatabaseHas('conversations', [
+            'id' => $created->json('data.id'),
+            'is_support' => true,
+            'user_two_id' => max($supportAdmin->id, $user->id),
+        ]);
+    }
+
     public function test_page_chat_is_separate_from_private_chat_and_replies_as_page(): void
     {
         $owner = User::factory()->create();
@@ -1520,6 +1627,9 @@ HTML);
                     'city' => 'Haifa',
                     'neighborhood' => 'Hadar',
                 ],
+                'socials' => [
+                    'x' => 'https://x.com/miristudio',
+                ],
                 'opening_hours' => [
                     ['weekday' => 'monday', 'is_open' => true, 'opens_at' => '08:30', 'closes_at' => '16:00'],
                 ],
@@ -1539,6 +1649,7 @@ HTML);
             ->assertJsonPath('data.contact.whatsapp', '+972 50 111 2222')
             ->assertJsonPath('data.address_details.street', 'Herzl')
             ->assertJsonPath('data.address_details.neighborhood', 'Hadar')
+            ->assertJsonPath('data.socials.x', 'https://x.com/miristudio')
             ->assertJsonPath('data.website', 'https://studio.example')
             ->assertJsonPath('data.setup.website', 'https://studio.example')
             ->assertJsonPath('data.opening_hours.1.weekday', 'monday')

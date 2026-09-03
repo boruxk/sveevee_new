@@ -406,6 +406,7 @@
 			facebook: 'sveevee',
 			instagram: 'sveevee',
 			tiktok: 'sveevee',
+			x: 'sveevee',
 			telegram: 'sveevee'
 		},
 		address: demoAddress.value,
@@ -435,6 +436,7 @@
 			facebook: 'sveevee',
 			instagram: 'sveevee',
 			tiktok: 'sveevee',
+			x: 'sveevee',
 			telegram: 'sveevee'
 		},
 		address_details: {
@@ -784,7 +786,7 @@
 												<div class="col-12 col-md-2">
 													<q-input :model-value="demoForm.address.number" outlined disable :label="requiredLabel('pages.number')" />
 												</div>
-												<div class="col-12 col-md-3">
+												<div class="col-12 col-sm-6 col-md">
 													<q-select
 														:model-value="demoForm.address.city"
 														outlined
@@ -795,7 +797,7 @@
 														:label="requiredLabel('pages.city')"
 													/>
 												</div>
-												<div class="col-12 col-md-3">
+												<div class="col-12 col-sm-6 col-md">
 													<q-select
 														:model-value="demoForm.address.neighborhood"
 														outlined
@@ -818,10 +820,13 @@
 												<div class="col-12 col-md-3">
 													<q-input :model-value="demoForm.socials.instagram" outlined disable label="Instagram" />
 												</div>
-												<div class="col-12 col-md-3">
+												<div class="col-12 col-sm-6 col-md">
 													<q-input :model-value="demoForm.socials.tiktok" outlined disable label="TikTok" />
 												</div>
-												<div class="col-12 col-md-3">
+												<div class="col-12 col-sm-6 col-md">
+													<q-input :model-value="demoForm.socials.x" outlined disable :label="t('pages.socials.x')" />
+												</div>
+												<div class="col-12 col-sm-6 col-md">
 													<q-input :model-value="demoForm.socials.telegram" outlined disable label="Telegram" />
 												</div>
 											</div>

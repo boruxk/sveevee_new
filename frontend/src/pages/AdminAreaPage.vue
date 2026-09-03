@@ -1,5 +1,5 @@
 <script setup>
-	import { computed, nextTick, onMounted, ref } from 'vue'
+	import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute } from 'vue-router'
 	import { useQuasar } from 'quasar'
@@ -12,6 +12,7 @@
 		deleteAdminUser,
 		deleteBlockedTerm,
 		fetchAdminPageOwnerOptions,
+		fetchAdminLeadPages,
 		fetchAdminPages,
 		fetchAdminSettings,
 		fetchAdminSupportChat,
@@ -64,6 +65,8 @@
 	})
 	const clone = (value) => JSON.parse(JSON.stringify(value))
 	const pagesTabIcon = 'M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z'
+	const statisticsTabIcon = 'M5 9.2h3V19H5V9.2ZM10.6 5h2.8v14h-2.8V5ZM16 13h3v6h-3v-6Z'
+	const leadPageName = 'Leads Page 001'
 
 	const { locale, t } = useI18n()
 	const route = useRoute()
@@ -72,13 +75,16 @@
 	const supportLoading = ref(false)
 	const tableLoading = ref(false)
 	const pagesLoading = ref(false)
-	const adminTabNames = ['communication', 'users', 'pages', 'landing-pages', 'settings']
+	const adminTabNames = ['communication', 'users', 'pages', 'landing-pages', 'statistics', 'settings']
 	const activeTab = ref(adminTabNames.includes(String(route.query.tab || '')) ? String(route.query.tab) : 'communication')
 	const supportConversations = ref([])
 	const userRows = ref([])
 	const totalUsers = ref(0)
 	const pageRows = ref([])
 	const totalPages = ref(0)
+	const leadPageRows = ref([])
+	const totalLeadPages = ref(0)
+	const leadPagesLoading = ref(false)
 	const pageSearch = ref('')
 	const appliedPageSearch = ref('')
 	const pageTypeFilter = ref('')
@@ -112,6 +118,8 @@
 	const blockedTermSaving = ref(false)
 	const blockedTermRowSaving = ref({})
 	const newBlockedTerm = ref({ term: '', locale: 'all', active: true })
+	let adminPresenceTimer = null
+	let refreshingAdminPresence = false
 	const tablePagination = ref({
 		page: 1,
 		rowsPerPage: 50,
@@ -122,7 +130,20 @@
 		rowsPerPage: 50,
 		rowsNumber: 0
 	})
+	const leadPageTablePagination = ref({
+		page: 1,
+		rowsPerPage: 50,
+		rowsNumber: 0
+	})
 	const landingPages = computed(() => [
+		{
+			key: 'leads-page-001',
+			icon: 'campaign',
+			title: leadPageName,
+			description: t('admin.landingPageLeadDescription'),
+			routeName: 'leads-page-001',
+			routeParams: { locale: locale.value }
+		},
 		{
 			key: 'businesses',
 			icon: 'storefront',
@@ -200,6 +221,14 @@
 		{ name: 'updated', label: t('admin.pages.updated'), align: 'left', field: 'updated_at', sortable: false },
 		{ name: 'actions', label: t('admin.actions'), align: 'right', field: 'actions', sortable: false }
 	])
+	const leadPageColumns = computed(() => [
+		{ name: 'name', label: t('admin.pages.name'), align: 'left', field: 'name', sortable: false },
+		{ name: 'location', label: t('admin.pages.location'), align: 'left', field: 'city', sortable: false },
+		{ name: 'contact', label: t('admin.statistics.contact'), align: 'left', field: 'lead', sortable: false },
+		{ name: 'status', label: t('admin.statistics.status'), align: 'left', field: 'is_unclaimed', sortable: false },
+		{ name: 'created', label: t('admin.statistics.created'), align: 'left', field: 'created_at', sortable: false },
+		{ name: 'actions', label: t('admin.actions'), align: 'right', field: 'actions', sortable: false }
+	])
 	const pageTypeFilterOptions = computed(() => [
 		{ label: t('admin.pages.allTypes'), value: '' },
 		{ label: t('pages.kinds.business'), value: 'business' },
@@ -233,6 +262,7 @@
 		users: t('admin.userTable'),
 		pages: t('admin.pages.title'),
 		'landing-pages': t('admin.landingPages'),
+		statistics: t('admin.statistics.title'),
 		settings: t('admin.settings.title')
 	}[activeTab.value] || t('admin.users')))
 
@@ -320,8 +350,10 @@
 		}
 	}
 
-	async function loadUserTable(page = tablePagination.value.page) {
-		tableLoading.value = true
+	async function loadUserTable(page = tablePagination.value.page, { silent = false } = {}) {
+		if (!silent) {
+			tableLoading.value = true
+		}
 		try {
 			const { data } = await fetchAdminUserTable({
 				page,
@@ -338,7 +370,38 @@
 				rowsNumber: pagination.total || userRows.value.length
 			}
 		} finally {
-			tableLoading.value = false
+			if (!silent) {
+				tableLoading.value = false
+			}
+		}
+	}
+
+	async function refreshAdminPresence() {
+		if (refreshingAdminPresence || document.visibilityState !== 'visible') {
+			return
+		}
+
+		refreshingAdminPresence = true
+		try {
+			await Promise.all([
+				refreshSupportConversations(),
+				loadUserTable(tablePagination.value.page, { silent: true })
+			])
+
+			const refreshedConversation = supportConversations.value.find((conversation) => (
+				conversation.support_key === selectedSupportKey.value
+			))
+			if (activeSupportConversation.value && refreshedConversation) {
+				activeSupportConversation.value = {
+					...activeSupportConversation.value,
+					participant: refreshedConversation.participant,
+					other_user: refreshedConversation.other_user
+				}
+			}
+		} catch {
+			// Presence refresh is best-effort and retries on the next interval.
+		} finally {
+			refreshingAdminPresence = false
 		}
 	}
 
@@ -380,6 +443,31 @@
 
 	function onPageTableRequest({ pagination }) {
 		loadPageTable(pagination.page || 1)
+	}
+
+	async function loadLeadPageTable(page = leadPageTablePagination.value.page) {
+		leadPagesLoading.value = true
+		try {
+			const { data } = await fetchAdminLeadPages({ page })
+			const payload = data.data || {}
+			const pagination = payload.pagination || {}
+
+			leadPageRows.value = payload.items || []
+			totalLeadPages.value = Number(pagination.total || leadPageRows.value.length)
+			leadPageTablePagination.value = {
+				page: pagination.current_page || page,
+				rowsPerPage: pagination.per_page || 50,
+				rowsNumber: pagination.total || leadPageRows.value.length
+			}
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.statistics.loadFailed')) })
+		} finally {
+			leadPagesLoading.value = false
+		}
+	}
+
+	function onLeadPageTableRequest({ pagination }) {
+		loadLeadPageTable(pagination.page || 1)
 	}
 
 	function pageOwnerOption(user) {
@@ -488,11 +576,18 @@
 			}
 
 			let targetPage = pageTablePagination.value.page
-			if (pageRows.value.length === 1 && targetPage > 1) {
+			if (pageRows.value.some(({ id }) => id === page.id) && pageRows.value.length === 1 && targetPage > 1) {
 				targetPage -= 1
 			}
+			let targetLeadPage = leadPageTablePagination.value.page
+			if (leadPageRows.value.some(({ id }) => id === page.id) && leadPageRows.value.length === 1 && targetLeadPage > 1) {
+				targetLeadPage -= 1
+			}
 
-			await loadPageTable(targetPage)
+			await Promise.all([
+				loadPageTable(targetPage),
+				loadLeadPageTable(targetLeadPage)
+			])
 			$q.notify({ type: 'positive', message: t('admin.pages.deleted') })
 		} catch (error) {
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.pages.deleteFailed')) })
@@ -805,7 +900,14 @@
 		loadSupportConversations()
 		loadUserTable()
 		loadPageTable()
+		loadLeadPageTable()
 		loadSettings()
+		adminPresenceTimer = window.setInterval(refreshAdminPresence, 30_000)
+	})
+	onBeforeUnmount(() => {
+		if (adminPresenceTimer) {
+			window.clearInterval(adminPresenceTimer)
+		}
 	})
 </script>
 
@@ -833,6 +935,7 @@
 				<q-tab name="users" icon="manage_accounts" :label="t('admin.userTable')" />
 				<q-tab name="pages" :icon="pagesTabIcon" :label="t('admin.pages.title')" />
 				<q-tab name="landing-pages" icon="dashboard" :label="t('admin.landingPages')" />
+				<q-tab name="statistics" :icon="statisticsTabIcon" :label="t('admin.statistics.title')" />
 				<q-tab name="settings" icon="tune" :label="t('admin.settings.title')" />
 			</q-tabs>
 
@@ -848,20 +951,25 @@
 								:class="{ 'support-row--active': selectedSupportKey === conversation.support_key }"
 								@click="openSupportConversation(conversation)"
 							>
-								<q-avatar size="38px" color="primary" text-color="white">
-									<ResponsiveImage
-										v-if="conversation.participant?.profile?.photo_url"
-										class="support-avatar-image"
-										:src="conversation.participant.profile.photo_url"
-										:alt="conversation.participant?.display_name || ''"
-										:avif-srcset="conversation.participant.profile.photo_avif_srcset || ''"
-										:webp-srcset="conversation.participant.profile.photo_webp_srcset || ''"
-										sizes="38px"
-										:width="conversation.participant.profile.photo_width || 96"
-										:height="conversation.participant.profile.photo_height || 96"
-									/>
-									<span v-else>{{ conversation.participant?.display_name?.slice(0, 1) || 'S' }}</span>
-								</q-avatar>
+								<div class="support-avatar-wrap">
+									<q-avatar size="38px" color="primary" text-color="white">
+										<ResponsiveImage
+											v-if="conversation.participant?.profile?.photo_url"
+											class="support-avatar-image"
+											:src="conversation.participant.profile.photo_url"
+											:alt="conversation.participant?.display_name || ''"
+											:avif-srcset="conversation.participant.profile.photo_avif_srcset || ''"
+											:webp-srcset="conversation.participant.profile.photo_webp_srcset || ''"
+											sizes="38px"
+											:width="conversation.participant.profile.photo_width || 96"
+											:height="conversation.participant.profile.photo_height || 96"
+										/>
+										<span v-else>{{ conversation.participant?.display_name?.slice(0, 1) || 'S' }}</span>
+									</q-avatar>
+									<span v-if="conversation.participant?.presence?.is_online" class="admin-presence-dot" :aria-label="t('chat.online')">
+										<q-tooltip>{{ t('chat.online') }}</q-tooltip>
+									</span>
+								</div>
 								<span class="support-row__copy">
 									<strong>
 										{{ conversation.participant?.display_name }}
@@ -884,6 +992,9 @@
 								<header class="support-detail__head">
 									<div>
 										<h2>{{ activeSupportUser?.display_name }}</h2>
+										<div v-if="activeSupportUser?.presence?.is_online" class="admin-online-label">
+											<span />{{ t('chat.online') }}
+										</div>
 										<p v-if="activeSupportUser?.email">{{ activeSupportUser.email }}</p>
 										<p v-if="!activeSupportConversation.is_guest">{{ localizedLocation(activeSupportUser?.profile?.city, 'city') || '-' }} / {{ localizedLocation(activeSupportUser?.profile?.neighborhood, 'neighborhood') || '-' }}</p>
 									</div>
@@ -1042,8 +1153,13 @@
 
 							<template #body-cell-status="props">
 								<q-td :props="props">
-									<q-chip dense :color="props.row.banned_at ? 'negative' : 'positive'" text-color="white">
-										{{ props.row.banned_at ? t('admin.banned') : t('admin.active') }}
+									<q-chip
+										dense
+										:color="props.row.banned_at ? 'negative' : (props.row.presence?.is_online ? 'positive' : 'grey-5')"
+										:text-color="props.row.banned_at ? 'white' : 'dark'"
+									>
+										<span v-if="props.row.presence?.is_online" class="admin-status-dot" />
+										{{ props.row.banned_at ? t('admin.banned') : (props.row.presence?.is_online ? t('chat.online') : t('admin.active')) }}
 									</q-chip>
 								</q-td>
 							</template>
@@ -1286,9 +1402,10 @@
 									rounded
 									icon="open_in_new"
 									:label="t('admin.openLandingPage')"
-									:to="{ name: page.routeName }"
+									:to="{ name: page.routeName, params: page.routeParams || {} }"
 								/>
 								<q-btn
+									v-if="page.exampleRouteName"
 									color="primary"
 									unelevated
 									rounded
@@ -1299,6 +1416,100 @@
 								/>
 							</article>
 						</div>
+					</section>
+				</q-tab-panel>
+
+				<q-tab-panel name="statistics" class="admin-panel">
+					<section class="soz-section-card statistics-panel">
+						<header class="statistics-panel__head">
+							<div>
+								<span class="statistics-panel__source">{{ leadPageName }}</span>
+								<h2>{{ t('admin.statistics.leadPagesTitle') }}</h2>
+								<p>{{ t('admin.statistics.leadPagesIntro') }}</p>
+							</div>
+							<div class="user-total statistics-total" aria-live="polite">
+								<strong>{{ totalLeadPages.toLocaleString(intlLocale) }}</strong>
+								<span>{{ t('admin.statistics.total') }}</span>
+							</div>
+						</header>
+
+						<q-table
+							v-model:pagination="leadPageTablePagination"
+							flat
+							:rows="leadPageRows"
+							:columns="leadPageColumns"
+							row-key="id"
+							:loading="leadPagesLoading"
+							:rows-per-page-options="[50]"
+							:no-data-label="t('admin.statistics.empty')"
+							binary-state-sort
+							class="user-table lead-page-table"
+							@request="onLeadPageTableRequest"
+						>
+							<template #body-cell-name="props">
+								<q-td :props="props" class="page-name-cell page-name-cell--business">
+									<div class="page-name-content">
+										<div class="table-name">
+											<strong>{{ props.row.name || '-' }}</strong>
+											<small>#{{ props.row.id }}</small>
+										</div>
+										<q-btn
+											flat
+											round
+											dense
+											icon="open_in_new"
+											:aria-label="t('admin.openClaimPage')"
+											:to="props.row.public_path"
+											target="_blank"
+										/>
+									</div>
+								</q-td>
+							</template>
+
+							<template #body-cell-location="props">
+								<q-td :props="props">{{ localizedLocation(props.row.city, 'city') || '-' }}</q-td>
+							</template>
+
+							<template #body-cell-contact="props">
+								<q-td :props="props">
+									<div class="table-name lead-contact">
+										<strong>{{ props.row.lead?.full_name || '-' }}</strong>
+										<a v-if="props.row.lead?.email" :href="`mailto:${props.row.lead.email}`" dir="ltr">{{ props.row.lead.email }}</a>
+										<a v-if="props.row.lead?.phone" :href="`tel:${props.row.lead.phone}`" dir="ltr">{{ props.row.lead.phone }}</a>
+									</div>
+								</q-td>
+							</template>
+
+							<template #body-cell-status="props">
+								<q-td :props="props">
+									<q-chip dense :color="props.row.is_unclaimed ? 'warning' : 'positive'" :text-color="props.row.is_unclaimed ? 'dark' : 'white'">
+										{{ props.row.is_unclaimed ? t('admin.pages.unclaimed') : t('admin.pages.managed') }}
+									</q-chip>
+								</q-td>
+							</template>
+
+							<template #body-cell-created="props">
+								<q-td :props="props">{{ formatDateTime(props.row.lead?.created_at || props.row.created_at) }}</q-td>
+							</template>
+
+							<template #body-cell-actions="props">
+								<q-td :props="props">
+									<q-btn
+										flat
+										round
+										dense
+										color="negative"
+										:loading="deletingPageId === props.row.id"
+										:disable="Boolean(deletingPageId)"
+										:aria-label="t('admin.pages.deletePermanently')"
+										@click="confirmDeletePage(props.row)"
+									>
+										<DeleteIcon :size="18" />
+										<q-tooltip>{{ t('admin.pages.deletePermanently') }}</q-tooltip>
+									</q-btn>
+								</q-td>
+							</template>
+						</q-table>
 					</section>
 				</q-tab-panel>
 
@@ -2192,6 +2403,59 @@
   line-height: 1.56;
 }
 
+.statistics-panel {
+  display: grid;
+  gap: 20px;
+  padding: 26px;
+}
+
+.statistics-panel__head {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.statistics-panel__head h2,
+.statistics-panel__head p {
+  margin: 0;
+}
+
+.statistics-panel__head h2 {
+  margin-top: 4px;
+  color: var(--soz-ink);
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.statistics-panel__head p {
+  max-width: 720px;
+  margin-top: 6px;
+  color: rgba(17, 34, 45, 0.62);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.statistics-panel__source {
+  color: var(--soz-primary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.statistics-total {
+  flex: 0 0 auto;
+}
+
+.lead-contact a {
+  color: var(--soz-primary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.lead-contact a:hover {
+  text-decoration: underline;
+}
+
 .table-name {
   display: grid;
   gap: 2px;
@@ -2200,6 +2464,15 @@
 
 .table-name small {
   color: rgba(17, 34, 45, 0.54);
+}
+
+.admin-status-dot {
+  width: 7px;
+  height: 7px;
+  margin-inline-end: 6px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.24);
 }
 
 .table-email {
@@ -2244,6 +2517,24 @@
   width: 100%;
   height: 100%;
   --responsive-image-fit: cover;
+}
+
+.support-avatar-wrap {
+  position: relative;
+  width: 38px;
+  height: 38px;
+}
+
+.admin-presence-dot {
+  position: absolute;
+  inset-inline-end: -1px;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.28);
 }
 
 .support-row__copy {
@@ -2292,6 +2583,23 @@
   margin: 0;
   color: rgba(17, 34, 45, 0.62);
   overflow-wrap: anywhere;
+}
+
+.admin-online-label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 2px 0 5px;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.admin-online-label span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
 }
 
 .claim-review-list {
@@ -2756,14 +3064,24 @@
     padding: 20px;
   }
 
+  .statistics-panel {
+    padding: 20px;
+  }
+
   .landing-pages-panel__head,
+  .statistics-panel__head,
   .landing-page-row {
     align-items: stretch;
     grid-template-columns: 1fr;
   }
 
-  .landing-pages-panel__head {
+  .landing-pages-panel__head,
+  .statistics-panel__head {
     flex-direction: column;
+  }
+
+  .statistics-total {
+    justify-content: flex-end;
   }
 
   .landing-page-row .q-btn {

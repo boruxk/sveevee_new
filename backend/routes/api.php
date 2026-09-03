@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\PageProductController;
 use App\Http\Controllers\Api\PageRatingController;
 use App\Http\Controllers\Api\PageServiceController;
 use App\Http\Controllers\Api\PlatformStatusController;
+use App\Http\Controllers\Api\PresenceController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PublicUserController;
 use App\Http\Controllers\Api\SearchController;
@@ -79,6 +80,9 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
     });
 
     Route::middleware('auth:sanctum')->get('/me', [AuthController::class, 'me'])->withoutMiddleware('platform.available');
+    Route::middleware(['auth:sanctum', 'throttle:30,1'])
+        ->post('/presence/heartbeat', PresenceController::class)
+        ->withoutMiddleware(['platform.available', 'recaptcha']);
     Route::middleware('auth:sanctum')->put('/profile/locale', [ProfileController::class, 'updateLocale'])->withoutMiddleware('platform.available');
 
     Route::middleware(['auth:sanctum', 'role:user,admin'])->group(function () {
@@ -135,6 +139,7 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::get('/chats/{conversation}', [ChatController::class, 'show']);
         Route::post('/chats/{conversation}/messages', [ChatController::class, 'send'])->middleware('throttle:chat-send');
         Route::patch('/chats/{conversation}/read', [ChatController::class, 'markAsRead']);
+        Route::delete('/chats/{conversation}', [ChatController::class, 'destroy']);
     });
 
     Route::middleware(['auth:sanctum', 'role:ai_worker'])

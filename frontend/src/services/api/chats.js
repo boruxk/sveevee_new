@@ -53,3 +53,7 @@ export function sendChatMessageToUser(userId, body) {
 export function markChatRead(conversationId) {
 	return apiClient.patch(`/chats/${conversationId}/read`)
 }
+
+export function deleteChat(conversationId, mode) {
+	return apiClient.delete(`/chats/${conversationId}`, { data: { mode } })
+}

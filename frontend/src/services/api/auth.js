@@ -30,6 +30,10 @@ export function fetchMe() {
 	return apiClient.get('/me')
 }
 
+export function sendPresenceHeartbeat() {
+	return apiClient.post('/presence/heartbeat', {}, { recaptcha: false })
+}
+
 export function googleAuthRedirectUrl() {
 	return `${apiBaseUrl()}/auth/google/redirect`
 }

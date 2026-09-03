@@ -6,6 +6,7 @@ use App\Models\BusinessPageLead;
 use App\Models\Page;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class BusinessPageLeadApiTest extends TestCase
@@ -52,6 +53,7 @@ class BusinessPageLeadApiTest extends TestCase
 
         $lead = BusinessPageLead::query()->sole();
         $this->assertSame($page->id, $lead->page_id);
+        $this->assertSame(BusinessPageLead::SOURCE_LEADS_PAGE_001, $lead->source);
         $this->assertSame('Albert Eliasi', $lead->full_name);
         $this->assertSame('albert@example.com', $lead->email);
         $this->assertSame('facebook', $lead->utm_source);
@@ -61,6 +63,37 @@ class BusinessPageLeadApiTest extends TestCase
         $this->assertNotNull($lead->ip_hash);
         $this->assertTrue($lead->created_page);
         $this->assertNotNull($lead->consented_at);
+    }
+
+    public function test_admin_can_list_only_pages_created_by_leads_page_001(): void
+    {
+        $createdPageId = $this->postJson('/api/v1/business-page-leads', $this->payload())
+            ->assertCreated()
+            ->json('data.page.id');
+        $worker = User::query()->where('role', 'ai_worker')->firstOrFail();
+        Page::query()->create([
+            'user_id' => $worker->id,
+            'created_by_user_id' => $worker->id,
+            'type' => Page::TYPE_BUSINESS,
+            'is_unclaimed' => true,
+            'name' => 'Unrelated Unclaimed Page',
+            'category_key' => 'services.home_repairs.handyman',
+            'setup' => ['address' => ['city' => 'Jerusalem']],
+        ]);
+
+        $admin = User::query()->where('email', config('sveevee.support_admin_email'))->firstOrFail();
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/v1/admin/pages?source='.BusinessPageLead::SOURCE_LEADS_PAGE_001)
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.pagination.total', 1)
+            ->assertJsonPath('data.items.0.id', $createdPageId)
+            ->assertJsonPath('data.items.0.lead.source', BusinessPageLead::SOURCE_LEADS_PAGE_001)
+            ->assertJsonPath('data.items.0.lead.full_name', 'Albert Eliasi')
+            ->assertJsonPath('data.items.0.lead.email', 'albert@example.com');
+
+        $this->getJson('/api/v1/admin/pages?source=unknown')->assertUnprocessable();
     }
 
     public function test_duplicate_submission_reuses_the_existing_page_and_records_the_lead(): void

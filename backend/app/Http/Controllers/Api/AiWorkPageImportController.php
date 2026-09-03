@@ -141,6 +141,7 @@ class AiWorkPageImportController extends Controller
                 'facebook' => $socials['facebook'] ?? $row['facebook'] ?? null,
                 'instagram' => $socials['instagram'] ?? $row['instagram'] ?? null,
                 'tiktok' => $socials['tiktok'] ?? $row['tiktok'] ?? null,
+                'x' => $socials['x'] ?? $row['x'] ?? null,
                 'telegram' => $socials['telegram'] ?? $row['telegram'] ?? null,
             ],
             'opening_hours' => $this->normalizedOpeningHours($row['opening_hours'] ?? []),

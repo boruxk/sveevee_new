@@ -94,6 +94,7 @@ class BusinessPageLeadController extends Controller
 
             BusinessPageLead::query()->create([
                 'page_id' => $page->id,
+                'source' => BusinessPageLead::SOURCE_LEADS_PAGE_001,
                 'business_name' => $data['business_name'],
                 'city' => $data['city'],
                 'category_key' => $data['category_key'],

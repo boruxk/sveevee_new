@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BusinessPageLead;
 use App\Models\Page;
 use App\Models\PageClaimRequest;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Services\PageClaimService;
 use App\Services\PageDeletionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AdminPageController extends Controller
@@ -22,9 +24,13 @@ class AdminPageController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->validate([
+            'source' => ['nullable', Rule::in([BusinessPageLead::SOURCE_LEADS_PAGE_001])],
+        ]);
         $search = trim((string) $request->query('q', ''));
         $type = trim((string) $request->query('type', ''));
         $ownership = trim((string) $request->query('ownership', ''));
+        $source = (string) ($filters['source'] ?? '');
         $perPage = min(100, max(1, $request->integer('per_page', 50)));
 
         $pages = Page::query()
@@ -33,6 +39,15 @@ class AdminPageController extends Controller
             ->when(in_array($type, [Page::TYPE_BUSINESS, Page::TYPE_COMMUNITY], true), fn ($query) => $query->where('type', $type))
             ->when($ownership === 'managed', fn ($query) => $query->where('is_unclaimed', false))
             ->when($ownership === 'unclaimed', fn ($query) => $query->where('is_unclaimed', true))
+            ->when($source !== '', function ($query) use ($source): void {
+                $leadFilter = fn ($leads) => $leads
+                    ->where('source', $source)
+                    ->where('created_page', true);
+
+                $query
+                    ->whereHas('businessPageLeads', $leadFilter)
+                    ->with(['businessPageLeads' => $leadFilter]);
+            })
             ->when($search !== '', function ($query) use ($search): void {
                 $like = '%'.$search.'%';
                 $query->where(function ($inner) use ($like): void {
@@ -216,6 +231,9 @@ class AdminPageController extends Controller
     private function pagePayload(Page $page): array
     {
         $address = is_array($page->setup) ? ($page->setup['address'] ?? []) : [];
+        $lead = $page->relationLoaded('businessPageLeads')
+            ? $page->businessPageLeads->first()
+            : null;
 
         return [
             'id' => $page->id,
@@ -238,6 +256,16 @@ class AdminPageController extends Controller
                 'services' => (int) ($page->services_count ?? 0),
                 'events' => (int) ($page->events_count ?? 0),
             ],
+            'lead' => $lead ? [
+                'id' => $lead->id,
+                'source' => $lead->source,
+                'full_name' => $lead->full_name,
+                'email' => $lead->email,
+                'phone' => $lead->phone,
+                'locale' => $lead->locale,
+                'utm_campaign' => $lead->utm_campaign,
+                'created_at' => $lead->created_at?->toISOString(),
+            ] : null,
             'created_at' => $page->created_at?->toISOString(),
             'updated_at' => $page->updated_at?->toISOString(),
         ];

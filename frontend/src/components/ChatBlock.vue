@@ -1,5 +1,5 @@
 <script setup>
-	import { computed, nextTick, onMounted, ref, watch } from 'vue'
+	import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
@@ -12,6 +12,7 @@
 		sendPageChatMessageToPage
 	} from '@/services/api/pageChats'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
+	import DeleteIcon from '@/components/icons/DeleteIcon.vue'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
 	const MESSAGE_BATCH_SIZE = 10
@@ -54,6 +55,10 @@
 	const pageConversations = ref([])
 	const pageActiveConversation = ref(null)
 	const pageSending = ref(false)
+	const deleteDialogOpen = ref(false)
+	const deletingChat = ref(false)
+	let chatRefreshTimer = null
+	let refreshingChat = false
 
 	const isPageChat = computed(() => Boolean(props.pageId))
 	const conversations = computed(() => (isPageChat.value ? pageConversations.value : chatsStore.conversations))
@@ -98,6 +103,11 @@
 	})
 	const hiddenMessageCount = computed(() => Math.max(messages.value.length - visibleMessages.value.length, 0))
 	const olderMessageBatchCount = computed(() => Math.min(MESSAGE_BATCH_SIZE, hiddenMessageCount.value))
+	const activeIsOnline = computed(() => Boolean(active.value?.other_user?.presence?.is_online))
+	const canDeleteActive = computed(() => Boolean(
+		active.value?.id && !active.value?.is_page_chat && !active.value?.is_support
+	))
+	const threadIsVisible = computed(() => !isMobileChat.value || props.compact || mobileThreadOpen.value)
 
 	const chatLimitMessageKeys = {
 		pending_reply: 'chat.pendingReply',
@@ -308,7 +318,74 @@
 		}
 	}
 
-	onMounted(load)
+	function requestDeleteChat() {
+		if (canDeleteActive.value) {
+			deleteDialogOpen.value = true
+		}
+	}
+
+	async function deleteActiveChat(mode) {
+		if (!canDeleteActive.value || deletingChat.value) {
+			return
+		}
+
+		deletingChat.value = true
+		try {
+			await chatsStore.deleteConversation(active.value.id, mode)
+			deleteDialogOpen.value = false
+			mobileThreadOpen.value = false
+			$q.notify({ type: 'positive', message: t('chat.deleteSuccess') })
+		} catch {
+			$q.notify({ type: 'negative', message: t('chat.deleteFailed') })
+		} finally {
+			deletingChat.value = false
+		}
+	}
+
+	async function refreshVisibleChat() {
+		if (refreshingChat || (typeof document !== 'undefined' && document.visibilityState !== 'visible')) {
+			return
+		}
+
+		refreshingChat = true
+		const previousMessageCount = messages.value.length
+
+		try {
+			if (isPageChat.value) {
+				if (props.pageOwner) {
+					await refreshPageConversations()
+				}
+
+				if (active.value?.id && threadIsVisible.value) {
+					const { data } = await fetchPageConversation(active.value.id)
+					pageActiveConversation.value = data.data
+				}
+			} else {
+				await chatsStore.loadConversations()
+				if (threadIsVisible.value) {
+					await chatsStore.refreshActiveConversation()
+				}
+			}
+
+			if (messages.value.length > previousMessageCount) {
+				await scrollToBottom()
+			}
+		} catch {
+			// Polling is best-effort; the next refresh or user action will retry.
+		} finally {
+			refreshingChat = false
+		}
+	}
+
+	onMounted(async() => {
+		await load()
+		chatRefreshTimer = window.setInterval(refreshVisibleChat, 30_000)
+	})
+	onBeforeUnmount(() => {
+		if (chatRefreshTimer) {
+			window.clearInterval(chatRefreshTimer)
+		}
+	})
 	watch(() => props.targetUserId, load)
 	watch(() => props.targetPageConversationId, load)
 	watch(() => [props.pageId, props.pageOwner], load)
@@ -355,20 +432,25 @@
 						:class="{ 'chat-list__item--active': isActiveConversation(conversation) }"
 						@click="openConversation(conversation)"
 					>
-						<q-avatar size="40px" color="primary" text-color="white">
-							<ResponsiveImage
-								v-if="conversation.other_user?.profile?.photo_url"
-								class="chat-avatar-image"
-								:src="conversation.other_user.profile.photo_url"
-								:alt="conversation.other_user?.display_name || ''"
-								:avif-srcset="conversation.other_user.profile.photo_avif_srcset || ''"
-								:webp-srcset="conversation.other_user.profile.photo_webp_srcset || ''"
-								sizes="40px"
-								:width="conversation.other_user.profile.photo_width || 96"
-								:height="conversation.other_user.profile.photo_height || 96"
-							/>
-							<span v-else>{{ conversation.other_user?.display_name?.slice(0, 1) || 'S' }}</span>
-						</q-avatar>
+						<div class="chat-avatar-wrap">
+							<q-avatar size="40px" color="primary" text-color="white">
+								<ResponsiveImage
+									v-if="conversation.other_user?.profile?.photo_url"
+									class="chat-avatar-image"
+									:src="conversation.other_user.profile.photo_url"
+									:alt="conversation.other_user?.display_name || ''"
+									:avif-srcset="conversation.other_user.profile.photo_avif_srcset || ''"
+									:webp-srcset="conversation.other_user.profile.photo_webp_srcset || ''"
+									sizes="40px"
+									:width="conversation.other_user.profile.photo_width || 96"
+									:height="conversation.other_user.profile.photo_height || 96"
+								/>
+								<span v-else>{{ conversation.other_user?.display_name?.slice(0, 1) || 'S' }}</span>
+							</q-avatar>
+							<span v-if="conversation.other_user?.presence?.is_online" class="chat-presence-dot" :aria-label="t('chat.online')">
+								<q-tooltip>{{ t('chat.online') }}</q-tooltip>
+							</span>
+						</div>
 						<span class="chat-list__copy">
 							<strong>{{ conversation.other_user?.display_name }}</strong>
 							<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
@@ -392,9 +474,25 @@
 							>
 								<q-tooltip>{{ t('chat.backToList') }}</q-tooltip>
 							</q-btn>
-							<div>
+							<div class="chat-main__identity">
 								<div class="text-h6">{{ active?.other_user?.display_name || t('chat.empty') }}</div>
+								<div v-if="activeIsOnline" class="chat-online-label">
+									<span class="chat-online-label__dot" />
+									{{ t('chat.online') }}
+								</div>
 							</div>
+							<q-btn v-if="canDeleteActive"
+								flat
+								round
+								dense
+								color="negative"
+								class="chat-delete-btn"
+								:aria-label="t('chat.deleteChat')"
+								@click="requestDeleteChat"
+							>
+								<DeleteIcon :size="19" />
+								<q-tooltip>{{ t('chat.deleteChat') }}</q-tooltip>
+							</q-btn>
 						</header>
 
 						<div ref="messagesEl" class="chat-messages">
@@ -466,20 +564,25 @@
 					:class="{ 'chat-list__item--active': isActiveConversation(conversation) }"
 					@click="openConversation(conversation)"
 				>
-					<q-avatar size="40px" color="primary" text-color="white">
-						<ResponsiveImage
-							v-if="conversation.other_user?.profile?.photo_url"
-							class="chat-avatar-image"
-							:src="conversation.other_user.profile.photo_url"
-							:alt="conversation.other_user?.display_name || ''"
-							:avif-srcset="conversation.other_user.profile.photo_avif_srcset || ''"
-							:webp-srcset="conversation.other_user.profile.photo_webp_srcset || ''"
-							sizes="40px"
-							:width="conversation.other_user.profile.photo_width || 96"
-							:height="conversation.other_user.profile.photo_height || 96"
-						/>
-						<span v-else>{{ conversation.other_user?.display_name?.slice(0, 1) || 'S' }}</span>
-					</q-avatar>
+					<div class="chat-avatar-wrap">
+						<q-avatar size="40px" color="primary" text-color="white">
+							<ResponsiveImage
+								v-if="conversation.other_user?.profile?.photo_url"
+								class="chat-avatar-image"
+								:src="conversation.other_user.profile.photo_url"
+								:alt="conversation.other_user?.display_name || ''"
+								:avif-srcset="conversation.other_user.profile.photo_avif_srcset || ''"
+								:webp-srcset="conversation.other_user.profile.photo_webp_srcset || ''"
+								sizes="40px"
+								:width="conversation.other_user.profile.photo_width || 96"
+								:height="conversation.other_user.profile.photo_height || 96"
+							/>
+							<span v-else>{{ conversation.other_user?.display_name?.slice(0, 1) || 'S' }}</span>
+						</q-avatar>
+						<span v-if="conversation.other_user?.presence?.is_online" class="chat-presence-dot" :aria-label="t('chat.online')">
+							<q-tooltip>{{ t('chat.online') }}</q-tooltip>
+						</span>
+					</div>
 					<span class="chat-list__copy">
 						<strong>{{ conversation.other_user?.display_name }}</strong>
 						<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
@@ -502,9 +605,25 @@
 							>
 								<q-tooltip>{{ t('chat.backToList') }}</q-tooltip>
 							</q-btn>
-							<div>
+							<div class="chat-main__identity">
 								<div class="text-h6">{{ active?.other_user?.display_name || t('chat.empty') }}</div>
+								<div v-if="activeIsOnline" class="chat-online-label">
+									<span class="chat-online-label__dot" />
+									{{ t('chat.online') }}
+								</div>
 							</div>
+							<q-btn v-if="canDeleteActive"
+								flat
+								round
+								dense
+								color="negative"
+								class="chat-delete-btn"
+								:aria-label="t('chat.deleteChat')"
+								@click="requestDeleteChat"
+							>
+								<DeleteIcon :size="19" />
+								<q-tooltip>{{ t('chat.deleteChat') }}</q-tooltip>
+							</q-btn>
 						</header>
 
 						<div ref="messagesEl" class="chat-messages">
@@ -565,6 +684,60 @@
 				</Transition>
 			</div>
 		</template>
+
+		<q-dialog v-model="deleteDialogOpen" persistent>
+			<q-card class="chat-delete-dialog">
+				<q-card-section class="chat-delete-dialog__head">
+					<span class="chat-delete-dialog__icon"><DeleteIcon :size="24" /></span>
+					<div>
+						<h2>{{ t('chat.deleteTitle') }}</h2>
+						<p>{{ t('chat.deleteMessage', { name: active?.other_user?.display_name || '' }) }}</p>
+					</div>
+				</q-card-section>
+				<q-card-section class="chat-delete-dialog__choices">
+					<q-btn
+						outline
+						no-caps
+						color="primary"
+						:disable="deletingChat"
+						@click="deleteActiveChat('self')"
+					>
+						<span class="chat-delete-option">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<circle cx="12" cy="8" r="3.25" />
+								<path d="M5.75 19c.55-3.25 2.63-5 6.25-5s5.7 1.75 6.25 5" />
+							</svg>
+							<span>{{ t('chat.deleteForMe') }}</span>
+						</span>
+					</q-btn>
+					<q-btn
+						unelevated
+						no-caps
+						color="negative"
+						:loading="deletingChat"
+						@click="deleteActiveChat('everyone')"
+					>
+						<span class="chat-delete-option">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<circle cx="8.5" cy="8.5" r="2.75" />
+								<path d="M3.5 17.5c.45-2.75 2.12-4.25 5-4.25 1.2 0 2.2.25 3 .75" />
+								<path d="m14.5 14.5 5 5m0-5-5 5" />
+							</svg>
+							<span>{{ t('chat.deleteForEveryone') }}</span>
+						</span>
+					</q-btn>
+				</q-card-section>
+				<q-card-actions align="right" class="chat-delete-dialog__actions">
+					<q-btn flat
+						no-caps
+						color="dark"
+						:label="t('actions.cancel')"
+						:disable="deletingChat"
+						v-close-popup
+					/>
+				</q-card-actions>
+			</q-card>
+		</q-dialog>
 	</section>
 </template>
 
@@ -594,6 +767,24 @@
   width: 100%;
   height: 100%;
   --responsive-image-fit: cover;
+}
+
+.chat-avatar-wrap {
+  position: relative;
+  width: 40px;
+  height: 40px;
+}
+
+.chat-presence-dot {
+  position: absolute;
+  inset-inline-end: -1px;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.28);
 }
 
 .chat-list__item {
@@ -673,6 +864,110 @@
   gap: 10px;
   padding: 14px 16px;
   border-bottom: 1px solid rgba(17, 34, 45, 0.1);
+}
+
+.chat-main__identity {
+  min-width: 0;
+}
+
+.chat-main__identity .text-h6 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-online-label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chat-online-label__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+.chat-delete-btn {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+
+.chat-delete-dialog {
+  width: min(430px, calc(100vw - 28px));
+  overflow: hidden;
+  border: 1px solid rgba(17, 34, 45, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 64px rgba(17, 34, 45, 0.22);
+}
+
+.chat-delete-dialog__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 22px 22px 14px;
+}
+
+.chat-delete-dialog__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.chat-delete-dialog h2 {
+  margin: 0 0 5px;
+  color: var(--soz-ink);
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.chat-delete-dialog p {
+  margin: 0;
+  color: rgba(17, 34, 45, 0.64);
+  line-height: 1.45;
+}
+
+.chat-delete-dialog__choices {
+  display: grid;
+  gap: 10px;
+  padding: 8px 22px 12px;
+}
+
+.chat-delete-dialog__choices .q-btn {
+  min-height: 46px;
+}
+
+.chat-delete-option {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-delete-option svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.chat-delete-dialog__actions {
+  padding: 4px 16px 14px;
 }
 
 .chat-back-btn {
@@ -810,10 +1105,13 @@
   }
 
   .chat-main__head {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    display: flex;
     padding: 10px 12px;
   }
+
+	.chat-main__identity {
+		flex: 1 1 auto;
+	}
 
   .chat-back-btn {
     display: inline-flex;

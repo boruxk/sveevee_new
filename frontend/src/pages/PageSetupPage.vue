@@ -87,6 +87,7 @@
 			facebook: '',
 			instagram: '',
 			tiktok: '',
+			x: '',
 			telegram: ''
 		},
 		address: {
@@ -208,6 +209,7 @@
 			facebook: form.socials.facebook,
 			instagram: form.socials.instagram,
 			tiktok: form.socials.tiktok,
+			x: form.socials.x,
 			telegram: form.socials.telegram
 		},
 		address_details: {
@@ -377,6 +379,7 @@
 		form.socials.facebook = socials.facebook || ''
 		form.socials.instagram = socials.instagram || ''
 		form.socials.tiktok = socials.tiktok || ''
+		form.socials.x = socials.x || ''
 		form.socials.telegram = socials.telegram || ''
 		form.address.street = address.street || ''
 		form.address.number = address.number || ''
@@ -425,6 +428,7 @@
 					facebook: form.socials.facebook.trim() || null,
 					instagram: form.socials.instagram.trim() || null,
 					tiktok: form.socials.tiktok.trim() || null,
+					x: form.socials.x.trim() || null,
 					telegram: form.socials.telegram.trim() || null
 				},
 				address: {
@@ -1204,16 +1208,19 @@
 										<section class="presence-segment">
 											<div class="presence-segment__title">{{ t('pages.sections.socials') }}</div>
 											<div class="row q-col-gutter-md">
-												<div class="col-12 col-md-3">
+												<div class="col-12 col-sm-6 col-md">
 													<q-input v-model="form.socials.facebook" outlined label="Facebook" />
 												</div>
-												<div class="col-12 col-md-3">
+												<div class="col-12 col-sm-6 col-md">
 													<q-input v-model="form.socials.instagram" outlined label="Instagram" />
 												</div>
-												<div class="col-12 col-md-3">
+												<div class="col-12 col-sm-6 col-md">
 													<q-input v-model="form.socials.tiktok" outlined label="TikTok" />
 												</div>
-												<div class="col-12 col-md-3">
+												<div class="col-12 col-sm-6 col-md">
+													<q-input v-model="form.socials.x" outlined :label="t('pages.socials.x')" />
+												</div>
+												<div class="col-12 col-sm-6 col-md">
 													<q-input v-model="form.socials.telegram" outlined label="Telegram" />
 												</div>
 											</div>

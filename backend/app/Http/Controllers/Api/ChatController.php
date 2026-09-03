@@ -13,6 +13,8 @@ use App\Services\PayloadService;
 use App\Services\SystemSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ChatController extends Controller
 {
@@ -27,6 +29,7 @@ class ChatController extends Controller
 
         $conversations = Conversation::query()
             ->forParticipant($user)
+            ->visibleTo($user)
             ->when($user->hasRole('admin'), fn ($query) => $query->where('is_support', false))
             ->whereNotNull('last_message_at')
             ->with(['userOne.profile', 'userTwo.profile', 'messages.sender.profile'])
@@ -185,6 +188,42 @@ class ChatController extends Controller
         return ApiResponseService::success([
             'unread_count' => $this->payloads->unreadMessageCount($request->user()),
         ]);
+    }
+
+    public function destroy(Request $request, Conversation $conversation)
+    {
+        $user = $request->user();
+
+        if (! $this->isParticipant($user, $conversation)) {
+            return ApiResponseService::error('This action is unauthorized.', status: 403);
+        }
+
+        if ($conversation->is_support) {
+            return ApiResponseService::error('Support chats cannot be deleted here.', status: 422);
+        }
+
+        $data = $request->validate([
+            'mode' => ['required', Rule::in(['self', 'everyone'])],
+        ]);
+
+        $conversationId = $conversation->id;
+
+        DB::transaction(function () use ($conversation, $user, $data): void {
+            if ($data['mode'] === 'everyone') {
+                $conversation->delete();
+
+                return;
+            }
+
+            $this->markRead($user, $conversation);
+            $conversation->clearFor($user);
+        });
+
+        return ApiResponseService::success([
+            'id' => $conversationId,
+            'mode' => $data['mode'],
+            'unread_count' => $this->payloads->unreadMessageCount($user),
+        ], 'Chat deleted.');
     }
 
     public function adminSend(Request $request, User $user)

@@ -56,13 +56,6 @@
 	const $q = useQuasar()
 	const appStore = useAppStore()
 	const qrOpen = ref(false)
-	const SOCIAL_LABELS = {
-		facebook: 'Facebook',
-		instagram: 'Instagram',
-		tiktok: 'TikTok',
-		telegram: 'Telegram'
-	}
-
 	const pageType = computed(() => props.page?.type || 'business')
 	const pageTypeLabel = computed(() => t(`pages.kinds.${pageType.value}`))
 	const previewTitle = computed(() => props.page?.name?.trim() || pageTypeLabel.value)
@@ -112,6 +105,7 @@
 			facebook: 'https://www.facebook.com/',
 			instagram: 'https://www.instagram.com/',
 			tiktok: 'https://www.tiktok.com/@',
+			x: 'https://x.com/',
 			telegram: 'https://t.me/'
 		}
 
@@ -150,10 +144,10 @@
 	const previewSocials = computed(() => {
 		const socials = props.page?.socials || props.page?.setup?.socials || {}
 
-		return ['facebook', 'instagram', 'tiktok', 'telegram']
+		return ['facebook', 'instagram', 'tiktok', 'x', 'telegram']
 			.map((platform) => ({
 				platform,
-				label: SOCIAL_LABELS[platform],
+				label: t(`pages.socials.${platform}`),
 				href: socialHref(platform, socials[platform])
 			}))
 			.filter((item) => item.href)
@@ -251,6 +245,7 @@
 	const shareText = computed(() => [previewTitle.value, shareTargetUrl.value].filter(Boolean).join(' '))
 	const whatsappShareUrl = computed(() => `https://wa.me/?text=${encodeURIComponent(shareText.value)}`)
 	const facebookShareUrl = computed(() => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareTargetUrl.value)}`)
+	const xShareUrl = computed(() => `https://x.com/intent/post?text=${encodeURIComponent(previewTitle.value)}&url=${encodeURIComponent(shareTargetUrl.value)}`)
 	const telegramShareUrl = computed(() => `https://t.me/share/url?url=${encodeURIComponent(shareTargetUrl.value)}&text=${encodeURIComponent(previewTitle.value)}`)
 	const qrCodeSvg = computed(() => (shareTargetUrl.value ? qrSvg(shareTargetUrl.value) : ''))
 
@@ -461,6 +456,12 @@
 									</svg>
 									<q-tooltip>TikTok</q-tooltip>
 								</button>
+								<button type="button" class="page-share-menu__button" :aria-label="t('pages.socials.x')" @click="openShareUrl(xShareUrl)" v-close-popup>
+									<svg class="page-share-icon page-share-icon--x" viewBox="0 0 24 24" aria-hidden="true">
+										<path d="M18.24 2.25h3.31l-7.23 8.26 8.51 11.24h-6.66l-5.21-6.82-5.97 6.82H1.68l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23Zm-1.16 17.52h1.83L7.08 4.13H5.12l11.96 15.64Z" />
+									</svg>
+									<q-tooltip>{{ t('pages.socials.x') }}</q-tooltip>
+								</button>
 								<button type="button" class="page-share-menu__button" aria-label="Telegram" @click="openShareUrl(telegramShareUrl)" v-close-popup>
 									<svg class="page-share-icon page-share-icon--telegram" viewBox="0 0 24 24" aria-hidden="true">
 										<circle cx="12" cy="12" r="10" />
@@ -588,6 +589,9 @@
 										<path class="page-social-icon__shadow-a" d="M15.1 3.5c.4 2.5 1.8 4 4.2 4.3v3.1c-1.5 0-2.9-.5-4.2-1.3v5.4a5.4 5.4 0 1 1-5.4-5.4c.3 0 .7 0 1 .1v3.3a2.2 2.2 0 1 0 1.4 2V3.5h3Z" />
 										<path class="page-social-icon__shadow-b" d="M14.1 2.6c.4 2.5 1.8 4 4.2 4.3V10c-1.5 0-2.9-.5-4.2-1.3v5.4a5.4 5.4 0 1 1-5.4-5.4c.3 0 .7 0 1 .1v3.3a2.2 2.2 0 1 0 1.4 2V2.6h3Z" />
 										<path d="M14.6 3c.4 2.5 1.8 4 4.2 4.3v3.1c-1.5 0-2.9-.5-4.2-1.3v5.4a5.4 5.4 0 1 1-5.4-5.4c.3 0 .7 0 1 .1v3.3a2.2 2.2 0 1 0 1.4 2V3h3Z" />
+									</template>
+									<template v-else-if="item.platform === 'x'">
+										<path d="M18.24 2.25h3.31l-7.23 8.26 8.51 11.24h-6.66l-5.21-6.82-5.97 6.82H1.68l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23Zm-1.16 17.52h1.83L7.08 4.13H5.12l11.96 15.64Z" />
 									</template>
 									<template v-else>
 										<circle cx="12" cy="12" r="10" />
@@ -831,6 +835,10 @@
 }
 
 .page-share-icon--tiktok > path:last-child {
+  fill: #111;
+}
+
+.page-share-icon--x path {
   fill: #111;
 }
 
@@ -1138,6 +1146,13 @@
   margin-top: 14px;
 }
 
+.page-preview__address-link {
+  font-family: Arial, "Segoe UI", sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
 .page-preview__address-link .q-icon,
 .page-preview__website-link .q-icon {
   flex: 0 0 auto;
@@ -1207,6 +1222,10 @@
 }
 
 .page-social-icon--tiktok > path:last-child {
+  fill: #111;
+}
+
+.page-social-icon--x path {
   fill: #111;
 }
 

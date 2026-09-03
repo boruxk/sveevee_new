@@ -15,6 +15,8 @@ class Conversation extends Model
         'started_by_user_id',
         'is_support',
         'last_message_at',
+        'user_one_cleared_message_id',
+        'user_two_cleared_message_id',
     ];
 
     protected function casts(): array
@@ -55,6 +57,61 @@ class Conversation extends Model
         return $query->where(function (Builder $inner) use ($user): void {
             $inner->where('user_one_id', $user->id)->orWhere('user_two_id', $user->id);
         });
+    }
+
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        return $query->where(function (Builder $visible) use ($user): void {
+            $visible
+                ->where(function (Builder $asUserOne) use ($user): void {
+                    $asUserOne
+                        ->where('user_one_id', $user->id)
+                        ->where(function (Builder $notCleared): void {
+                            $notCleared
+                                ->whereNull('user_one_cleared_message_id')
+                                ->orWhereHas('messages', fn (Builder $messages) => $messages
+                                    ->whereColumn('chat_messages.id', '>', 'conversations.user_one_cleared_message_id'));
+                        });
+                })
+                ->orWhere(function (Builder $asUserTwo) use ($user): void {
+                    $asUserTwo
+                        ->where('user_two_id', $user->id)
+                        ->where(function (Builder $notCleared): void {
+                            $notCleared
+                                ->whereNull('user_two_cleared_message_id')
+                                ->orWhereHas('messages', fn (Builder $messages) => $messages
+                                    ->whereColumn('chat_messages.id', '>', 'conversations.user_two_cleared_message_id'));
+                        });
+                });
+        });
+    }
+
+    public function clearedMessageIdFor(User $user): ?int
+    {
+        $value = match ($user->id) {
+            $this->user_one_id => $this->user_one_cleared_message_id,
+            $this->user_two_id => $this->user_two_cleared_message_id,
+            default => null,
+        };
+
+        return $value === null ? null : (int) $value;
+    }
+
+    public function clearFor(User $user): void
+    {
+        $column = match ($user->id) {
+            $this->user_one_id => 'user_one_cleared_message_id',
+            $this->user_two_id => 'user_two_cleared_message_id',
+            default => null,
+        };
+
+        if (! $column) {
+            return;
+        }
+
+        $this->forceFill([
+            $column => $this->messages()->max('id'),
+        ])->save();
     }
 
     public function otherParticipant(User $user): ?User

@@ -19,6 +19,8 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, MustVerifyEmailTrait, Notifiable;
 
+    public const ONLINE_WINDOW_MINUTES = 3;
+
     protected $fillable = [
         'name',
         'login',
@@ -33,6 +35,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'role',
         'banned_at',
         'banned_reason',
+        'last_seen_at',
     ];
 
     protected $hidden = [
@@ -52,6 +55,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'consented' => 'boolean',
             'banned_at' => 'datetime',
+            'last_seen_at' => 'datetime',
         ];
     }
 
@@ -141,6 +145,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function hasAnyRole(array $roles): bool
     {
         return in_array($this->role, $roles, true);
+    }
+
+    public function isOnline(): bool
+    {
+        return $this->last_seen_at?->greaterThanOrEqualTo(now()->subMinutes(self::ONLINE_WINDOW_MINUTES)) ?? false;
     }
 
     public function getDisplayNameAttribute(): string

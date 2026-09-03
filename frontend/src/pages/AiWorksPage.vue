@@ -139,7 +139,7 @@
 			category_key: defaults.category_key,
 			palette_key: defaults.palette_key,
 			address: { street: '', number: '', city: defaults.city, neighborhood: defaults.neighborhood },
-			socials: { facebook: '', instagram: '', tiktok: '', telegram: '' },
+			socials: { facebook: '', instagram: '', tiktok: '', x: '', telegram: '' },
 			opening_hours: DEFAULT_OPENING_HOURS.map((item) => ({ ...item })),
 			service_areas: [],
 			specialties: []
@@ -259,6 +259,7 @@
 			'socials.facebook': 'Facebook',
 			'socials.instagram': 'Instagram',
 			'socials.tiktok': 'TikTok',
+			'socials.x': t('pages.socials.x'),
 			'socials.telegram': 'Telegram',
 			opening_hours: t('pages.sections.openingHours'),
 			service_areas: t('pages.sections.serviceAreas'),
@@ -628,6 +629,7 @@
 			facebook: '',
 			instagram: '',
 			tiktok: '',
+			x: '',
 			telegram: '',
 			service_areas: ['Tel Aviv', 'Jerusalem'],
 			specialties: ['Electrical repairs', 'Lighting installation']
@@ -635,10 +637,10 @@
 		const openingHours = DEFAULT_OPENING_HOURS.map((item) => ({ ...item }))
 
 		if (bulkMode.value === 'json') {
-			const { facebook, instagram, tiktok, telegram, ...page } = sample
+			const { facebook, instagram, tiktok, x, telegram, ...page } = sample
 			return JSON.stringify([{
 				...page,
-				socials: { facebook, instagram, tiktok, telegram },
+				socials: { facebook, instagram, tiktok, x, telegram },
 				opening_hours: openingHours
 			}], null, 2)
 		}
@@ -1107,7 +1109,7 @@
 
 										<section class="form-segment">
 											<h3>{{ t('pages.sections.socials') }}</h3>
-											<div class="form-grid form-grid--four">
+											<div class="form-grid form-grid--socials">
 												<q-input v-model="pageForm.socials.facebook"
 													outlined
 													name="socials.facebook"
@@ -1128,6 +1130,13 @@
 													label="TikTok"
 													:error="Boolean(pageFieldError('socials.tiktok'))"
 													:error-message="pageFieldError('socials.tiktok')"
+												/>
+												<q-input v-model="pageForm.socials.x"
+													outlined
+													name="socials.x"
+													:label="t('pages.socials.x')"
+													:error="Boolean(pageFieldError('socials.x'))"
+													:error-message="pageFieldError('socials.x')"
 												/>
 												<q-input v-model="pageForm.socials.telegram"
 													outlined
@@ -2053,6 +2062,10 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.form-grid--socials {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .ai-native-select {
   width: 100%;
   min-width: 0;
@@ -2154,6 +2167,7 @@
 @media (max-width: 900px) {
   .form-grid--three,
   .form-grid--four,
+  .form-grid--socials,
   .form-grid--address {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2191,6 +2205,7 @@
   .form-grid--two,
   .form-grid--three,
   .form-grid--four,
+  .form-grid--socials,
   .form-grid--address {
     grid-template-columns: 1fr;
   }

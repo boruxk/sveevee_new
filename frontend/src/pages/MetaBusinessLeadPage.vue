@@ -6,7 +6,7 @@
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
 	import { CATALOG_SCOPES, catalogGroupsForScope, catalogLabel, normalizeCatalogLocale } from '@/constants/catalogTopics'
-	import { submitBusinessPageLead } from '@/services/api/businessLeads'
+	import { submitLeadsPage001 } from '@/services/api/businessLeads'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 
 	const TRACKING_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid']
@@ -97,7 +97,7 @@
 
 	function trackLead(page) {
 		window.gtag?.('event', 'generate_lead', {
-			lead_source: 'meta_business_page',
+			lead_source: 'leads_page_001',
 			page_id: page.id
 		})
 		window.fbq?.('track', 'Lead', {
@@ -119,7 +119,7 @@
 		Object.keys(serverErrors).forEach((key) => delete serverErrors[key])
 
 		try {
-			const { data } = await submitBusinessPageLead({
+			const { data } = await submitLeadsPage001({
 				...form,
 				locale: routeLocale.value || locale.value,
 				...trackingPayload()

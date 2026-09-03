@@ -12,6 +12,10 @@ export function fetchAdminPages(params = {}) {
 	return apiClient.get('/admin/pages', { params: { per_page: 50, ...params } })
 }
 
+export function fetchAdminLeadPages(params = {}) {
+	return fetchAdminPages({ source: 'leads_page_001', ...params })
+}
+
 export function fetchAdminPageOwnerOptions(params = {}) {
 	return apiClient.get('/admin/page-owner-options', { params })
 }

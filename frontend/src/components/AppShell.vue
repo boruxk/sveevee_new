@@ -1,9 +1,10 @@
 <script setup>
-	import { computed, defineAsyncComponent, onMounted, watch } from 'vue'
+	import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, watch } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
+	import { sendPresenceHeartbeat } from '@/services/api/auth'
 	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import AiWorksIcon from '@/components/icons/AiWorksIcon.vue'
@@ -24,6 +25,7 @@
 	const { t, locale } = useI18n()
 	const logoSrc = '/assets/landing/sveevee-logo-320.v1.webp'
 	const SupportChatWidget = defineAsyncComponent(() => import('@/components/SupportChatWidget.vue'))
+	let presenceTimer = null
 
 	const toneClass = computed(() => `shell--${props.tone}`)
 	const currentYear = new Date().getFullYear()
@@ -54,7 +56,7 @@
 	])
 	const visibleNavLinks = computed(() => navLinks.value.filter((link) => link.visible))
 	const switchCampaignLocale = (nextLocale) => router.replace({
-		name: 'meta-business-lead',
+		name: 'leads-page-001',
 		params: { locale: normalizeCatalogLocale(nextLocale) },
 		query: route.query
 	})
@@ -142,8 +144,50 @@
 		await loadChatBadge()
 	}
 
-	onMounted(loadShellState)
-	watch(() => authStore.token, loadShellState)
+	async function heartbeat() {
+		if (!authStore.isAuthenticated || (typeof document !== 'undefined' && document.visibilityState !== 'visible')) {
+			return
+		}
+
+		try {
+			await sendPresenceHeartbeat()
+		} catch {
+			// Presence is best-effort and should never interrupt normal app use.
+		}
+	}
+
+	function onVisibilityChange() {
+		if (document.visibilityState === 'visible') {
+			heartbeat()
+		}
+	}
+
+	function startPresenceTracking() {
+		heartbeat()
+		presenceTimer = window.setInterval(heartbeat, 60_000)
+		window.addEventListener('focus', heartbeat)
+		document.addEventListener('visibilitychange', onVisibilityChange)
+	}
+
+	function stopPresenceTracking() {
+		if (presenceTimer) {
+			window.clearInterval(presenceTimer)
+			presenceTimer = null
+		}
+
+		window.removeEventListener('focus', heartbeat)
+		document.removeEventListener('visibilitychange', onVisibilityChange)
+	}
+
+	onMounted(async() => {
+		await loadShellState()
+		startPresenceTracking()
+	})
+	onBeforeUnmount(stopPresenceTracking)
+	watch(() => authStore.token, async() => {
+		await loadShellState()
+		await heartbeat()
+	})
 </script>
 
 <template>

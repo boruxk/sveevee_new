@@ -33,7 +33,7 @@ class PayloadService
         private readonly EmailVerificationService $emailVerification,
     ) {}
 
-    public function user(User $user, bool $includePrivate = false): array
+    public function user(User $user, bool $includePrivate = false, bool $includePresence = false): array
     {
         $user->loadMissing(['profile', 'pages']);
 
@@ -60,6 +60,16 @@ class PayloadService
             $payload['missing_profile_fields'] = $this->missingProfileFields($user);
             $payload['banned_at'] = $user->banned_at?->toISOString();
             $payload['unread_messages_count'] = $this->unreadMessageCount($user);
+        }
+
+        if ($includePrivate || $includePresence) {
+            $payload['presence'] = [
+                'is_online' => $user->isOnline(),
+            ];
+
+            if ($includePrivate) {
+                $payload['presence']['last_seen_at'] = $user->last_seen_at?->toISOString();
+            }
         }
 
         return $payload;
@@ -328,17 +338,20 @@ class PayloadService
     {
         $conversation->loadMissing(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
         $other = $conversation->otherParticipant($viewer);
-        $latest = $conversation->messages
+        $clearedMessageId = $conversation->clearedMessageIdFor($viewer);
+        $visibleMessages = $conversation->messages
+            ->when($clearedMessageId !== null, fn ($messages) => $messages->where('id', '>', $clearedMessageId));
+        $latest = $visibleMessages
             ->sortBy(fn ($message): string => sprintf('%020s%020d', $message->created_at?->format('Uu') ?? '0', $message->id))
             ->last();
 
         $payload = [
             'id' => $conversation->id,
-            'other_user' => $other ? $this->user($other) : null,
+            'other_user' => $other ? $this->user($other, includePresence: true) : null,
             'is_support' => (bool) $conversation->is_support,
             'last_message_at' => $conversation->last_message_at?->toISOString(),
             'latest_message' => $latest ? $this->message($latest) : null,
-            'unread_count' => $conversation->messages
+            'unread_count' => $visibleMessages
                 ->where('sender_id', '!=', $viewer->id)
                 ->whereNull('read_at')
                 ->count(),
@@ -346,7 +359,7 @@ class PayloadService
         ];
 
         if ($withMessages) {
-            $payload['messages'] = $conversation->messages
+            $payload['messages'] = $visibleMessages
                 ->sortBy('created_at')
                 ->map(fn ($message) => $this->message($message))
                 ->values()
@@ -381,7 +394,7 @@ class PayloadService
             'id' => $conversation->id,
             'page' => $this->pageChatIdentity($conversation->page),
             'other_user' => $viewerIsOwner
-                ? $this->user($conversation->visitor)
+                ? $this->user($conversation->visitor, includePresence: true)
                 : $this->pageChatIdentity($conversation->page, asChatUser: true),
             'is_page_chat' => true,
             'last_message_at' => $conversation->last_message_at?->toISOString(),
@@ -525,6 +538,7 @@ class PayloadService
             'facebook' => $socials['facebook'] ?? null,
             'instagram' => $socials['instagram'] ?? null,
             'tiktok' => $socials['tiktok'] ?? null,
+            'x' => $socials['x'] ?? null,
             'telegram' => $socials['telegram'] ?? null,
         ];
     }

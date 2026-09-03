@@ -66,7 +66,7 @@ class AiWorkPageBulkEditController extends Controller
             'pages.*.website' => ['sometimes', 'nullable', 'string'],
             'pages.*.category_key' => ['sometimes', 'string'],
             'pages.*.address' => ['sometimes', 'array:street,number,city,neighborhood'],
-            'pages.*.socials' => ['sometimes', 'array:facebook,instagram,tiktok,telegram'],
+            'pages.*.socials' => ['sometimes', 'array:facebook,instagram,tiktok,x,telegram'],
             'pages.*.opening_hours' => ['sometimes', 'array'],
             'pages.*.opening_hours.*' => ['array:weekday,is_open,opens_at,closes_at'],
             'pages.*.service_areas' => ['sometimes', 'array', 'max:10'],

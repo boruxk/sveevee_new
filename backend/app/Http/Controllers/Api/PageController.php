@@ -256,6 +256,7 @@ class PageController extends Controller
                 'facebook' => $this->nullableString($socials['facebook'] ?? null),
                 'instagram' => $this->nullableString($socials['instagram'] ?? null),
                 'tiktok' => $this->nullableString($socials['tiktok'] ?? null),
+                'x' => $this->nullableString($socials['x'] ?? null),
                 'telegram' => $this->nullableString($socials['telegram'] ?? null),
             ],
             'opening_hours' => $this->normalizedOpeningHours($decoded['opening_hours'] ?? []),
