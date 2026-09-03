@@ -47,6 +47,7 @@ const HE_CITY_LABELS = {
 	'Beit Shemesh': 'בית שמש',
 	'Maale Adumim': 'מעלה אדומים',
 	Ariel: 'אריאל',
+	'Alfei Menashe': 'אלפי מנשה',
 	'Ganei Tikva': 'גני תקווה',
 	'Tirat Carmel': 'טירת כרמל',
 	'Ramat Hasharon': 'רמת השרון',

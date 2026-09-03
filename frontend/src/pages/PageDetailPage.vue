@@ -43,6 +43,8 @@
 	const reviewDialogOpen = ref(false)
 	const pageChatDialogOpen = ref(false)
 	const claimDialogOpen = ref(false)
+	const replacementDialogOpen = ref(false)
+	const replacementExistingName = ref('')
 	const claimMessage = ref('')
 	const claimSending = ref(false)
 	const claimSent = ref(false)
@@ -338,26 +340,25 @@
 	}
 
 	function showBusinessReplacementWarning(existingName = '') {
-		$q.dialog({
-			title: t('pageClaim.replaceTitle'),
-			message: t('pageClaim.replaceMessage', {
-				page: existingName || t('pages.kinds.business'),
-				target: page.value?.name || t('pages.kinds.business')
-			}),
-			persistent: true,
-			ok: {
-				label: t('pageClaim.replaceConfirm'),
-				color: 'negative',
-				unelevated: true
-			},
-			cancel: {
-				label: t('actions.cancel'),
-				color: 'primary',
-				flat: true
-			}
-		}).onOk(() => {
-			replacementConfirmed.value = true
-			claimDialogOpen.value = true
+		replacementExistingName.value = existingName || t('pages.kinds.business')
+		replacementDialogOpen.value = true
+	}
+
+	function confirmBusinessReplacement() {
+		replacementDialogOpen.value = false
+		replacementConfirmed.value = true
+		claimDialogOpen.value = true
+	}
+
+	function cancelBusinessReplacement() {
+		replacementDialogOpen.value = false
+		replacementConfirmed.value = false
+	}
+
+	function replacementMessage() {
+		return t('pageClaim.replaceMessage', {
+			page: replacementExistingName.value || t('pages.kinds.business'),
+			target: page.value?.name || t('pages.kinds.business')
 		})
 	}
 
@@ -436,7 +437,7 @@
 				:show-empty-details="isUnclaimed"
 				:has-after-info="hasPreviewContent"
 				:title-tag="isBusinessPage ? 'h1' : 'h2'"
-				:description-fallback="businessSeoDescription"
+				:description-fallback="localizedSeoDescription"
 				:share-url="shareUrl"
 				@show-ratings="ratingsDialogOpen = true"
 				@rate="reviewDialogOpen = true"
@@ -444,7 +445,10 @@
 			>
 				<template v-if="isUnclaimed && showBannerClaimAction" #heroAction>
 					<div class="banner-claim-panel">
-						<p class="banner-claim-panel__title">{{ t('pageClaim.unlockTitle') }}</p>
+						<p class="banner-claim-panel__title">
+							<span>{{ t('pageClaim.unlockTitle') }}</span>
+							<strong>{{ t('pageClaim.unlockFree') }}</strong>
+						</p>
 						<ul class="banner-claim-features" :aria-label="t('pageClaim.unlockTitle')">
 							<li v-for="feature in claimUnlockFeatures" :key="feature.key">
 								<q-icon :name="feature.icon" size="18px" aria-hidden="true" />
@@ -558,6 +562,65 @@
 						/>
 					</header>
 					<ChatBlock :page-id="page.id" compact class="page-public-chat" />
+				</q-card>
+			</q-dialog>
+
+			<q-dialog
+				v-model="replacementDialogOpen"
+				persistent
+				transition-show="scale"
+				transition-hide="scale"
+			>
+				<q-card class="replacement-dialog-card">
+					<header class="replacement-dialog-head">
+						<div class="replacement-dialog-head__icon" aria-hidden="true">
+							<q-icon name="warning_amber" size="28px" />
+						</div>
+						<div>
+							<h2>{{ t('pageClaim.replaceTitle') }}</h2>
+							<p>{{ replacementMessage() }}</p>
+						</div>
+						<q-btn
+							flat
+							round
+							dense
+							icon="close"
+							:aria-label="t('actions.close')"
+							@click="cancelBusinessReplacement"
+						/>
+					</header>
+
+					<div class="replacement-dialog-flow">
+						<div class="replacement-dialog-page replacement-dialog-page--current">
+							<span>{{ t('pageClaim.replaceCurrentLabel') }}</span>
+							<strong>{{ replacementExistingName }}</strong>
+						</div>
+						<q-icon class="replacement-dialog-flow__icon" name="swap_horiz" size="28px" aria-hidden="true" />
+						<div class="replacement-dialog-page replacement-dialog-page--target">
+							<span>{{ t('pageClaim.replaceTargetLabel') }}</span>
+							<strong>{{ page.name }}</strong>
+						</div>
+					</div>
+
+					<q-card-actions class="replacement-dialog-actions" align="right">
+						<q-btn
+							flat
+							rounded
+							no-caps
+							:label="t('actions.cancel')"
+							@click="cancelBusinessReplacement"
+						/>
+						<q-btn
+							class="replacement-dialog-actions__confirm"
+							rounded
+							unelevated
+							no-caps
+							color="primary"
+							icon="swap_horiz"
+							:label="t('pageClaim.replaceConfirm')"
+							@click="confirmBusinessReplacement"
+						/>
+					</q-card-actions>
 				</q-card>
 			</q-dialog>
 
@@ -690,7 +753,7 @@
   padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.38);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.52);
   box-shadow: 0 14px 34px rgba(17, 34, 45, 0.18);
   color: rgba(17, 34, 45, 0.9);
   text-align: start;
@@ -698,10 +761,50 @@
 }
 
 .banner-claim-panel__title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: baseline;
   margin: 0 0 8px;
   font-size: 0.82rem;
   font-weight: 800;
   line-height: 1.2;
+}
+
+.banner-claim-panel__title strong {
+  display: inline-block;
+  background: linear-gradient(
+    105deg,
+    var(--soz-primary) 0%,
+    var(--soz-primary) 34%,
+    var(--soz-orange) 48%,
+    var(--soz-primary) 62%,
+    var(--soz-primary) 100%
+  );
+  background-position: 100% 50%;
+  background-size: 250% 100%;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: bannerClaimFreeWave 2.8s ease-in-out infinite;
+}
+
+@keyframes bannerClaimFreeWave {
+  0%,
+  10% {
+    background-position: 100% 50%;
+  }
+
+  50%,
+  60% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 100% 50%;
+  }
 }
 
 .banner-claim-features {
@@ -737,6 +840,107 @@
 .claim-dialog-card {
   width: min(560px, calc(100vw - 28px));
   border-radius: 22px;
+}
+
+.replacement-dialog-card {
+  width: min(620px, calc(100vw - 28px));
+  overflow: hidden;
+  border: 1px solid rgba(245, 66, 145, 0.16);
+  border-radius: 26px !important;
+  background: #fffafd;
+  box-shadow: 0 28px 70px rgba(44, 25, 70, 0.24);
+}
+
+.replacement-dialog-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  padding: 22px 22px 18px;
+  background: rgba(245, 66, 145, 0.06);
+}
+
+.replacement-dialog-head__icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 116, 38, 0.14);
+  color: #e9561e;
+}
+
+.replacement-dialog-head h2,
+.replacement-dialog-head p {
+  margin: 0;
+}
+
+.replacement-dialog-head h2 {
+  color: #172238;
+  font-size: 1.32rem;
+  line-height: 1.25;
+}
+
+.replacement-dialog-head p {
+  margin-top: 7px;
+  color: rgba(23, 34, 56, 0.68);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.replacement-dialog-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 22px;
+}
+
+.replacement-dialog-page {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  min-height: 86px;
+  align-content: center;
+  padding: 14px 16px;
+  border: 1px solid rgba(23, 34, 56, 0.09);
+  border-radius: 18px;
+}
+
+.replacement-dialog-page--current {
+  background: rgba(23, 34, 56, 0.045);
+}
+
+.replacement-dialog-page--target {
+  border-color: rgba(245, 66, 145, 0.2);
+  background: rgba(245, 66, 145, 0.075);
+}
+
+.replacement-dialog-page span {
+  color: rgba(23, 34, 56, 0.55);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.replacement-dialog-page strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #172238;
+  line-height: 1.3;
+}
+
+.replacement-dialog-flow__icon {
+  color: #f54291;
+}
+
+.replacement-dialog-actions {
+  gap: 8px;
+  padding: 0 22px 22px;
+}
+
+.replacement-dialog-actions__confirm.q-btn.bg-primary {
+  background: var(--soz-action-gradient) !important;
+  box-shadow: 0 12px 28px rgba(245, 66, 145, 0.22) !important;
 }
 
 .claim-dialog-head {
@@ -891,6 +1095,15 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .banner-claim-panel__title strong {
+    background: none;
+    color: var(--soz-primary);
+    -webkit-text-fill-color: currentColor;
+    animation: none;
+  }
+}
+
 @media (max-width: 700px) {
   .detail-page {
     padding-inline: 10px;
@@ -910,6 +1123,41 @@
   }
 
   .unclaimed-notice__action .q-btn {
+    width: 100%;
+  }
+
+  .replacement-dialog-head {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 18px 16px 15px;
+  }
+
+  .replacement-dialog-head__icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .replacement-dialog-flow {
+    grid-template-columns: 1fr;
+    gap: 9px;
+    padding: 16px;
+  }
+
+  .replacement-dialog-flow__icon {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
+  .replacement-dialog-page {
+    min-height: 72px;
+  }
+
+  .replacement-dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 0 16px 16px;
+  }
+
+  .replacement-dialog-actions .q-btn {
     width: 100%;
   }
 }

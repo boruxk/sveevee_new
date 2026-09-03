@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\AiWorkPageImportController;
 use App\Http\Controllers\Api\AiWorkPreferenceController;
 use App\Http\Controllers\Api\AiWorkTaskController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BusinessPageLeadController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\EmailVerificationController;
@@ -56,6 +57,9 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         ->middleware('throttle:120,1');
     Route::get('/pages/{page}/ratings', [PageRatingController::class, 'index']);
     Route::get('/pages/{page}', [PageController::class, 'show']);
+
+    Route::post('/business-page-leads', [BusinessPageLeadController::class, 'store'])
+        ->middleware('throttle:business-page-leads');
 
     Route::get('/guest-support', [GuestSupportController::class, 'show'])->middleware('throttle:120,1');
     Route::post('/guest-support', [GuestSupportController::class, 'store'])->middleware('throttle:guest-support-start');

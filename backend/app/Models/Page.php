@@ -61,6 +61,11 @@ class Page extends Model
         return $this->hasMany(PageClaimRequest::class)->latest();
     }
 
+    public function businessPageLeads(): HasMany
+    {
+        return $this->hasMany(BusinessPageLead::class)->latest();
+    }
+
     public function identityKey(): HasOne
     {
         return $this->hasOne(PageIdentityKey::class);

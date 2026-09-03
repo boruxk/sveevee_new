@@ -531,6 +531,10 @@ return [
             ],
         ],
         [
+            'name' => 'Alfei Menashe',
+            'neighborhoods' => [],
+        ],
+        [
             'name' => 'Ganei Tikva',
             'neighborhoods' => [
                 'City Center',

@@ -7,6 +7,7 @@ const marketPage = () => import('@/pages/MarketPage.vue')
 const pageDetailPage = () => import('@/pages/PageDetailPage.vue')
 const pageExamplePage = () => import('@/pages/PageExamplePage.vue')
 const pagePromoLandingPage = () => import('@/pages/PagePromoLandingPage.vue')
+const metaBusinessLeadPage = () => import('@/pages/MetaBusinessLeadPage.vue')
 const productDetailPage = () => import('@/pages/ProductDetailPage.vue')
 const legalPage = () => import('@/pages/PrivacyPolicyPage.vue')
 const catalogSeo = { titleKey: 'seo.catalogTitle', descriptionKey: 'seo.catalogDescription' }
@@ -25,6 +26,8 @@ export default [
 		component: PublicLayout,
 		children: [
 			{ path: '', name: 'landing', component: () => import('@/pages/LandingPage.vue'), meta: { seo: { titleKey: 'seo.landingTitle', descriptionKey: 'seo.landingDescription' } } },
+			{ path: 'free-business-page', redirect: (to) => ({ name: 'meta-business-lead', params: { locale: 'he' }, query: to.query }) },
+			{ path: ':locale(he|en|ru|fr)/free-business-page', name: 'meta-business-lead', component: metaBusinessLeadPage, meta: { campaign: true, seo: { titleKey: 'businessLead.seoTitle', descriptionKey: 'businessLead.seoDescription', image: '/assets/landing/promo-business-hero-1360-rtl.v3.webp', imageAltKey: 'businessLead.heroImageAlt', imageWidth: 1360, imageHeight: 765, robots: 'noindex,follow' } } },
 			{ path: 'maintenance', name: 'maintenance', component: () => import('@/pages/MaintenancePage.vue'), meta: { seo: { titleKey: 'maintenance.title', descriptionKey: 'maintenance.defaultMessage', robots: 'noindex,nofollow' } } },
 			{ path: 'login', name: 'login', component: () => import('@/pages/LoginPage.vue'), meta: { seo: { titleKey: 'seo.loginTitle', descriptionKey: 'seo.loginDescription', robots: 'noindex,nofollow' } } },
 			{ path: 'srvfrvrvv53Ljjug5h2h9zbdw', name: 'ai-worker-login', component: () => import('@/pages/LoginPage.vue'), meta: { seo: { title: 'AI Works login', description: 'Private AI Works access.', robots: 'noindex,nofollow' } } },

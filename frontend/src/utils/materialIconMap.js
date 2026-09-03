@@ -41,6 +41,7 @@ import {
 	matOpenInNew,
 	matPerson,
 	matPersonAdd,
+	matPhone,
 	matPlace,
 	matRefresh,
 	matReceiptLong,
@@ -56,6 +57,7 @@ import {
 	matStar,
 	matStorefront,
 	matSupportAgent,
+	matSwapHoriz,
 	matTaskAlt,
 	matTrendingDown,
 	matTune,
@@ -64,7 +66,8 @@ import {
 	matVerified,
 	matVerifiedUser,
 	matVisibility,
-	matVisibilityOff
+	matVisibilityOff,
+	matWarningAmber
 } from '@quasar/extras/material-icons'
 
 const materialIcons = {
@@ -110,6 +113,7 @@ const materialIcons = {
 	open_in_new: matOpenInNew,
 	person: matPerson,
 	person_add: matPersonAdd,
+	phone: matPhone,
 	place: matPlace,
 	refresh: matRefresh,
 	receipt_long: matReceiptLong,
@@ -125,6 +129,7 @@ const materialIcons = {
 	star: matStar,
 	storefront: matStorefront,
 	support_agent: matSupportAgent,
+	swap_horiz: matSwapHoriz,
 	task_alt: matTaskAlt,
 	trending_down: matTrendingDown,
 	tune: matTune,
@@ -133,7 +138,8 @@ const materialIcons = {
 	verified: matVerified,
 	verified_user: matVerifiedUser,
 	visibility: matVisibility,
-	visibility_off: matVisibilityOff
+	visibility_off: matVisibilityOff,
+	warning_amber: matWarningAmber
 }
 
 export function materialIconMapFn(iconName) {

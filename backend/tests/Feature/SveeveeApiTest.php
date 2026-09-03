@@ -1733,6 +1733,7 @@ HTML);
             ->assertJsonFragment(['city' => 'Tel Aviv', 'name' => 'Florentin']);
 
         $this->assertContains('Tel Aviv', $locations->json('data.cities'));
+        $this->assertContains('Alfei Menashe', $locations->json('data.cities'));
         $this->assertContains(['city' => 'Tel Aviv', 'name' => 'Ramat Aviv'], $locations->json('data.neighborhoods'));
     }
 

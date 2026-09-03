@@ -36,6 +36,7 @@
 	const isAdmin = computed(() => authStore.isAdmin || authStore.canAccess(['admin']))
 	const isAiWorker = computed(() => authStore.isAiWorker || authStore.canAccess(['ai_worker']))
 	const isPrivilegedAccount = computed(() => isAdmin.value || isAiWorker.value)
+	const isCampaignPage = computed(() => Boolean(route.meta.campaign))
 	const profileAvatar = computed(() => authStore.user?.profile || null)
 	const profileAvatarUrl = computed(() => authStore.user?.profile?.photo_url || null)
 	const profileAvatarAlt = computed(() => authStore.user?.display_name || t('nav.profile'))
@@ -52,6 +53,11 @@
 		{ label: t('nav.community'), name: 'community', icon: 'diversity_3', visible: authStore.isAuthenticated && !isPrivilegedAccount.value && hasCommunityPage.value }
 	])
 	const visibleNavLinks = computed(() => navLinks.value.filter((link) => link.visible))
+	const switchCampaignLocale = (nextLocale) => router.replace({
+		name: 'meta-business-lead',
+		params: { locale: normalizeCatalogLocale(nextLocale) },
+		query: route.query
+	})
 	const footerColumns = computed(() => {
 		const columns = [
 			{
@@ -168,7 +174,7 @@
 
 				<q-space />
 
-				<div class="row items-center no-wrap shell-nav shell-nav--desktop">
+				<div v-if="!isCampaignPage" class="row items-center no-wrap shell-nav shell-nav--desktop">
 					<q-btn
 						v-for="link in visibleNavLinks"
 						:key="link.name"
@@ -284,8 +290,15 @@
 						</q-menu>
 					</q-btn>
 				</div>
+				<LocaleSwitcher
+					v-else-if="!authStore.isAuthenticated"
+					guest-storage
+					compact
+					class="shell-campaign-locale"
+					@update:model-value="switchCampaignLocale"
+				/>
 
-				<div class="mobile-shell-actions">
+				<div v-if="!isCampaignPage" class="mobile-shell-actions">
 					<q-btn
 						v-if="isAdmin"
 						:flat="!isActive('admin-area')"
@@ -394,7 +407,7 @@
 			<slot />
 		</q-page-container>
 
-		<footer class="shell-footer">
+		<footer class="shell-footer" :class="{ 'shell-footer--campaign': isCampaignPage }">
 			<div class="shell-footer__inner">
 				<div class="shell-footer__brand">© {{ currentYear }} sveevee</div>
 				<nav class="shell-footer__legal" :aria-label="t('footer.legalLabel')">
@@ -403,7 +416,7 @@
 					</router-link>
 				</nav>
 				<p class="shell-footer__recaptcha">{{ t('footer.recaptchaProtected') }}</p>
-				<nav class="shell-footer__nav" :aria-label="t('footer.label')">
+				<nav v-if="!isCampaignPage" class="shell-footer__nav" :aria-label="t('footer.label')">
 					<div v-for="column in footerColumns" :key="column.title" class="shell-footer__column">
 						<h2>{{ column.title }}</h2>
 						<template v-for="link in column.links" :key="link.name || link.to || link.href">
@@ -416,7 +429,7 @@
 				</nav>
 			</div>
 		</footer>
-		<SupportChatWidget v-if="!isPrivilegedAccount" />
+		<SupportChatWidget v-if="!isPrivilegedAccount && !isCampaignPage" />
 	</q-layout>
 </template>
 

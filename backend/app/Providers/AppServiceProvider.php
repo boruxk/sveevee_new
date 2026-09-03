@@ -76,5 +76,15 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perHour(10)->by($request->ip().'|'.$browser);
         });
+
+        RateLimiter::for('business-page-leads', function (Request $request) {
+            $email = mb_strtolower(trim((string) $request->input('email')));
+
+            return [
+                Limit::perMinute(3)->by('business-lead-minute|'.$request->ip()),
+                Limit::perDay(20)->by('business-lead-day|'.$request->ip()),
+                Limit::perDay(5)->by('business-lead-email|'.$email),
+            ];
+        });
     }
 }
