@@ -1,7 +1,7 @@
 <script setup>
 	import { computed } from 'vue'
 	import { useI18n } from 'vue-i18n'
-	import { adRoute, pageRoute, productRoute, userRoute } from '@/constants/catalogTopics'
+	import { adRoute, catalogLabel, catalogTopicByKey, pageRoute, productRoute, userRoute } from '@/constants/catalogTopics'
 	import { findPresencePalette } from '@/constants/presencePalettes'
 	import AdExpiryTimer from '@/components/AdExpiryTimer.vue'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
@@ -11,6 +11,10 @@
 		item: {
 			type: Object,
 			required: true
+		},
+		catalogGroups: {
+			type: Array,
+			default: () => []
 		}
 	})
 	const emit = defineEmits(['expired'])
@@ -32,14 +36,19 @@
 
 		return props.item.kind === 'product' ? productRoute(value.value) : pageRoute(value.value.page)
 	})
-	const typeLabel = computed(() => t(`catalog.sections.${{
-		ad: 'ads',
-		page: 'pages',
-		product: 'products',
-		service: 'services',
-		event: 'events',
-		user: 'users'
-	}[props.item.kind] || 'pages'}`))
+	const typeLabel = computed(() => {
+		if (props.item.kind === 'page') {
+			return t(`pages.kinds.${value.value.type === 'community' ? 'community' : 'business'}`)
+		}
+
+		return t(`catalog.sections.${{
+			ad: 'ads',
+			product: 'products',
+			service: 'services',
+			event: 'events',
+			user: 'users'
+		}[props.item.kind] || 'pages'}`)
+	})
 	const typeIcon = computed(() => ({
 		ad: 'campaign',
 		product: 'inventory_2',
@@ -47,6 +56,14 @@
 		event: 'event',
 		user: 'person'
 	}[props.item.kind] || (value.value.type === 'community' ? 'diversity_3' : 'storefront')))
+	const pageCategory = computed(() => {
+		if (props.item.kind !== 'page') {
+			return null
+		}
+
+		return catalogTopicByKey(props.catalogGroups, value.value.category_key)
+	})
+	const pageCategoryLabel = computed(() => catalogLabel(pageCategory.value?.labels, locale.value))
 	const title = computed(() => {
 		if (props.item.kind === 'ad') {
 			return value.value.title || ''
@@ -59,6 +76,9 @@
 		return value.value.name || ''
 	})
 	const pagePalette = computed(() => findPresencePalette(value.value.palette_key))
+	const pageCategoryStyle = computed(() => ({
+		'--category-color': pageCategory.value?.color || pagePalette.value.accent
+	}))
 	const pageBanner = computed(() => imagePayload(value.value.banner_url, value.value, 'banner', title.value))
 	const pageLogo = computed(() => imagePayload(
 		value.value.logo_url,
@@ -233,9 +253,18 @@
 		</div>
 
 		<div class="search-result-card__copy">
-			<div class="search-result-card__type">
-				<q-icon :name="typeIcon" size="17px" />
-				<span>{{ typeLabel }}</span>
+			<div class="search-result-card__badges">
+				<div class="search-result-card__type">
+					<q-icon :name="typeIcon" size="17px" />
+					<span>{{ typeLabel }}</span>
+				</div>
+				<div
+					v-if="pageCategoryLabel"
+					class="search-result-card__category"
+					:style="pageCategoryStyle"
+				>
+					<span>{{ pageCategoryLabel }}</span>
+				</div>
 			</div>
 			<strong class="search-result-card__title">{{ title }}</strong>
 			<p v-if="description" class="search-result-card__description">{{ description }}</p>
@@ -373,21 +402,39 @@
   padding: 18px 22px;
 }
 
-.search-result-card__type {
-  display: inline-flex;
+.search-result-card__badges {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
   align-self: flex-start;
   max-width: 100%;
+}
+
+.search-result-card__type,
+.search-result-card__category {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  max-width: 100%;
   padding: 5px 10px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--result-accent) 10%, transparent);
-  color: var(--result-accent);
   font-size: 0.78rem;
   font-weight: 760;
 }
 
-.search-result-card__type span {
+.search-result-card__type {
+  background: color-mix(in srgb, var(--result-accent) 10%, transparent);
+  color: var(--result-accent);
+}
+
+.search-result-card__category {
+  background: color-mix(in srgb, var(--category-color) 13%, transparent);
+  color: var(--category-color);
+}
+
+.search-result-card__type span,
+.search-result-card__category span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -472,7 +519,8 @@
     padding: 13px 14px;
   }
 
-  .search-result-card__type {
+  .search-result-card__type,
+  .search-result-card__category {
     padding: 4px 8px;
     font-size: 0.7rem;
   }

@@ -416,6 +416,7 @@
 						v-for="item in combinedResults"
 						:key="item.id"
 						:item="item"
+						:catalog-groups="catalogGroups"
 						@expired="removeExpiredAd"
 					/>
 				</div>
