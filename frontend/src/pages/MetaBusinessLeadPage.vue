@@ -438,7 +438,7 @@
 .business-lead-hero li .q-icon {
   flex: 0 0 auto;
   margin-top: 3px;
-  color: #ff7a33;
+  color: var(--soz-orange);
   font-size: 21px;
 }
 
@@ -513,7 +513,7 @@
 }
 
 .business-lead-form :deep(.q-field__prepend) {
-  color: #c22c74;
+  color: var(--soz-orange);
 }
 
 .business-lead-category-option__avatar {

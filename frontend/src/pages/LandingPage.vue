@@ -813,8 +813,8 @@
 
 .landing-share-section__inner {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
-  gap: 38px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(440px, 1.1fr);
+  gap: 32px;
   align-items: center;
   max-width: 1280px;
   margin: 0 auto;

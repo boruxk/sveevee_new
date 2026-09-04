@@ -13,6 +13,52 @@ export default {
 		profile: 'פרופיל',
 		logout: 'יציאה'
 	},
+	notifications: {
+		label: 'התראות',
+		title: 'התראות',
+		unread: '{count} שלא נקראו',
+		markAllRead: 'סימון הכול כנקרא',
+		loadMore: 'טעינת עוד',
+		empty: 'אין התראות עדיין.',
+		open: 'פתיחה',
+		readFailed: 'לא ניתן לעדכן את מצב ההתראה.',
+		types: {
+			page_claim_approved: {
+				title: 'בקשת הבעלות אושרה',
+				body: 'עכשיו אפשר לנהל את {page}.',
+				bodyReplaced: '{page} עכשיו שלך ומחליף את {replacedPage}.'
+			},
+			page_claim_rejected: {
+				title: 'בקשת הבעלות לא אושרה',
+				body: 'בקשת הבעלות שלך על {page} לא אושרה.',
+				bodyClaimed: 'אושרה בקשה מאומתת אחרת עבור {page}.'
+			},
+			page_assigned: {
+				title: 'עמוד שויך לחשבון',
+				body: '{page} נוסף לחשבון שלך.'
+			},
+			page_detached: {
+				title: 'עמוד הוסר',
+				body: 'אינך מנהל יותר את {page}.'
+			},
+			page_deleted: {
+				title: 'עמוד נמחק',
+				body: '{page} נמחק לצמיתות.'
+			},
+			page_rating_received: {
+				title: 'דירוג חדש',
+				body: '{reviewer} דירג/ה את {page} בציון {rating}/5.'
+			},
+			page_claim_submitted: {
+				title: 'בקשת בעלות חדשה',
+				body: '{requester} שלח/ה בקשה עבור {page}.'
+			},
+			lead_page_created: {
+				title: 'עמוד חדש מ-Leads Page 001',
+				body: '{page} נוצר עבור {lead}.'
+			}
+		}
+	},
 	mePage: {
 		overview: 'סקירה כללית',
 		ads: 'מודעות',

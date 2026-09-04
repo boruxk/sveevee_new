@@ -15,4 +15,38 @@ return [
         'action' => 'פתיחת הצ׳אט',
         'privacy' => 'לשמירה על פרטיותך, תוכן ההודעה אינו מופיע באימייל.',
     ],
+    'account' => [
+        'page_claim_approved' => [
+            'subject' => 'בקשת הבעלות על :page אושרה',
+            'heading' => 'העמוד עכשיו שלך',
+            'body' => 'אישרנו את בקשת הבעלות שלך על :page. עכשיו אפשר לנהל את העמוד מחשבון Sveevee שלך.',
+            'body_replaced' => 'אישרנו את בקשת הבעלות שלך על :page. העמוד הקודם שלך, :replaced_page, הוחלף.',
+            'action' => 'ניהול העמוד',
+        ],
+        'page_claim_rejected' => [
+            'subject' => 'עדכון לגבי בקשת הבעלות על :page',
+            'heading' => 'בקשת הבעלות לא אושרה',
+            'body' => 'בדקנו את בקשת הבעלות שלך על :page ולא יכולנו לאשר אותה.',
+            'body_claimed' => 'אושרה בקשת בעלות מאומתת אחרת על :page, ולכן הבקשה הממתינה שלך נסגרה.',
+            'action' => 'צפייה בעמוד',
+        ],
+        'page_assigned' => [
+            'subject' => ':page שויך לחשבון שלך',
+            'heading' => 'עמוד נוסף לחשבון שלך',
+            'body' => ':page שויך אליך. אפשר לנהל אותו מחשבון Sveevee שלך.',
+            'action' => 'ניהול העמוד',
+        ],
+        'page_detached' => [
+            'subject' => ':page הוסר מהחשבון שלך',
+            'heading' => 'עמוד הוסר מהחשבון שלך',
+            'body' => 'אינך מנהל יותר את :page ב-Sveevee.',
+            'action' => 'פתיחת Sveevee',
+        ],
+        'page_deleted' => [
+            'subject' => ':page נמחק',
+            'heading' => 'עמוד נמחק',
+            'body' => ':page נמחק לצמיתות מ-Sveevee.',
+            'action' => 'פתיחת Sveevee',
+        ],
+    ],
 ];

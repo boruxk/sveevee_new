@@ -17,6 +17,7 @@ class EmailDeliveryService
         string $kind,
         ?int $conversationId = null,
         ?int $chatMessageId = null,
+        ?string $notificationId = null,
     ): EmailDelivery {
         return EmailDelivery::query()->firstOrCreate(
             ['bounce_token' => $bounceToken],
@@ -24,6 +25,7 @@ class EmailDeliveryService
                 'user_id' => $user->id,
                 'conversation_id' => $conversationId,
                 'chat_message_id' => $chatMessageId,
+                'notification_id' => $notificationId,
                 'kind' => $kind,
                 'recipient_email' => strtolower(trim($user->email)),
                 'status' => EmailDelivery::STATUS_QUEUED,

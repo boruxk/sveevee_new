@@ -23,6 +23,7 @@ final class UserDeletionService
 
         DB::transaction(function () use ($user): void {
             $user->tokens()->delete();
+            $user->notifications()->delete();
             DB::table('sessions')->where('user_id', $user->id)->delete();
             DB::table('password_reset_tokens')->where('email', $user->email)->delete();
             $user->delete();

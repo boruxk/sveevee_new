@@ -2,14 +2,23 @@
 	import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, watch } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
+	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
+	import { accountNotificationEventName, useNotificationsStore } from '@/stores/notifications'
 	import { sendPresenceHeartbeat } from '@/services/api/auth'
 	import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
+	import NotificationCenter from '@/components/NotificationCenter.vue'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import AiWorksIcon from '@/components/icons/AiWorksIcon.vue'
 	import { getLegalDocument } from '@/constants/legalDocuments'
 	import { marketPath, normalizeCatalogLocale } from '@/constants/catalogTopics'
+	import {
+		accountRefreshNotificationTypes,
+		notificationActionPath,
+		notificationParameters,
+		notificationTranslationKeys
+	} from '@/utils/accountNotifications'
 
 	const props = defineProps({
 		tone: {
@@ -20,8 +29,10 @@
 
 	const route = useRoute()
 	const router = useRouter()
+	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const chatsStore = useChatsStore()
+	const notificationsStore = useNotificationsStore()
 	const { t, locale } = useI18n()
 	const logoSrc = '/assets/landing/sveevee-logo-320.v1.webp'
 	const SupportChatWidget = defineAsyncComponent(() => import('@/components/SupportChatWidget.vue'))
@@ -115,6 +126,7 @@
 			await authStore.logout()
 		} finally {
 			chatsStore.clearActive()
+			notificationsStore.reset()
 			router.replace({ name: 'landing' })
 		}
 	}
@@ -141,7 +153,15 @@
 
 	async function loadShellState() {
 		await refreshShellUser()
-		await loadChatBadge()
+
+		if (authStore.isAuthenticated) {
+			await Promise.all([
+				loadChatBadge(),
+				notificationsStore.initialize(authStore.user.id)
+			])
+		} else {
+			notificationsStore.reset()
+		}
 	}
 
 	async function heartbeat() {
@@ -150,7 +170,8 @@
 		}
 
 		try {
-			await sendPresenceHeartbeat()
+			const { data } = await sendPresenceHeartbeat()
+			await notificationsStore.reconcileSummary(data.data?.notifications)
 		} catch {
 			// Presence is best-effort and should never interrupt normal app use.
 		}
@@ -179,11 +200,58 @@
 		document.removeEventListener('visibilitychange', onVisibilityChange)
 	}
 
+	async function openToastNotification(notification) {
+		try {
+			await notificationsStore.markRead(notification)
+		} catch {
+			// Opening the destination remains useful if the read marker cannot be saved.
+		}
+
+		await router.push(notificationActionPath(notification))
+	}
+
+	async function handleAccountNotification(event) {
+		const notification = event.detail
+
+		if (!notification?.id) {
+			return
+		}
+
+		if (accountRefreshNotificationTypes.includes(notification.type)) {
+			try {
+				await authStore.refreshUser()
+			} catch {
+				// The heartbeat will retry the account refresh without interrupting the toast.
+			}
+		}
+
+		const keys = notificationTranslationKeys(notification)
+		const parameters = notificationParameters(notification)
+		$q.notify({
+			color: 'primary',
+			textColor: 'white',
+			position: 'bottom-left',
+			timeout: 7000,
+			message: t(keys.title, parameters),
+			caption: t(keys.body, parameters),
+			actions: [{
+				label: t('notifications.open'),
+				color: 'white',
+				handler: () => openToastNotification(notification)
+			}]
+		})
+	}
+
 	onMounted(async() => {
+		window.addEventListener(accountNotificationEventName, handleAccountNotification)
 		await loadShellState()
 		startPresenceTracking()
 	})
-	onBeforeUnmount(stopPresenceTracking)
+	onBeforeUnmount(() => {
+		stopPresenceTracking()
+		window.removeEventListener(accountNotificationEventName, handleAccountNotification)
+		notificationsStore.reset()
+	})
 	watch(() => authStore.token, async() => {
 		await loadShellState()
 		await heartbeat()
@@ -298,6 +366,7 @@
 						<AiWorksIcon :size="24" />
 						<q-tooltip>{{ t('nav.aiWorks') }}</q-tooltip>
 					</q-btn>
+					<NotificationCenter v-if="authStore.isAuthenticated" />
 
 					<q-btn v-if="authStore.isAuthenticated"
 						flat
@@ -373,6 +442,7 @@
 						<AiWorksIcon :size="22" />
 						<q-tooltip>{{ t('nav.aiWorks') }}</q-tooltip>
 					</q-btn>
+					<NotificationCenter v-if="authStore.isAuthenticated" mobile />
 					<q-btn
 						flat
 						round

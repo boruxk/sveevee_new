@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\GuestSupportController;
 use App\Http\Controllers\Api\HomeFeedController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MarketController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PageChatController;
 use App\Http\Controllers\Api\PageClaimController;
 use App\Http\Controllers\Api\PageController;
@@ -84,6 +85,12 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         ->post('/presence/heartbeat', PresenceController::class)
         ->withoutMiddleware(['platform.available', 'recaptcha']);
     Route::middleware('auth:sanctum')->put('/profile/locale', [ProfileController::class, 'updateLocale'])->withoutMiddleware('platform.available');
+    Route::middleware('auth:sanctum')->withoutMiddleware(['platform.available', 'recaptcha'])->group(function () {
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::patch('/notifications/read-all', [NotificationController::class, 'readAll']);
+        Route::patch('/notifications/{id}/read', [NotificationController::class, 'read'])
+            ->whereUuid('id');
+    });
 
     Route::middleware(['auth:sanctum', 'role:user,admin'])->group(function () {
         Route::post('/guest-support/claim', [GuestSupportController::class, 'claim'])->middleware('throttle:10,1');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Http\Controllers\Controller;
 use App\Models\Page;
+use App\Models\PageClaimRequest;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PageDeletionService;
@@ -178,7 +179,7 @@ class PageController extends Controller
         return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'prices', 'products', 'services', 'events'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
     }
 
-    public function show(Page $page)
+    public function show(Request $request, Page $page)
     {
         if ($page->user?->banned_at) {
             return ApiResponseService::error('Resource not found.', status: 404);
@@ -188,7 +189,24 @@ class PageController extends Controller
             ->loadCount('ratings')
             ->loadAvg('ratings', 'rating');
 
-        return ApiResponseService::success($this->payloads->page($page, withAds: true));
+        $payload = $this->payloads->page($page, withAds: true);
+        $viewer = $request->user('sanctum');
+        $viewerClaim = $viewer
+            ? PageClaimRequest::query()
+                ->where('page_id', $page->id)
+                ->where('user_id', $viewer->id)
+                ->latest('created_at')
+                ->latest('id')
+                ->first()
+            : null;
+        $payload['viewer_claim'] = $viewerClaim ? [
+            'id' => $viewerClaim->id,
+            'status' => $viewerClaim->status,
+            'created_at' => $viewerClaim->created_at?->toISOString(),
+            'reviewed_at' => $viewerClaim->reviewed_at?->toISOString(),
+        ] : null;
+
+        return ApiResponseService::success($payload);
     }
 
     public function destroy(Request $request, Page $page)

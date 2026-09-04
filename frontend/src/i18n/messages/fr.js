@@ -13,6 +13,52 @@ export default {
 		profile: 'Profil',
 		logout: 'Déconnexion'
 	},
+	notifications: {
+		label: 'Notifications',
+		title: 'Notifications',
+		unread: '{count} non lues',
+		markAllRead: 'Tout marquer comme lu',
+		loadMore: 'Afficher plus',
+		empty: 'Aucune notification pour le moment.',
+		open: 'Ouvrir',
+		readFailed: "Le statut de la notification n'a pas pu être mis à jour.",
+		types: {
+			page_claim_approved: {
+				title: 'Propriété approuvée',
+				body: 'Vous pouvez maintenant gérer {page}.',
+				bodyReplaced: '{page} est maintenant à vous et remplace {replacedPage}.'
+			},
+			page_claim_rejected: {
+				title: 'Demande de propriété refusée',
+				body: "Votre demande de propriété pour {page} n'a pas été approuvée.",
+				bodyClaimed: 'Une autre demande vérifiée pour {page} a été approuvée.'
+			},
+			page_assigned: {
+				title: 'Page attribuée',
+				body: '{page} a été ajoutée à votre compte.'
+			},
+			page_detached: {
+				title: 'Page retirée',
+				body: 'Vous ne gérez plus {page}.'
+			},
+			page_deleted: {
+				title: 'Page supprimée',
+				body: '{page} a été définitivement supprimée.'
+			},
+			page_rating_received: {
+				title: 'Nouvelle note',
+				body: '{reviewer} a attribué {rating}/5 à {page}.'
+			},
+			page_claim_submitted: {
+				title: 'Nouvelle demande de propriété',
+				body: '{requester} a envoyé une demande pour {page}.'
+			},
+			lead_page_created: {
+				title: 'Nouvelle page Leads Page 001',
+				body: '{page} a été créée pour {lead}.'
+			}
+		}
+	},
 	mePage: {
 		overview: 'Vue d’ensemble',
 		ads: 'Annonces',

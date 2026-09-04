@@ -1,9 +1,10 @@
 <script setup>
-	import { computed, nextTick, onMounted, reactive, ref, toRef, watch } from 'vue'
+	import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRef, watch } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
+	import { accountNotificationEventName } from '@/stores/notifications'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
@@ -887,6 +888,27 @@
 		})
 	}
 
+	async function handleAccountNotification(event) {
+		const notification = event.detail
+		const notificationPage = notification?.data?.page
+
+		if (notificationPage?.type !== type.value) {
+			return
+		}
+
+		if (
+			['page_detached', 'page_deleted'].includes(notification.type) &&
+			Number(notificationPage.id) === Number(page.value?.id)
+		) {
+			await router.push({ name: 'me' })
+			return
+		}
+
+		if (['page_claim_approved', 'page_assigned'].includes(notification.type)) {
+			await load()
+		}
+	}
+
 	watch(type, load)
 	watch(pageTabs, (tabs) => {
 		if (!tabs.some((tab) => tab.name === activeTab.value)) {
@@ -933,10 +955,12 @@
 	attachObjectPreview(() => form.banner, localBannerPreviewUrl)
 
 	onMounted(async() => {
+		window.addEventListener(accountNotificationEventName, handleAccountNotification)
 		await Promise.all([load(), loadLocationOptions(), loadCatalogTopics()])
 		citySelectOptions.value = cityOptions.value
 		neighborhoodSelectOptions.value = neighborhoodOptions.value
 	})
+	onBeforeUnmount(() => window.removeEventListener(accountNotificationEventName, handleAccountNotification))
 </script>
 
 <template>

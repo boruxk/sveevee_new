@@ -1,5 +1,5 @@
 <script setup>
-	import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+	import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute } from 'vue-router'
 	import { useQuasar } from 'quasar'
@@ -27,6 +27,7 @@
 		updateBlockedTerm
 	} from '@/services/api/admin'
 	import { useAuthStore } from '@/stores/auth'
+	import { accountNotificationEventName } from '@/stores/notifications'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 	import { catalogLabel } from '@/constants/catalogTopics'
@@ -470,6 +471,18 @@
 		loadLeadPageTable(pagination.page || 1)
 	}
 
+	function handleAccountNotification(event) {
+		const notification = event.detail
+
+		if (notification?.type === 'lead_page_created' && activeTab.value === 'statistics') {
+			loadLeadPageTable(1)
+		}
+
+		if (notification?.type === 'page_claim_submitted' && activeTab.value === 'communication') {
+			loadSupportConversations()
+		}
+	}
+
 	function pageOwnerOption(user) {
 		const conflictingPageId = user.page_ids_by_type?.[selectedAdminPage.value?.type]
 		const location = user.city ? ` · ${localizedLocation(user.city, 'city')}` : ''
@@ -896,7 +909,23 @@
 		}
 	}
 
+	watch(() => route.query.tab, (tab) => {
+		if (adminTabNames.includes(String(tab || ''))) {
+			activeTab.value = String(tab)
+		}
+	})
+	watch(activeTab, (tab) => {
+		if (tab === 'statistics') {
+			loadLeadPageTable(1)
+		}
+
+		if (tab === 'communication') {
+			loadSupportConversations()
+		}
+	})
+
 	onMounted(() => {
+		window.addEventListener(accountNotificationEventName, handleAccountNotification)
 		loadSupportConversations()
 		loadUserTable()
 		loadPageTable()
@@ -905,6 +934,7 @@
 		adminPresenceTimer = window.setInterval(refreshAdminPresence, 30_000)
 	})
 	onBeforeUnmount(() => {
+		window.removeEventListener(accountNotificationEventName, handleAccountNotification)
 		if (adminPresenceTimer) {
 			window.clearInterval(adminPresenceTimer)
 		}

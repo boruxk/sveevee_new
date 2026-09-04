@@ -1,10 +1,11 @@
 <script setup>
-	import { computed, onMounted, ref, watch } from 'vue'
+	import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { setLocale } from '@/i18n'
 	import { useAuthStore } from '@/stores/auth'
+	import { accountNotificationEventName } from '@/stores/notifications'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { fetchPage, requestPageClaim } from '@/services/api/pages'
 	import { findPresencePalette } from '@/constants/presencePalettes'
@@ -302,6 +303,7 @@
 
 			const { data } = await fetchPage(route.params.id)
 			page.value = data.data
+			claimSent.value = data.data?.viewer_claim?.status === 'pending'
 		} finally {
 			loading.value = false
 		}
@@ -412,7 +414,34 @@
 		}
 	}
 
+	async function handleAccountNotification(event) {
+		const notification = event.detail
+
+		if (Number(notification?.data?.page?.id) !== Number(page.value?.id)) {
+			return
+		}
+
+		if (notification.type === 'page_deleted') {
+			await router.push({ name: 'me' })
+			return
+		}
+
+		if ([
+			'page_claim_approved',
+			'page_claim_rejected',
+			'page_assigned',
+			'page_detached'
+		].includes(notification.type)) {
+			await load()
+		}
+	}
+
 	watch(() => route.fullPath, load)
+	watch(() => authStore.user?.id, (userId, previousUserId) => {
+		if (userId !== previousUserId && page.value) {
+			load()
+		}
+	})
 	watch([page, () => route.query.pageChat, () => authStore.isAuthenticated], () => {
 		if (page.value && route.query.pageChat === '1' && authStore.isAuthenticated && !isPageOwner.value) {
 			pageChatDialogOpen.value = true
@@ -420,8 +449,10 @@
 	})
 
 	onMounted(async() => {
+		window.addEventListener(accountNotificationEventName, handleAccountNotification)
 		await Promise.all([load(), loadCatalogTopics()])
 	})
+	onBeforeUnmount(() => window.removeEventListener(accountNotificationEventName, handleAccountNotification))
 </script>
 
 <template>
@@ -457,7 +488,7 @@
 									v-for="(character, index) in claimUnlockFreeCharacters"
 									:key="`${character}-${index}`"
 									class="banner-claim-panel__free-letter"
-									:style="{ animationDelay: `${index * 90}ms` }"
+									:style="{ '--claim-free-delay': `${index * 100}ms` }"
 									aria-hidden="true"
 								>{{ character }}</span>
 							</strong>
@@ -813,14 +844,17 @@
 
 @keyframes bannerClaimFreeLetterWave {
   0%,
-  55%,
+  42%,
   100% {
     color: var(--soz-primary);
+    text-shadow: none;
+    transform: translateY(0);
   }
 
-  20%,
-  35% {
+  14% {
     color: var(--soz-orange);
+    text-shadow: 0 4px 10px rgba(255, 122, 51, 0.24);
+    transform: translateY(-2px);
   }
 }
 
@@ -828,7 +862,9 @@
   display: inline-block;
   color: var(--soz-primary);
   white-space: pre;
-  animation: bannerClaimFreeLetterWave 1.8s ease-in-out infinite;
+  animation: bannerClaimFreeLetterWave 2.1s ease-in-out infinite;
+  animation-delay: var(--claim-free-delay);
+  will-change: color, transform;
 }
 
 .banner-claim-features {
@@ -1122,10 +1158,6 @@
 @media (prefers-reduced-motion: reduce) {
   .banner-claim-panel__free-letter {
     animation: none;
-  }
-
-  .banner-claim-panel__free-letter:nth-child(odd) {
-    color: var(--soz-orange);
   }
 }
 

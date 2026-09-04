@@ -13,6 +13,52 @@ export default {
 		profile: 'Профиль',
 		logout: 'Выход'
 	},
+	notifications: {
+		label: 'Уведомления',
+		title: 'Уведомления',
+		unread: 'Непрочитанных: {count}',
+		markAllRead: 'Отметить все как прочитанные',
+		loadMore: 'Загрузить еще',
+		empty: 'Уведомлений пока нет.',
+		open: 'Открыть',
+		readFailed: 'Не удалось обновить статус уведомления.',
+		types: {
+			page_claim_approved: {
+				title: 'Заявка на владение одобрена',
+				body: 'Теперь вы можете управлять страницей {page}.',
+				bodyReplaced: 'Страница {page} теперь ваша и заменяет {replacedPage}.'
+			},
+			page_claim_rejected: {
+				title: 'Заявка на владение не одобрена',
+				body: 'Ваша заявка на страницу {page} не была одобрена.',
+				bodyClaimed: 'Другая подтвержденная заявка на {page} была одобрена.'
+			},
+			page_assigned: {
+				title: 'Страница назначена',
+				body: 'Страница {page} добавлена в ваш аккаунт.'
+			},
+			page_detached: {
+				title: 'Страница удалена из аккаунта',
+				body: 'Вы больше не управляете страницей {page}.'
+			},
+			page_deleted: {
+				title: 'Страница удалена',
+				body: 'Страница {page} была удалена навсегда.'
+			},
+			page_rating_received: {
+				title: 'Новая оценка',
+				body: '{reviewer} поставил(а) странице {page} оценку {rating}/5.'
+			},
+			page_claim_submitted: {
+				title: 'Новая заявка на владение',
+				body: '{requester} отправил(а) заявку на страницу {page}.'
+			},
+			lead_page_created: {
+				title: 'Новая страница из Leads Page 001',
+				body: 'Страница {page} создана для {lead}.'
+			}
+		}
+	},
 	mePage: {
 		overview: 'Обзор',
 		ads: 'Объявления',

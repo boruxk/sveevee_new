@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Notifications\DatabaseNotification;
 
 class EmailDelivery extends Model
 {
@@ -23,6 +24,7 @@ class EmailDelivery extends Model
         'user_id',
         'conversation_id',
         'chat_message_id',
+        'notification_id',
         'kind',
         'recipient_email',
         'bounce_token',
@@ -54,5 +56,10 @@ class EmailDelivery extends Model
     public function chatMessage(): BelongsTo
     {
         return $this->belongsTo(ChatMessage::class);
+    }
+
+    public function notification(): BelongsTo
+    {
+        return $this->belongsTo(DatabaseNotification::class, 'notification_id');
     }
 }

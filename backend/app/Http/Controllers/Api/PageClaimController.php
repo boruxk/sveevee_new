@@ -6,14 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Models\PageClaimRequest;
 use App\Rules\CleanContent;
+use App\Services\AccountNotificationService;
 use App\Services\ApiResponseService;
 use App\Services\PageClaimService;
+use App\Support\AccountNotificationType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PageClaimController extends Controller
 {
-    public function __construct(private readonly PageClaimService $claims) {}
+    public function __construct(
+        private readonly PageClaimService $claims,
+        private readonly AccountNotificationService $notifications,
+    ) {}
 
     public function store(Request $request, Page $page)
     {
@@ -94,6 +99,12 @@ class PageClaimController extends Controller
             ]);
             $claim->setRelation('page', $lockedPage);
             $this->claims->appendMessage($conversation, $user, $this->claims->createdMarker($claim));
+            $this->notifications->createForAdmins(AccountNotificationType::PAGE_CLAIM_SUBMITTED, [
+                'page' => $this->notifications->pageSnapshot($lockedPage),
+                'claim_id' => $claim->id,
+                'requester_name' => $user->display_name,
+                'action_path' => '/admin?tab=communication',
+            ]);
 
             return ['claim' => $claim];
         });

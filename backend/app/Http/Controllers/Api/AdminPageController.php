@@ -7,9 +7,11 @@ use App\Models\BusinessPageLead;
 use App\Models\Page;
 use App\Models\PageClaimRequest;
 use App\Models\User;
+use App\Services\AccountNotificationService;
 use App\Services\ApiResponseService;
 use App\Services\PageClaimService;
 use App\Services\PageDeletionService;
+use App\Support\AccountNotificationType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -20,6 +22,7 @@ class AdminPageController extends Controller
     public function __construct(
         private readonly PageClaimService $claims,
         private readonly PageDeletionService $deletions,
+        private readonly AccountNotificationService $notifications,
     ) {}
 
     public function index(Request $request)
@@ -129,6 +132,9 @@ class AdminPageController extends Controller
 
         $updated = DB::transaction(function () use ($request, $page, $targetUserId): Page {
             $lockedPage = Page::query()->lockForUpdate()->findOrFail($page->id);
+            $previousOwner = ! $lockedPage->is_unclaimed
+                ? User::query()->lockForUpdate()->find($lockedPage->user_id)
+                : null;
 
             if ($targetUserId === null) {
                 $worker = User::query()
@@ -149,6 +155,13 @@ class AdminPageController extends Controller
                     'claimed_at' => null,
                 ])->save();
                 $lockedPage->ads()->update(['user_id' => $worker->id]);
+
+                if ($previousOwner?->hasRole('user')) {
+                    $this->notifications->create($previousOwner, AccountNotificationType::PAGE_DETACHED, [
+                        'page' => $this->notifications->pageSnapshot($lockedPage),
+                        'action_path' => '/me',
+                    ]);
+                }
 
                 return $lockedPage;
             }
@@ -174,13 +187,29 @@ class AdminPageController extends Controller
                 ]);
             }
 
+            $ownershipChanged = $lockedPage->is_unclaimed || (int) $lockedPage->user_id !== $targetUser->id;
+            $wasUnclaimed = $lockedPage->is_unclaimed;
             $lockedPage->forceFill([
                 'user_id' => $targetUser->id,
                 'is_unclaimed' => false,
-                'claimed_at' => $lockedPage->is_unclaimed ? now() : ($lockedPage->claimed_at ?: now()),
+                'claimed_at' => $wasUnclaimed ? now() : ($lockedPage->claimed_at ?: now()),
             ])->save();
             $lockedPage->ads()->update(['user_id' => $targetUser->id]);
-            $this->resolvePendingClaims($lockedPage, $targetUser, $request->user());
+            $matchingClaimApproved = $this->resolvePendingClaims($lockedPage, $targetUser, $request->user());
+
+            if ($previousOwner?->hasRole('user') && $previousOwner->id !== $targetUser->id) {
+                $this->notifications->create($previousOwner, AccountNotificationType::PAGE_DETACHED, [
+                    'page' => $this->notifications->pageSnapshot($lockedPage),
+                    'action_path' => '/me',
+                ]);
+            }
+
+            if ($ownershipChanged && ! $matchingClaimApproved) {
+                $this->notifications->create($targetUser, AccountNotificationType::PAGE_ASSIGNED, [
+                    'page' => $this->notifications->pageSnapshot($lockedPage),
+                    'action_path' => '/'.$lockedPage->type,
+                ]);
+            }
 
             return $lockedPage;
         });
@@ -195,22 +224,37 @@ class AdminPageController extends Controller
 
     public function destroy(Page $page)
     {
-        $this->deletions->delete($page);
+        $mediaPaths = DB::transaction(function () use ($page): array {
+            $lockedPage = Page::query()->with('user')->lockForUpdate()->findOrFail($page->id);
+
+            if (! $lockedPage->is_unclaimed && $lockedPage->user?->hasRole('user')) {
+                $this->notifications->create($lockedPage->user, AccountNotificationType::PAGE_DELETED, [
+                    'page' => $this->notifications->pageSnapshot($lockedPage),
+                    'action_path' => '/me',
+                ]);
+            }
+
+            return $this->deletions->deleteInCurrentTransaction($lockedPage);
+        });
+
+        $this->deletions->deleteMedia($mediaPaths);
 
         return ApiResponseService::success(null, 'Page permanently deleted.');
     }
 
-    private function resolvePendingClaims(Page $page, User $targetUser, User $admin): void
+    private function resolvePendingClaims(Page $page, User $targetUser, User $admin): bool
     {
         $pendingClaims = PageClaimRequest::query()
-            ->with('conversation')
+            ->with(['conversation', 'user'])
             ->where('page_id', $page->id)
             ->where('status', PageClaimRequest::STATUS_PENDING)
             ->lockForUpdate()
             ->get();
+        $matchingClaimApproved = false;
 
         foreach ($pendingClaims as $claim) {
             $approved = $claim->user_id === $targetUser->id;
+            $matchingClaimApproved = $matchingClaimApproved || $approved;
             $claim->setRelation('page', $page);
             $claim->forceFill([
                 'status' => $approved ? PageClaimRequest::STATUS_APPROVED : PageClaimRequest::STATUS_CANCELLED,
@@ -225,7 +269,20 @@ class AdminPageController extends Controller
                     $this->claims->reviewedMarker($claim, $approved)
                 );
             }
+
+            $this->notifications->create(
+                $claim->user,
+                $approved ? AccountNotificationType::PAGE_CLAIM_APPROVED : AccountNotificationType::PAGE_CLAIM_REJECTED,
+                [
+                    'page' => $this->notifications->pageSnapshot($page),
+                    'claim_id' => $claim->id,
+                    ...($approved ? [] : ['reason' => 'claimed_by_another']),
+                    'action_path' => $approved ? '/'.$page->type : $page->public_path,
+                ],
+            );
         }
+
+        return $matchingClaimApproved;
     }
 
     private function pagePayload(Page $page): array

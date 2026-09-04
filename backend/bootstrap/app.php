@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureEmailIsVerified;
+use App\Http\Middleware\EnsureOwnBroadcastChannel;
 use App\Http\Middleware\EnsurePlatformIsAvailable;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -23,6 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+    )
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['prefix' => 'api/v1', 'middleware' => ['api', 'auth:sanctum', EnsureOwnBroadcastChannel::class]]
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([

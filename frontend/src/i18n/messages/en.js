@@ -13,6 +13,52 @@ export default {
 		logout: 'Logout',
 		menu: 'Menu'
 	},
+	notifications: {
+		label: 'Notifications',
+		title: 'Notifications',
+		unread: '{count} unread',
+		markAllRead: 'Mark all as read',
+		loadMore: 'Load more',
+		empty: 'No notifications yet.',
+		open: 'Open',
+		readFailed: 'The notification status could not be updated.',
+		types: {
+			page_claim_approved: {
+				title: 'Ownership approved',
+				body: 'You can now manage {page}.',
+				bodyReplaced: '{page} is now yours and replaces {replacedPage}.'
+			},
+			page_claim_rejected: {
+				title: 'Ownership request not approved',
+				body: 'Your ownership request for {page} was not approved.',
+				bodyClaimed: 'Another verified request for {page} was approved.'
+			},
+			page_assigned: {
+				title: 'Page assigned',
+				body: '{page} was added to your account.'
+			},
+			page_detached: {
+				title: 'Page removed',
+				body: 'You no longer manage {page}.'
+			},
+			page_deleted: {
+				title: 'Page deleted',
+				body: '{page} was permanently deleted.'
+			},
+			page_rating_received: {
+				title: 'New rating',
+				body: '{reviewer} rated {page} {rating}/5.'
+			},
+			page_claim_submitted: {
+				title: 'New ownership request',
+				body: '{requester} submitted a request for {page}.'
+			},
+			lead_page_created: {
+				title: 'New Leads Page 001 page',
+				body: '{page} was created for {lead}.'
+			}
+		}
+	},
 	mePage: {
 		overview: 'Overview',
 		ads: 'Ads',

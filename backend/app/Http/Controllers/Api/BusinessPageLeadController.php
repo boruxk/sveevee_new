@@ -8,15 +8,20 @@ use App\Models\BusinessPageLead;
 use App\Models\Page;
 use App\Models\User;
 use App\Rules\CleanContent;
+use App\Services\AccountNotificationService;
 use App\Services\AiWorkPageService;
 use App\Services\ApiResponseService;
+use App\Support\AccountNotificationType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class BusinessPageLeadController extends Controller
 {
-    public function __construct(private readonly AiWorkPageService $pages) {}
+    public function __construct(
+        private readonly AiWorkPageService $pages,
+        private readonly AccountNotificationService $notifications,
+    ) {}
 
     public function store(Request $request)
     {
@@ -116,6 +121,15 @@ class BusinessPageLeadController extends Controller
                 'user_agent' => $request->userAgent(),
                 'consented_at' => now(),
             ]);
+
+            if ($created) {
+                $this->notifications->createForAdmins(AccountNotificationType::LEAD_PAGE_CREATED, [
+                    'page' => $this->notifications->pageSnapshot($page),
+                    'source' => BusinessPageLead::SOURCE_LEADS_PAGE_001,
+                    'lead_name' => $data['full_name'],
+                    'action_path' => '/admin?tab=statistics',
+                ]);
+            }
 
             return [$page, $created];
         });
