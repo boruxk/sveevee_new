@@ -5,10 +5,15 @@
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
+	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { deleteAd, fetchAds } from '@/services/api/ads'
+	import { deleteEvent, fetchMyEvents } from '@/services/api/events'
 	import AdCard from '@/components/AdCard.vue'
 	import AdComposer from '@/components/AdComposer.vue'
 	import ChatBlock from '@/components/ChatBlock.vue'
+	import EventCard from '@/components/events/EventCard.vue'
+	import EventComposer from '@/components/events/EventComposer.vue'
+	import ChevronForwardIcon from '@/components/icons/ChevronForwardIcon.vue'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import PageCreateDialog from '@/components/pages/PageCreateDialog.vue'
 	import { adRoute } from '@/constants/catalogTopics'
@@ -20,26 +25,35 @@
 	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const chatsStore = useChatsStore()
-	const loading = ref(false)
+	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
+	const adsLoading = ref(false)
+	const eventsLoading = ref(false)
 	const ads = ref([])
+	const events = ref([])
 	const activeTab = ref('overview')
 	const messagesListResetKey = ref(0)
 	const openingChatFromQuery = ref(false)
 	const adDialogOpen = ref(false)
 	const editingAd = ref(null)
+	const eventDialogOpen = ref(false)
+	const editingEvent = ref(null)
 	const pageCreateDialogOpen = ref(false)
 	const pageCreateType = ref('business')
 	const showBusinessPageButton = computed(() => !authStore.user?.business_page)
 	const showCommunityPageButton = computed(() => !authStore.user?.community_page)
 	const adDialogTitle = computed(() => (editingAd.value ? t('actions.update') : t('actions.createAd')))
+	const eventDialogTitle = computed(() => (editingEvent.value ? t('actions.update') : t('actions.addEvent')))
 	const visibleAds = computed(() => (Array.isArray(ads.value) ? ads.value.filter((ad) => ad?.id) : []))
+	const visibleEvents = computed(() => (Array.isArray(events.value) ? events.value.filter((event) => event?.id) : []))
 	const latestAds = computed(() => visibleAds.value.slice(0, 4))
+	const latestEvents = computed(() => visibleEvents.value.slice(0, 3))
 	const recentConversations = computed(() => chatsStore.conversations.filter((conversation) => conversation.latest_message).slice(0, 5))
 	const chatTargetUserId = computed(() => route.query.chatWith || null)
 	const chatTargetPageConversationId = computed(() => route.query.pageConversation || null)
 	const meTabs = computed(() => [
 		{ name: 'overview', label: t('mePage.overview'), icon: 'dashboard' },
 		{ name: 'ads', label: t('mePage.ads'), icon: 'campaign' },
+		{ name: 'events', label: t('mePage.events'), icon: 'event' },
 		{ name: 'messages', label: t('mePage.messages'), icon: 'forum' }
 	])
 
@@ -48,12 +62,22 @@
 	}
 
 	async function loadAds() {
-		loading.value = true
+		adsLoading.value = true
 		try {
 			const { data } = await fetchAds({ scope: 'mine', type: 'private_ad' })
 			ads.value = data.data || []
 		} finally {
-			loading.value = false
+			adsLoading.value = false
+		}
+	}
+
+	async function loadEvents() {
+		eventsLoading.value = true
+		try {
+			const { data } = await fetchMyEvents()
+			events.value = data.data || []
+		} finally {
+			eventsLoading.value = false
 		}
 	}
 
@@ -100,6 +124,59 @@
 		mergeSavedAd(savedAd)
 	}
 
+	function openCreateEvent() {
+		editingEvent.value = null
+		eventDialogOpen.value = true
+	}
+
+	function openEditEvent(event) {
+		editingEvent.value = event
+		eventDialogOpen.value = true
+	}
+
+	function mergeSavedEvent(savedEvent) {
+		if (!savedEvent?.id || savedEvent.page_id) {
+			return
+		}
+
+		const currentEvents = Array.isArray(events.value) ? events.value : []
+		const existingIndex = currentEvents.findIndex((event) => event.id === savedEvent.id)
+
+		if (existingIndex === -1) {
+			events.value = [savedEvent, ...currentEvents]
+			return
+		}
+
+		events.value = currentEvents.map((event) => (event.id === savedEvent.id ? savedEvent : event))
+	}
+
+	async function handleEventSaved(savedEvent) {
+		eventDialogOpen.value = false
+		editingEvent.value = null
+		mergeSavedEvent(savedEvent)
+		await loadEvents()
+	}
+
+	async function removeEvent(event) {
+		try {
+			await deleteEvent(event.id)
+			events.value = visibleEvents.value.filter((item) => item.id !== event.id)
+			$q.notify({ type: 'positive', message: t('events.deleted') })
+		} catch {
+			$q.notify({ type: 'negative', message: t('events.deleteFailed') })
+		}
+	}
+
+	function confirmRemoveEvent(event) {
+		$q.dialog({
+			title: t('actions.delete'),
+			message: t('events.deleteConfirm', { name: event.name }),
+			persistent: true,
+			ok: { label: t('actions.delete'), color: 'negative', unelevated: true, rounded: true },
+			cancel: { label: t('actions.cancel'), color: 'primary', flat: true }
+		}).onOk(() => removeEvent(event))
+	}
+
 	function openPageCreate(type) {
 		pageCreateType.value = type
 		pageCreateDialogOpen.value = true
@@ -113,6 +190,21 @@
 
 	function openAdsTab() {
 		activeTab.value = 'ads'
+	}
+
+	function openEventsTab() {
+		activeTab.value = 'events'
+	}
+
+	function formatEventDateTime(event) {
+		const date = new Date(`${event?.date || ''}T00:00:00`)
+		let formattedDate = event?.date || ''
+
+		if (!Number.isNaN(date.getTime())) {
+			formattedDate = new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(date)
+		}
+
+		return [formattedDate, event?.time].filter(Boolean).join(' · ')
 	}
 
 	function clearChatQuery() {
@@ -168,7 +260,7 @@
 	}
 
 	async function loadPage() {
-		await Promise.all([loadAds(), chatsStore.loadConversations()])
+		await Promise.all([loadAds(), loadEvents(), chatsStore.loadConversations(), loadCatalogTopics()])
 	}
 
 	watch(activeTab, (value, previous) => {
@@ -306,7 +398,7 @@
 									@click="openAdsTab"
 								/>
 							</div>
-							<div v-if="loading" class="row justify-center q-pa-lg">
+							<div v-if="adsLoading" class="row justify-center q-pa-lg">
 								<q-spinner color="primary" />
 							</div>
 							<div v-else-if="latestAds.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
@@ -336,6 +428,50 @@
 								</router-link>
 							</div>
 						</section>
+
+						<section class="overview-block overview-block--wide">
+							<div class="overview-block__head">
+								<h2>{{ t('mePage.latestEvents') }}</h2>
+								<q-btn flat
+									dense
+									rounded
+									icon="event"
+									:label="t('mePage.openEvents')"
+									@click="openEventsTab"
+								/>
+							</div>
+							<div v-if="eventsLoading" class="row justify-center q-pa-lg">
+								<q-spinner color="primary" />
+							</div>
+							<div v-else-if="latestEvents.length === 0" class="empty-state">{{ t('events.empty') }}</div>
+							<div v-else class="overview-event-list">
+								<button
+									v-for="event in latestEvents"
+									:key="event.id"
+									type="button"
+									class="overview-list__item overview-event-item"
+									@click="openEventsTab"
+								>
+									<ResponsiveImage
+										v-if="event.image_url"
+										class="overview-listing-thumb overview-event-thumb"
+										:src="event.image_url"
+										:alt="event.image_alt || event.name"
+										:avif-srcset="event.image_avif_srcset || ''"
+										:webp-srcset="event.image_webp_srcset || ''"
+										sizes="54px"
+										:width="event.image_width || 768"
+										:height="event.image_height || 576"
+									/>
+									<q-icon v-else name="event" size="28px" color="primary" class="overview-listing-icon overview-event-thumb" />
+									<span class="overview-list__copy">
+										<strong>{{ event.name }}</strong>
+										<small>{{ [formatEventDateTime(event), event.address].filter(Boolean).join(' · ') }}</small>
+									</span>
+									<ChevronForwardIcon class="overview-event-forward" />
+								</button>
+							</div>
+						</section>
 					</div>
 				</q-tab-panel>
 
@@ -352,7 +488,7 @@
 							/>
 						</div>
 
-						<div v-if="loading" class="row justify-center q-pa-lg">
+						<div v-if="adsLoading" class="row justify-center q-pa-lg">
 							<q-spinner color="primary" />
 						</div>
 						<div v-else-if="visibleAds.length === 0" class="empty-state">{{ t('ads.empty') }}</div>
@@ -363,6 +499,36 @@
 								editable
 								@edit="openEditAd"
 								@delete="removeAd"
+							/>
+						</div>
+					</section>
+				</q-tab-panel>
+
+				<q-tab-panel name="events" class="me-panel">
+					<section class="soz-section-card panel">
+						<div class="panel-head">
+							<h2>{{ t('events.eventsTitle') }}</h2>
+							<q-btn rounded
+								unelevated
+								color="primary"
+								icon="add"
+								:label="t('actions.addEvent')"
+								@click="openCreateEvent"
+							/>
+						</div>
+
+						<div v-if="eventsLoading" class="row justify-center q-pa-lg">
+							<q-spinner color="primary" />
+						</div>
+						<div v-else-if="visibleEvents.length === 0" class="empty-state">{{ t('events.empty') }}</div>
+						<div v-else class="event-list">
+							<EventCard
+								v-for="event in visibleEvents"
+								:key="event.id"
+								:event="event"
+								editable
+								@edit="openEditEvent"
+								@delete="confirmRemoveEvent"
 							/>
 						</div>
 					</section>
@@ -390,6 +556,22 @@
 				</q-card-section>
 				<q-card-section>
 					<AdComposer :ad="editingAd" @saved="handleAdSaved" />
+				</q-card-section>
+			</q-card>
+		</q-dialog>
+		<q-dialog v-model="eventDialogOpen">
+			<q-card class="listing-dialog">
+				<q-card-section class="dialog-head">
+					<div class="text-h6">{{ eventDialogTitle }}</div>
+					<q-btn flat round icon="close" color="dark" v-close-popup />
+				</q-card-section>
+				<q-card-section>
+					<EventComposer
+						personal
+						:event="editingEvent"
+						:catalog-groups="catalogGroups"
+						@saved="handleEventSaved"
+					/>
 				</q-card-section>
 			</q-card>
 		</q-dialog>
@@ -521,6 +703,10 @@
   background: rgba(255, 255, 255, 0.78);
 }
 
+.overview-block--wide {
+  grid-column: 1 / -1;
+}
+
 .overview-block__head {
   display: flex;
   align-items: center;
@@ -538,6 +724,20 @@
 .overview-list {
   display: grid;
   gap: 10px;
+}
+
+.overview-event-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.overview-event-item {
+  min-height: 80px;
+}
+
+.overview-event-forward {
+  color: var(--soz-primary);
 }
 
 .overview-list__item {
@@ -602,6 +802,11 @@
   --responsive-image-position: center;
 }
 
+.overview-event-thumb {
+  width: 54px;
+  height: 54px;
+}
+
 .overview-listing-icon {
   display: inline-flex;
   align-items: center;
@@ -654,6 +859,13 @@
   margin-top: 18px;
 }
 
+.event-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
 .empty-state {
   margin-top: 18px;
   color: rgba(17, 34, 45, 0.62);
@@ -684,6 +896,11 @@
 
   .overview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .overview-event-list,
+  .event-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .panel-head {
@@ -730,15 +947,15 @@
   }
 
   .me-tabs :deep(.q-tabs__content) {
-    width: 100%;
+    width: auto;
     gap: 4px;
   }
 
   .me-tabs :deep(.q-tab) {
-    flex: 1 1 0;
-    min-width: 0;
+    flex: 0 0 auto;
+    min-width: max-content;
     min-height: 40px;
-    padding: 0 6px;
+    padding: 0 10px;
   }
 
   .me-tabs :deep(.q-tab__content) {
@@ -766,6 +983,11 @@
 
   .overview-block__head {
     flex-direction: column;
+  }
+
+  .overview-event-list,
+  .event-list {
+    grid-template-columns: 1fr;
   }
 
   .panel--chat :deep(.me-chat-block.chat-block) {

@@ -2,7 +2,7 @@
 	import { computed, reactive, ref, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
-	import { createEvent, updateEvent } from '@/services/api/events'
+	import { createEvent, createPersonalEvent, updateEvent } from '@/services/api/events'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
@@ -13,7 +13,11 @@
 	const props = defineProps({
 		pageId: {
 			type: [Number, String],
-			required: true
+			default: null
+		},
+		personal: {
+			type: Boolean,
+			default: false
 		},
 		event: {
 			type: Object,
@@ -101,6 +105,8 @@
 
 			if (isEditing.value) {
 				response = await updateEvent(props.event.id, { ...form, image_remove: imageRemoved.value })
+			} else if (props.personal) {
+				response = await createPersonalEvent(form)
 			} else {
 				response = await createEvent(props.pageId, form)
 			}

@@ -62,11 +62,14 @@ export default {
 	mePage: {
 		overview: 'סקירה כללית',
 		ads: 'מודעות',
+		events: 'אירועים',
 		messages: 'הודעות',
 		recentMessages: 'הודעות אחרונות',
 		latestAds: 'מודעות אחרונות',
+		latestEvents: 'האירועים שלי',
 		openMessages: 'פתיחת הודעות',
-		openAds: 'פתיחת מודעות'
+		openAds: 'פתיחת מודעות',
+		openEvents: 'פתיחת אירועים'
 	},
 	languages: {
 		he: 'עברית',
@@ -483,7 +486,9 @@ export default {
 		empty: 'אין עדיין אירועים.',
 		created: 'האירוע נוצר.',
 		saveFailed: 'לא ניתן לשמור את האירוע.',
-		limitReached: 'עמוד הקהילה כבר הגיע למגבלה של {limit} אירועים עתידיים.',
+		limitReached: 'הגעתם למגבלה של {limit} אירועים עתידיים.',
+		deleteConfirm: 'למחוק את "{name}"?',
+		deleted: 'האירוע נמחק.',
 		deleteFailed: 'לא ניתן למחוק את האירוע.'
 	},
 	chat: {

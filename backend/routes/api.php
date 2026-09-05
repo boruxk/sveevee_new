@@ -121,6 +121,8 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::put('/services/{service}', [PageServiceController::class, 'update']);
         Route::delete('/services/{service}', [PageServiceController::class, 'destroy']);
         Route::post('/pages/{page}/events', [PageEventController::class, 'store']);
+        Route::get('/events', [PageEventController::class, 'index']);
+        Route::post('/events', [PageEventController::class, 'storePersonal']);
         Route::put('/events/{event}', [PageEventController::class, 'update']);
         Route::delete('/events/{event}', [PageEventController::class, 'destroy']);
         Route::put('/pages/{page}/ratings/me', [PageRatingController::class, 'store']);

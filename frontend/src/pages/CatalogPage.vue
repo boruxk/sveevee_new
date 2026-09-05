@@ -390,7 +390,7 @@
 		}
 
 		if (target.name === 'user-page') {
-			return publicUserPath(item)
+			return publicUserPath(kind === 'event' && item.user ? item.user : item)
 		}
 
 		if (target.name === 'ad-detail') {
@@ -514,6 +514,10 @@
 
 		if (kind === 'ad') {
 			return itemLocation(item.city, item.neighborhood)
+		}
+
+		if (kind === 'event' && !item.page) {
+			return item.user?.display_name || itemLocation(item.user?.profile?.city, item.user?.profile?.neighborhood)
 		}
 
 		return item.page?.name || ''

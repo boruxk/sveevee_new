@@ -125,6 +125,10 @@
 			return item.value.address_details || {}
 		}
 
+		if (item.kind === 'event' && !item.value.page) {
+			return item.value.user?.profile || {}
+		}
+
 		return item.value.page?.address_details || {}
 	}
 

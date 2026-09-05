@@ -9,6 +9,7 @@
 	import { locationLabel } from '@/utils/locationLabels'
 	import { absoluteUrl, truncateText, useSeo } from '@/composables/useSeo'
 	import AdCard from '@/components/AdCard.vue'
+	import EventCard from '@/components/events/EventCard.vue'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 
 	const route = useRoute()
@@ -157,6 +158,13 @@
 					<AdCard v-for="ad in user.private_ads" :key="ad.id" :ad="ad" />
 				</div>
 			</section>
+
+			<section v-if="user?.personal_events?.length" class="q-mt-lg">
+				<h2>{{ t('events.eventsTitle') }}</h2>
+				<div class="event-grid">
+					<EventCard v-for="event in user.personal_events" :key="event.id" :event="event" />
+				</div>
+			</section>
 		</div>
 	</q-page>
 </template>
@@ -227,6 +235,12 @@
   gap: 16px;
 }
 
+.event-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
 .public-page-card {
   padding: 24px;
   border: 1px solid var(--soz-line);
@@ -253,6 +267,10 @@
     grid-column: 1 / -1;
     justify-self: start;
   }
+
+  .event-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
@@ -262,7 +280,8 @@
 
   .person-head,
   .page-row,
-  .listing-grid {
+  .listing-grid,
+  .event-grid {
     grid-template-columns: 1fr;
   }
 

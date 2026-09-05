@@ -14,6 +14,7 @@ final class UserDeletionService
         $user->load([
             'profile',
             'ads',
+            'events',
             'pages.products',
             'pages.services',
             'pages.events',
@@ -39,6 +40,7 @@ final class UserDeletionService
     {
         return collect([$user->profile?->photo_path])
             ->merge($user->ads->pluck('image_path'))
+            ->merge($user->events->pluck('image_path'))
             ->merge($user->pages->flatMap(fn ($page): array => [
                 $page->logo_path,
                 $page->banner_path,

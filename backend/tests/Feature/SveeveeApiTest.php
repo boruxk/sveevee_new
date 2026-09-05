@@ -2938,6 +2938,111 @@ HTML);
         ], ['Accept' => 'application/json'])->assertStatus(422);
     }
 
+    public function test_user_can_manage_personal_events_and_publish_them_in_profile_search_and_catalog(): void
+    {
+        Storage::fake('public');
+
+        $owner = User::factory()->create([
+            'given_name' => 'Noa',
+            'family_name' => 'Levi',
+            'name' => 'Noa Levi',
+        ]);
+        $owner->profile()->update([
+            'city' => 'Jerusalem',
+            'neighborhood' => 'Ramot',
+        ]);
+        $other = User::factory()->create();
+        $other->profile()->update(['city' => 'Haifa']);
+
+        Sanctum::actingAs($owner);
+
+        $createdEvent = $this->post('/api/v1/events', [
+            'name' => 'Personal Rooftop Concert',
+            'description' => 'A small acoustic concert for friends and neighbors.',
+            'category_key' => 'events.community_social.neighborhood_meeting',
+            'image' => UploadedFile::fake()->image('concert.jpg'),
+            'date' => now()->addWeek()->toDateString(),
+            'time' => '19:30',
+            'end_time' => '21:00',
+            'address' => 'Ramot, Jerusalem',
+        ], ['Accept' => 'application/json'])->assertCreated()
+            ->assertJsonPath('data.page_id', null)
+            ->assertJsonPath('data.user_id', $owner->id)
+            ->assertJsonPath('data.owner_type', 'user')
+            ->assertJsonPath('data.is_personal', true)
+            ->assertJsonPath('data.user.id', $owner->id);
+
+        $eventId = $createdEvent->json('data.id');
+        $imagePath = PageEvent::query()->findOrFail($eventId)->image_path;
+        Storage::disk('public')->assertExists($imagePath);
+
+        PageEvent::query()->create([
+            'user_id' => $other->id,
+            'name' => 'Another personal event',
+            'description' => 'This event belongs to another user.',
+            'category_key' => 'events.community_social.neighborhood_meeting',
+            'image_path' => 'events/other.webp',
+            'event_date' => now()->addDays(8)->toDateString(),
+            'event_time' => '18:00',
+            'address' => 'Haifa',
+        ]);
+
+        $this->getJson('/api/v1/events')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $eventId);
+
+        Sanctum::actingAs($other);
+        $this->putJson("/api/v1/events/{$eventId}", [
+            'name' => 'Unauthorized edit',
+            'description' => 'This must not be saved.',
+            'category_key' => 'events.community_social.neighborhood_meeting',
+            'date' => now()->addWeek()->toDateString(),
+            'time' => '20:00',
+            'address' => 'Haifa',
+        ])->assertForbidden();
+        $this->deleteJson("/api/v1/events/{$eventId}")
+            ->assertForbidden();
+
+        Sanctum::actingAs($owner);
+        $this->putJson("/api/v1/events/{$eventId}", [
+            'name' => 'Personal Rooftop Concert Updated',
+            'description' => 'Updated acoustic concert details.',
+            'category_key' => 'events.community_social.neighborhood_meeting',
+            'date' => now()->addWeek()->toDateString(),
+            'time' => '20:00',
+            'end_time' => '21:30',
+            'address' => 'Ramot, Jerusalem',
+        ])->assertOk()
+            ->assertJsonPath('data.name', 'Personal Rooftop Concert Updated')
+            ->assertJsonPath('data.user.id', $owner->id);
+
+        $owner->refresh()->load('profile');
+        $this->getJson('/api/v1/users/'.$owner->public_slug)
+            ->assertOk()
+            ->assertJsonCount(1, 'data.personal_events')
+            ->assertJsonPath('data.personal_events.0.id', $eventId);
+
+        $this->getJson('/api/v1/search?scope=events&q=Rooftop&city=Jerusalem&neighborhood=Ramot')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.events')
+            ->assertJsonPath('data.events.0.id', $eventId)
+            ->assertJsonPath('data.events.0.page', null)
+            ->assertJsonPath('data.events.0.user.id', $owner->id);
+
+        $this->getJson('/api/v1/catalog/jerusalem/ramot/neighborhood-meeting')
+            ->assertOk()
+            ->assertJsonPath('data.segments.events.count', 1)
+            ->assertJsonPath('data.segments.events.items.0.id', $eventId)
+            ->assertJsonPath('data.segments.events.items.0.user.id', $owner->id);
+
+        $this->deleteJson("/api/v1/events/{$eventId}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('page_events', ['id' => $eventId]);
+        Storage::disk('public')->assertMissing($imagePath);
+    }
+
     public function test_page_owner_can_delete_page_and_its_page_ads(): void
     {
         $owner = User::factory()->create();
@@ -3085,6 +3190,7 @@ HTML);
             'media/pages/products/product.webp',
             'media/pages/services/service.webp',
             'media/pages/events/event.webp',
+            'media/events/personal-event.webp',
         ];
 
         $user->profile()->update(['photo_path' => $paths[0]]);
@@ -3127,6 +3233,15 @@ HTML);
             'address' => 'Jerusalem',
             'image_path' => $paths[6],
         ]);
+        $personalEvent = PageEvent::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Deleted personal event',
+            'description' => 'Personal event description.',
+            'event_date' => now()->addDay()->toDateString(),
+            'event_time' => '20:00',
+            'address' => 'Jerusalem',
+            'image_path' => $paths[7],
+        ]);
 
         $storedPaths = collect($paths)
             ->flatMap(fn (string $path): array => [$path, ...PublicImageVariants::variantPaths($path)])
@@ -3149,6 +3264,7 @@ HTML);
         $this->assertModelMissing($product);
         $this->assertModelMissing($service);
         $this->assertModelMissing($event);
+        $this->assertModelMissing($personalEvent);
 
         foreach ($storedPaths as $path) {
             Storage::disk('public')->assertMissing($path);

@@ -481,10 +481,7 @@
 			>
 				<template v-if="isUnclaimed && showBannerClaimAction" #heroAction>
 					<div class="banner-claim-panel">
-						<p
-							class="banner-claim-panel__title"
-							:class="{ 'banner-claim-panel__title--he': locale === 'he' }"
-						>
+						<p class="banner-claim-panel__title">
 							<span>{{ t('pageClaim.unlockTitle') }}</span>
 							<strong class="banner-claim-panel__free" :aria-label="t('pageClaim.unlockFree')">
 								<span
@@ -835,10 +832,6 @@
   font-size: 0.82rem;
   font-weight: 800;
   line-height: 1.2;
-}
-
-.banner-claim-panel__title--he {
-  justify-content: flex-end;
 }
 
 .banner-claim-panel__free {

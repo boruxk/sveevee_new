@@ -62,11 +62,14 @@ export default {
 	mePage: {
 		overview: 'Overview',
 		ads: 'Ads',
+		events: 'Events',
 		messages: 'Messages',
 		recentMessages: 'Recent messages',
 		latestAds: 'Latest ads',
+		latestEvents: 'My events',
 		openMessages: 'Open messages',
-		openAds: 'Open ads'
+		openAds: 'Open ads',
+		openEvents: 'Open events'
 	},
 	languages: {
 		he: 'Hebrew',
@@ -483,7 +486,9 @@ export default {
 		empty: 'No events yet.',
 		created: 'Event created.',
 		saveFailed: 'Event could not be saved.',
-		limitReached: 'This community page already has the maximum of {limit} future events.',
+		limitReached: 'The maximum of {limit} future events has been reached.',
+		deleteConfirm: 'Delete "{name}"?',
+		deleted: 'Event deleted.',
 		deleteFailed: 'Event could not be deleted.'
 	},
 	chat: {

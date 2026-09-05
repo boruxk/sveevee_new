@@ -244,9 +244,16 @@ class PayloadService
 
     public function event(PageEvent $event): array
     {
+        if ($event->user_id) {
+            $event->loadMissing(['user.profile', 'user.pages']);
+        }
+
         return [
             'id' => $event->id,
             'page_id' => $event->page_id,
+            'user_id' => $event->user_id,
+            'owner_type' => $event->user_id ? 'user' : 'page',
+            'is_personal' => (bool) $event->user_id,
             'name' => $event->name,
             'description' => $event->description,
             'category_key' => $event->category_key,
@@ -257,6 +264,9 @@ class PayloadService
             'time' => $this->eventTime($event->event_time),
             'end_time' => $this->eventTime($event->event_end_time),
             'address' => $event->address,
+            'user' => $event->user_id && $event->user
+                ? $this->user($event->user)
+                : null,
             'created_at' => $event->created_at?->toISOString(),
             'updated_at' => $event->updated_at?->toISOString(),
         ];

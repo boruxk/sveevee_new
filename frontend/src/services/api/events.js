@@ -26,6 +26,14 @@ export async function createEvent(pageId, payload) {
 	return apiClient.post(`/pages/${pageId}/events`, await toEventFormData(payload))
 }
 
+export function fetchMyEvents() {
+	return apiClient.get('/events')
+}
+
+export async function createPersonalEvent(payload) {
+	return apiClient.post('/events', await toEventFormData(payload))
+}
+
 export async function updateEvent(id, payload) {
 	const formData = await toEventFormData(payload)
 	formData.append('_method', 'PUT')

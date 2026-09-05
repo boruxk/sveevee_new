@@ -62,11 +62,14 @@ export default {
 	mePage: {
 		overview: 'Обзор',
 		ads: 'Объявления',
+		events: 'События',
 		messages: 'Сообщения',
 		recentMessages: 'Недавние сообщения',
 		latestAds: 'Последние объявления',
+		latestEvents: 'Мои события',
 		openMessages: 'Открыть сообщения',
-		openAds: 'Открыть объявления'
+		openAds: 'Открыть объявления',
+		openEvents: 'Открыть события'
 	},
 	languages: {
 		he: 'Иврит',
@@ -483,7 +486,9 @@ export default {
 		empty: 'Событий пока нет.',
 		created: 'Событие создано.',
 		saveFailed: 'Не удалось сохранить событие.',
-		limitReached: 'На этой странице сообщества уже достигнут лимит в {limit} будущих событий.',
+		limitReached: 'Достигнут лимит в {limit} будущих событий.',
+		deleteConfirm: 'Удалить «{name}»?',
+		deleted: 'Событие удалено.',
 		deleteFailed: 'Не удалось удалить событие.'
 	},
 	chat: {

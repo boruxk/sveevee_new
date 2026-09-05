@@ -340,5 +340,9 @@ export function catalogResultPath(kind, item) {
 		return adRoute(item)
 	}
 
+	if (kind === 'event' && !item?.page && item?.user) {
+		return userRoute(item.user)
+	}
+
 	return pageRoute(item.page || item)
 }

@@ -181,16 +181,10 @@ class SearchController extends Controller
             ->map(fn (PageService $service) => $this->withCompactPage($this->payloads->service($service), $service->page))
             ->values() : collect();
 
-        $events = $this->shouldSearch('events', $resultScope) ? PageEvent::query()
-            ->with(['page.user.profile'])
+        $events = $this->shouldSearch('events', $resultScope) ? $this->publicEventsQuery()
             ->when($topicKey, fn (Builder $query) => $query->whereIn('category_key', $topicKeys))
             ->when($term !== '', fn (Builder $query) => $this->whereListingText($query, $like))
-            ->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {
-                $page
-                    ->managed()
-                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
-                $this->inPageLocation($page, $city, $neighborhood);
-            })
+            ->inOwnerLocation($city, $neighborhood)
             ->orderBy('event_date')
             ->orderBy('event_time')
             ->limit(20)
@@ -273,13 +267,9 @@ class SearchController extends Controller
         );
 
         $eventResults = $this->prioritizedDiscoveryScope(
-            PageEvent::query()
-                ->with(['page.user.profile'])
-                ->whereDate('event_date', '>=', today())
-                ->whereHas('page', fn (Builder $page) => $page
-                    ->managed()
-                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))),
-            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
+            $this->publicEventsQuery()
+                ->whereDate('event_date', '>=', today()),
+            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $query->inOwnerLocation($tierCity, $tierNeighborhood),
             $city,
             $neighborhood,
             $candidateLimit
@@ -406,6 +396,10 @@ class SearchController extends Controller
         if ($kind === 'ad') {
             $itemCity = $this->nullableString($model->city);
             $itemNeighborhood = $this->nullableString($model->neighborhood);
+            $matchesCity = $itemCity === $city;
+        } elseif ($kind === 'event' && $model->user_id) {
+            $itemCity = $this->nullableString($model->user?->profile?->city);
+            $itemNeighborhood = $this->nullableString($model->user?->profile?->neighborhood);
             $matchesCity = $itemCity === $city;
         } else {
             $page = $kind === 'page' ? $model : $model->page;
@@ -563,6 +557,13 @@ class SearchController extends Controller
         return $query->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {
             $this->inPageLocation($page, $city, $neighborhood);
         });
+    }
+
+    private function publicEventsQuery(): Builder
+    {
+        return PageEvent::query()
+            ->with(['page.user.profile', 'user.profile', 'user.pages'])
+            ->publiclyVisible();
     }
 
     private function compactPage(Page $page): array

@@ -746,6 +746,12 @@
   left: 24px;
 }
 
+.page-preview--rtl .page-preview__hero-action,
+:global([dir="rtl"]) .page-preview__hero-action {
+  right: auto;
+  left: 24px;
+}
+
 .page-preview--rtl .page-preview__hero-actions {
   right: auto;
   left: 24px;
@@ -1328,6 +1334,12 @@
   }
 
   :global([dir="rtl"]) .page-preview__hero-actions {
+    right: auto;
+    left: 16px;
+  }
+
+  .page-preview--rtl .page-preview__hero-action,
+  :global([dir="rtl"]) .page-preview__hero-action {
     right: auto;
     left: 16px;
   }

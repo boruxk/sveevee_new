@@ -242,15 +242,9 @@ class CatalogController extends Controller
 
     private function eventsQuery(string $topicKey, ?string $city, ?string $neighborhood): Builder
     {
-        return PageEvent::query()
-            ->with(['page.user.profile'])
+        return $this->publicEventsQuery()
             ->whereIn('category_key', CatalogTopics::keysForTopic($topicKey))
-            ->whereHas('page', function (Builder $page) use ($city, $neighborhood): void {
-                $page
-                    ->managed()
-                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'));
-                $this->inPageLocation($page, $city, $neighborhood);
-            })
+            ->inOwnerLocation($city, $neighborhood)
             ->orderBy('event_date')
             ->orderBy('event_time');
     }
@@ -309,6 +303,13 @@ class CatalogController extends Controller
                 });
             })
             ->when($neighborhood, fn (Builder $query, string $neighborhood) => $query->where('setup->address->neighborhood', $neighborhood));
+    }
+
+    private function publicEventsQuery(): Builder
+    {
+        return PageEvent::query()
+            ->with(['page.user.profile', 'user.profile', 'user.pages'])
+            ->publiclyVisible();
     }
 
     private function compactPage(Page $page): array

@@ -62,11 +62,14 @@ export default {
 	mePage: {
 		overview: 'Vue d’ensemble',
 		ads: 'Annonces',
+		events: 'Événements',
 		messages: 'Messages',
 		recentMessages: 'Messages récents',
 		latestAds: 'Dernières annonces',
+		latestEvents: 'Mes événements',
 		openMessages: 'Ouvrir les messages',
-		openAds: 'Ouvrir les annonces'
+		openAds: 'Ouvrir les annonces',
+		openEvents: 'Ouvrir les événements'
 	},
 	languages: {
 		he: 'Hébreu',
@@ -483,7 +486,9 @@ export default {
 		empty: 'Aucun événement pour le moment.',
 		created: 'Événement créé.',
 		saveFailed: 'L’événement n’a pas pu être enregistré.',
-		limitReached: 'Cette page communautaire a déjà atteint la limite de {limit} événements futurs.',
+		limitReached: 'La limite de {limit} événements futurs a été atteinte.',
+		deleteConfirm: 'Supprimer « {name} » ?',
+		deleted: 'Événement supprimé.',
 		deleteFailed: 'L’événement n’a pas pu être supprimé.'
 	},
 	chat: {

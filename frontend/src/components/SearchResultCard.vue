@@ -1,6 +1,7 @@
 <script setup>
 	import { computed } from 'vue'
 	import { useI18n } from 'vue-i18n'
+	import { localizedAdCategoryMeta } from '@/constants/adCategories'
 	import { adRoute, catalogLabel, catalogTopicByKey, pageRoute, productRoute, userRoute } from '@/constants/catalogTopics'
 	import { findPresencePalette } from '@/constants/presencePalettes'
 	import AdExpiryTimer from '@/components/AdExpiryTimer.vue'
@@ -34,6 +35,10 @@
 			return pageRoute(value.value)
 		}
 
+		if (props.item.kind === 'event' && !value.value.page && value.value.user) {
+			return userRoute(value.value.user)
+		}
+
 		return props.item.kind === 'product' ? productRoute(value.value) : pageRoute(value.value.page)
 	})
 	const typeLabel = computed(() => {
@@ -56,14 +61,20 @@
 		event: 'event',
 		user: 'person'
 	}[props.item.kind] || (value.value.type === 'community' ? 'diversity_3' : 'storefront')))
-	const pageCategory = computed(() => {
-		if (props.item.kind !== 'page') {
-			return null
+	const resultCategory = computed(() => {
+		if (props.item.kind === 'ad') {
+			return localizedAdCategoryMeta(value.value.category, t)
 		}
 
-		return catalogTopicByKey(props.catalogGroups, value.value.category_key)
+		if (['page', 'service', 'event'].includes(props.item.kind)) {
+			return catalogTopicByKey(props.catalogGroups, value.value.category_key)
+		}
+
+		return null
 	})
-	const pageCategoryLabel = computed(() => catalogLabel(pageCategory.value?.labels, locale.value))
+	const resultCategoryLabel = computed(() => (
+		resultCategory.value?.label || catalogLabel(resultCategory.value?.labels, locale.value)
+	))
 	const title = computed(() => {
 		if (props.item.kind === 'ad') {
 			return value.value.title || ''
@@ -76,8 +87,8 @@
 		return value.value.name || ''
 	})
 	const pagePalette = computed(() => findPresencePalette(value.value.palette_key))
-	const pageCategoryStyle = computed(() => ({
-		'--category-color': pageCategory.value?.color || pagePalette.value.accent
+	const resultCategoryStyle = computed(() => ({
+		'--category-color': resultCategory.value?.color || 'var(--result-accent)'
 	}))
 	const pageBanner = computed(() => imagePayload(value.value.banner_url, value.value, 'banner', title.value))
 	const pageLogo = computed(() => imagePayload(
@@ -131,6 +142,8 @@
 			address = value.value.profile || {}
 		} else if (props.item.kind === 'page') {
 			address = value.value.address_details || {}
+		} else if (props.item.kind === 'event' && !value.value.page) {
+			address = value.value.user?.profile || {}
 		} else {
 			address = value.value.page?.address_details || {}
 		}
@@ -259,11 +272,11 @@
 					<span>{{ typeLabel }}</span>
 				</div>
 				<div
-					v-if="pageCategoryLabel"
+					v-if="resultCategoryLabel"
 					class="search-result-card__category"
-					:style="pageCategoryStyle"
+					:style="resultCategoryStyle"
 				>
-					<span>{{ pageCategoryLabel }}</span>
+					<span>{{ resultCategoryLabel }}</span>
 				</div>
 			</div>
 			<strong class="search-result-card__title">{{ title }}</strong>

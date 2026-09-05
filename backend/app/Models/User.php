@@ -74,6 +74,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Ad::class)->latest();
     }
 
+    public function events(): HasMany
+    {
+        return $this->hasMany(PageEvent::class)->orderBy('event_date')->orderBy('event_time');
+    }
+
     public function pageRatings(): HasMany
     {
         return $this->hasMany(PageRating::class)->latest();

@@ -200,17 +200,15 @@ class SitemapController extends Controller
             ));
 
         PageEvent::query()
-            ->with('page:id,user_id,setup,address')
+            ->with(['page:id,user_id,setup,address,is_unclaimed', 'user.profile'])
             ->whereNotNull('category_key')
-            ->whereHas('page', fn ($query) => $query
-                ->managed()
-                ->whereHas('user', fn ($user) => $user->whereNull('banned_at')))
+            ->publiclyVisible()
             ->orderBy('id')
-            ->get(['id', 'page_id', 'category_key', 'updated_at'])
+            ->get(['id', 'page_id', 'user_id', 'category_key', 'updated_at'])
             ->each(fn (PageEvent $event) => $register(
                 $event->category_key,
-                $this->pageAddressValue($event->page, 'city'),
-                $this->pageAddressValue($event->page, 'neighborhood'),
+                $event->user_id ? $event->user?->profile?->city : $this->pageAddressValue($event->page, 'city'),
+                $event->user_id ? $event->user?->profile?->neighborhood : $this->pageAddressValue($event->page, 'neighborhood'),
                 $event->updated_at
             ));
 
