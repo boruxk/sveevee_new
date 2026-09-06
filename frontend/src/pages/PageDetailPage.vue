@@ -52,6 +52,7 @@
 	const claimSent = ref(false)
 	const replacementConfirmed = ref(false)
 	const leadCompletion = ref(null)
+	const leadCompletionVisitPageId = ref(null)
 	const selectedPalette = computed(() => findPresencePalette(page.value?.palette_key))
 	const isUnclaimed = computed(() => Boolean(page.value?.is_unclaimed))
 	const canRate = computed(() => !isUnclaimed.value && authStore.isAuthenticated && page.value?.user_id !== authStore.user?.id)
@@ -127,6 +128,10 @@
 	})
 	const showLeadCompletionClaim = computed(() => (
 		Boolean(leadCompletion.value) && isUnclaimed.value && showBannerClaimAction.value
+	))
+	const isLeadCompletionVisit = computed(() => (
+		Number(leadCompletionVisitPageId.value) > 0 &&
+		Number(leadCompletionVisitPageId.value) === Number(page.value?.id)
 	))
 	const existingBusinessPage = computed(() => authStore.user?.business_page || null)
 	const requiresBusinessPageReplacement = computed(() => (
@@ -336,10 +341,13 @@
 			const completion = consumeLeadsPage001Completion(data.data?.id)
 			if (data.data?.type !== 'business') {
 				leadCompletion.value = null
+				leadCompletionVisitPageId.value = null
 			} else if (completion) {
 				leadCompletion.value = completion
-			} else if (Number(leadCompletion.value?.pageId) !== Number(data.data?.id)) {
+				leadCompletionVisitPageId.value = completion.pageId
+			} else if (Number(leadCompletionVisitPageId.value) !== Number(data.data?.id)) {
 				leadCompletion.value = null
+				leadCompletionVisitPageId.value = null
 			}
 		} finally {
 			loading.value = false
@@ -570,7 +578,7 @@
 				@rate="reviewDialogOpen = true"
 				@chat="openChat"
 			>
-				<template v-if="isUnclaimed && showBannerClaimAction" #heroAction>
+				<template v-if="isUnclaimed && showBannerClaimAction && !isLeadCompletionVisit" #heroAction>
 					<div class="banner-claim-panel">
 						<p class="banner-claim-panel__title">
 							<span>{{ t('pageClaim.unlockTitle') }}</span>
