@@ -484,6 +484,10 @@ return [
             ],
         ],
         [
+            'name' => 'Beit Shean',
+            'neighborhoods' => [],
+        ],
+        [
             'name' => 'Nazareth',
             'neighborhoods' => [
                 'City Center',
@@ -580,6 +584,7 @@ return [
         ['name' => 'Efrat', 'neighborhoods' => ['Dekel', 'Gefen', 'Tamar', 'Zayit']],
         ['name' => 'Givat ZeEv', 'neighborhoods' => ['City Center', 'Har Shmuel', 'Ramat Givat ZeEv']],
         ['name' => 'Mevaseret Zion', 'neighborhoods' => ['Mevaseret', 'Maoz Zion', 'Reches Halilim']],
+        ['name' => 'Shoeva', 'neighborhoods' => []],
         ['name' => 'Shoham', 'neighborhoods' => ['City Center', 'Tzipor', 'Hadekel']],
     ],
 ];

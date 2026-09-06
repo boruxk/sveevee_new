@@ -42,6 +42,7 @@ const HE_CITY_LABELS = {
 	Ofakim: 'אופקים',
 	Karmiel: 'כרמיאל',
 	Afula: 'עפולה',
+	'Beit Shean': 'בית שאן',
 	Nazareth: 'נצרת',
 	'Nof HaGalil': 'נוף הגליל',
 	'Beit Shemesh': 'בית שמש',
@@ -79,6 +80,7 @@ const HE_CITY_LABELS = {
 	Efrat: 'אפרת',
 	'Givat ZeEv': 'גבעת זאב',
 	'Mevaseret Zion': 'מבשרת ציון',
+	Shoeva: 'שואבה',
 	Shoham: 'שוהם'
 }
 

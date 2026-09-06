@@ -1845,6 +1845,8 @@ HTML);
 
         $this->assertContains('Tel Aviv', $locations->json('data.cities'));
         $this->assertContains('Alfei Menashe', $locations->json('data.cities'));
+        $this->assertContains('Beit Shean', $locations->json('data.cities'));
+        $this->assertContains('Shoeva', $locations->json('data.cities'));
         $this->assertContains(['city' => 'Tel Aviv', 'name' => 'Ramat Aviv'], $locations->json('data.neighborhoods'));
     }
 
