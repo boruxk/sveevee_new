@@ -956,7 +956,14 @@ export default {
 		consentRequired: 'Approval is required to create the page.',
 		submit: 'Create my free business page',
 		submitFailed: 'We could not create the page. Please try again.',
-		optionsFailed: 'We could not load the city and business-field lists. Refresh the page and try again.'
+		optionsFailed: 'We could not load the city and business-field lists. Refresh the page and try again.',
+		completionCreatedTitle: 'Your business page is ready',
+		completionCreatedBody: 'You can now review the details and share the page. To edit content and manage the page, select "This is my business" and request ownership.',
+		completionExistingTitle: 'We found an existing business page',
+		completionExistingBody: 'This page already exists on Sveevee. Review the details and, if this is your business, select "This is my business" to request ownership and manage it.',
+		completionManagedTitle: 'This business page already exists',
+		completionManagedBody: 'This page is already managed on Sveevee. You can review the details and share the page.',
+		completionFeaturesIntro: 'Once ownership is approved, you can add and manage:'
 	},
 	pageClaim: {
 		unverifiedBadge: 'Unclaimed and unverified',

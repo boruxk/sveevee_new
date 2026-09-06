@@ -8,6 +8,7 @@
 	import { CATALOG_SCOPES, catalogGroupsForScope, catalogLabel, normalizeCatalogLocale } from '@/constants/catalogTopics'
 	import { submitLeadsPage001 } from '@/services/api/businessLeads'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { storeLeadsPage001Completion } from '@/utils/leadsPageCompletion'
 
 	const TRACKING_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid']
 	const route = useRoute()
@@ -18,7 +19,6 @@
 	const optionsLoading = ref(false)
 	const optionsError = ref('')
 	const submitError = ref('')
-	const consentError = ref('')
 	const citySelectOptions = ref([])
 	const selectedBusinessGroup = ref('')
 	const serverErrors = reactive({})
@@ -31,7 +31,6 @@
 		full_name: '',
 		email: '',
 		phone: '',
-		consent: false,
 		website: ''
 	})
 
@@ -108,10 +107,9 @@
 
 	async function submit() {
 		submitError.value = ''
-		consentError.value = form.consent ? '' : t('businessLead.consentRequired')
 
 		const valid = await formRef.value?.validate()
-		if (!valid || !form.consent || submitting.value) {
+		if (!valid || submitting.value) {
 			return
 		}
 
@@ -121,6 +119,7 @@
 		try {
 			const { data } = await submitLeadsPage001({
 				...form,
+				consent: true,
 				locale: routeLocale.value || locale.value,
 				...trackingPayload()
 			})
@@ -131,6 +130,7 @@
 			}
 
 			trackLead(page)
+			storeLeadsPage001Completion(page.id, data.data?.created)
 			await router.push(`/${normalizeCatalogLocale(routeLocale.value || locale.value)}${page.public_path}`)
 		} catch (error) {
 			const errors = error.response?.data?.errors || {}
@@ -178,17 +178,6 @@
 
 <template>
 	<q-page class="business-lead-page" :dir="isRtl ? 'rtl' : 'ltr'">
-		<section class="business-lead-hero">
-			<div class="business-lead-hero__content">
-				<h1>{{ t('businessLead.heroTitle') }}</h1>
-				<ul>
-					<li><q-icon name="check_circle" aria-hidden="true" />{{ t('businessLead.benefitPrepared') }}</li>
-					<li><q-icon name="check_circle" aria-hidden="true" />{{ t('businessLead.benefitIncluded') }}</li>
-					<li><q-icon name="check_circle" aria-hidden="true" />{{ t('businessLead.benefitFree') }}</li>
-				</ul>
-			</div>
-		</section>
-
 		<section id="business-lead-form" class="business-lead-form-band">
 			<div class="business-lead-form-wrap">
 				<header class="business-lead-form-head">
@@ -349,15 +338,6 @@
 						<template #prepend><q-icon name="phone" /></template>
 					</q-input>
 
-					<div class="business-lead-consent business-lead-field--wide" :class="{ 'business-lead-consent--error': consentError }">
-						<q-checkbox v-model="form.consent" color="primary" @update:model-value="consentError = ''" />
-						<p>
-							{{ t('businessLead.consent') }}
-							<router-link :to="{ name: 'privacy' }">{{ t('businessLead.privacyLink') }}</router-link>
-						</p>
-						<small v-if="consentError">{{ consentError }}</small>
-					</div>
-
 					<q-banner v-if="submitError" rounded class="business-lead-form__error business-lead-field--wide">
 						<template #avatar><q-icon name="error" /></template>
 						{{ submitError }}
@@ -383,66 +363,20 @@
 
 <style scoped lang="scss">
 .business-lead-page {
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
   max-width: 100%;
+  overflow-x: hidden;
   overflow-x: clip;
   background: #f8f2f7;
   color: #172238;
 }
 
-.business-lead-hero {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  place-items: center;
-}
-
-.business-lead-hero__content {
-  box-sizing: border-box;
-  width: min(1180px, 100%);
-  min-width: 0;
-  max-width: 100%;
-  padding: 44px clamp(20px, 4vw, 48px) 38px;
-}
-
-.business-lead-hero h1 {
-  width: min(720px, 100%);
-  max-width: 100%;
-  margin: 0;
-  color: #2f1747;
-  font-size: 2.65rem;
-  line-height: 1.16;
-  overflow-wrap: anywhere;
-}
-
-.business-lead-hero ul {
-  display: grid;
-  gap: 10px;
-  width: min(680px, 100%);
-  margin: 24px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.business-lead-hero li {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.business-lead-hero li .q-icon {
-  flex: 0 0 auto;
-  margin-top: 3px;
-  color: var(--soz-orange);
-  font-size: 21px;
-}
-
 .business-lead-form-band {
+  display: grid;
+  grid-template-columns: minmax(0, 760px);
+  justify-content: center;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
@@ -452,14 +386,14 @@
 
 .business-lead-form-wrap {
   box-sizing: border-box;
-  width: min(760px, 100%);
+  width: 100%;
   min-width: 0;
-  max-width: 100%;
-  margin: 0 auto;
+  max-width: 760px;
+  margin: 0;
   padding: 30px;
-  border: 1px solid rgba(50, 28, 70, 0.1);
+  border: 1px solid rgba(50, 28, 70, 0.14);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(238, 231, 241, 0.96);
   box-shadow: 0 24px 62px rgba(49, 28, 70, 0.12);
 }
 
@@ -498,6 +432,7 @@
 }
 
 .business-lead-form > * {
+  width: 100%;
   min-width: 0;
   max-width: 100%;
 }
@@ -526,40 +461,6 @@
   height: 12px;
   border-radius: 50%;
   box-shadow: 0 0 0 4px rgba(245, 66, 145, 0.08);
-}
-
-.business-lead-consent {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0 8px;
-  align-items: start;
-  margin: 4px 0 14px;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  border-radius: 14px;
-}
-
-.business-lead-consent--error {
-  border-color: #c10015;
-  background: rgba(193, 0, 21, 0.04);
-}
-
-.business-lead-consent p {
-  margin: 8px 0 0;
-  color: rgba(23, 34, 56, 0.72);
-  font-size: 0.84rem;
-  line-height: 1.5;
-}
-
-.business-lead-consent a {
-  margin-inline-start: 4px;
-  color: #a62267;
-  font-weight: 800;
-}
-
-.business-lead-consent small {
-  grid-column: 2;
-  color: #c10015;
 }
 
 .business-lead-form__error {
@@ -594,28 +495,8 @@
 }
 
 @media (max-width: 700px) {
-  .business-lead-hero__content {
-    width: 100%;
-    padding: 26px 16px 28px;
-  }
-
-  .business-lead-hero h1 {
-    font-size: 1.9rem;
-    line-height: 1.2;
-  }
-
-  .business-lead-hero ul {
-    gap: 8px;
-    margin-top: 18px;
-  }
-
-  .business-lead-hero li {
-    font-size: 0.94rem;
-    line-height: 1.4;
-  }
-
   .business-lead-form-band {
-    padding: 18px 10px calc(34px + env(safe-area-inset-bottom));
+    padding: 18px max(10px, env(safe-area-inset-right)) calc(34px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   }
 
   .business-lead-form-wrap {
@@ -638,11 +519,6 @@
 
   .business-lead-field--wide {
     grid-column: auto;
-  }
-
-  .business-lead-consent {
-    margin-bottom: 10px;
-    padding-inline: 4px;
   }
 
   .business-lead-submit {

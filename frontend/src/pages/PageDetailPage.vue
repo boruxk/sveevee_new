@@ -13,6 +13,7 @@
 	import { locationLabel } from '@/utils/locationLabels'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { consumeLeadsPage001Completion } from '@/utils/leadsPageCompletion'
 	import EventCard from '@/components/events/EventCard.vue'
 	import ProductCard from '@/components/products/ProductCard.vue'
 	import PriceList from '@/components/prices/PriceList.vue'
@@ -50,6 +51,7 @@
 	const claimSending = ref(false)
 	const claimSent = ref(false)
 	const replacementConfirmed = ref(false)
+	const leadCompletion = ref(null)
 	const selectedPalette = computed(() => findPresencePalette(page.value?.palette_key))
 	const isUnclaimed = computed(() => Boolean(page.value?.is_unclaimed))
 	const canRate = computed(() => !isUnclaimed.value && authStore.isAuthenticated && page.value?.user_id !== authStore.user?.id)
@@ -99,6 +101,33 @@
 	const claimRegisterLabel = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimButton') : t('pageClaim.registerToClaim'))
 	const claimPendingLabel = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimPending') : t('pageClaim.pending'))
 	const claimActionHint = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimHint') : '')
+	const leadCompletionCopy = computed(() => {
+		if (!leadCompletion.value) {
+			return null
+		}
+
+		if (leadCompletion.value.created) {
+			return {
+				title: t('businessLead.completionCreatedTitle'),
+				body: t('businessLead.completionCreatedBody')
+			}
+		}
+
+		if (isUnclaimed.value) {
+			return {
+				title: t('businessLead.completionExistingTitle'),
+				body: t('businessLead.completionExistingBody')
+			}
+		}
+
+		return {
+			title: t('businessLead.completionManagedTitle'),
+			body: t('businessLead.completionManagedBody')
+		}
+	})
+	const showLeadCompletionClaim = computed(() => (
+		Boolean(leadCompletion.value) && isUnclaimed.value && showBannerClaimAction.value
+	))
 	const existingBusinessPage = computed(() => authStore.user?.business_page || null)
 	const requiresBusinessPageReplacement = computed(() => (
 		isBusinessPage.value &&
@@ -304,6 +333,14 @@
 			const { data } = await fetchPage(route.params.id)
 			page.value = data.data
 			claimSent.value = data.data?.viewer_claim?.status === 'pending'
+			const completion = consumeLeadsPage001Completion(data.data?.id)
+			if (data.data?.type !== 'business') {
+				leadCompletion.value = null
+			} else if (completion) {
+				leadCompletion.value = completion
+			} else if (Number(leadCompletion.value?.pageId) !== Number(data.data?.id)) {
+				leadCompletion.value = null
+			}
 		} finally {
 			loading.value = false
 		}
@@ -458,6 +495,60 @@
 <template>
 	<q-page padding class="detail-page">
 		<div v-if="page" class="page-shell">
+			<section
+				v-if="leadCompletionCopy"
+				class="lead-completion"
+				role="status"
+				aria-live="polite"
+			>
+				<div class="lead-completion__icon" aria-hidden="true">
+					<q-icon name="check_circle" size="28px" />
+				</div>
+				<div class="lead-completion__copy">
+					<h2>{{ leadCompletionCopy.title }}</h2>
+					<p>{{ leadCompletionCopy.body }}</p>
+					<div v-if="isUnclaimed" class="lead-completion__features">
+						<span>{{ t('businessLead.completionFeaturesIntro') }}</span>
+						<ul>
+							<li v-for="feature in claimUnlockFeatures" :key="feature.key">
+								<q-icon :name="feature.icon" size="17px" aria-hidden="true" />
+								<span>{{ t(feature.labelKey) }}</span>
+							</li>
+						</ul>
+					</div>
+				</div>
+				<div v-if="showLeadCompletionClaim" class="lead-completion__claim">
+					<q-btn v-if="!authStore.isAuthenticated"
+						rounded
+						unelevated
+						no-caps
+						color="primary"
+						icon="verified_user"
+						:label="claimRegisterLabel"
+						:to="claimRegisterRoute"
+					/>
+					<q-btn v-else-if="canRequestClaim"
+						rounded
+						unelevated
+						no-caps
+						color="primary"
+						icon="verified_user"
+						:disable="claimSent"
+						:label="claimSent ? claimPendingLabel : claimButtonLabel"
+						@click="openClaimDialog"
+					/>
+				</div>
+				<q-btn
+					class="lead-completion__close"
+					flat
+					round
+					dense
+					icon="close"
+					:aria-label="t('actions.close')"
+					@click="leadCompletion = null"
+				/>
+			</section>
+
 			<nav v-if="pageCatalogLinks.length" class="detail-catalog-links" :aria-label="t('catalog.navigationLabel')">
 				<router-link v-for="link in pageCatalogLinks" :key="link.to" :to="link.to">
 					{{ link.label }}
@@ -738,6 +829,105 @@
 .page-shell {
   max-width: 1280px;
   margin: 0 auto;
+}
+
+.lead-completion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 154px;
+  margin-bottom: 14px;
+  padding: 22px 20px;
+  border: 1px solid rgba(123, 63, 242, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 12px 30px rgba(41, 30, 82, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.lead-completion__icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 116, 38, 0.13);
+  color: #e9561e;
+}
+
+.lead-completion__copy {
+  min-width: 0;
+}
+
+.lead-completion__copy h2,
+.lead-completion__copy p {
+  margin: 0;
+}
+
+.lead-completion__copy h2 {
+  color: var(--soz-ink);
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.lead-completion__copy p {
+  margin-top: 6px;
+  color: var(--soz-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.lead-completion__features {
+  margin-top: 14px;
+}
+
+.lead-completion__features > span {
+  display: block;
+  color: var(--soz-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.lead-completion__features ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lead-completion__features li {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 9px;
+  border: 1px solid rgba(123, 63, 242, 0.13);
+  border-radius: 8px;
+  background: rgba(123, 63, 242, 0.07);
+  color: var(--soz-ink);
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.lead-completion__features li .q-icon {
+  color: var(--soz-orange);
+}
+
+.lead-completion__claim .q-btn {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.lead-completion__close {
+  grid-column: 4;
+  grid-row: 1;
+  align-self: start;
+  color: var(--soz-muted);
 }
 
 .unclaimed-notice {
@@ -1164,6 +1354,41 @@
 @media (max-width: 700px) {
   .detail-page {
     padding-inline: 10px;
+  }
+
+  .lead-completion {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: start;
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .lead-completion__icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .lead-completion__claim {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .lead-completion__claim .q-btn {
+    width: 100%;
+  }
+
+  .lead-completion__features ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lead-completion__features li {
+    min-width: 0;
+  }
+
+  .lead-completion__close {
+    grid-column: 3;
   }
 
   .page-chat-dialog-card {

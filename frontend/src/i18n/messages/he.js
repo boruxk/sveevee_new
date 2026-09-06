@@ -956,7 +956,14 @@ export default {
 		consentRequired: 'נדרש אישור כדי ליצור את העמוד.',
 		submit: 'יצירת העמוד העסקי בחינם',
 		submitFailed: 'לא הצלחנו ליצור את העמוד. נסו שוב.',
-		optionsFailed: 'לא הצלחנו לטעון את רשימת הערים והתחומים. רעננו את העמוד ונסו שוב.'
+		optionsFailed: 'לא הצלחנו לטעון את רשימת הערים והתחומים. רעננו את העמוד ונסו שוב.',
+		completionCreatedTitle: 'העמוד העסקי שלכם מוכן',
+		completionCreatedBody: 'עכשיו אפשר לבדוק את הפרטים ולשתף את העמוד. כדי לערוך תוכן ולנהל את העמוד, לחצו על "זה העסק שלי" ובקשו בעלות.',
+		completionExistingTitle: 'מצאנו עמוד עסקי קיים',
+		completionExistingBody: 'העמוד הזה כבר קיים ב-Sveevee. בדקו את הפרטים, ואם זה העסק שלכם, לחצו על "זה העסק שלי" כדי לבקש בעלות ולנהל אותו.',
+		completionManagedTitle: 'העמוד העסקי כבר קיים',
+		completionManagedBody: 'העמוד הזה כבר מנוהל ב-Sveevee. אפשר לבדוק את הפרטים ולשתף את העמוד.',
+		completionFeaturesIntro: 'לאחר אישור הבעלות תוכלו להוסיף ולנהל:'
 	},
 	pageClaim: {
 		unverifiedBadge: 'לא נדרש ולא אומת',

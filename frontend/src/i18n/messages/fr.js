@@ -956,7 +956,14 @@ export default {
 		consentRequired: 'Votre autorisation est nécessaire pour créer la page.',
 		submit: 'Créer ma page professionnelle gratuite',
 		submitFailed: "Nous n'avons pas pu créer la page. Veuillez réessayer.",
-		optionsFailed: "Nous n'avons pas pu charger les listes de villes et de secteurs. Actualisez la page et réessayez."
+		optionsFailed: "Nous n'avons pas pu charger les listes de villes et de secteurs. Actualisez la page et réessayez.",
+		completionCreatedTitle: 'Votre page professionnelle est prête',
+		completionCreatedBody: 'Vous pouvez maintenant vérifier les informations et partager la page. Pour modifier le contenu et gérer la page, cliquez sur « C’est mon entreprise » et demandez-en la propriété.',
+		completionExistingTitle: 'Nous avons trouvé une page professionnelle existante',
+		completionExistingBody: 'Cette page existe déjà sur Sveevee. Vérifiez les informations et, s’il s’agit de votre entreprise, cliquez sur « C’est mon entreprise » pour en demander la propriété et la gérer.',
+		completionManagedTitle: 'Cette page professionnelle existe déjà',
+		completionManagedBody: 'Cette page est déjà gérée sur Sveevee. Vous pouvez vérifier les informations et partager la page.',
+		completionFeaturesIntro: 'Une fois la propriété approuvée, vous pourrez ajouter et gérer :'
 	},
 	pageClaim: {
 		unverifiedBadge: 'Non revendiquée et non vérifiée',
