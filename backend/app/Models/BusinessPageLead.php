@@ -9,6 +9,10 @@ class BusinessPageLead extends Model
 {
     public const SOURCE_LEADS_PAGE_001 = 'leads_page_001';
 
+    public const STATUS_NEW = 'new';
+
+    public const STATUS_CONVERTED = 'converted';
+
     protected $fillable = [
         'page_id',
         'source',

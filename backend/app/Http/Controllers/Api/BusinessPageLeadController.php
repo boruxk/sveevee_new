@@ -11,6 +11,7 @@ use App\Rules\CleanContent;
 use App\Services\AccountNotificationService;
 use App\Services\AiWorkPageService;
 use App\Services\ApiResponseService;
+use App\Services\BusinessPageLeadRegistrationService;
 use App\Support\AccountNotificationType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ class BusinessPageLeadController extends Controller
     public function __construct(
         private readonly AiWorkPageService $pages,
         private readonly AccountNotificationService $notifications,
+        private readonly BusinessPageLeadRegistrationService $registrations,
     ) {}
 
     public function store(Request $request)
@@ -81,7 +83,7 @@ class BusinessPageLeadController extends Controller
             return ApiResponseService::error('Business page creation is temporarily unavailable.', status: 503);
         }
 
-        [$page, $created] = DB::transaction(function () use ($request, $data, $pageData, $worker): array {
+        [$page, $created, $lead] = DB::transaction(function () use ($request, $data, $pageData, $worker): array {
             $created = true;
 
             try {
@@ -97,7 +99,7 @@ class BusinessPageLeadController extends Controller
                 $created = false;
             }
 
-            BusinessPageLead::query()->create([
+            $lead = BusinessPageLead::query()->create([
                 'page_id' => $page->id,
                 'source' => BusinessPageLead::SOURCE_LEADS_PAGE_001,
                 'business_name' => $data['business_name'],
@@ -131,11 +133,12 @@ class BusinessPageLeadController extends Controller
                 ]);
             }
 
-            return [$page, $created];
+            return [$page, $created, $lead];
         });
 
         return ApiResponseService::success([
             'created' => $created,
+            'registration_token' => $this->registrations->issue($lead),
             'page' => [
                 'id' => $page->id,
                 'name' => $page->name,
@@ -143,5 +146,29 @@ class BusinessPageLeadController extends Controller
                 'public_path' => $page->public_path,
             ],
         ], $created ? 'Business page created.' : 'Business page already exists.', $created ? 201 : 200);
+    }
+
+    public function attach(Request $request)
+    {
+        $data = $request->validate([
+            'registration_token' => ['required', 'string', 'max:4096'],
+        ]);
+        $page = $this->registrations->attach($request->user(), $data['registration_token']);
+
+        if (! $page) {
+            return ApiResponseService::error(
+                'This business page can no longer be attached automatically.',
+                status: 422,
+            );
+        }
+
+        return ApiResponseService::success([
+            'page' => [
+                'id' => $page->id,
+                'name' => $page->name,
+                'type' => $page->type,
+                'public_path' => $page->public_path,
+            ],
+        ], 'Business page attached.');
     }
 }

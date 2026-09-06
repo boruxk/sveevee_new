@@ -130,7 +130,10 @@
 			}
 
 			trackLead(page)
-			storeLeadsPage001Completion(page.id, data.data?.created)
+			storeLeadsPage001Completion(page.id, data.data?.created, {
+				token: data.data?.registration_token,
+				email: form.email
+			})
 			await router.push(`/${normalizeCatalogLocale(routeLocale.value || locale.value)}${page.public_path}`)
 		} catch (error) {
 			const errors = error.response?.data?.errors || {}

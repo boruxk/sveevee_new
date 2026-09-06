@@ -62,6 +62,8 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
 
     Route::post('/business-page-leads', [BusinessPageLeadController::class, 'store'])
         ->middleware('throttle:business-page-leads');
+    Route::middleware(['auth:sanctum', 'throttle:10,1'])
+        ->post('/business-page-leads/attach', [BusinessPageLeadController::class, 'attach']);
 
     Route::get('/guest-support', [GuestSupportController::class, 'show'])->middleware('throttle:120,1');
     Route::post('/guest-support', [GuestSupportController::class, 'store'])->middleware('throttle:guest-support-start');

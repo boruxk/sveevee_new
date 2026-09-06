@@ -4,6 +4,8 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
+	import { attachLeadsPage001 } from '@/services/api/businessLeads'
+	import { clearLeadsPage001Registration, readLeadsPage001Registration } from '@/utils/leadsPageCompletion'
 
 	const route = useRoute()
 	const router = useRouter()
@@ -26,6 +28,28 @@
 		return t(errorMessages[error] || 'auth.googleLoginFailed')
 	}
 
+	async function attachLeadPage() {
+		const leadRegistration = readLeadsPage001Registration()
+
+		if (!leadRegistration?.token) {
+			return null
+		}
+
+		try {
+			const { data } = await attachLeadsPage001(leadRegistration.token)
+			clearLeadsPage001Registration()
+			await authStore.refreshUser()
+
+			return data.data?.page || null
+		} catch (error) {
+			if (error.response) {
+				clearLeadsPage001Registration()
+			}
+
+			return null
+		}
+	}
+
 	onMounted(async() => {
 		const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''))
 		const token = fragment.get('token')
@@ -40,8 +64,16 @@
 		}
 
 		try {
-			const user = await authStore.loginWithToken(token)
-			router.replace(user?.profile_complete === false ? { name: 'profile', query: { complete: '1' } } : { name: 'home' })
+			await authStore.loginWithToken(token)
+			const leadPage = await attachLeadPage()
+
+			if (leadPage) {
+				router.replace({ name: 'business' })
+
+				return
+			}
+
+			router.replace(authStore.user?.profile_complete === false ? { name: 'profile', query: { complete: '1' } } : { name: 'home' })
 		} catch {
 			$q.notify({ type: 'negative', message: t('auth.googleLoginFailed') })
 			router.replace({ name: 'login' })

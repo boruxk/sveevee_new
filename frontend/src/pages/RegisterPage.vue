@@ -1,5 +1,5 @@
 <script setup>
-	import { computed, reactive, ref } from 'vue'
+	import { computed, onMounted, reactive, ref } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
@@ -10,6 +10,7 @@
 	import GoogleAuthButton from '@/components/GoogleAuthButton.vue'
 	import PasswordInput from '@/components/PasswordInput.vue'
 	import { getLegalDocument } from '@/constants/legalDocuments'
+	import { clearLeadsPage001Registration, readLeadsPage001Registration } from '@/utils/leadsPageCompletion'
 
 	const { t, locale } = useI18n()
 	const $q = useQuasar()
@@ -33,13 +34,34 @@
 	const privacyTitle = computed(() => getLegalDocument('privacy', locale.value).title)
 	const consentRule = (value) => value === true || t('auth.consentRequired')
 
+	onMounted(() => {
+		const leadRegistration = readLeadsPage001Registration()
+
+		if (leadRegistration?.email) {
+			form.email = leadRegistration.email
+		}
+	})
+
 	async function submit() {
 		if (!(await validateRequiredForm(formRef))) {
 			return
 		}
 
 		try {
-			await authStore.register({ ...form, locale: appStore.locale })
+			const leadRegistration = readLeadsPage001Registration()
+			const response = await authStore.register({
+				...form,
+				locale: appStore.locale,
+				...(leadRegistration?.token ? { lead_page_registration_token: leadRegistration.token } : {})
+			})
+			clearLeadsPage001Registration()
+
+			if (response.data?.lead_page_attached) {
+				router.replace({ name: 'business' })
+
+				return
+			}
+
 			router.replace({
 				name: 'profile',
 				query: {

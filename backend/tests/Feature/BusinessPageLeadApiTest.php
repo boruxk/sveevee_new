@@ -27,6 +27,7 @@ class BusinessPageLeadApiTest extends TestCase
             ->assertJsonMissingPath('data.page.full_name')
             ->assertJsonMissingPath('data.page.email')
             ->assertJsonMissingPath('data.page.phone');
+        $this->assertIsString($response->json('data.registration_token'));
 
         $page = Page::query()->sole();
         $worker = User::query()->where('role', 'ai_worker')->firstOrFail();
@@ -102,12 +103,145 @@ class BusinessPageLeadApiTest extends TestCase
             ->assertCreated();
         $second = $this->postJson('/api/v1/business-page-leads', $this->payload())
             ->assertOk()
-            ->assertJsonPath('data.created', false);
+            ->assertJsonPath('data.created', false)
+            ->assertJsonPath('data.registration_token', null);
 
         $this->assertSame($first->json('data.page.id'), $second->json('data.page.id'));
         $this->assertDatabaseCount('pages', 1);
         $this->assertDatabaseCount('business_page_leads', 2);
         $this->assertSame(1, BusinessPageLead::query()->where('created_page', false)->count());
+    }
+
+    public function test_matching_registration_automatically_attaches_the_new_campaign_page(): void
+    {
+        $leadResponse = $this->postJson('/api/v1/business-page-leads', $this->payload())
+            ->assertCreated();
+        $pageId = $leadResponse->json('data.page.id');
+
+        $this->postJson('/api/v1/auth/register', [
+            'email' => 'albert@example.com',
+            'password' => 'password1',
+            'password_confirmation' => 'password1',
+            'given_name' => 'Albert',
+            'family_name' => 'Eliasi',
+            'locale' => 'he',
+            'consented' => true,
+            'lead_page_registration_token' => $leadResponse->json('data.registration_token'),
+        ])->assertCreated()
+            ->assertJsonPath('data.lead_page_attached', true)
+            ->assertJsonPath('data.lead_page.id', $pageId)
+            ->assertJsonPath('data.user.business_page.id', $pageId)
+            ->assertJsonPath('data.user.profile.city', 'Netanya')
+            ->assertJsonPath('data.user.profile.phone', '+972546555580')
+            ->assertJsonPath('data.user.profile_complete', true);
+
+        $user = User::query()->where('email', 'albert@example.com')->firstOrFail();
+        $page = Page::query()->findOrFail($pageId);
+        $this->assertSame($user->id, $page->user_id);
+        $this->assertFalse($page->is_unclaimed);
+        $this->assertNotNull($page->claimed_at);
+        $this->assertSame(BusinessPageLead::STATUS_CONVERTED, BusinessPageLead::query()->sole()->status);
+    }
+
+    public function test_private_account_email_may_differ_from_the_business_contact_email(): void
+    {
+        $leadResponse = $this->postJson('/api/v1/business-page-leads', $this->payload())
+            ->assertCreated();
+        $pageId = $leadResponse->json('data.page.id');
+
+        $this->postJson('/api/v1/auth/register', [
+            'email' => 'someone-else@example.com',
+            'password' => 'password1',
+            'password_confirmation' => 'password1',
+            'given_name' => 'Someone',
+            'family_name' => 'Else',
+            'locale' => 'he',
+            'consented' => true,
+            'lead_page_registration_token' => $leadResponse->json('data.registration_token'),
+        ])->assertCreated()
+            ->assertJsonPath('data.lead_page_attached', true)
+            ->assertJsonPath('data.lead_page.id', $pageId)
+            ->assertJsonPath('data.user.business_page.id', $pageId);
+
+        $page = Page::query()->findOrFail($pageId);
+        $this->assertFalse($page->is_unclaimed);
+        $this->assertSame('albert@example.com', $page->contact_email);
+        $this->assertSame('someone-else@example.com', $page->user->email);
+        $this->assertSame(BusinessPageLead::STATUS_CONVERTED, BusinessPageLead::query()->sole()->status);
+    }
+
+    public function test_tampered_campaign_registration_token_cannot_attach_the_page(): void
+    {
+        $leadResponse = $this->postJson('/api/v1/business-page-leads', $this->payload())
+            ->assertCreated();
+        $token = $leadResponse->json('data.registration_token');
+        $tamperedToken = substr($token, 0, -1).($token[-1] === 'a' ? 'b' : 'a');
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/business-page-leads/attach', [
+            'registration_token' => $tamperedToken,
+        ])->assertUnprocessable();
+
+        $this->assertTrue(Page::query()->sole()->is_unclaimed);
+        $this->assertSame(BusinessPageLead::STATUS_NEW, BusinessPageLead::query()->sole()->status);
+    }
+
+    public function test_authenticated_account_can_attach_its_pending_campaign_page(): void
+    {
+        $leadResponse = $this->postJson('/api/v1/business-page-leads', $this->payload())
+            ->assertCreated();
+        $user = User::factory()->create(['email' => 'albert@example.com']);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/business-page-leads/attach', [
+            'registration_token' => $leadResponse->json('data.registration_token'),
+        ])->assertOk()
+            ->assertJsonPath('data.page.id', $leadResponse->json('data.page.id'));
+
+        $this->assertSame($user->id, Page::query()->sole()->user_id);
+        $this->assertSame('Netanya', $user->profile()->firstOrFail()->city);
+    }
+
+    public function test_expired_campaign_registration_token_cannot_attach_the_page(): void
+    {
+        $leadResponse = $this->postJson('/api/v1/business-page-leads', $this->payload())
+            ->assertCreated();
+        $user = User::factory()->create(['email' => 'albert@example.com']);
+        Sanctum::actingAs($user);
+        $this->travel(25)->hours();
+
+        $this->postJson('/api/v1/business-page-leads/attach', [
+            'registration_token' => $leadResponse->json('data.registration_token'),
+        ])->assertUnprocessable();
+
+        $this->assertTrue(Page::query()->sole()->is_unclaimed);
+        $this->assertSame(BusinessPageLead::STATUS_NEW, BusinessPageLead::query()->sole()->status);
+    }
+
+    public function test_campaign_page_does_not_replace_an_existing_business_page(): void
+    {
+        $leadResponse = $this->postJson('/api/v1/business-page-leads', $this->payload())
+            ->assertCreated();
+        $user = User::factory()->create(['email' => 'albert@example.com']);
+        Page::query()->create([
+            'user_id' => $user->id,
+            'created_by_user_id' => $user->id,
+            'type' => Page::TYPE_BUSINESS,
+            'is_unclaimed' => false,
+            'name' => 'Existing Managed Business',
+            'category_key' => 'services.home_repairs.handyman',
+            'setup' => ['address' => ['city' => 'Jerusalem']],
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/business-page-leads/attach', [
+            'registration_token' => $leadResponse->json('data.registration_token'),
+        ])->assertUnprocessable();
+
+        $leadPage = Page::query()->findOrFail($leadResponse->json('data.page.id'));
+        $this->assertTrue($leadPage->is_unclaimed);
+        $this->assertNotSame($user->id, $leadPage->user_id);
     }
 
     public function test_campaign_form_accepts_alfei_menashe_as_a_city(): void

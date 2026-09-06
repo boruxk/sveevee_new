@@ -95,7 +95,7 @@
 			{ key: 'events', icon: 'event', labelKey: 'businessFeatures.events' }
 		]),
 		{ key: 'ratings', icon: 'reviews', labelKey: 'ratings.title' },
-		{ key: 'chat', icon: 'chat_bubble', labelKey: 'chat.title' }
+		{ key: 'chat', icon: 'chat_bubble', labelKey: 'pageClaim.customerCommunication' }
 	])
 	const claimUnlockFreeCharacters = computed(() => Array.from(t('pageClaim.unlockFree')))
 	const claimButtonLabel = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimButton') : t('pageClaim.claimButton'))
@@ -110,14 +110,14 @@
 		if (leadCompletion.value.created) {
 			return {
 				title: t('businessLead.completionCreatedTitle'),
-				body: t('businessLead.completionCreatedBody')
+				body: t(authStore.isAuthenticated ? 'businessLead.completionCreatedBody' : 'businessLead.completionCreatedGuestBody')
 			}
 		}
 
 		if (isUnclaimed.value) {
 			return {
 				title: t('businessLead.completionExistingTitle'),
-				body: t('businessLead.completionExistingBody')
+				body: t(authStore.isAuthenticated ? 'businessLead.completionExistingBody' : 'businessLead.completionExistingGuestBody')
 			}
 		}
 
@@ -514,7 +514,10 @@
 				</div>
 				<div class="lead-completion__copy">
 					<h2>{{ leadCompletionCopy.title }}</h2>
-					<p>{{ leadCompletionCopy.body }}</p>
+					<p>
+						<span>{{ leadCompletionCopy.body }}</span>
+						<strong v-if="isUnclaimed">{{ t('businessLead.completionFreeNote') }}</strong>
+					</p>
 					<div v-if="isUnclaimed" class="lead-completion__features">
 						<span>{{ t('businessLead.completionFeaturesIntro') }}</span>
 						<ul>
@@ -532,7 +535,7 @@
 						no-caps
 						color="primary"
 						icon="verified_user"
-						:label="claimRegisterLabel"
+						:label="t('nav.register')"
 						:to="claimRegisterRoute"
 					/>
 					<q-btn v-else-if="canRequestClaim"
@@ -875,15 +878,23 @@
 
 .lead-completion__copy h2 {
   color: var(--soz-ink);
-  font-size: 1.05rem;
+  font-size: 1.3rem;
+  font-weight: 800;
   line-height: 1.3;
 }
 
 .lead-completion__copy p {
-  margin-top: 6px;
-  color: var(--soz-muted);
-  font-size: 0.9rem;
+  margin-top: 8px;
+  color: var(--soz-ink);
+  font-size: 1.03rem;
+  font-weight: 600;
   line-height: 1.5;
+}
+
+.lead-completion__copy p strong {
+  margin-inline-start: 0.3em;
+  color: var(--soz-primary);
+  font-weight: 800;
 }
 
 .lead-completion__features {
@@ -927,7 +938,10 @@
 }
 
 .lead-completion__claim .q-btn {
-  min-height: 42px;
+  min-height: 52px;
+  padding-inline: 24px;
+  font-size: 1rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 

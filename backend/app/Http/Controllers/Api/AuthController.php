@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\EmailBan;
 use App\Models\User;
 use App\Services\ApiResponseService;
+use App\Services\BusinessPageLeadRegistrationService;
 use App\Services\PayloadService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
@@ -23,7 +25,10 @@ use Throwable;
 
 class AuthController extends Controller
 {
-    public function __construct(private readonly PayloadService $payloads) {}
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly BusinessPageLeadRegistrationService $leadRegistrations,
+    ) {}
 
     public function register(Request $request)
     {
@@ -39,31 +44,46 @@ class AuthController extends Controller
             'neighborhood' => ['nullable', 'string', 'max:120'],
             'locale' => ['nullable', 'string', Rule::in(['he', 'en', 'ru', 'fr'])],
             'consented' => ['required', 'accepted'],
+            'lead_page_registration_token' => ['nullable', 'string', 'max:4096'],
         ]);
 
         if (EmailBan::query()->where('email', $data['email'])->exists()) {
             return ApiResponseService::error('This email address is banned.', status: 403);
         }
 
-        $user = User::query()->create([
-            'name' => trim($data['given_name'].' '.$data['family_name']),
-            'given_name' => $data['given_name'],
-            'family_name' => $data['family_name'],
-            'email' => $data['email'],
-            'password' => $data['password'],
-            'locale' => $data['locale'] ?? 'he',
-            'consented' => true,
-            'role' => 'user',
-        ]);
+        [$user, $leadPage] = DB::transaction(function () use ($data): array {
+            $user = User::query()->create([
+                'name' => trim($data['given_name'].' '.$data['family_name']),
+                'given_name' => $data['given_name'],
+                'family_name' => $data['family_name'],
+                'email' => $data['email'],
+                'password' => $data['password'],
+                'locale' => $data['locale'] ?? 'he',
+                'consented' => true,
+                'role' => 'user',
+            ]);
 
-        $user->profile()->updateOrCreate([], [
-            'phone' => $data['phone'] ?? null,
-            'city' => $data['city'] ?? null,
-            'neighborhood' => $data['neighborhood'] ?? null,
-        ]);
+            $user->profile()->updateOrCreate([], [
+                'phone' => $data['phone'] ?? null,
+                'city' => $data['city'] ?? null,
+                'neighborhood' => $data['neighborhood'] ?? null,
+            ]);
+            $leadPage = filled($data['lead_page_registration_token'] ?? null)
+                ? $this->leadRegistrations->attach($user, $data['lead_page_registration_token'])
+                : null;
+
+            return [$user, $leadPage];
+        });
         $user->sendEmailVerificationNotification();
 
-        return $this->authenticated($user, 'Account created.', 201);
+        return $this->authenticated($user, 'Account created.', 201, [
+            'lead_page_attached' => (bool) $leadPage,
+            'lead_page' => $leadPage ? [
+                'id' => $leadPage->id,
+                'type' => $leadPage->type,
+                'public_path' => $leadPage->public_path,
+            ] : null,
+        ]);
     }
 
     public function login(Request $request)
@@ -258,13 +278,14 @@ class AuthController extends Controller
         return ApiResponseService::success(null, 'Logged out.');
     }
 
-    private function authenticated(User $user, string $message, int $status = 200)
+    private function authenticated(User $user, string $message, int $status = 200, array $extra = [])
     {
         $user->forceFill(['last_seen_at' => now()])->saveQuietly();
 
         return ApiResponseService::success([
             'token' => $this->createAuthToken($user),
             'user' => $this->payloads->user($user->fresh(), includePrivate: true),
+            ...$extra,
         ], $message, $status);
     }
 
