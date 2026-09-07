@@ -184,7 +184,6 @@
 		<section id="business-lead-form" class="business-lead-form-band">
 			<div class="business-lead-form-wrap">
 				<header class="business-lead-form-head">
-					<span>{{ t('businessLead.formEyebrow') }}</span>
 					<h2>{{ t('businessLead.formTitle') }}</h2>
 					<p>{{ t('businessLead.formText') }}</p>
 				</header>
@@ -404,19 +403,12 @@
   margin-bottom: 24px;
 }
 
-.business-lead-form-head span {
-  color: #d92d7a;
-  font-size: 0.78rem;
-  font-weight: 850;
-}
-
 .business-lead-form-head h2,
 .business-lead-form-head p {
   margin: 0;
 }
 
 .business-lead-form-head h2 {
-  margin-top: 5px;
   font-size: 1.72rem;
   line-height: 1.25;
 }

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\BusinessImportClient;
 use App\Models\ChatMessage;
 use App\Models\Page;
 use App\Models\User;
@@ -13,6 +14,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,6 +33,14 @@ class AppServiceProvider extends ServiceProvider
     {
         Page::observe(PageObserver::class);
         ChatMessage::observe(ChatMessageObserver::class);
+
+        Passport::tokensCan([
+            BusinessImportClient::SCOPE_READ => 'Search businesses and check duplicates.',
+            BusinessImportClient::SCOPE_WRITE => 'Create and update unclaimed business pages.',
+        ]);
+        Passport::clientCredentialsTokensExpireIn(
+            now()->addMinutes(max(5, (int) config('business_import.token_ttl_minutes', 60)))
+        );
 
         ResetPassword::createUrlUsing(function (User $user, string $token): string {
             $frontendUrl = rtrim((string) config('app.frontend_url'), '/');
@@ -84,6 +94,18 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(3)->by('business-lead-minute|'.$request->ip()),
                 Limit::perDay(20)->by('business-lead-day|'.$request->ip()),
                 Limit::perDay(5)->by('business-lead-email|'.$email),
+            ];
+        });
+
+        RateLimiter::for('business-import-api', function (Request $request) {
+            $clientId = (string) $request->attributes->get('oauth_client_id', 'unknown');
+            $key = $clientId.'|'.$request->ip();
+
+            return [
+                Limit::perMinute(max(1, (int) config('business_import.requests_per_minute', 120)))
+                    ->by('business-import-minute|'.$key),
+                Limit::perHour(max(1, (int) config('business_import.requests_per_hour', 5000)))
+                    ->by('business-import-hour|'.$key),
             ];
         });
     }

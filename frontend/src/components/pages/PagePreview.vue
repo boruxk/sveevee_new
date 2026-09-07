@@ -730,7 +730,7 @@
   top: 24px;
   right: 24px;
   z-index: 3;
-  width: min(430px, calc(100% - 48px));
+  width: min(600px, calc(100% - 48px));
 }
 
 .page-preview__hero-action :deep(.q-btn) {
@@ -1291,7 +1291,7 @@
   }
 
   .page-preview--has-hero-action .page-preview__intro {
-    padding-top: 88px;
+    padding-top: 170px;
   }
 
   .page-preview__hero,
@@ -1330,7 +1330,7 @@
   }
 
   .page-preview--has-hero-action .page-preview__intro {
-    padding-top: 230px;
+    padding-top: 190px;
   }
 
   :global([dir="rtl"]) .page-preview__hero-actions {

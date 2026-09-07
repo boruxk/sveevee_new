@@ -97,11 +97,13 @@
 		{ key: 'ratings', icon: 'reviews', labelKey: 'ratings.title' },
 		{ key: 'chat', icon: 'chat_bubble', labelKey: 'pageClaim.customerCommunication' }
 	])
+	const claimUnlockTitle = computed(() => t(
+		authStore.isAuthenticated ? 'pageClaim.unlockTitle' : 'pageClaim.registerUnlockTitle'
+	))
 	const claimUnlockFreeCharacters = computed(() => Array.from(t('pageClaim.unlockFree')))
 	const claimButtonLabel = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimButton') : t('pageClaim.claimButton'))
-	const claimRegisterLabel = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimButton') : t('pageClaim.registerToClaim'))
+	const claimRegisterLabel = computed(() => isBusinessPage.value ? t('pageClaim.businessRegisterButton') : t('pageClaim.registerToClaim'))
 	const claimPendingLabel = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimPending') : t('pageClaim.pending'))
-	const claimActionHint = computed(() => isBusinessPage.value ? t('pageClaim.businessClaimHint') : '')
 	const leadCompletionCopy = computed(() => {
 		if (!leadCompletion.value) {
 			return null
@@ -584,7 +586,7 @@
 				<template v-if="isUnclaimed && showBannerClaimAction && !isLeadCompletionVisit" #heroAction>
 					<div class="banner-claim-panel">
 						<p class="banner-claim-panel__title">
-							<span>{{ t('pageClaim.unlockTitle') }}</span>
+							<span>{{ claimUnlockTitle }}</span>
 							<strong class="banner-claim-panel__free" :aria-label="t('pageClaim.unlockFree')">
 								<span
 									v-for="(character, index) in claimUnlockFreeCharacters"
@@ -595,7 +597,11 @@
 								>{{ character }}</span>
 							</strong>
 						</p>
-						<ul class="banner-claim-features" :aria-label="t('pageClaim.unlockTitle')">
+						<ul
+							class="banner-claim-features"
+							:aria-label="claimUnlockTitle"
+							:style="{ '--claim-feature-count': claimUnlockFeatures.length }"
+						>
 							<li v-for="feature in claimUnlockFeatures" :key="feature.key">
 								<q-icon :name="feature.icon" size="18px" aria-hidden="true" />
 								<span>{{ t(feature.labelKey) }}</span>
@@ -623,7 +629,6 @@
 								:label="claimSent ? claimPendingLabel : claimButtonLabel"
 								@click="openClaimDialog"
 							/>
-							<small v-if="claimActionHint" class="claim-action-hint">{{ claimActionHint }}</small>
 						</div>
 					</div>
 				</template>
@@ -691,7 +696,6 @@
 						:label="claimSent ? claimPendingLabel : claimButtonLabel"
 						@click="openClaimDialog"
 					/>
-					<small v-if="claimActionHint && (!authStore.isAuthenticated || canRequestClaim)" class="claim-action-hint">{{ claimActionHint }}</small>
 				</div>
 			</section>
 
@@ -1004,28 +1008,28 @@
 }
 
 .banner-claim-button {
-  width: 100%;
+  width: auto;
   min-height: 42px;
   max-width: 100%;
   box-shadow: 0 12px 28px rgba(17, 34, 45, 0.2);
 }
 
-.banner-claim-panel__action {
-  display: grid;
-  gap: 6px;
+.banner-claim-button :deep(.q-btn__content),
+.unclaimed-notice__action :deep(.q-btn__content) {
+  min-width: 0;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-.claim-action-hint {
-  color: rgba(17, 34, 45, 0.66);
-  font-size: 0.74rem;
-  font-weight: 600;
-  line-height: 1.35;
-  text-align: center;
+.banner-claim-panel__action {
+  display: flex;
+  justify-content: center;
 }
 
 .banner-claim-panel {
   width: 100%;
-  padding: 12px;
+  padding: 10px 12px;
   border: 1px solid rgba(255, 255, 255, 0.38);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.52);
@@ -1040,10 +1044,12 @@
   flex-wrap: wrap;
   gap: 4px;
   align-items: baseline;
-  margin: 0 0 8px;
+  justify-content: center;
+  margin: 0 0 6px;
   font-size: 0.82rem;
   font-weight: 800;
   line-height: 1.2;
+  text-align: center;
 }
 
 .banner-claim-panel__free {
@@ -1081,9 +1087,9 @@
 
 .banner-claim-features {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
-  gap: 7px 10px;
-  margin: 0 0 11px;
+  grid-template-columns: repeat(var(--claim-feature-count), minmax(0, 1fr));
+  gap: 6px 10px;
+  margin: 0 0 8px;
   padding: 0;
   list-style: none;
 }
@@ -1430,6 +1436,17 @@
     width: 100%;
   }
 
+  .banner-claim-features {
+    gap: 4px;
+  }
+
+  .banner-claim-features li {
+    flex-direction: column;
+    gap: 2px;
+    justify-content: flex-start;
+    text-align: center;
+  }
+
   .replacement-dialog-head {
     grid-template-columns: auto minmax(0, 1fr) auto;
     padding: 18px 16px 15px;
@@ -1466,9 +1483,4 @@
   }
 }
 
-@media (max-width: 380px) {
-  .banner-claim-features {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 </style>

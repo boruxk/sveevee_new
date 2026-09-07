@@ -7,7 +7,6 @@ use App\Models\Page;
 use App\Models\User;
 use App\Rules\CleanContent;
 use App\Support\CatalogTopics;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -182,12 +181,13 @@ class AiWorkPageService
         ])->validate();
     }
 
-    public function create(User $worker, array $data): Page
+    public function create(User $worker, array $data, bool $allowSingleContactDuplicate = false): Page
     {
-        $identity = $this->identities->fromInput($data);
-
-        return Cache::lock('ai-page-identity:'.$identity['identity_hash'], 10)->block(5, function () use ($worker, $data): Page {
-            $matches = $this->identities->exactMatches($data);
+        return $this->identities->withDuplicateLocks($data, function () use ($worker, $data, $allowSingleContactDuplicate): Page {
+            $matches = $this->identities->exactMatches(
+                $data,
+                allowSingleContactSignal: $allowSingleContactDuplicate
+            );
             if ($matches->isNotEmpty()) {
                 throw new ExactPageDuplicateException($matches->all());
             }
@@ -206,12 +206,14 @@ class AiWorkPageService
         });
     }
 
-    public function update(Page $page, array $data): Page
+    public function update(Page $page, array $data, bool $allowSingleContactDuplicate = false): Page
     {
-        $identity = $this->identities->fromInput($data);
-
-        return Cache::lock('ai-page-identity:'.$identity['identity_hash'], 10)->block(5, function () use ($page, $data): Page {
-            $matches = $this->identities->exactMatches($data, $page->id);
+        return $this->identities->withDuplicateLocks($data, function () use ($page, $data, $allowSingleContactDuplicate): Page {
+            $matches = $this->identities->exactMatches(
+                $data,
+                $page->id,
+                allowSingleContactSignal: $allowSingleContactDuplicate
+            );
             if ($matches->isNotEmpty()) {
                 throw new ExactPageDuplicateException($matches->all());
             }
@@ -366,6 +368,8 @@ class AiWorkPageService
     private function fill(Page $page, array $data): void
     {
         $address = $data['address'];
+        $existingSetup = is_array($page->setup) ? $page->setup : [];
+        $existingFeatures = is_array($existingSetup['features'] ?? null) ? $existingSetup['features'] : [];
         $contact = [
             'tel' => $this->nullableString($data['phone'] ?? null),
             'email' => $this->nullableString($data['contact_email'] ?? null),
@@ -381,6 +385,7 @@ class AiWorkPageService
             'category_key' => $data['category_key'],
             'palette_key' => $data['palette_key'] ?? 'amber-dawn',
             'setup' => [
+                ...$existingSetup,
                 'website' => $data['website'] ?? null,
                 'contact' => $contact,
                 'address' => $address,
@@ -398,12 +403,13 @@ class AiWorkPageService
                 'specialties' => $data['type'] === Page::TYPE_BUSINESS
                     ? $this->normalizedStringList($data['specialties'] ?? [], 50)
                     : [],
-                'features' => ['store' => false, 'services' => false, 'events' => false, 'price_list' => false],
+                'features' => [
+                    'store' => $data['type'] === Page::TYPE_BUSINESS && (bool) ($existingFeatures['store'] ?? false),
+                    'services' => $data['type'] === Page::TYPE_BUSINESS && (bool) ($existingFeatures['services'] ?? false),
+                    'events' => $data['type'] === Page::TYPE_COMMUNITY && (bool) ($existingFeatures['events'] ?? false),
+                    'price_list' => $data['type'] === Page::TYPE_BUSINESS && (bool) ($existingFeatures['price_list'] ?? false),
+                ],
             ],
-            'logo_path' => null,
-            'logo_original_name' => null,
-            'banner_path' => null,
-            'banner_original_name' => null,
         ]);
     }
 

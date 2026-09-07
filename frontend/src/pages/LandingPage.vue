@@ -1121,6 +1121,12 @@
   line-height: 1.55;
 }
 
+.sveevee-rtl .audience-panel__free-note {
+  font-family: Arial, "Segoe UI", sans-serif;
+  font-style: normal;
+  letter-spacing: 0;
+}
+
 .audience-panel__actions {
   display: flex;
   flex-wrap: wrap;

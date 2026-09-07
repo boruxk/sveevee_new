@@ -971,6 +971,7 @@ export default {
 	pageClaim: {
 		unverifiedBadge: 'Не востребовано и не проверено',
 		unlockTitle: 'Получите страницу, чтобы открыть',
+		registerUnlockTitle: 'Зарегистрируйтесь, чтобы открыть',
 		unlockFree: 'бесплатно',
 		customerCommunication: 'Общение с клиентами',
 		title: 'Эта страница представляет вас?',
@@ -978,7 +979,8 @@ export default {
 		accuracyWarning: 'Информация может быть неполной, ошибочной или устаревшей. Проверяйте важные сведения напрямую у бизнеса или сообщества.',
 		registerToClaim: 'Зарегистрироваться и получить страницу',
 		claimButton: 'Запросить владение',
-		businessClaimButton: 'Это мой бизнес',
+		businessClaimButton: 'Получить управление моим бизнесом',
+		businessRegisterButton: 'Зарегистрироваться, чтобы управлять моим бизнесом',
 		businessClaimHint: 'Получить управление страницей и управлять ею',
 		businessClaimPending: 'Запрос на владение отправлен',
 		pending: 'Запрос ожидает',

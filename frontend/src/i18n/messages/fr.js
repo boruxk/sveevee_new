@@ -971,6 +971,7 @@ export default {
 	pageClaim: {
 		unverifiedBadge: 'Non revendiquée et non vérifiée',
 		unlockTitle: 'Revendiquer pour débloquer',
+		registerUnlockTitle: 'S’inscrire pour débloquer',
 		unlockFree: 'gratuitement',
 		customerCommunication: 'Communication avec les clients',
 		title: 'Cette page vous représente-t-elle ?',
@@ -978,7 +979,8 @@ export default {
 		accuracyWarning: 'Les informations peuvent être incomplètes, erronées ou obsolètes. Vérifiez les éléments importants directement auprès de l’entreprise ou de la communauté.',
 		registerToClaim: 'S’inscrire pour revendiquer la page',
 		claimButton: 'Demander la propriété',
-		businessClaimButton: 'C’est mon entreprise',
+		businessClaimButton: 'Prendre le contrôle de mon entreprise',
+		businessRegisterButton: 'S’inscrire pour gérer mon entreprise',
 		businessClaimHint: 'Prenez le contrôle de cette page et gérez-la',
 		businessClaimPending: 'Demande de propriété envoyée',
 		pending: 'Demande en attente',

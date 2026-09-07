@@ -15,6 +15,7 @@ class PageIdentityKey extends Model
         'normalized_city',
         'normalized_neighborhood',
         'normalized_phone',
+        'normalized_email',
         'normalized_website',
         'normalized_address',
         'identity_hash',

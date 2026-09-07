@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0",
+        "laravel/passport": "^13.7",
         "laravel/reverb": "^1.11",
         "laravel/sanctum": "^4.3",
         "laravel/socialite": "^5.29",

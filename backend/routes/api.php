@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\AiWorkPageImportController;
 use App\Http\Controllers\Api\AiWorkPreferenceController;
 use App\Http\Controllers\Api\AiWorkTaskController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BusinessImportController;
 use App\Http\Controllers\Api\BusinessPageLeadController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ChatController;
@@ -35,6 +36,9 @@ use App\Http\Controllers\Api\PresenceController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PublicUserController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Middleware\AuditBusinessImportRequest;
+use App\Http\Middleware\EnsureBusinessImportClient;
+use App\Models\BusinessImportClient;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(function () {
@@ -64,6 +68,36 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         ->middleware('throttle:business-page-leads');
     Route::middleware(['auth:sanctum', 'throttle:10,1'])
         ->post('/business-page-leads/attach', [BusinessPageLeadController::class, 'attach']);
+
+    Route::prefix('business-import')->withoutMiddleware('recaptcha')->group(function (): void {
+        $readMiddleware = [
+            AuditBusinessImportRequest::class,
+            EnsureBusinessImportClient::using(BusinessImportClient::SCOPE_READ),
+            'throttle:business-import-api',
+        ];
+        $writeMiddleware = [
+            AuditBusinessImportRequest::class,
+            EnsureBusinessImportClient::using(BusinessImportClient::SCOPE_WRITE),
+            'throttle:business-import-api',
+        ];
+
+        Route::get('/businesses', [BusinessImportController::class, 'index'])
+            ->middleware($readMiddleware)
+            ->name('business-import.businesses.index');
+        Route::post('/businesses/duplicates', [BusinessImportController::class, 'duplicateCheck'])
+            ->middleware($readMiddleware)
+            ->name('business-import.businesses.duplicates');
+        Route::post('/businesses/batch', [BusinessImportController::class, 'batch'])
+            ->middleware($writeMiddleware)
+            ->name('business-import.businesses.batch');
+        Route::post('/businesses', [BusinessImportController::class, 'store'])
+            ->middleware($writeMiddleware)
+            ->name('business-import.businesses.store');
+        Route::patch('/businesses/{page}', [BusinessImportController::class, 'update'])
+            ->whereNumber('page')
+            ->middleware($writeMiddleware)
+            ->name('business-import.businesses.update');
+    });
 
     Route::get('/guest-support', [GuestSupportController::class, 'show'])->middleware('throttle:120,1');
     Route::post('/guest-support', [GuestSupportController::class, 'store'])->middleware('throttle:guest-support-start');

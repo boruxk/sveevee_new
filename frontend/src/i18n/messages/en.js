@@ -971,6 +971,7 @@ export default {
 	pageClaim: {
 		unverifiedBadge: 'Unclaimed and unverified',
 		unlockTitle: 'Claim to unlock',
+		registerUnlockTitle: 'Register to unlock',
 		unlockFree: 'for free',
 		customerCommunication: 'Customer communication',
 		title: 'Does this page represent you?',
@@ -978,7 +979,8 @@ export default {
 		accuracyWarning: 'The information may be incomplete, incorrect, or out of date. Verify important details directly with the business or community.',
 		registerToClaim: 'Register to claim this page',
 		claimButton: 'Request ownership',
-		businessClaimButton: 'This is my business',
+		businessClaimButton: 'Take control of my business',
+		businessRegisterButton: 'Register to take control of my business',
 		businessClaimHint: 'Take control of this page and manage it',
 		businessClaimPending: 'Ownership request sent',
 		pending: 'Request pending',

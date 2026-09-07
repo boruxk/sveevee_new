@@ -971,6 +971,7 @@ export default {
 	pageClaim: {
 		unverifiedBadge: 'לא נדרש ולא אומת',
 		unlockTitle: 'קבלו בעלות כדי לפתוח',
+		registerUnlockTitle: 'הירשמו כדי לפתוח',
 		unlockFree: 'בחינם',
 		customerCommunication: 'תקשורת עם לקוחות',
 		title: 'העמוד הזה מייצג אתכם?',
@@ -978,7 +979,8 @@ export default {
 		accuracyWarning: 'המידע עשוי להיות חלקי, שגוי או לא מעודכן. מומלץ לאמת פרטים חשובים ישירות מול העסק או הקהילה.',
 		registerToClaim: 'הרשמה כדי לקבל בעלות',
 		claimButton: 'בקשת בעלות',
-		businessClaimButton: 'זה העסק שלי',
+		businessClaimButton: 'לקבל שליטה על העסק שלי',
+		businessRegisterButton: 'להירשם כדי לקבל שליטה על העסק שלי',
 		businessClaimHint: 'לקבל שליטה על העמוד ולנהל אותו',
 		businessClaimPending: 'בקשת הבעלות נשלחה',
 		pending: 'הבקשה ממתינה',
