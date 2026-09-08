@@ -1,0 +1,268 @@
+@use 'sass:meta';
+
+// Shared form appearance, using the profile page as the reference.
+:root {
+  --form-field-height: 50px;
+  --form-field-radius: 26px;
+  --form-field-font-size: 17px;
+  --form-field-text-inset: 5px;
+  --form-field-color: var(--soz-ink);
+  --form-field-background: rgba(255, 255, 255, 0.88);
+  --form-field-focus-background: rgba(255, 255, 255, 0.96);
+  --form-field-border: rgba(123, 63, 242, 0.18);
+  --form-field-hover-border: rgba(245, 66, 145, 0.34);
+}
+
+// Inputs, textareas, selectors and image-upload fields.
+.q-field--outlined {
+  .q-field__control {
+    border-radius: var(--form-field-radius);
+    background: var(--form-field-background);
+    color: var(--form-field-color);
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease;
+
+    &::before {
+      border-color: var(--form-field-border);
+      border-width: 1px;
+    }
+
+    &:hover::before {
+      border-color: var(--form-field-hover-border);
+    }
+  }
+
+  .q-field__native,
+  .q-field__input,
+  .q-field__label,
+  .q-field__marginal,
+  .q-field__prefix,
+  .q-field__suffix {
+    color: var(--form-field-color);
+  }
+
+  .q-field__native::placeholder,
+  .q-field__input::placeholder {
+    color: rgba(17, 34, 45, 0.44);
+  }
+
+  &.q-field--focused .q-field__control {
+    background: var(--form-field-focus-background);
+
+    &::before,
+    &::after {
+      border-color: var(--soz-primary);
+      border-width: 1px;
+    }
+  }
+
+  &.q-field--float .q-field__label,
+  &.q-field--focused .q-field__label {
+    color: var(--soz-primary-deep);
+  }
+}
+
+.q-field--outlined:not(.q-textarea) {
+  .q-field__control {
+    height: var(--form-field-height);
+    min-height: var(--form-field-height);
+  }
+
+  .q-field__control-container {
+    height: var(--form-field-height);
+    padding-inline-start: var(--form-field-text-inset);
+  }
+
+  .q-field__marginal {
+    height: var(--form-field-height);
+  }
+
+  .q-field__native,
+  .q-field__input {
+    height: var(--form-field-height);
+    min-height: var(--form-field-height);
+    padding-bottom: 7px;
+    font-size: var(--form-field-font-size);
+    line-height: 28px;
+  }
+
+  .q-field__label {
+    top: 15px;
+    inset-inline-start: var(--form-field-text-inset);
+    font-size: var(--form-field-font-size);
+  }
+}
+
+.q-field--outlined.q-field--dense:not(.q-textarea) {
+  .q-field__control,
+  .q-field__control-container,
+  .q-field__marginal,
+  .q-field__native,
+  .q-field__input {
+    height: var(--form-field-height);
+    min-height: var(--form-field-height);
+  }
+
+  .q-field__native,
+  .q-field__input {
+    padding-bottom: 7px;
+  }
+
+  .q-field__label {
+    top: 15px;
+    inset-inline-start: var(--form-field-text-inset);
+  }
+}
+
+.q-textarea.q-field--outlined {
+  .q-field__control {
+    min-height: 140px;
+    border-radius: 30px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .q-field__native {
+    min-height: 108px;
+    padding-top: 18px;
+    padding-bottom: 18px;
+    padding-inline-start: var(--form-field-text-inset);
+    line-height: 1.55;
+    font-size: var(--form-field-font-size);
+    resize: vertical;
+  }
+
+  .q-field__label {
+    inset-inline-start: var(--form-field-text-inset);
+    font-size: var(--form-field-font-size);
+  }
+}
+
+.q-select.q-field--outlined {
+  .q-field__control {
+    padding-inline-end: 8px;
+  }
+
+  .q-field__control-container {
+    display: flex;
+    align-items: center;
+  }
+
+  .q-field__native {
+    align-items: center;
+    padding-bottom: 7px;
+  }
+
+  .q-field__input {
+    display: flex;
+    align-items: center;
+    padding-bottom: 4px;
+    font-size: var(--form-field-font-size);
+    line-height: 1.2;
+  }
+
+  &:not(.q-field--auto-height) {
+    .q-field__native {
+      padding-top: 11px;
+      padding-bottom: 11px;
+    }
+
+    .q-field__input {
+      padding-top: 7px;
+      padding-bottom: 1px;
+    }
+  }
+}
+
+.q-file.q-field--outlined {
+  .q-field__control {
+    height: var(--form-field-height);
+    min-height: var(--form-field-height);
+  }
+
+  .q-field__control-container {
+    display: flex;
+    align-items: center;
+    height: var(--form-field-height);
+    padding-top: 0 !important;
+  }
+
+  .q-field__native {
+    display: flex;
+    align-items: center;
+    height: var(--form-field-height);
+    min-height: var(--form-field-height);
+    padding-top: 6px !important;
+    padding-bottom: 0 !important;
+    line-height: 1.2;
+  }
+
+  .q-field__input {
+    height: auto;
+    min-height: 0;
+    padding-top: 6px;
+    padding-bottom: 0;
+    line-height: 1.2;
+  }
+}
+
+.q-menu .q-item {
+  min-height: 46px;
+  border-radius: 18px;
+  font-size: var(--form-field-font-size);
+}
+
+.q-menu {
+  border-radius: 26px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(123, 63, 242, 0.14);
+  box-shadow: 0 18px 38px rgba(40, 22, 93, 0.12);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.q-menu .q-list,
+.q-menu .q-virtual-scroll__content {
+  border-radius: 20px;
+}
+
+.q-menu .q-virtual-scroll,
+.q-select__dropdown-content,
+.q-select__dialog .q-virtual-scroll {
+  max-height: min(72vh, 520px);
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.q-menu .q-item {
+  padding-inline: 14px;
+}
+
+.q-select__dialog,
+.q-select__dropdown-content {
+  border-radius: 26px;
+}
+
+// Keep controls inside narrow pages and dialogs.
+@media (max-width: 700px) {
+  .q-page .q-form,
+  .q-dialog .q-form,
+  .q-page .q-field,
+  .q-dialog .q-field,
+  .q-page .q-field__inner,
+  .q-dialog .q-field__inner,
+  .q-page .q-field__control,
+  .q-dialog .q-field__control {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+// Category controls and their teleported dropdowns share this entry point.
+@include meta.load-css('category-select');
+

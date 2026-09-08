@@ -512,7 +512,7 @@
   border-radius: 24px;
   background:
     radial-gradient(circle at top left, rgba(255, 116, 38, 0.08), transparent 36%),
-    rgba(255, 255, 255, 0.62);
+    #ede6f5;
 }
 
 .advanced-search-panel__head {

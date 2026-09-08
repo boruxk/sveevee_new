@@ -480,28 +480,6 @@
   grid-column: 1 / -1;
 }
 
-.business-lead-form :deep(.q-field__control) {
-  min-height: 52px;
-  border-radius: 14px;
-  background: #fff;
-}
-
-.business-lead-form :deep(.q-field__prepend) {
-  color: var(--soz-orange);
-}
-
-.business-lead-category-option__avatar {
-  min-width: 30px;
-}
-
-.business-lead-category-option__swatch {
-  display: block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 4px rgba(245, 66, 145, 0.08);
-}
-
 .business-lead-form__error {
   margin-bottom: 14px;
   border: 1px solid rgba(193, 0, 21, 0.16);
