@@ -17,6 +17,7 @@ use Sveevee\Worker\Http\UrlGuard;
 use Sveevee\Worker\Pipeline\ImportService;
 use Sveevee\Worker\Pipeline\ResearchService;
 use Sveevee\Worker\Reporting\RunReport;
+use Sveevee\Worker\Research\DataGovCkanSource;
 use Sveevee\Worker\Research\JsonSeedSource;
 use Sveevee\Worker\Research\OfficialWebsiteEnricher;
 use Sveevee\Worker\Research\OverpassSource;
@@ -155,6 +156,10 @@ final class Application
             'SveeveeResearchWorker/1.0 (+https://sveevee.co.il; mailto:info@sveevee.co.il)'
         );
         $sources = [];
+        $dataGov = $config->source('data_gov_ckan');
+        if (($dataGov['enabled'] ?? false) === true) {
+            $sources[] = new DataGovCkanSource($dataGov, $http, $repository, (string) $userAgent);
+        }
         $json = $config->source('json_seed');
         if (($json['enabled'] ?? false) === true) {
             $sources[] = new JsonSeedSource($json, $this->root);
@@ -247,7 +252,8 @@ final class Application
             }
         }
         $needsResearchHttp = in_array($command, ['research', 'run'], true)
-            && ($config->bool('sources.overpass.enabled')
+            && ($config->bool('sources.data_gov_ckan.enabled')
+                || $config->bool('sources.overpass.enabled')
                 || $config->bool('sources.official_website.enabled'));
         $needsHttp = in_array($command, ['import', 'run'], true) || $needsResearchHttp;
         if ($needsHttp && ! extension_loaded('curl')) {

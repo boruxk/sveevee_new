@@ -35,6 +35,7 @@ Die Quellenfelder `source_name`, `source_url` und `source_checked_at` bleiben mi
 
 Mitgeliefert werden:
 
+- `data_gov_ckan`: paginierte CKAN-Recherche mit austauschbaren Datensatzprofilen. Das erste Profil verarbeitet aktive Gewerbelizenzen aus Beersheba und ordnet unterstuetzte Lizenzarten bestehenden Sveevee-Kategorien zu.
 - `json_seed`: JSON-Array, JSONL oder `{ "businesses": [...]` fuer lizenzierte Exporte und manuell vorbereitete Daten.
 - `overpass`: OpenStreetMap-Recherche ueber konfigurierbare OSM-Tag-Zuordnungen.
 - `official_website`: optionale Anreicherung der vom Discovery-Adapter gefundenen offiziellen Website. Verarbeitet werden die Startseite, JSON-LD, Meta-Daten und oeffentliche Kontaktlinks.
@@ -42,6 +43,14 @@ Mitgeliefert werden:
 B144 und Easy sind bewusst nicht fest eingebaut. Ein direkter Crawler sollte erst ergaenzt werden, wenn die jeweilige Quelle automatisierten Zugriff und die dauerhafte Weiterverwendung der Daten ausdruecklich erlaubt. Ein neuer Adapter implementiert lediglich `SourceAdapterInterface`; Import, Normalisierung und Statusverwaltung bleiben unveraendert.
 
 Die oeffentliche Overpass-Instanz ist standardmaessig gesperrt. Ihre Betreiber beschreiben sie als Ressource fuer kleine beziehungsweise einmalige Nutzung und empfehlen fuer regelmaessige oder kommerzielle Last eine eigene oder autorisierte Instanz: https://wiki.openstreetmap.org/wiki/Overpass_API und https://dev.overpass-api.de/overpass-doc/en/preface/commons.html. Fuer produktive OSM-Daten muessen ausserdem ODbL und Attribution geprueft werden. Der Website-Adapter beachtet RFC 9309 (`robots.txt`), doch robots.txt ersetzt keine Pruefung der Nutzungsbedingungen: https://www.rfc-editor.org/rfc/rfc9309.html.
+
+### Data.gov.il / CKAN
+
+Der Adapter liest CKAN-Ressourcen vollstaendig und seitenweise, bevor er neue oder geaenderte Datensaetze an die normale Research-Pipeline uebergibt. Verarbeitete Datensatz-IDs und stabile Inhalts-Hashes bleiben in SQLite gespeichert. Dadurch ueberspringt ein spaeterer Lauf unveraenderte Eintraege und setzt bei noch nicht verarbeiteten Datensaetzen fort, statt immer wieder am Anfang des Exports zu stoppen.
+
+Das Profil `beer_sheva_business_licenses` uebernimmt Name, Telefon, E-Mail, Strasse, Hausnummer, Lizenzbeschreibung, Status und Ablaufdatum. Abgelaufene oder nicht aktive Lizenzen werden verworfen. Unterstuetzt werden derzeit Restaurants, Cafes, Baeckereien, Catering, Fast Food, Lebensmittelgeschaefte, Fleischereien, Bars, Veranstaltungsorte und Hotels. Nicht eindeutig zuordenbare Lizenzarten werden nicht importiert.
+
+Die Quelle wird intern mit URL und Pruefzeitpunkt gespeichert, aber nicht in den oeffentlichen Beschreibungstext der Business-Seite geschrieben. Eine technische Lizenz-Allowlist ist noch nicht aktiv; vor produktiven automatischen Laeufen bleibt die Nutzungs- und Lizenzpruefung daher Aufgabe des Betreibers.
 
 ## Konfiguration
 
@@ -65,6 +74,44 @@ Beispiel fuer feinere Ziele:
     "per_category": 100,
     "per_neighborhood": 100,
     "max_new_per_day": 1000
+  }
+}
+```
+
+Beispiel fuer das Aktivieren des vorhandenen Beersheba-Profils:
+
+```json
+{
+  "cities": ["Beersheba"],
+  "categories": [
+    "food_catering.restaurants",
+    "food_catering.cafes",
+    "food_catering.bakery",
+    "professionals.catering",
+    "professionals.fast_food",
+    "professionals.grocery_food",
+    "food_catering.meat_deli",
+    "food_catering.bars",
+    "professionals.venues",
+    "travel_leisure.hotels_guesthouses"
+  ],
+  "sources": {
+    "data_gov_ckan": {
+      "enabled": true,
+      "api_url": "https://data.gov.il/api/3/action",
+      "page_size": 1000,
+      "max_records_per_dataset": 50000,
+      "refresh_after_days": 365,
+      "datasets": [
+        {
+          "profile": "beer_sheva_business_licenses",
+          "resource_id": "7d4c61e2-2416-453e-8efb-bd02ec89db35",
+          "city": "Beersheba",
+          "city_label": "באר שבע",
+          "active_statuses": [6, 7, 8]
+        }
+      ]
+    }
   }
 }
 ```

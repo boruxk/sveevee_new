@@ -12,6 +12,7 @@ use Sveevee\Worker\Domain\BusinessNormalizer;
 use Sveevee\Worker\Domain\SourceRecord;
 use Sveevee\Worker\Support\Clock;
 use Sveevee\Worker\Support\Json;
+use Sveevee\Worker\Support\SourceFingerprint;
 use Sveevee\Worker\Support\Uuid;
 
 final class WorkerRepository
@@ -417,7 +418,7 @@ final class WorkerRepository
             $source->name,
             $sourceUrl,
             $source->checkedAt,
-            Json::hash($source->raw),
+            SourceFingerprint::hash($source->raw),
             Json::encode($source->raw),
         ]);
         if ($source->url !== null) {
@@ -428,7 +429,7 @@ final class WorkerRepository
                 $businessId,
                 null,
                 $source->checkedAt,
-                Json::hash($source->raw),
+                SourceFingerprint::hash($source->raw),
             );
         }
     }

@@ -19,6 +19,7 @@ use Sveevee\Worker\Http\HttpClientInterface;
 use Sveevee\Worker\Http\HttpResponse;
 use Sveevee\Worker\Pipeline\ImportService;
 use Sveevee\Worker\Reporting\RunReport;
+use Sveevee\Worker\Research\DataGovCkanSource;
 use Sveevee\Worker\Research\RobotsRules;
 use Sveevee\Worker\Research\OverpassSource;
 use Sveevee\Worker\Storage\Database;
@@ -195,6 +196,87 @@ $test('Overpass adapter builds a scoped query and maps a business', function () 
     $assert(! str_contains($form['data'], '(?:'));
     $assert(! str_contains($form['data'], '\\-'));
     $assert(str_contains($form['data'], 'out tags center qt'));
+});
+
+$test('Data.gov.il adapter paginates and maps the Beersheba profile', function () use ($assert): void {
+    [$repository] = testRepository(['Beersheba']);
+    $http = new QueueHttpClient([
+        ckanResponse(3, [
+            beerShevaLicenseRecord(1, 'מסעדת בדיקה', 'מסעדה', '2099-12-31 00:00:00'),
+            beerShevaLicenseRecord(2, 'מסעדה שפג תוקפה', 'מסעדה', '2020-01-01 00:00:00'),
+        ]),
+        ckanResponse(3, [
+            beerShevaLicenseRecord(3, 'מאפיית בדיקה', 'בית אוכל ומאפיה', '2099-12-31 00:00:00'),
+        ]),
+    ]);
+    $source = new DataGovCkanSource(ckanConfig(pageSize: 2), $http, $repository, 'TestWorker/1.0');
+    $rows = iterator_to_array($source->research(
+        new ResearchTarget('Beersheba', 'food_catering.bakery'),
+        10,
+    ));
+
+    $assert(count($http->requests) === 2, 'Expected CKAN pagination to request two pages.');
+    $assert(count($rows) === 1);
+    $assert($rows[0]['name'] === 'מאפיית בדיקה');
+    $assert($rows[0]['category_key'] === 'food_catering.bakery');
+    $assert($rows[0]['phone'] === '08-6416843');
+    $assert($rows[0]['contact_email'] === 'bakery@example.com');
+    $assert($rows[0]['address'] === [
+        'street' => 'רחוב הבדיקה',
+        'number' => '10',
+        'city' => 'Beersheba',
+    ]);
+    $assert(! str_contains($rows[0]['public_description'], 'data.gov'));
+    $assert(str_contains($rows[0]['source_url'], 'filters='));
+});
+
+$test('Data.gov.il adapter advances past unchanged records before applying its limit', function () use ($assert): void {
+    [$repository] = testRepository(['Beersheba']);
+    $records = [
+        beerShevaLicenseRecord(11, 'מסעדה ראשונה', 'מסעדה', '2099-12-31 00:00:00'),
+        beerShevaLicenseRecord(12, 'מסעדה שנייה', 'מסעדה', '2099-12-31 00:00:00'),
+    ];
+    $target = new ResearchTarget('Beersheba', 'food_catering.restaurants');
+    $normalizer = new BusinessNormalizer(new OpeningHoursParser, ['Beersheba']);
+
+    $firstSource = new DataGovCkanSource(
+        ckanConfig(),
+        new QueueHttpClient([ckanResponse(2, $records)]),
+        $repository,
+        'TestWorker/1.0',
+    );
+    $first = iterator_to_array($firstSource->research($target, 1));
+    $assert(count($first) === 1 && $first[0]['name'] === 'מסעדה ראשונה');
+    $repository->upsertCandidate($normalizer->normalize($first[0], $target, $firstSource->name()));
+
+    $secondSource = new DataGovCkanSource(
+        ckanConfig(),
+        new QueueHttpClient([ckanResponse(2, $records)]),
+        $repository,
+        'TestWorker/1.0',
+    );
+    $second = iterator_to_array($secondSource->research($target, 1));
+    $assert(count($second) === 1 && $second[0]['name'] === 'מסעדה שנייה');
+});
+
+$test('Data.gov.il adapter keeps valid businesses without a street number', function () use ($assert): void {
+    [$repository] = testRepository(['Beersheba']);
+    $record = beerShevaLicenseRecord(21, 'מסעדה ניידת', 'מסעדה', '2099-12-31 00:00:00');
+    $record['שם רחוב'] = null;
+    $record['בית'] = 0;
+    $source = new DataGovCkanSource(
+        ckanConfig(),
+        new QueueHttpClient([ckanResponse(1, [$record])]),
+        $repository,
+        'TestWorker/1.0',
+    );
+    $rows = iterator_to_array($source->research(
+        new ResearchTarget('Beersheba', 'food_catering.restaurants'),
+        1,
+    ));
+
+    $assert(count($rows) === 1);
+    $assert($rows[0]['address'] === ['city' => 'Beersheba']);
 });
 
 $test('normalizer keeps sources local and creates stable identity keys', function () use ($assert): void {
@@ -375,13 +457,13 @@ $test('research CLI persists seed data and writes a JSON report', function () us
     unset($database);
 });
 
-function testRepository(): array
+function testRepository(array $cities = ['Tel Aviv', 'Jerusalem']): array
 {
     global $tempDirectories;
     $directory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'sveevee-worker-test-'.bin2hex(random_bytes(5));
     mkdir($directory, 0700, true);
     $tempDirectories[] = $directory;
-    $normalizer = new BusinessNormalizer(new OpeningHoursParser, ['Tel Aviv', 'Jerusalem']);
+    $normalizer = new BusinessNormalizer(new OpeningHoursParser, $cities);
     $repository = new WorkerRepository(
         new Database($directory.DIRECTORY_SEPARATOR.'worker.sqlite'),
         $normalizer,
@@ -389,6 +471,54 @@ function testRepository(): array
     );
 
     return [$repository, new Logger($directory.DIRECTORY_SEPARATOR.'worker.log'), $directory];
+}
+
+function ckanConfig(int $pageSize = 1000): array
+{
+    return [
+        'api_url' => 'https://data.gov.example/api/3/action',
+        'timeout_seconds' => 5,
+        'min_interval_seconds' => 0,
+        'max_retries' => 0,
+        'page_size' => $pageSize,
+        'max_records_per_dataset' => 100,
+        'refresh_after_days' => 365,
+        'datasets' => [[
+            'profile' => 'beer_sheva_business_licenses',
+            'resource_id' => 'test-resource',
+            'city' => 'Beersheba',
+            'city_label' => 'באר שבע',
+            'active_statuses' => [8],
+            'source_name' => 'internal_test_source',
+        ]],
+    ];
+}
+
+function ckanResponse(int $total, array $records): HttpResponse
+{
+    return new HttpResponse(200, [], json_encode([
+        'success' => true,
+        'result' => ['total' => $total, 'records' => $records],
+    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
+}
+
+function beerShevaLicenseRecord(
+    int $id,
+    string $name,
+    string $license,
+    string $expiresAt,
+): array {
+    return [
+        '_id' => $id,
+        'שם עסק' => $name,
+        'תאריך תוקף' => $expiresAt,
+        'סטטוס' => 8,
+        'תאור רישיון' => $license,
+        'טלפון בעסק' => '086416843',
+        'שם רחוב' => 'רחוב הבדיקה',
+        'בית' => 10,
+        'מייל בעסק' => 'bakery@example.com',
+    ];
 }
 
 function testCandidate(string $name): BusinessCandidate

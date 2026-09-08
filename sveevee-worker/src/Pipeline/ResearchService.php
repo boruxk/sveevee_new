@@ -13,7 +13,7 @@ use Sveevee\Worker\Research\SourceAdapterInterface;
 use Sveevee\Worker\Storage\IdentityConflictException;
 use Sveevee\Worker\Storage\WorkerRepository;
 use Sveevee\Worker\Support\Logger;
-use Sveevee\Worker\Support\Json;
+use Sveevee\Worker\Support\SourceFingerprint;
 
 final class ResearchService
 {
@@ -71,7 +71,7 @@ final class ResearchService
                                 $source->name(),
                                 $sourceUrl,
                                 $source->refreshAfterDays(),
-                                Json::hash($raw),
+                                SourceFingerprint::hash($raw),
                             )) {
                             $report->increment('duplicates');
                             continue;
