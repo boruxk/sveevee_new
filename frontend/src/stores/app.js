@@ -39,12 +39,6 @@ export const useAppStore = defineStore('app', {
 			root.dir = dir
 			root.classList.toggle('sveevee-rtl', isRtl)
 			root.classList.toggle('sveevee-ltr', !isRtl)
-
-			if (document.body) {
-				document.body.dir = dir
-				document.body.classList.toggle('sveevee-rtl', isRtl)
-				document.body.classList.toggle('sveevee-ltr', !isRtl)
-			}
 		}
 	}
 })

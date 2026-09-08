@@ -58,7 +58,7 @@ canvas {
   visibility: hidden;
 }
 
-body.sveevee-rtl,
+:root.sveevee-rtl,
 .sveevee-rtl .q-layout,
 .sveevee-rtl .q-page-container,
 .sveevee-rtl .q-page,
@@ -68,7 +68,7 @@ body.sveevee-rtl,
   text-align: start;
 }
 
-body.sveevee-ltr,
+:root.sveevee-ltr,
 .sveevee-ltr .q-layout,
 .sveevee-ltr .q-page-container,
 .sveevee-ltr .q-page,
