@@ -986,6 +986,25 @@ export default {
 		deleteFailed: 'לא ניתן היה למחוק את הפריט.'
 	},
 	businessLead: {
+		moreInfo: 'מידע נוסף',
+		infoTitle: 'מה אפשר לעשות עם עמוד העסק',
+		infoIntro: 'מקום אחד שבו לקוחות יכולים להכיר את העסק, לראות מה אתם מציעים וליצור קשר.',
+		backToForm: 'חזרה לטופס',
+		infoClaimNote: 'כל זה בחינם. הירשמו ובקשו בעלות כדי להוסיף ולנהל את האפשרויות האלה.',
+		infoFeatures: {
+			profileTitle: 'פרופיל העסק',
+			profileText: 'הציגו את העסק עם לוגו, תמונת שער, תיאור, כתובת, שעות פתיחה וקישורים ליצירת קשר.',
+			storeTitle: 'חנות מוצרים',
+			storeText: 'הציגו מוצרים עם תמונות, מחירים וקישורים לאתר שלכם.',
+			servicesTitle: 'שירותים',
+			servicesText: 'תארו את השירותים שאתם מציעים כדי שלקוחות יוכלו למצוא את מה שהם צריכים.',
+			priceListTitle: 'מחירון',
+			priceListText: 'פרסמו מחירון ברור למוצרים ולשירותים שלכם.',
+			ratingsTitle: 'דירוגים וביקורות',
+			ratingsText: 'אפשרו ללקוחות לשתף דירוגים וביקורות.',
+			contactTitle: 'תקשורת עם לקוחות',
+			contactText: 'שוחחו עם לקוחות בצ׳אט והציגו את פרטי הקשר במקום שקל למצוא.'
+		},
 		seoTitle: 'עמוד עסקי מלא בחינם',
 		seoDescription: 'מלאו כמה פרטים וקבלו עמוד עסקי חינמי ב-Sveevee.',
 		heroImageAlt: 'עסקים מקומיים ברחוב עירוני',
@@ -995,7 +1014,7 @@ export default {
 		benefitFree: 'ללא עלות וללא התחייבות',
 		formEyebrow: 'כמה פרטים קצרים',
 		formTitle: 'בואו נקים את העמוד שלכם',
-		formText: 'מלאו את הפרטים ואנחנו ניצור מיד את עמוד העסק שלכם.',
+		formText: 'מלאו את הטופס הפשוט ואנחנו ניצור מיד את עמוד העסק שלכם.',
 		businessName: 'מה שם העסק',
 		city: 'באיזו עיר העסק נמצא',
 		category: 'מהו תחום העסק',
@@ -1024,6 +1043,7 @@ export default {
 		completionFeaturesIntro: 'לאחר אישור הבעלות תוכלו להוסיף ולנהל:'
 	},
 	pageClaim: {
+		customerCommunicationShort: 'תקשורת',
 		unverifiedBadge: 'לא נדרש ולא אומת',
 		unlockTitle: 'קבלו בעלות כדי לפתוח',
 		registerUnlockTitle: 'הירשמו כדי לפתוח',
@@ -1034,8 +1054,8 @@ export default {
 		accuracyWarning: 'המידע עשוי להיות חלקי, שגוי או לא מעודכן. מומלץ לאמת פרטים חשובים ישירות מול העסק או הקהילה.',
 		registerToClaim: 'הרשמה כדי לקבל בעלות',
 		claimButton: 'בקשת בעלות',
-		businessClaimButton: 'לקבל שליטה על העסק שלי',
-		businessRegisterButton: 'להירשם כדי לקבל שליטה על העסק שלי',
+		businessClaimButton: 'לקבל שליטה על העסק',
+		businessRegisterButton: 'להירשם כדי לקבל שליטה על העסק',
 		businessClaimHint: 'לקבל שליטה על העמוד ולנהל אותו',
 		businessClaimPending: 'בקשת הבעלות נשלחה',
 		pending: 'הבקשה ממתינה',

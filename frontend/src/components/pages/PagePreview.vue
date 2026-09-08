@@ -1272,6 +1272,13 @@
   box-shadow: 0 14px 28px rgba(245, 66, 145, 0.22) !important;
 }
 
+@media (min-width: 701px) {
+  .page-preview__hero-action {
+    width: max-content;
+    max-width: min(600px, calc(100% - 48px));
+  }
+}
+
 @media (max-width: 900px) {
   .page-preview__intro,
   .page-preview__body {

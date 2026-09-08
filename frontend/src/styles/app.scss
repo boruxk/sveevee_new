@@ -59,6 +59,7 @@ canvas {
 }
 
 :root.sveevee-rtl,
+:root.sveevee-rtl body,
 .sveevee-rtl .q-layout,
 .sveevee-rtl .q-page-container,
 .sveevee-rtl .q-page,
@@ -69,6 +70,7 @@ canvas {
 }
 
 :root.sveevee-ltr,
+:root.sveevee-ltr body,
 .sveevee-ltr .q-layout,
 .sveevee-ltr .q-page-container,
 .sveevee-ltr .q-page,

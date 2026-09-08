@@ -42,7 +42,10 @@ class AdminUserController extends Controller
 
             return ApiResponseService::success([
                 'items' => $users->getCollection()
-                    ->map(fn (User $user) => $this->payloads->user($user, includePrivate: true))
+                    ->map(fn (User $user) => [
+                        ...$this->payloads->user($user, includePrivate: true),
+                        'created_at' => $user->created_at?->toISOString(),
+                    ])
                     ->values()
                     ->all(),
                 'pagination' => [
@@ -58,7 +61,10 @@ class AdminUserController extends Controller
         $users = $query
             ->limit(100)
             ->get()
-            ->map(fn (User $user) => $this->payloads->user($user, includePrivate: true))
+            ->map(fn (User $user) => [
+                ...$this->payloads->user($user, includePrivate: true),
+                'created_at' => $user->created_at?->toISOString(),
+            ])
             ->values();
 
         return ApiResponseService::success($users);

@@ -986,6 +986,25 @@ export default {
 		deleteFailed: 'The item could not be deleted.'
 	},
 	businessLead: {
+		moreInfo: 'More info',
+		infoTitle: 'What your business page can do',
+		infoIntro: 'Give customers one place to discover your business, explore your offers, and get in touch.',
+		backToForm: 'Back to the form',
+		infoClaimNote: 'All this is free. Sign up and request ownership to add and manage these features.',
+		infoFeatures: {
+			profileTitle: 'Business profile',
+			profileText: 'Present your business with a logo, cover image, description, address, opening hours, and contact links.',
+			storeTitle: 'Product store',
+			storeText: 'Show products with photos, prices, and links to your website.',
+			servicesTitle: 'Services',
+			servicesText: 'Describe the services you offer so customers can find what they need.',
+			priceListTitle: 'Price list',
+			priceListText: 'Publish a clear price list for your products and services.',
+			ratingsTitle: 'Ratings and reviews',
+			ratingsText: 'Let customers share ratings and reviews.',
+			contactTitle: 'Customer communication',
+			contactText: 'Chat with customers and make your contact details easy to find.'
+		},
 		seoTitle: 'Free full business page',
 		seoDescription: 'Share a few details and get a free business page on Sveevee.',
 		heroImageAlt: 'Local businesses on a city street',
@@ -995,7 +1014,7 @@ export default {
 		benefitFree: 'No cost and no commitment',
 		formEyebrow: 'Just a few details',
 		formTitle: 'Let us create your page',
-		formText: 'Complete the form and we will create your business page right away.',
+		formText: 'Complete the simple form and we will create your business page right away.',
 		businessName: 'Business name',
 		city: 'Business city',
 		category: 'Business field',
@@ -1024,6 +1043,7 @@ export default {
 		completionFeaturesIntro: 'Once ownership is approved, you can add and manage:'
 	},
 	pageClaim: {
+		customerCommunicationShort: 'Communication',
 		unverifiedBadge: 'Unclaimed and unverified',
 		unlockTitle: 'Claim to unlock',
 		registerUnlockTitle: 'Register to unlock',
@@ -1034,8 +1054,8 @@ export default {
 		accuracyWarning: 'The information may be incomplete, incorrect, or out of date. Verify important details directly with the business or community.',
 		registerToClaim: 'Register to claim this page',
 		claimButton: 'Request ownership',
-		businessClaimButton: 'Take control of my business',
-		businessRegisterButton: 'Register to take control of my business',
+		businessClaimButton: 'Take control of the business',
+		businessRegisterButton: 'Register to take control of the business',
 		businessClaimHint: 'Take control of this page and manage it',
 		businessClaimPending: 'Ownership request sent',
 		pending: 'Request pending',

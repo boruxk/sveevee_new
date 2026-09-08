@@ -8,6 +8,7 @@ const pageDetailPage = () => import('@/pages/PageDetailPage.vue')
 const pageExamplePage = () => import('@/pages/PageExamplePage.vue')
 const pagePromoLandingPage = () => import('@/pages/PagePromoLandingPage.vue')
 const leadsPage001 = () => import('@/pages/MetaBusinessLeadPage.vue')
+const leadsPage001Info = () => import('@/pages/BusinessLeadInfoPage.vue')
 const productDetailPage = () => import('@/pages/ProductDetailPage.vue')
 const legalPage = () => import('@/pages/PrivacyPolicyPage.vue')
 const catalogSeo = { titleKey: 'seo.catalogTitle', descriptionKey: 'seo.catalogDescription' }
@@ -27,7 +28,9 @@ export default [
 		children: [
 			{ path: '', name: 'landing', component: () => import('@/pages/LandingPage.vue'), meta: { seo: { titleKey: 'seo.landingTitle', descriptionKey: 'seo.landingDescription' } } },
 			{ path: 'free-business-page', redirect: (to) => ({ name: 'leads-page-001', params: { locale: 'he' }, query: to.query }) },
+			{ path: 'free-business-page/info', redirect: (to) => ({ name: 'leads-page-001-info', params: { locale: 'he' }, query: to.query }) },
 			{ path: ':locale(he|en|ru|fr)/free-business-page', name: 'leads-page-001', component: leadsPage001, meta: { campaign: true, campaignKey: 'leads_page_001', seo: { titleKey: 'businessLead.seoTitle', descriptionKey: 'businessLead.seoDescription', image: '/assets/landing/promo-business-hero-1360-rtl.v3.webp', imageAltKey: 'businessLead.heroImageAlt', imageWidth: 1360, imageHeight: 765, robots: 'noindex,follow' } } },
+			{ path: ':locale(he|en|ru|fr)/free-business-page/info', name: 'leads-page-001-info', component: leadsPage001Info, meta: { campaign: true, campaignKey: 'leads_page_001', seo: { titleKey: 'businessLead.infoTitle', descriptionKey: 'businessLead.infoIntro', robots: 'noindex,follow' } } },
 			{ path: 'maintenance', name: 'maintenance', component: () => import('@/pages/MaintenancePage.vue'), meta: { seo: { titleKey: 'maintenance.title', descriptionKey: 'maintenance.defaultMessage', robots: 'noindex,nofollow' } } },
 			{ path: 'login', name: 'login', component: () => import('@/pages/LoginPage.vue'), meta: { seo: { titleKey: 'seo.loginTitle', descriptionKey: 'seo.loginDescription', robots: 'noindex,nofollow' } } },
 			{ path: 'srvfrvrvv53Ljjug5h2h9zbdw', name: 'ai-worker-login', component: () => import('@/pages/LoginPage.vue'), meta: { seo: { title: 'AI Works login', description: 'Private AI Works access.', robots: 'noindex,nofollow' } } },

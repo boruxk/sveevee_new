@@ -67,9 +67,10 @@
 	])
 	const visibleNavLinks = computed(() => navLinks.value.filter((link) => link.visible))
 	const switchCampaignLocale = (nextLocale) => router.replace({
-		name: 'leads-page-001',
+		name: route.name,
 		params: { locale: normalizeCatalogLocale(nextLocale) },
-		query: route.query
+		query: route.query,
+		hash: route.hash
 	})
 	const footerColumns = computed(() => {
 		const columns = [

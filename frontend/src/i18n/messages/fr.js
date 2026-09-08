@@ -986,6 +986,25 @@ export default {
 		deleteFailed: 'L’élément n’a pas pu être supprimé.'
 	},
 	businessLead: {
+		moreInfo: 'En savoir plus',
+		infoTitle: 'Les possibilités de votre page professionnelle',
+		infoIntro: 'Un seul endroit où les clients peuvent découvrir votre entreprise, consulter vos offres et vous contacter.',
+		backToForm: 'Retour au formulaire',
+		infoClaimNote: 'Tout cela est gratuit. Inscrivez-vous et demandez la propriété de la page pour ajouter et gérer ces fonctionnalités.',
+		infoFeatures: {
+			profileTitle: 'Profil de l’entreprise',
+			profileText: 'Présentez votre entreprise avec un logo, une image de couverture, une description, une adresse, des horaires et des liens de contact.',
+			storeTitle: 'Boutique de produits',
+			storeText: 'Présentez vos produits avec des photos, des prix et des liens vers votre site.',
+			servicesTitle: 'Services',
+			servicesText: 'Décrivez vos services pour aider les clients à trouver ce dont ils ont besoin.',
+			priceListTitle: 'Liste de prix',
+			priceListText: 'Publiez une liste de prix claire pour vos produits et services.',
+			ratingsTitle: 'Notes et avis',
+			ratingsText: 'Permettez aux clients de partager leurs notes et leurs avis.',
+			contactTitle: 'Communication avec les clients',
+			contactText: 'Échangez avec les clients par chat et rendez vos coordonnées faciles à trouver.'
+		},
 		seoTitle: 'Page professionnelle complète et gratuite',
 		seoDescription: 'Indiquez quelques informations et obtenez gratuitement votre page professionnelle sur Sveevee.',
 		heroImageAlt: 'Commerces locaux dans une rue de ville',
@@ -995,7 +1014,7 @@ export default {
 		benefitFree: 'Sans frais et sans engagement',
 		formEyebrow: 'Quelques informations suffisent',
 		formTitle: 'Créons votre page',
-		formText: 'Remplissez le formulaire et nous créerons immédiatement votre page professionnelle.',
+		formText: 'Remplissez ce simple formulaire et nous créerons immédiatement votre page professionnelle.',
 		businessName: "Nom de l'entreprise",
 		city: "Ville de l'entreprise",
 		category: "Secteur d'activité",
@@ -1024,6 +1043,7 @@ export default {
 		completionFeaturesIntro: 'Une fois la propriété approuvée, vous pourrez ajouter et gérer :'
 	},
 	pageClaim: {
+		customerCommunicationShort: 'Communication',
 		unverifiedBadge: 'Non revendiquée et non vérifiée',
 		unlockTitle: 'Revendiquer pour débloquer',
 		registerUnlockTitle: 'S’inscrire pour débloquer',
@@ -1034,8 +1054,8 @@ export default {
 		accuracyWarning: 'Les informations peuvent être incomplètes, erronées ou obsolètes. Vérifiez les éléments importants directement auprès de l’entreprise ou de la communauté.',
 		registerToClaim: 'S’inscrire pour revendiquer la page',
 		claimButton: 'Demander la propriété',
-		businessClaimButton: 'Prendre le contrôle de mon entreprise',
-		businessRegisterButton: 'S’inscrire pour gérer mon entreprise',
+		businessClaimButton: 'Prendre le contrôle de l’entreprise',
+		businessRegisterButton: 'S’inscrire pour gérer l’entreprise',
 		businessClaimHint: 'Prenez le contrôle de cette page et gérez-la',
 		businessClaimPending: 'Demande de propriété envoyée',
 		pending: 'Demande en attente',

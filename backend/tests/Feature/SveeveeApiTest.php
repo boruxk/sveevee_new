@@ -3154,6 +3154,27 @@ HTML);
             ->assertJsonPath('data.items.0.email', fn ($value) => filled($value));
     }
 
+    public function test_admin_user_table_includes_registration_dates(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create([
+            'email' => 'registered-user@example.test',
+            'created_at' => '2025-01-15 10:30:00',
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        foreach ([0 => 'data.0', 1 => 'data.items.0'] as $paginated => $path) {
+            $this->getJson('/api/v1/admin/users?'.http_build_query([
+                'paginated' => $paginated,
+                'q' => $user->email,
+            ]))
+                ->assertOk()
+                ->assertJsonPath($path.'.id', $user->id)
+                ->assertJsonPath($path.'.created_at', $user->created_at->toISOString());
+        }
+    }
+
     public function test_admin_can_open_complete_user_details_with_pages(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

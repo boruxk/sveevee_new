@@ -604,7 +604,8 @@
 						>
 							<li v-for="feature in claimUnlockFeatures" :key="feature.key">
 								<q-icon :name="feature.icon" size="18px" aria-hidden="true" />
-								<span>{{ t(feature.labelKey) }}</span>
+								<span :class="{ 'banner-claim-features__label--desktop': feature.key === 'chat' }">{{ t(feature.labelKey) }}</span>
+								<span v-if="feature.key === 'chat'" class="banner-claim-features__label--mobile">{{ t('pageClaim.customerCommunicationShort') }}</span>
 							</li>
 						</ul>
 						<div v-if="!authStore.isAuthenticated || canRequestClaim" class="banner-claim-panel__action">
@@ -1115,6 +1116,10 @@
   overflow-wrap: anywhere;
 }
 
+.banner-claim-features__label--mobile {
+  display: none;
+}
+
 .claim-dialog-card {
   width: min(560px, calc(100vw - 28px));
   border-radius: 22px;
@@ -1379,6 +1384,12 @@
   }
 }
 
+@media (min-width: 701px) {
+  .banner-claim-features {
+    grid-template-columns: repeat(calc(var(--claim-feature-count) - 1), max-content) minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 700px) {
   .detail-page {
     padding-inline: 10px;
@@ -1438,6 +1449,15 @@
 
   .banner-claim-features {
     gap: 4px;
+  }
+
+  .banner-claim-button :deep(.q-icon),
+  .banner-claim-features__label--desktop {
+    display: none;
+  }
+
+  .banner-claim-features__label--mobile {
+    display: inline;
   }
 
   .banner-claim-features li {

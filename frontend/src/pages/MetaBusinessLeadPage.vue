@@ -1,6 +1,6 @@
 <script setup>
 	import { computed, onMounted, reactive, ref, watch } from 'vue'
-	import { useRoute, useRouter } from 'vue-router'
+	import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { setLocale } from '@/i18n'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
@@ -9,10 +9,12 @@
 	import { submitLeadsPage001 } from '@/services/api/businessLeads'
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { storeLeadsPage001Completion } from '@/utils/leadsPageCompletion'
+	import { clearBusinessLeadDraft, saveBusinessLeadDraft, takeBusinessLeadDraft } from '@/utils/businessLeadDraft'
 
 	const TRACKING_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid']
 	const route = useRoute()
 	const router = useRouter()
+	const savedDraft = takeBusinessLeadDraft()
 	const { locale, t } = useI18n()
 	const formRef = ref(null)
 	const submitting = ref(false)
@@ -20,7 +22,7 @@
 	const optionsError = ref('')
 	const submitError = ref('')
 	const citySelectOptions = ref([])
-	const selectedBusinessGroup = ref('')
+	const selectedBusinessGroup = ref(savedDraft?.businessGroup || '')
 	const serverErrors = reactive({})
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const { cityOptions, loadLocationOptions, filterOptions } = useLocationOptions()
@@ -31,11 +33,17 @@
 		full_name: '',
 		email: '',
 		phone: '',
-		website: ''
+		website: '',
+		...savedDraft?.form
 	})
 
 	const routeLocale = computed(() => String(route.params.locale || 'he'))
 	const isRtl = computed(() => locale.value === 'he')
+	const infoRoute = computed(() => ({
+		name: 'leads-page-001-info',
+		params: { locale: routeLocale.value },
+		query: route.query
+	}))
 	const businessGroups = computed(() => catalogGroupsForScope(catalogGroups.value, CATALOG_SCOPES.BUSINESS_PAGES))
 	const businessIndustryOptions = computed(() => businessGroups.value.map((group) => ({
 		label: catalogLabel(group.labels, locale.value),
@@ -176,6 +184,14 @@
 		}
 	})
 
+	onBeforeRouteLeave((to) => {
+		if (to.name === 'leads-page-001-info') {
+			saveBusinessLeadDraft(form, selectedBusinessGroup.value)
+		} else {
+			clearBusinessLeadDraft()
+		}
+	})
+
 	onMounted(initialize)
 </script>
 
@@ -185,7 +201,18 @@
 			<div class="business-lead-form-wrap">
 				<header class="business-lead-form-head">
 					<h2>{{ t('businessLead.formTitle') }}</h2>
-					<p>{{ t('businessLead.formText') }}</p>
+					<div class="business-lead-form-intro">
+						<p>{{ t('businessLead.formText') }}</p>
+						<q-btn
+							class="business-lead-more-info"
+							flat
+							no-caps
+							color="primary"
+							:to="infoRoute"
+							:disable="submitting"
+							:label="t('businessLead.moreInfo')"
+						/>
+					</div>
 				</header>
 
 				<q-banner v-if="optionsError" rounded class="business-lead-form__error">
@@ -414,9 +441,26 @@
 }
 
 .business-lead-form-head p {
-  margin-top: 7px;
   color: rgba(23, 34, 56, 0.64);
   line-height: 1.55;
+}
+
+.business-lead-form-intro {
+  display: flex;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 7px;
+}
+
+.business-lead-form-intro p {
+  min-width: 0;
+}
+
+.business-lead-more-info {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 4px 8px;
+  font-weight: 700;
 }
 
 .business-lead-form {
