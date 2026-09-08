@@ -25,6 +25,7 @@ final class RunReport
         'planned_updates' => 0,
     ];
     private array $sources = [];
+    private array $targets = [];
     private array $errors = [];
 
     public function __construct(
@@ -44,6 +45,16 @@ final class RunReport
     public function source(string $name, int $amount = 1): void
     {
         $this->sources[$name] = ($this->sources[$name] ?? 0) + $amount;
+    }
+
+    public function target(string $key, string $city, string $categoryKey, int $found): void
+    {
+        $this->targets[] = [
+            'key' => $key,
+            'city' => $city,
+            'category_key' => $categoryKey,
+            'found' => $found,
+        ];
     }
 
     public function error(string $stage, string $message, array $context = []): void
@@ -70,6 +81,8 @@ final class RunReport
             'finished_at' => Clock::now(),
             'duration_seconds' => round(microtime(true) - $this->startedTimer, 3),
             ...$this->metrics,
+            'target_combinations' => count($this->targets),
+            'targets' => $this->targets,
             'used_sources' => array_keys($this->sources),
             'source_counts' => $this->sources,
             'errors' => $this->errors,

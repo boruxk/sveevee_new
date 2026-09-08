@@ -28,7 +28,7 @@ final class ImportService
             return;
         }
 
-        $ready = [];
+        $readyByCombination = [];
         $plannedCreates = 0;
         $createdToday = $this->repository->countNewImportsToday();
         foreach ($this->repository->pendingBusinesses(max(1, $limit)) as $business) {
@@ -43,10 +43,19 @@ final class ImportService
                         $this->logger->info('Daily new-business limit reached; remaining candidates stay pending.');
                         break;
                     }
-                    $ready[] = ['business_id' => $business['id'], 'payload' => $payload];
                     $report->increment($isCreate ? 'planned_imports' : 'planned_updates');
                     if ($isCreate) {
                         $plannedCreates++;
+                    }
+                    if (! $this->queueReady(
+                        $readyByCombination,
+                        $payload,
+                        ['business_id' => $business['id'], 'payload' => $payload],
+                        $runId,
+                        $dryRun,
+                        $report,
+                    )) {
+                        return;
                     }
                 } else {
                     $report->increment('existing');
@@ -84,17 +93,16 @@ final class ImportService
                         }
                         continue;
                     }
-                    $ready[] = ['business_id' => $business['id'], 'payload' => $patch];
                     $report->increment('planned_updates');
-                }
-
-                if (count($ready) >= $this->batchSize) {
-                    if ($dryRun) {
-                        $ready = [];
-                    } elseif (! $this->sendNewBatch($runId, $ready, $report)) {
+                    if (! $this->queueReady(
+                        $readyByCombination,
+                        $payload,
+                        ['business_id' => $business['id'], 'payload' => $patch],
+                        $runId,
+                        $dryRun,
+                        $report,
+                    )) {
                         return;
-                    } else {
-                        $ready = [];
                     }
                 }
             } catch (ApiException $exception) {
@@ -115,9 +123,47 @@ final class ImportService
             }
         }
 
-        if (! $dryRun && $ready !== []) {
-            $this->sendNewBatch($runId, $ready, $report);
+        if (! $dryRun) {
+            foreach ($readyByCombination as $ready) {
+                if ($ready !== [] && ! $this->sendNewBatch($runId, $ready, $report)) {
+                    return;
+                }
+            }
         }
+    }
+
+    private function queueReady(
+        array &$groups,
+        array $business,
+        array $item,
+        string $runId,
+        bool $dryRun,
+        RunReport $report,
+    ): bool {
+        $key = $this->combinationKey($business);
+        $groups[$key] ??= [];
+        $groups[$key][] = $item;
+        if (count($groups[$key]) < $this->batchSize) {
+            return true;
+        }
+        if ($dryRun) {
+            $groups[$key] = [];
+
+            return true;
+        }
+
+        $ready = $groups[$key];
+        $groups[$key] = [];
+
+        return $this->sendNewBatch($runId, $ready, $report);
+    }
+
+    private function combinationKey(array $business): string
+    {
+        $city = trim((string) ($business['address']['city'] ?? ''));
+        $category = trim((string) ($business['category_key'] ?? ''));
+
+        return hash('sha256', $city."\0".$category);
     }
 
     private function resumePendingBatches(RunReport $report): bool

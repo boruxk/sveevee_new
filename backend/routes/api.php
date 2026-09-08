@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AdminPageClaimController;
 use App\Http\Controllers\Api\AdminPageController;
 use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\AdminSupportController;
+use App\Http\Controllers\Api\AdminSystemLogController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AiWorkPageBulkEditController;
 use App\Http\Controllers\Api\AiWorkPageController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Api\AiWorkPreferenceController;
 use App\Http\Controllers\Api\AiWorkTaskController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BusinessImportController;
+use App\Http\Controllers\Api\BusinessImportRunLogController;
 use App\Http\Controllers\Api\BusinessPageLeadController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ChatController;
@@ -93,6 +95,9 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::post('/businesses', [BusinessImportController::class, 'store'])
             ->middleware($writeMiddleware)
             ->name('business-import.businesses.store');
+        Route::post('/worker-runs', [BusinessImportRunLogController::class, 'store'])
+            ->middleware($writeMiddleware)
+            ->name('business-import.worker-runs.store');
         Route::patch('/businesses/{page}', [BusinessImportController::class, 'update'])
             ->whereNumber('page')
             ->middleware($writeMiddleware)
@@ -220,6 +225,7 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::post('/page-claims/{claimRequest}/approve', [AdminPageClaimController::class, 'approve']);
         Route::post('/page-claims/{claimRequest}/cancel', [AdminPageClaimController::class, 'cancel']);
         Route::get('/pages', [AdminPageController::class, 'index']);
+        Route::get('/logs', [AdminSystemLogController::class, 'index']);
         Route::get('/page-owner-options', [AdminPageController::class, 'ownerOptions']);
         Route::patch('/pages/{page}/owner', [AdminPageController::class, 'updateOwner']);
         Route::delete('/pages/{page}', [AdminPageController::class, 'destroy']);

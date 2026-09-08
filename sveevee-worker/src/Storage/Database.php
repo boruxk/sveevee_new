@@ -47,6 +47,19 @@ CREATE TABLE IF NOT EXISTS runs (
 )
 SQL,
             <<<'SQL'
+CREATE TABLE IF NOT EXISTS run_log_outbox (
+    run_id TEXT PRIMARY KEY,
+    payload_json TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    reported_at TEXT,
+    last_error TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE CASCADE
+)
+SQL,
+            'CREATE INDEX IF NOT EXISTS run_log_outbox_pending_idx ON run_log_outbox(reported_at, created_at)',
+            <<<'SQL'
 CREATE TABLE IF NOT EXISTS businesses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     payload_json TEXT NOT NULL,
@@ -116,6 +129,21 @@ CREATE TABLE IF NOT EXISTS research_failures (
     FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE SET NULL
 )
 SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS research_target_progress (
+    target_key TEXT PRIMARY KEY,
+    city TEXT NOT NULL,
+    category_key TEXT NOT NULL,
+    neighborhood TEXT,
+    completed_runs INTEGER NOT NULL DEFAULT 0,
+    last_run_id TEXT,
+    last_completed_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (last_run_id) REFERENCES runs(id) ON DELETE SET NULL
+)
+SQL,
+            'CREATE INDEX IF NOT EXISTS research_target_progress_completed_idx ON research_target_progress(last_completed_at, target_key)',
             <<<'SQL'
 CREATE TABLE IF NOT EXISTS import_batches (
     client_import_id TEXT PRIMARY KEY,

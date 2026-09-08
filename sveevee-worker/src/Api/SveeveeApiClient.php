@@ -50,6 +50,11 @@ final class SveeveeApiClient implements SveeveeGateway
         return $this->request('POST', '/businesses/batch', $request);
     }
 
+    public function reportRun(array $report): array
+    {
+        return $this->request('POST', '/worker-runs', $report);
+    }
+
     private function request(string $method, string $path, ?array $payload = null): array
     {
         $lastTransport = null;

@@ -714,6 +714,61 @@ export default {
 			empty: 'Leads Page 001 has not created any pages yet.',
 			loadFailed: 'The lead page statistics could not be loaded.'
 		},
+		logs: {
+			title: 'Log',
+			systemTitle: 'System logs',
+			intro: 'Automation runs and system events, with the newest entries first.',
+			entries: 'Log entries',
+			source: 'Source',
+			type: 'Type',
+			status: 'Status',
+			allSources: 'All sources',
+			allTypes: 'All event types',
+			allStatuses: 'All statuses',
+			time: 'Time',
+			event: 'Event',
+			result: 'Result',
+			duration: 'Duration',
+			refresh: 'Refresh logs',
+			details: 'View details',
+			empty: 'No log entries match these filters.',
+			loadFailed: 'The system logs could not be loaded.',
+			sources: {
+				automationWorker: 'Automation worker'
+			},
+			types: {
+				businessImportRun: 'Business research and import run'
+			},
+			statuses: {
+				success: 'Successful',
+				warning: 'Completed with warnings',
+				failed: 'Failed'
+			},
+			seconds: '{count} sec',
+			minutesSeconds: '{minutes} min {seconds} sec',
+			genericResult: 'System event',
+			workerSummary: '{found} found, {imported} imported, {updated} updated, {failed} failed',
+			runId: 'Run ID',
+			mode: 'Mode',
+			dryRun: 'Dry run',
+			liveRun: 'Live run',
+			metrics: 'Run metrics',
+			metricsLabels: {
+				found: 'Found',
+				new: 'New',
+				existing: 'Existing',
+				imported: 'Imported',
+				updated: 'Updated',
+				duplicates: 'Duplicates',
+				incomplete: 'Incomplete',
+				failed: 'Failed'
+			},
+			combinations: 'City and category combinations',
+			foundCount: '{count} found',
+			usedSources: 'Sources used',
+			errors: 'Errors',
+			rawData: 'Raw data'
+		},
 		userSearch: 'User search',
 		userSearchPlaceholder: 'Search by name, email, or login',
 		totalUsers: 'Total users',

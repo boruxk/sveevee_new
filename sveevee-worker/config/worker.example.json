@@ -1,13 +1,15 @@
 {
   "target_per_run": 1000,
+  "targets_per_run": 10,
+  "businesses_per_combination": 100,
   "batch_size": 100,
   "cities": ["Jerusalem", "Tel Aviv"],
-  "neighborhoods": {},
+  "neighborhoods": [],
   "categories": ["professionals.electricians"],
   "quotas": {
     "per_category": null,
     "per_neighborhood": null,
-    "max_new_per_day": null
+    "max_new_per_day": 1000
   },
   "api": {
     "request_interval_ms": 550,

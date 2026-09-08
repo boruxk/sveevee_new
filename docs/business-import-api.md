@@ -58,10 +58,13 @@ Basis-URL: `https://sveevee.co.il/api/v1/business-import`
 | `POST` | `/businesses` | `business:write` | Ohne `id` und mit `Idempotency-Key` erstellen, mit `id` aktualisieren |
 | `PATCH` | `/businesses/{id}` | `business:write` | Business explizit teilweise aktualisieren |
 | `POST` | `/businesses/batch` | `business:write` | 1 bis 1000 Businesses importieren oder aktualisieren |
+| `POST` | `/worker-runs` | `business:write` | Abgeschlossenen Automation-Worker-Lauf idempotent an den Admin-Log melden |
 
 Jede Antwort des Importbereichs enthaelt `X-Request-ID`. Serverseitig werden Client, Route, HTTP-Status, Laufzeit, Payload-Groesse und ein SHA-256-Payload-Hash protokolliert. Der Request-Inhalt und das Bearer-Token werden nicht im Audit-Log gespeichert.
 
 Nur unbeanspruchte Business-Seiten koennen aktualisiert werden. Sobald ein Nutzer eine Seite uebernommen hat, antwortet die Import-API mit `409 Conflict`.
+
+`POST /worker-runs` wird intern vom Automation-Worker verwendet. Seine `run_id` dient als Idempotenzkennung. Die Laufberichte erscheinen fuer Administratoren im Tab `Logs`; ein identischer Retry wird nicht doppelt gespeichert.
 
 ## Pflichtfelder und Updates
 

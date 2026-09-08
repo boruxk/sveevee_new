@@ -16,6 +16,8 @@ use Sveevee\Worker\Http\SafeWebClient;
 use Sveevee\Worker\Http\UrlGuard;
 use Sveevee\Worker\Pipeline\ImportService;
 use Sveevee\Worker\Pipeline\ResearchService;
+use Sveevee\Worker\Pipeline\ResearchTargetScheduler;
+use Sveevee\Worker\Pipeline\RunLogPublisher;
 use Sveevee\Worker\Reporting\RunReport;
 use Sveevee\Worker\Research\DataGovCkanSource;
 use Sveevee\Worker\Research\JsonSeedSource;
@@ -57,9 +59,14 @@ final class Application
             $merger = new BusinessMerger;
             $normalizer = new BusinessNormalizer($openingHours, (array) $config->get('cities', []));
             $repository = new WorkerRepository(new Database($paths['database']), $normalizer, $merger);
+            $targets = $config->targets();
+            $targetsPerRun = $config->int('targets_per_run', count($targets));
+            $targetScheduler = new ResearchTargetScheduler($repository);
 
             if ($command === 'status') {
-                fwrite(STDOUT, Json::encode($repository->statusSummary(), true).PHP_EOL);
+                $status = $repository->statusSummary();
+                $status['target_schedule'] = $targetScheduler->summary($targets, $targetsPerRun);
+                fwrite(STDOUT, Json::encode($status, true).PHP_EOL);
 
                 return 0;
             }
@@ -78,6 +85,7 @@ final class Application
             $runId = Uuid::v4();
             $report = new RunReport($runId, $command, $dryRun);
             $repository->startRun($runId, $command, $dryRun, $config->hash());
+            $api = null;
 
             try {
                 if (in_array($command, ['research', 'run'], true)) {
@@ -87,14 +95,16 @@ final class Application
                     if ($sources === []) {
                         throw new RuntimeException('No research source is enabled in the worker config.');
                     }
+                    $selectedTargets = $targetScheduler->next($targets, $targetsPerRun);
                     (new ResearchService(
                         $sources,
                         $enrichers,
-                        $config->targets(),
+                        $selectedTargets,
                         $normalizer,
                         $repository,
                         $logger,
                         (array) $config->get('quotas', []),
+                        $config->int('businesses_per_combination', $limit),
                     ))->research($runId, $limit, $report);
                 }
 
@@ -113,12 +123,15 @@ final class Application
 
                 $written = $report->write($paths['reports']);
                 $repository->finishRun($runId, 'completed', $written['path'], $written['report']);
+                $repository->queueRunLog($runId, $written['report']);
+                $this->publishRunLogs($api, $repository, $logger);
                 $logger->info('Worker run completed.', [
                     'run_id' => $runId,
                     'report' => $written['path'],
                     'summary' => array_intersect_key($written['report'], array_flip([
                         'found', 'new', 'existing', 'updated', 'duplicates',
-                        'incomplete', 'failed', 'imported', 'duration_seconds',
+                        'incomplete', 'failed', 'imported', 'target_combinations',
+                        'duration_seconds',
                     ])),
                 ]);
 
@@ -128,6 +141,8 @@ final class Application
                 $report->error('fatal', $exception->getMessage());
                 $written = $report->write($paths['reports'], 'failed');
                 $repository->finishRun($runId, 'failed', $written['path'], $written['report'], $exception->getMessage());
+                $repository->queueRunLog($runId, $written['report']);
+                $this->publishRunLogs($api, $repository, $logger);
                 $logger->error('Worker run failed.', [
                     'run_id' => $runId,
                     'error' => $exception->getMessage(),
@@ -141,6 +156,18 @@ final class Application
 
             return 1;
         }
+    }
+
+    private function publishRunLogs(
+        ?SveeveeApiClient $api,
+        WorkerRepository $repository,
+        Logger $logger,
+    ): void {
+        if ($api === null) {
+            return;
+        }
+
+        (new RunLogPublisher($api, $repository, $logger))->publishPending();
     }
 
     private function researchComponents(

@@ -18,20 +18,27 @@ use Sveevee\Worker\Domain\SourceRecord;
 use Sveevee\Worker\Http\HttpClientInterface;
 use Sveevee\Worker\Http\HttpResponse;
 use Sveevee\Worker\Pipeline\ImportService;
+use Sveevee\Worker\Pipeline\ResearchService;
+use Sveevee\Worker\Pipeline\ResearchTargetScheduler;
+use Sveevee\Worker\Pipeline\RunLogPublisher;
 use Sveevee\Worker\Reporting\RunReport;
 use Sveevee\Worker\Research\DataGovCkanSource;
 use Sveevee\Worker\Research\RobotsRules;
 use Sveevee\Worker\Research\OverpassSource;
+use Sveevee\Worker\Research\SourceAdapterInterface;
 use Sveevee\Worker\Storage\Database;
 use Sveevee\Worker\Storage\WorkerRepository;
 use Sveevee\Worker\Support\Clock;
 use Sveevee\Worker\Support\Logger;
+use Sveevee\Worker\Support\SourceFingerprint;
 use Sveevee\Worker\Support\Uuid;
 
 final class FakeGateway implements SveeveeGateway
 {
     public array $batchRequests = [];
+    public array $runReports = [];
     public bool $failNextBatch = false;
+    public bool $failNextRunReport = false;
 
     public function checkDuplicate(array $business): array
     {
@@ -106,6 +113,21 @@ final class FakeGateway implements SveeveeGateway
             'replayed' => count($this->batchRequests) > 1,
         ];
     }
+
+    public function reportRun(array $report): array
+    {
+        $this->runReports[] = $report;
+        if ($this->failNextRunReport) {
+            $this->failNextRunReport = false;
+            throw new ApiException('Temporary log outage.', 503, 'api_error', retryable: true);
+        }
+
+        return [
+            'id' => Uuid::v4(),
+            'run_id' => $report['run_id'],
+            'replayed' => count($this->runReports) > 1,
+        ];
+    }
 }
 
 final class QueueHttpClient implements HttpClientInterface
@@ -128,6 +150,38 @@ final class QueueHttpClient implements HttpClientInterface
         }
 
         return $response;
+    }
+}
+
+final class CombinationSource implements SourceAdapterInterface
+{
+    public array $calls = [];
+
+    public function name(): string
+    {
+        return 'combination_fixture';
+    }
+
+    public function refreshAfterDays(): int
+    {
+        return 30;
+    }
+
+    public function research(ResearchTarget $target, int $limit): iterable
+    {
+        $this->calls[] = ['target' => $target->key(), 'limit' => $limit];
+        foreach (range(1, $limit) as $number) {
+            $identity = $target->key().'|'.$number;
+            yield [
+                'type' => 'business',
+                'name' => sprintf('%s %s Business %03d', $target->city, $target->categoryKey, $number),
+                'category_key' => $target->categoryKey,
+                'address' => ['city' => $target->city],
+                'source_name' => 'Combination fixture',
+                'source_url' => 'https://example.com/business/'.hash('sha256', $identity),
+                'source_checked_at' => Clock::now(),
+            ];
+        }
     }
 }
 
@@ -279,6 +333,106 @@ $test('Data.gov.il adapter keeps valid businesses without a street number', func
     $assert($rows[0]['address'] === ['city' => 'Beersheba']);
 });
 
+$test('target scheduler rotates through city category combinations persistently', function () use ($assert): void {
+    $cities = ['City A', 'City B', 'City C', 'City D', 'City E'];
+    [$repository, , $directory] = testRepository($cities);
+    $targets = [];
+    foreach ($cities as $city) {
+        foreach (range(1, 5) as $category) {
+            $targets[] = new ResearchTarget($city, 'category.'.$category);
+        }
+    }
+    $scheduler = new ResearchTargetScheduler($repository);
+
+    $firstRun = Uuid::v4();
+    $repository->startRun($firstRun, 'research', false, 'test');
+    $first = $scheduler->next($targets, 10);
+    $assert(array_map(static fn (ResearchTarget $target): string => $target->key(), $first)
+        === array_map(static fn (ResearchTarget $target): string => $target->key(), array_slice($targets, 0, 10)));
+    foreach ($first as $target) {
+        $repository->markResearchTargetCompleted($target, $firstRun);
+    }
+
+    unset($scheduler, $repository);
+    $repository = new WorkerRepository(
+        new Database($directory.DIRECTORY_SEPARATOR.'worker.sqlite'),
+        new BusinessNormalizer(new OpeningHoursParser, $cities),
+        new BusinessMerger,
+    );
+    $scheduler = new ResearchTargetScheduler($repository);
+
+    $secondRun = Uuid::v4();
+    $repository->startRun($secondRun, 'research', false, 'test');
+    $second = $scheduler->next($targets, 10);
+    $assert(array_map(static fn (ResearchTarget $target): string => $target->key(), $second)
+        === array_map(static fn (ResearchTarget $target): string => $target->key(), array_slice($targets, 10, 10)));
+    foreach ($second as $target) {
+        $repository->markResearchTargetCompleted($target, $secondRun);
+    }
+
+    $summary = $scheduler->summary($targets, 10);
+    $assert($summary['configured_combinations'] === 25);
+    $assert($summary['visited_combinations'] === 20);
+    $assert($summary['unvisited_combinations'] === 5);
+    $assert(array_column(array_slice($summary['next_combinations'], 0, 5), 'key')
+        === array_map(static fn (ResearchTarget $target): string => $target->key(), array_slice($targets, 20, 5)));
+});
+
+$test('research processes ten combinations with an independent per-combination limit', function () use ($assert): void {
+    $cities = ['City A', 'City B'];
+    [$repository, $logger] = testRepository($cities);
+    $targets = [];
+    foreach ($cities as $city) {
+        foreach (range(1, 5) as $category) {
+            $targets[] = new ResearchTarget($city, 'category.'.$category);
+        }
+    }
+    $source = new CombinationSource;
+    $report = new RunReport(Uuid::v4(), 'research', false);
+    $repository->startRun($report->runId, 'research', false, 'test');
+
+    (new ResearchService(
+        [$source],
+        [],
+        $targets,
+        new BusinessNormalizer(new OpeningHoursParser, $cities),
+        $repository,
+        $logger,
+        [],
+        3,
+    ))->research($report->runId, 30, $report);
+
+    $result = $report->toArray();
+    $assert(count($source->calls) === 10);
+    $assert(array_unique(array_column($source->calls, 'limit')) === [3]);
+    $assert($result['found'] === 30);
+    $assert($result['new'] === 30);
+    $assert($result['target_combinations'] === 10);
+    $assert(array_unique(array_column($result['targets'], 'found')) === [3]);
+    $assert(count($repository->researchTargetProgress()) === 10);
+});
+
+$test('permanent research conflicts stay quarantined until source data changes', function () use ($assert): void {
+    [$repository] = testRepository();
+    $runId = Uuid::v4();
+    $repository->startRun($runId, 'research', false, 'test');
+    $url = 'https://example.com/conflicted-business';
+    $raw = ['name' => 'Conflicted Business', 'phone' => '03-0000000'];
+    $repository->recordResearchFailure(
+        $runId,
+        'fixture',
+        $url,
+        $raw,
+        'identity_conflict',
+        'Conflicting identity keys.',
+        false,
+    );
+
+    $assert(! $repository->shouldProcessUrl('fixture', $url, 30, SourceFingerprint::hash($raw)));
+    $changed = [...$raw, 'phone' => '03-1111111'];
+    $assert($repository->shouldProcessUrl('fixture', $url, 30, SourceFingerprint::hash($changed)));
+});
+
 $test('normalizer keeps sources local and creates stable identity keys', function () use ($assert): void {
     $normalizer = new BusinessNormalizer(new OpeningHoursParser, ['Tel Aviv', 'Jerusalem']);
     $candidate = $normalizer->normalize([
@@ -317,6 +471,50 @@ $test('OAuth token is cached and renewed after an API 401', function () use ($as
     $assert(count($http->requests) === 4);
     $assert($http->requests[1]['headers']['Authorization'] === 'Bearer token-one');
     $assert($http->requests[3]['headers']['Authorization'] === 'Bearer token-two');
+});
+
+$test('API client sends completed worker reports to the protected log endpoint', function () use ($assert): void {
+    $http = new QueueHttpClient([
+        new HttpResponse(200, [], '{"access_token":"run-token","expires_in":3600}'),
+        new HttpResponse(201, [], '{"success":true,"data":{"id":"log-id","run_id":"run-id","replayed":false}}'),
+    ]);
+    $tokens = new OAuthTokenProvider(
+        $http, 'https://sveevee.test/oauth/token', 'client-id', 'client-secret', 5, 'TestWorker/1.0'
+    );
+    $api = new SveeveeApiClient(
+        $http, $tokens, 'https://sveevee.test/api/v1/business-import', 5, 0, 1, 'TestWorker/1.0'
+    );
+
+    $result = $api->reportRun(['run_id' => 'run-id']);
+
+    $assert($result['replayed'] === false);
+    $assert($http->requests[1]['method'] === 'POST');
+    $assert($http->requests[1]['url'] === 'https://sveevee.test/api/v1/business-import/worker-runs');
+});
+
+$test('run log outbox retries safely and sends each completed report once', function () use ($assert): void {
+    [$repository, $logger] = testRepository();
+    $runId = Uuid::v4();
+    $report = [
+        'run_id' => $runId,
+        'command' => 'run',
+        'dry_run' => false,
+        'status' => 'completed',
+    ];
+    $repository->startRun($runId, 'run', false, 'test');
+    $repository->finishRun($runId, 'completed', null, $report);
+    $repository->queueRunLog($runId, $report);
+    $gateway = new FakeGateway;
+    $gateway->failNextRunReport = true;
+    $publisher = new RunLogPublisher($gateway, $repository, $logger);
+
+    $publisher->publishPending();
+    $assert(count($repository->pendingRunLogs()) === 1);
+    $publisher->publishPending();
+    $assert($repository->pendingRunLogs() === []);
+    $publisher->publishPending();
+    $assert(count($gateway->runReports) === 2, 'A delivered report must leave the pending outbox.');
+    $assert($repository->statusSummary()['pending_admin_logs'] === 0);
 });
 
 $test('remote patches fill gaps without deleting existing values', function () use ($assert): void {
@@ -412,6 +610,37 @@ $test('worker splits large work blocks into batches of at most 100', function ()
     $assert(count($gateway->batchRequests) === 3, 'Successful businesses must not be imported again.');
 });
 
+$test('import batches never mix city category combinations', function () use ($assert): void {
+    [$repository, $logger] = testRepository();
+    foreach (range(1, 60) as $number) {
+        $repository->upsertCandidate(testCandidateFor(
+            sprintf('Tel Aviv Electrician %03d', $number),
+            'Tel Aviv',
+            'professionals.electricians',
+        ));
+        $repository->upsertCandidate(testCandidateFor(
+            sprintf('Jerusalem Cafe %03d', $number),
+            'Jerusalem',
+            'food_catering.cafes',
+        ));
+    }
+    $gateway = new FakeGateway;
+    $report = new RunReport(Uuid::v4(), 'import', false);
+    $repository->startRun($report->runId, 'import', false, 'test');
+    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100, null))
+        ->import($report->runId, 120, false, $report);
+
+    $sizes = array_map(static fn (array $request): int => count($request['businesses']), $gateway->batchRequests);
+    $assert($sizes === [60, 60]);
+    foreach ($gateway->batchRequests as $request) {
+        $combinations = array_unique(array_map(
+            static fn (array $business): string => $business['address']['city'].'|'.$business['category_key'],
+            $request['businesses'],
+        ));
+        $assert(count($combinations) === 1, 'A batch mixed multiple city-category combinations.');
+    }
+});
+
 $test('research CLI persists seed data and writes a JSON report', function () use ($assert): void {
     global $tempDirectories;
     $directory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'sveevee-worker-cli-'.bin2hex(random_bytes(5));
@@ -428,6 +657,8 @@ $test('research CLI persists seed data and writes a JSON report', function () us
     ]], JSON_THROW_ON_ERROR));
     file_put_contents($config, json_encode([
         'target_per_run' => 10,
+        'targets_per_run' => 10,
+        'businesses_per_combination' => 100,
         'batch_size' => 100,
         'cities' => ['Tel Aviv'],
         'neighborhoods' => [],
@@ -523,12 +754,17 @@ function beerShevaLicenseRecord(
 
 function testCandidate(string $name): BusinessCandidate
 {
+    return testCandidateFor($name, 'Tel Aviv', 'professionals.electricians');
+}
+
+function testCandidateFor(string $name, string $city, string $category): BusinessCandidate
+{
     return new BusinessCandidate([
         'type' => 'business',
         'name' => $name,
         'public_description' => 'Verified description for '.$name,
-        'category_key' => 'professionals.electricians',
-        'address' => ['city' => 'Tel Aviv'],
+        'category_key' => $category,
+        'address' => ['city' => $city],
     ], [new SourceRecord('test', 'test', 'https://example.com/'.rawurlencode($name), Clock::now(), ['name' => $name])]);
 }
 

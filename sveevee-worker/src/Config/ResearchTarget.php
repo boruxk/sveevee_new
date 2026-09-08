@@ -14,7 +14,12 @@ final readonly class ResearchTarget
 
     public function key(): string
     {
-        return implode('|', [$this->city, $this->neighborhood ?? '', $this->categoryKey]);
+        $parts = [$this->city];
+        if ($this->neighborhood !== null) {
+            $parts[] = $this->neighborhood;
+        }
+        $parts[] = $this->categoryKey;
+
+        return implode('|', $parts);
     }
 }
-

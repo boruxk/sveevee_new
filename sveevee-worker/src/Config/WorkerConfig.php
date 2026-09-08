@@ -70,16 +70,17 @@ final class WorkerConfig
 
             foreach ($this->get('categories', []) as $category) {
                 foreach ($locations as $neighborhood) {
-                    $targets[] = new ResearchTarget(
+                    $target = new ResearchTarget(
                         trim((string) $city),
                         trim((string) $category),
                         is_string($neighborhood) && trim($neighborhood) !== '' ? trim($neighborhood) : null,
                     );
+                    $targets[$target->key()] = $target;
                 }
             }
         }
 
-        return $targets;
+        return array_values($targets);
     }
 
     public function resolvePath(string $configured, ?string $environmentName = null): string
@@ -109,12 +110,20 @@ final class WorkerConfig
     private function validate(): void
     {
         $target = $this->int('target_per_run', 1000);
+        $targetsPerRun = $this->int('targets_per_run', count($this->targets()));
+        $perCombination = $this->int('businesses_per_combination', $target);
         $batch = $this->int('batch_size', 100);
         if ($target < 1) {
             throw new RuntimeException('target_per_run must be at least 1.');
         }
         if ($batch < 1 || $batch > 100) {
             throw new RuntimeException('batch_size must be between 1 and 100.');
+        }
+        if ($targetsPerRun < 1) {
+            throw new RuntimeException('targets_per_run must be at least 1.');
+        }
+        if ($perCombination < 1) {
+            throw new RuntimeException('businesses_per_combination must be at least 1.');
         }
         if ($this->targets() === []) {
             throw new RuntimeException('Configure at least one city and category.');
@@ -131,4 +140,3 @@ final class WorkerConfig
         return str_starts_with($path, '/') || preg_match('/^[A-Za-z]:[\\\\\/]/', $path) === 1;
     }
 }
-

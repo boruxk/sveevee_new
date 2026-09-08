@@ -6,6 +6,7 @@ namespace Sveevee\Worker\Storage;
 
 use PDO;
 use RuntimeException;
+use Sveevee\Worker\Config\ResearchTarget;
 use Sveevee\Worker\Domain\BusinessCandidate;
 use Sveevee\Worker\Domain\BusinessMerger;
 use Sveevee\Worker\Domain\BusinessNormalizer;
@@ -41,6 +42,57 @@ final class WorkerRepository
             'UPDATE runs SET status = ?, finished_at = ?, report_path = ?, report_json = ?, error_message = ? WHERE id = ?'
         );
         $statement->execute([$status, Clock::now(), $reportPath, Json::encode($report), $error, $id]);
+    }
+
+    public function queueRunLog(string $runId, array $report): void
+    {
+        $now = Clock::now();
+        $statement = $this->pdo->prepare(<<<'SQL'
+INSERT INTO run_log_outbox (run_id, payload_json, created_at, updated_at)
+VALUES (?, ?, ?, ?)
+ON CONFLICT(run_id) DO NOTHING
+SQL);
+        $statement->execute([$runId, Json::encode($report), $now, $now]);
+    }
+
+    public function pendingRunLogs(int $limit = 20): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT run_id, payload_json, attempts FROM run_log_outbox WHERE reported_at IS NULL ORDER BY created_at LIMIT ?'
+        );
+        $statement->bindValue(1, max(1, $limit), PDO::PARAM_INT);
+        $statement->execute();
+
+        return array_map(static fn (array $row): array => [
+            'run_id' => $row['run_id'],
+            'report' => Json::decode($row['payload_json']),
+            'attempts' => (int) $row['attempts'],
+        ], $statement->fetchAll());
+    }
+
+    public function markRunLogAttempt(string $runId): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE run_log_outbox SET attempts = attempts + 1, updated_at = ? WHERE run_id = ?'
+        );
+        $statement->execute([Clock::now(), $runId]);
+    }
+
+    public function completeRunLog(string $runId): void
+    {
+        $now = Clock::now();
+        $statement = $this->pdo->prepare(
+            'UPDATE run_log_outbox SET reported_at = ?, last_error = NULL, updated_at = ? WHERE run_id = ?'
+        );
+        $statement->execute([$now, $now, $runId]);
+    }
+
+    public function failRunLog(string $runId, string $message): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE run_log_outbox SET last_error = ?, updated_at = ? WHERE run_id = ?'
+        );
+        $statement->execute([$message, Clock::now(), $runId]);
     }
 
     public function upsertCandidate(BusinessCandidate $candidate): array
@@ -131,7 +183,14 @@ final class WorkerRepository
         );
         $statement->execute([$adapter, hash('sha256', $url)]);
         $row = $statement->fetch();
-        if ($row === false || $row['status'] !== 'success') {
+        if ($row === false) {
+            return true;
+        }
+        if ($row['status'] === 'rejected') {
+            return $rawHash !== null
+                && ! hash_equals((string) ($row['raw_hash'] ?? ''), $rawHash);
+        }
+        if ($row['status'] !== 'success') {
             return true;
         }
         if ($rawHash !== null && ! hash_equals((string) ($row['raw_hash'] ?? ''), $rawHash)) {
@@ -155,14 +214,70 @@ final class WorkerRepository
         array $raw,
         string $code,
         string $message,
+        bool $retryable = true,
     ): void {
         $statement = $this->pdo->prepare(
             'INSERT INTO research_failures (run_id, adapter, source_url, raw_json, error_code, error_message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
         $statement->execute([$runId, $adapter, $sourceUrl, Json::encode($raw), $code, $message, Clock::now()]);
         if ($sourceUrl !== null) {
-            $this->recordUrlFailure($adapter, $sourceUrl, $message);
+            $this->saveResearchedUrl(
+                $adapter,
+                $sourceUrl,
+                $retryable ? 'failed' : 'rejected',
+                null,
+                $message,
+                Clock::now(),
+                SourceFingerprint::hash($raw),
+            );
         }
+    }
+
+    public function researchTargetProgress(): array
+    {
+        $progress = [];
+        foreach ($this->pdo->query(
+            'SELECT target_key, city, category_key, completed_runs, last_run_id, last_completed_at FROM research_target_progress'
+        )->fetchAll() as $row) {
+            $progress[$row['target_key']] = [
+                'city' => $row['city'],
+                'category_key' => $row['category_key'],
+                'completed_runs' => (int) $row['completed_runs'],
+                'last_run_id' => $row['last_run_id'],
+                'last_completed_at' => $row['last_completed_at'],
+            ];
+        }
+
+        return $progress;
+    }
+
+    public function markResearchTargetCompleted(ResearchTarget $target, string $runId): void
+    {
+        $now = Clock::now();
+        $statement = $this->pdo->prepare(<<<'SQL'
+INSERT INTO research_target_progress (
+    target_key, city, category_key, neighborhood, completed_runs,
+    last_run_id, last_completed_at, created_at, updated_at
+) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)
+ON CONFLICT(target_key) DO UPDATE SET
+    city = excluded.city,
+    category_key = excluded.category_key,
+    neighborhood = excluded.neighborhood,
+    completed_runs = research_target_progress.completed_runs + 1,
+    last_run_id = excluded.last_run_id,
+    last_completed_at = excluded.last_completed_at,
+    updated_at = excluded.updated_at
+SQL);
+        $statement->execute([
+            $target->key(),
+            $target->city,
+            $target->categoryKey,
+            $target->neighborhood,
+            $runId,
+            $now,
+            $now,
+            $now,
+        ]);
     }
 
     public function pendingBusinesses(int $limit): array
@@ -329,6 +444,10 @@ final class WorkerRepository
         foreach ($this->pdo->query('SELECT status, COUNT(*) AS total FROM businesses GROUP BY status')->fetchAll() as $row) {
             $counts[$row['status']] = (int) $row['total'];
         }
+        $researchUrls = [];
+        foreach ($this->pdo->query('SELECT status, COUNT(*) AS total FROM researched_urls GROUP BY status')->fetchAll() as $row) {
+            $researchUrls[$row['status']] = (int) $row['total'];
+        }
         $lastRun = $this->pdo->query(
             'SELECT id, command, dry_run, status, started_at, finished_at, report_path, error_message FROM runs ORDER BY started_at DESC LIMIT 1'
         )->fetch() ?: null;
@@ -348,11 +467,16 @@ final class WorkerRepository
         $pendingBatches = (int) $this->pdo->query(
             "SELECT COUNT(*) FROM import_batches WHERE status = 'pending'"
         )->fetchColumn();
+        $pendingRunLogs = (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM run_log_outbox WHERE reported_at IS NULL'
+        )->fetchColumn();
 
         return [
             'businesses' => $counts,
             'total' => array_sum($counts),
+            'research_urls' => $researchUrls,
             'pending_batches' => $pendingBatches,
+            'pending_admin_logs' => $pendingRunLogs,
             'last_run' => $lastRun,
             'recent_failures' => $recentFailures,
         ];

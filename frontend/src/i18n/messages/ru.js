@@ -714,6 +714,61 @@ export default {
 			empty: 'Leads Page 001 пока не создала ни одной страницы.',
 			loadFailed: 'Не удалось загрузить статистику лид-страницы.'
 		},
+		logs: {
+			title: 'Журнал',
+			systemTitle: 'Системный журнал',
+			intro: 'Автоматические запуски и системные события, начиная с самых новых.',
+			entries: 'Записи журнала',
+			source: 'Источник',
+			type: 'Тип',
+			status: 'Статус',
+			allSources: 'Все источники',
+			allTypes: 'Все типы событий',
+			allStatuses: 'Все статусы',
+			time: 'Время',
+			event: 'Событие',
+			result: 'Результат',
+			duration: 'Длительность',
+			refresh: 'Обновить журнал',
+			details: 'Показать детали',
+			empty: 'Нет записей, соответствующих этим фильтрам.',
+			loadFailed: 'Не удалось загрузить системный журнал.',
+			sources: {
+				automationWorker: 'Воркер автоматизации'
+			},
+			types: {
+				businessImportRun: 'Поиск и импорт бизнесов'
+			},
+			statuses: {
+				success: 'Успешно',
+				warning: 'Завершено с предупреждениями',
+				failed: 'Ошибка'
+			},
+			seconds: '{count} сек.',
+			minutesSeconds: '{minutes} мин. {seconds} сек.',
+			genericResult: 'Системное событие',
+			workerSummary: 'Найдено: {found}, импортировано: {imported}, обновлено: {updated}, ошибок: {failed}',
+			runId: 'ID запуска',
+			mode: 'Режим',
+			dryRun: 'Тестовый запуск',
+			liveRun: 'Рабочий запуск',
+			metrics: 'Показатели запуска',
+			metricsLabels: {
+				found: 'Найдено',
+				new: 'Новых',
+				existing: 'Существующих',
+				imported: 'Импортировано',
+				updated: 'Обновлено',
+				duplicates: 'Дубликатов',
+				incomplete: 'Неполных',
+				failed: 'Ошибок'
+			},
+			combinations: 'Комбинации города и категории',
+			foundCount: 'Найдено: {count}',
+			usedSources: 'Использованные источники',
+			errors: 'Ошибки',
+			rawData: 'Исходные данные'
+		},
 		userSearch: 'Поиск пользователей',
 		userSearchPlaceholder: 'Искать по имени, e-mail или логину',
 		totalUsers: 'Всего пользователей',

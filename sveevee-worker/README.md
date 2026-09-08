@@ -6,11 +6,14 @@ Der Worker laeuft unabhaengig von Frontend und Laravel-Web-Requests. Er recherch
 
 - OAuth-2.0 Client Credentials mit automatischer Token-Erneuerung
 - Lokaler, persistenter Status fuer Businesses, Identitaetssignale, Quellen-URLs, Fehler, Batches und Runs
+- Persistente Round-Robin-Rotation durch die konfigurierten Stadt-Kategorie-Kombinationen
+- Getrennte Import-Batches pro Stadt-Kategorie-Kombination
 - Idempotente Batch-Retries mit vor dem Request gespeicherter `client_import_id`
 - Einzelne Fehler stoppen die restlichen Batch-Eintraege nicht
 - Fehlende Update-Felder loeschen keine vorhandenen Daten
 - Beanspruchte Seiten werden erkannt und niemals veraendert
 - JSON-Reports und JSON-Line-Log nach jedem Lauf
+- Idempotente Uebertragung jedes abgeschlossenen Laufs in den Admin-Tab `Logs`, mit persistenter Outbox fuer spaetere Retries
 - Prozesssperre gegen zwei gleichzeitige Worker
 - `robots.txt`, Rate Limits, HTTPS-Pruefung und Schutz vor Requests in private Netze beim Website-Enrichment
 
@@ -48,6 +51,8 @@ Die oeffentliche Overpass-Instanz ist standardmaessig gesperrt. Ihre Betreiber b
 
 Der Adapter liest CKAN-Ressourcen vollstaendig und seitenweise, bevor er neue oder geaenderte Datensaetze an die normale Research-Pipeline uebergibt. Verarbeitete Datensatz-IDs und stabile Inhalts-Hashes bleiben in SQLite gespeichert. Dadurch ueberspringt ein spaeterer Lauf unveraenderte Eintraege und setzt bei noch nicht verarbeiteten Datensaetzen fort, statt immer wieder am Anfang des Exports zu stoppen.
 
+Dauerhafte Identitaetskonflikte und unveraendert unvollstaendige Quelldatensaetze werden bis zu einer Aenderung ihres Inhalts quarantiniert. Dadurch versucht ein taeglicher Lauf dieselben nicht aufloesbaren Datensaetze nicht immer wieder.
+
 Das Profil `beer_sheva_business_licenses` uebernimmt Name, Telefon, E-Mail, Strasse, Hausnummer, Lizenzbeschreibung, Status und Ablaufdatum. Abgelaufene oder nicht aktive Lizenzen werden verworfen. Unterstuetzt werden derzeit Restaurants, Cafes, Baeckereien, Catering, Fast Food, Lebensmittelgeschaefte, Fleischereien, Bars, Veranstaltungsorte und Hotels. Nicht eindeutig zuordenbare Lizenzarten werden nicht importiert.
 
 Die Quelle wird intern mit URL und Pruefzeitpunkt gespeichert, aber nicht in den oeffentlichen Beschreibungstext der Business-Seite geschrieben. Eine technische Lizenz-Allowlist ist noch nicht aktiv; vor produktiven automatischen Laeufen bleibt die Nutzungs- und Lizenzpruefung daher Aufgabe des Betreibers.
@@ -64,25 +69,39 @@ Beispiel fuer feinere Ziele:
 ```json
 {
   "target_per_run": 1000,
+  "targets_per_run": 10,
+  "businesses_per_combination": 100,
   "batch_size": 100,
   "cities": ["Jerusalem", "Tel Aviv"],
-  "neighborhoods": {
-    "Tel Aviv": ["Ramat Aviv", "Florentin"]
-  },
-  "categories": ["professionals.electricians"],
+  "neighborhoods": [],
+  "categories": [
+    "professionals.electricians",
+    "food_catering.cafes"
+  ],
   "quotas": {
-    "per_category": 100,
-    "per_neighborhood": 100,
+    "per_category": null,
+    "per_neighborhood": null,
     "max_new_per_day": 1000
   }
 }
 ```
 
+Der Worker bildet aus `cities` und `categories` alle Kombinationen. `targets_per_run` waehlt per persistentem Round-Robin die naechsten zehn Kombinationen aus. `businesses_per_combination` begrenzt jede davon auf 100 recherchierte Kandidaten; `target_per_run` bleibt das globale Maximum des Laufs. Importfaehige Eintraege derselben Kombination werden in eigenen Batches von hoechstens `batch_size` gesendet. Weniger Quelldaten oder Dubletten koennen dazu fuehren, dass ein Batch kleiner als 100 ist.
+
+Der Fortschritt liegt in SQLite. Neue Kombinationen werden zuerst bearbeitet, danach beginnt automatisch der naechste Umlauf bei den am laengsten nicht verarbeiteten Kombinationen. `worker status` zeigt Gesamtzahl, bereits besuchte und die als Naechstes vorgesehenen Kombinationen. Manuelle Laeufe bewegen denselben Cursor wie Timerlaeufe.
+
+Eine konfigurierte Kombination liefert nur dann Businesses, wenn mindestens ein aktiver Source-Adapter diese Stadt und Kategorie unterstuetzt. Die Rotation ersetzt keine fehlende Datenquelle; das mitgelieferte CKAN-Profil deckt derzeit ausschliesslich Beersheba und seine zehn dokumentierten Kategorien ab.
+
 Beispiel fuer das Aktivieren des vorhandenen Beersheba-Profils:
 
 ```json
 {
+  "target_per_run": 1000,
+  "targets_per_run": 10,
+  "businesses_per_combination": 100,
+  "batch_size": 100,
   "cities": ["Beersheba"],
+  "neighborhoods": [],
   "categories": [
     "food_catering.restaurants",
     "food_catering.cafes",
@@ -116,7 +135,7 @@ Beispiel fuer das Aktivieren des vorhandenen Beersheba-Profils:
 }
 ```
 
-Jede Stadt, Neighborhood und `category_key` muss exakt einem vorhandenen Sveevee-Katalogwert entsprechen. Fuer jede neue OSM-Kategorie wird unter `sources.overpass.category_tags` eine Zuordnung gepflegt. Fuer groessere regelmaessige OSM-Laeufe `OVERPASS_API_URL` auf einen selbst betriebenen oder ausdruecklich autorisierten Endpunkt setzen.
+Jede Stadt und jeder `category_key` muss exakt einem vorhandenen Sveevee-Katalogwert entsprechen. Fuer den aktuellen Stadt-Kategorie-Ablauf bleibt `neighborhoods` leer. Fuer jede neue OSM-Kategorie wird unter `sources.overpass.category_tags` eine Zuordnung gepflegt. Fuer groessere regelmaessige OSM-Laeufe `OVERPASS_API_URL` auf einen selbst betriebenen oder ausdruecklich autorisierten Endpunkt setzen.
 
 ## Environment
 
@@ -206,7 +225,7 @@ sudo -u sveevee-worker /var/www/sveevee-worker/bin/worker run \
   --limit=1000
 ```
 
-Auch beim 1000er-Lauf bleiben die einzelnen API-Batches auf maximal 100 begrenzt.
+Auch beim 1000er-Lauf bleiben die einzelnen API-Batches auf maximal 100 begrenzt und enthalten nur Businesses derselben Stadt-Kategorie-Kombination. 1000 ist ein Maximum: Eine Kombination mit weniger neuen Quelldaten, Dubletten oder nicht aufloesbaren Datensaetzen erzeugt entsprechend weniger neue Seiten.
 
 ### 7. Taegliche Ausfuehrung aktivieren
 
@@ -227,7 +246,7 @@ sudo -u sveevee-worker /var/www/sveevee-worker/bin/worker status \
   --env-file=/etc/sveevee-worker/worker.env
 ```
 
-SQLite, Logs und Reports liegen unter `/var/lib/sveevee-worker`. Diese Daten muessen erhalten bleiben, damit der Worker erfolgreiche Imports und sichere Retries kennt.
+SQLite, Logs und Reports liegen unter `/var/lib/sveevee-worker`. Diese Daten muessen erhalten bleiben, damit der Worker erfolgreiche Imports, sichere Batch-Retries und noch nicht an den Admin-Log uebertragene Laufberichte kennt.
 
 ## Tests
 

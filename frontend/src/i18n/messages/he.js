@@ -714,6 +714,61 @@ export default {
 			empty: 'עדיין לא נוצרו עמודים דרך Leads Page 001.',
 			loadFailed: 'לא ניתן לטעון את נתוני עמוד הלידים.'
 		},
+		logs: {
+			title: 'יומן',
+			systemTitle: 'יומן מערכת',
+			intro: 'הרצות אוטומטיות ואירועי מערכת, מהחדש לישן.',
+			entries: 'רשומות ביומן',
+			source: 'מקור',
+			type: 'סוג',
+			status: 'סטטוס',
+			allSources: 'כל המקורות',
+			allTypes: 'כל סוגי האירועים',
+			allStatuses: 'כל הסטטוסים',
+			time: 'זמן',
+			event: 'אירוע',
+			result: 'תוצאה',
+			duration: 'משך',
+			refresh: 'רענון היומן',
+			details: 'הצגת פרטים',
+			empty: 'אין רשומות יומן שמתאימות למסננים.',
+			loadFailed: 'לא ניתן לטעון את יומן המערכת.',
+			sources: {
+				automationWorker: 'עובד האוטומציה'
+			},
+			types: {
+				businessImportRun: 'הרצת מחקר וייבוא עסקים'
+			},
+			statuses: {
+				success: 'הושלם בהצלחה',
+				warning: 'הושלם עם אזהרות',
+				failed: 'נכשל'
+			},
+			seconds: '{count} שנ׳',
+			minutesSeconds: '{minutes} דק׳ {seconds} שנ׳',
+			genericResult: 'אירוע מערכת',
+			workerSummary: '{found} נמצאו, {imported} יובאו, {updated} עודכנו, {failed} נכשלו',
+			runId: 'מזהה הרצה',
+			mode: 'מצב',
+			dryRun: 'בדיקה ללא כתיבה',
+			liveRun: 'הרצה אמיתית',
+			metrics: 'נתוני ההרצה',
+			metricsLabels: {
+				found: 'נמצאו',
+				new: 'חדשים',
+				existing: 'קיימים',
+				imported: 'יובאו',
+				updated: 'עודכנו',
+				duplicates: 'כפילויות',
+				incomplete: 'לא מלאים',
+				failed: 'נכשלו'
+			},
+			combinations: 'שילובי עיר וקטגוריה',
+			foundCount: '{count} נמצאו',
+			usedSources: 'מקורות שנעשה בהם שימוש',
+			errors: 'שגיאות',
+			rawData: 'נתונים גולמיים'
+		},
 		userSearch: 'חיפוש משתמשים',
 		userSearchPlaceholder: 'חיפוש לפי שם, אימייל או לוגין',
 		totalUsers: 'סך כל המשתמשים',

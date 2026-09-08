@@ -714,6 +714,61 @@ export default {
 			empty: 'Leads Page 001 n’a encore créé aucune page.',
 			loadFailed: 'Les statistiques de la page de prospects n’ont pas pu être chargées.'
 		},
+		logs: {
+			title: 'Journaux',
+			systemTitle: 'Journaux système',
+			intro: 'Exécutions automatiques et événements système, du plus récent au plus ancien.',
+			entries: 'Entrées du journal',
+			source: 'Source',
+			type: 'Type',
+			status: 'Statut',
+			allSources: 'Toutes les sources',
+			allTypes: 'Tous les types',
+			allStatuses: 'Tous les statuts',
+			time: 'Date',
+			event: 'Événement',
+			result: 'Résultat',
+			duration: 'Durée',
+			refresh: 'Actualiser les journaux',
+			details: 'Voir les détails',
+			empty: 'Aucune entrée ne correspond à ces filtres.',
+			loadFailed: 'Les journaux système n\'ont pas pu être chargés.',
+			sources: {
+				automationWorker: 'Worker d\'automatisation'
+			},
+			types: {
+				businessImportRun: 'Recherche et importation d\'entreprises'
+			},
+			statuses: {
+				success: 'Réussi',
+				warning: 'Terminé avec des avertissements',
+				failed: 'Échec'
+			},
+			seconds: '{count} s',
+			minutesSeconds: '{minutes} min {seconds} s',
+			genericResult: 'Événement système',
+			workerSummary: '{found} trouvées, {imported} importées, {updated} mises à jour, {failed} échouées',
+			runId: 'ID d\'exécution',
+			mode: 'Mode',
+			dryRun: 'Simulation',
+			liveRun: 'Exécution réelle',
+			metrics: 'Indicateurs de l\'exécution',
+			metricsLabels: {
+				found: 'Trouvées',
+				new: 'Nouvelles',
+				existing: 'Existantes',
+				imported: 'Importées',
+				updated: 'Mises à jour',
+				duplicates: 'Doublons',
+				incomplete: 'Incomplètes',
+				failed: 'Échouées'
+			},
+			combinations: 'Combinaisons ville et catégorie',
+			foundCount: '{count} trouvées',
+			usedSources: 'Sources utilisées',
+			errors: 'Erreurs',
+			rawData: 'Données brutes'
+		},
 		userSearch: 'Recherche utilisateurs',
 		userSearchPlaceholder: 'Rechercher par nom, e-mail ou identifiant',
 		totalUsers: 'Total des utilisateurs',

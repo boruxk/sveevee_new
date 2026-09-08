@@ -11,5 +11,6 @@ interface SveeveeGateway
     public function searchBusinesses(array $filters): array;
 
     public function importBatch(array $request): array;
-}
 
+    public function reportRun(array $report): array;
+}

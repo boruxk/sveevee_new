@@ -13,6 +13,7 @@
 		deleteBlockedTerm,
 		fetchAdminPageOwnerOptions,
 		fetchAdminLeadPages,
+		fetchAdminLogs,
 		fetchAdminPages,
 		fetchAdminSettings,
 		fetchAdminSupportChat,
@@ -76,7 +77,7 @@
 	const supportLoading = ref(false)
 	const tableLoading = ref(false)
 	const pagesLoading = ref(false)
-	const adminTabNames = ['communication', 'users', 'pages', 'landing-pages', 'statistics', 'settings']
+	const adminTabNames = ['communication', 'users', 'pages', 'landing-pages', 'statistics', 'logs', 'settings']
 	const activeTab = ref(adminTabNames.includes(String(route.query.tab || '')) ? String(route.query.tab) : 'communication')
 	const supportConversations = ref([])
 	const userRows = ref([])
@@ -86,6 +87,15 @@
 	const leadPageRows = ref([])
 	const totalLeadPages = ref(0)
 	const leadPagesLoading = ref(false)
+	const logRows = ref([])
+	const totalLogs = ref(0)
+	const logsLoading = ref(false)
+	const logSourceFilter = ref('')
+	const logTypeFilter = ref('')
+	const logStatusFilter = ref('')
+	const availableLogFilters = ref({ sources: [], types: [], statuses: [] })
+	const selectedLog = ref(null)
+	const logDetailsOpen = ref(false)
 	const pageSearch = ref('')
 	const appliedPageSearch = ref('')
 	const pageTypeFilter = ref('')
@@ -132,6 +142,11 @@
 		rowsNumber: 0
 	})
 	const leadPageTablePagination = ref({
+		page: 1,
+		rowsPerPage: 50,
+		rowsNumber: 0
+	})
+	const logTablePagination = ref({
 		page: 1,
 		rowsPerPage: 50,
 		rowsNumber: 0
@@ -230,6 +245,14 @@
 		{ name: 'created', label: t('admin.statistics.created'), align: 'left', field: 'created_at', sortable: false },
 		{ name: 'actions', label: t('admin.actions'), align: 'right', field: 'actions', sortable: false }
 	])
+	const logColumns = computed(() => [
+		{ name: 'occurred_at', label: t('admin.logs.time'), align: 'left', field: 'occurred_at', sortable: false },
+		{ name: 'event', label: t('admin.logs.event'), align: 'left', field: 'type', sortable: false },
+		{ name: 'status', label: t('admin.logs.status'), align: 'left', field: 'status', sortable: false },
+		{ name: 'summary', label: t('admin.logs.result'), align: 'left', field: 'data', sortable: false },
+		{ name: 'duration', label: t('admin.logs.duration'), align: 'left', field: (row) => row.data?.duration_seconds, sortable: false },
+		{ name: 'actions', label: t('admin.actions'), align: 'right', field: 'actions', sortable: false }
+	])
 	const pageTypeFilterOptions = computed(() => [
 		{ label: t('admin.pages.allTypes'), value: '' },
 		{ label: t('pages.kinds.business'), value: 'business' },
@@ -239,6 +262,18 @@
 		{ label: t('admin.pages.allOwnerships'), value: '' },
 		{ label: t('admin.pages.managed'), value: 'managed' },
 		{ label: t('admin.pages.unclaimed'), value: 'unclaimed' }
+	])
+	const logSourceFilterOptions = computed(() => [
+		{ label: t('admin.logs.allSources'), value: '' },
+		...availableLogFilters.value.sources.map((value) => ({ label: logSourceLabel(value), value }))
+	])
+	const logTypeFilterOptions = computed(() => [
+		{ label: t('admin.logs.allTypes'), value: '' },
+		...availableLogFilters.value.types.map((value) => ({ label: logTypeLabel(value), value }))
+	])
+	const logStatusFilterOptions = computed(() => [
+		{ label: t('admin.logs.allStatuses'), value: '' },
+		...availableLogFilters.value.statuses.map((value) => ({ label: logStatusLabel(value), value }))
 	])
 	const blockedLocaleOptions = computed(() => [
 		{ label: t('admin.settings.allLanguages'), value: 'all' },
@@ -264,6 +299,7 @@
 		pages: t('admin.pages.title'),
 		'landing-pages': t('admin.landingPages'),
 		statistics: t('admin.statistics.title'),
+		logs: t('admin.logs.title'),
 		settings: t('admin.settings.title')
 	}[activeTab.value] || t('admin.users')))
 
@@ -300,6 +336,71 @@
 			dateStyle: 'medium',
 			timeStyle: 'short'
 		}).format(date)
+	}
+
+	function logSourceLabel(value) {
+		return value === 'automation_worker' ? t('admin.logs.sources.automationWorker') : value
+	}
+
+	function logTypeLabel(value) {
+		return value === 'business_import_run' ? t('admin.logs.types.businessImportRun') : value
+	}
+
+	function logStatusLabel(value) {
+		return ({
+			success: t('admin.logs.statuses.success'),
+			warning: t('admin.logs.statuses.warning'),
+			failed: t('admin.logs.statuses.failed')
+		}[value] || value)
+	}
+
+	function logStatusColor(value) {
+		return ({ success: 'positive', warning: 'warning', failed: 'negative' }[value] || 'grey-7')
+	}
+
+	function logStatusTextColor(value) {
+		return value === 'warning' ? 'dark' : 'white'
+	}
+
+	function formatDuration(value) {
+		const seconds = Number(value)
+		if (!Number.isFinite(seconds) || seconds < 0) {
+			return '-'
+		}
+
+		if (seconds < 60) {
+			return t('admin.logs.seconds', { count: seconds.toLocaleString(intlLocale.value, { maximumFractionDigits: 1 }) })
+		}
+
+		const minutes = Math.floor(seconds / 60)
+		const remainder = Math.round(seconds % 60)
+		return t('admin.logs.minutesSeconds', { minutes, seconds: remainder })
+	}
+
+	function logSummary(log) {
+		if (log.type !== 'business_import_run') {
+			return t('admin.logs.genericResult')
+		}
+
+		return t('admin.logs.workerSummary', {
+			found: Number(log.data?.found || 0).toLocaleString(intlLocale.value),
+			imported: Number(log.data?.imported || 0).toLocaleString(intlLocale.value),
+			updated: Number(log.data?.updated || 0).toLocaleString(intlLocale.value),
+			failed: Number(log.data?.failed || 0).toLocaleString(intlLocale.value)
+		})
+	}
+
+	function formattedLogData(log) {
+		return JSON.stringify(log?.data || {}, null, 2)
+	}
+
+	function logTargetCategoryLabel(key) {
+		return catalogLabel(catalogTopics.value.find((topic) => topic.key === key)?.labels, locale.value) || key
+	}
+
+	function openLogDetails(log) {
+		selectedLog.value = log
+		logDetailsOpen.value = true
 	}
 
 	function isOwn(message) {
@@ -469,6 +570,37 @@
 
 	function onLeadPageTableRequest({ pagination }) {
 		loadLeadPageTable(pagination.page || 1)
+	}
+
+	async function loadLogTable(page = logTablePagination.value.page) {
+		logsLoading.value = true
+		try {
+			const { data } = await fetchAdminLogs({
+				page,
+				source: logSourceFilter.value || undefined,
+				type: logTypeFilter.value || undefined,
+				status: logStatusFilter.value || undefined
+			})
+			const payload = data.data || {}
+			const pagination = payload.pagination || {}
+
+			logRows.value = payload.items || []
+			totalLogs.value = Number(pagination.total || logRows.value.length)
+			availableLogFilters.value = payload.filters || { sources: [], types: [], statuses: [] }
+			logTablePagination.value = {
+				page: pagination.current_page || page,
+				rowsPerPage: pagination.per_page || 50,
+				rowsNumber: pagination.total || logRows.value.length
+			}
+		} catch (error) {
+			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.logs.loadFailed')) })
+		} finally {
+			logsLoading.value = false
+		}
+	}
+
+	function onLogTableRequest({ pagination }) {
+		loadLogTable(pagination.page || 1)
 	}
 
 	function handleAccountNotification(event) {
@@ -922,6 +1054,10 @@
 		if (tab === 'communication') {
 			loadSupportConversations()
 		}
+
+		if (tab === 'logs') {
+			loadLogTable(1)
+		}
 	})
 
 	onMounted(() => {
@@ -930,6 +1066,9 @@
 		loadUserTable()
 		loadPageTable()
 		loadLeadPageTable()
+		if (activeTab.value === 'logs') {
+			loadLogTable()
+		}
 		loadSettings()
 		adminPresenceTimer = window.setInterval(refreshAdminPresence, 30_000)
 	})
@@ -966,6 +1105,7 @@
 				<q-tab name="pages" :icon="pagesTabIcon" :label="t('admin.pages.title')" />
 				<q-tab name="landing-pages" icon="dashboard" :label="t('admin.landingPages')" />
 				<q-tab name="statistics" :icon="statisticsTabIcon" :label="t('admin.statistics.title')" />
+				<q-tab name="logs" icon="receipt_long" :label="t('admin.logs.title')" />
 				<q-tab name="settings" icon="tune" :label="t('admin.settings.title')" />
 			</q-tabs>
 
@@ -1543,6 +1683,130 @@
 					</section>
 				</q-tab-panel>
 
+				<q-tab-panel name="logs" class="admin-panel">
+					<section class="soz-section-card logs-panel">
+						<header class="logs-panel__head">
+							<div>
+								<h2>{{ t('admin.logs.systemTitle') }}</h2>
+								<p>{{ t('admin.logs.intro') }}</p>
+							</div>
+							<div class="user-total logs-total" aria-live="polite">
+								<strong>{{ totalLogs.toLocaleString(intlLocale) }}</strong>
+								<span>{{ t('admin.logs.entries') }}</span>
+							</div>
+						</header>
+
+						<div class="log-filters">
+							<q-select
+								v-model="logSourceFilter"
+								outlined
+								dense
+								emit-value
+								map-options
+								:label="t('admin.logs.source')"
+								:options="logSourceFilterOptions"
+								@update:model-value="loadLogTable(1)"
+							/>
+							<q-select
+								v-model="logTypeFilter"
+								outlined
+								dense
+								emit-value
+								map-options
+								:label="t('admin.logs.type')"
+								:options="logTypeFilterOptions"
+								@update:model-value="loadLogTable(1)"
+							/>
+							<q-select
+								v-model="logStatusFilter"
+								outlined
+								dense
+								emit-value
+								map-options
+								:label="t('admin.logs.status')"
+								:options="logStatusFilterOptions"
+								@update:model-value="loadLogTable(1)"
+							/>
+							<q-btn
+								flat
+								round
+								icon="refresh"
+								:loading="logsLoading"
+								:aria-label="t('admin.logs.refresh')"
+								@click="loadLogTable(1)"
+							>
+								<q-tooltip>{{ t('admin.logs.refresh') }}</q-tooltip>
+							</q-btn>
+						</div>
+
+						<q-table
+							v-model:pagination="logTablePagination"
+							flat
+							:rows="logRows"
+							:columns="logColumns"
+							row-key="id"
+							:loading="logsLoading"
+							:rows-per-page-options="[50]"
+							:no-data-label="t('admin.logs.empty')"
+							binary-state-sort
+							class="user-table log-table"
+							@request="onLogTableRequest"
+						>
+							<template #body-cell-occurred_at="props">
+								<q-td :props="props" class="log-time-cell">
+									{{ formatDateTime(props.row.occurred_at) }}
+								</q-td>
+							</template>
+
+							<template #body-cell-event="props">
+								<q-td :props="props">
+									<div class="table-name log-event-cell">
+										<strong>{{ logTypeLabel(props.row.type) }}</strong>
+										<small>{{ logSourceLabel(props.row.source) }}</small>
+									</div>
+								</q-td>
+							</template>
+
+							<template #body-cell-status="props">
+								<q-td :props="props">
+									<q-chip
+										dense
+										:color="logStatusColor(props.row.status)"
+										:text-color="logStatusTextColor(props.row.status)"
+									>
+										{{ logStatusLabel(props.row.status) }}
+									</q-chip>
+								</q-td>
+							</template>
+
+							<template #body-cell-summary="props">
+								<q-td :props="props">
+									<span class="log-summary">{{ logSummary(props.row) }}</span>
+								</q-td>
+							</template>
+
+							<template #body-cell-duration="props">
+								<q-td :props="props">{{ formatDuration(props.row.data?.duration_seconds) }}</q-td>
+							</template>
+
+							<template #body-cell-actions="props">
+								<q-td :props="props">
+									<q-btn
+										flat
+										round
+										dense
+										icon="visibility"
+										:aria-label="t('admin.logs.details')"
+										@click="openLogDetails(props.row)"
+									>
+										<q-tooltip>{{ t('admin.logs.details') }}</q-tooltip>
+									</q-btn>
+								</q-td>
+							</template>
+						</q-table>
+					</section>
+				</q-tab-panel>
+
 				<q-tab-panel name="settings" class="admin-panel settings-panel">
 					<section class="soz-section-card settings-section">
 						<header class="settings-section__head">
@@ -1887,6 +2151,93 @@
 					<q-inner-loading :showing="settingsLoading" />
 				</q-tab-panel>
 			</q-tab-panels>
+
+			<q-dialog v-model="logDetailsOpen">
+				<q-card v-if="selectedLog" class="log-detail-dialog">
+					<header class="log-detail-head">
+						<div>
+							<small>{{ logSourceLabel(selectedLog.source) }}</small>
+							<h2>{{ logTypeLabel(selectedLog.type) }}</h2>
+							<p>{{ formatDateTime(selectedLog.occurred_at) }}</p>
+						</div>
+						<q-btn
+							flat
+							round
+							dense
+							icon="close"
+							:aria-label="t('actions.close')"
+							v-close-popup
+						/>
+					</header>
+
+					<q-card-section class="log-detail-body">
+						<div class="log-detail-meta">
+							<div>
+								<span>{{ t('admin.logs.status') }}</span>
+								<q-chip
+									dense
+									:color="logStatusColor(selectedLog.status)"
+									:text-color="logStatusTextColor(selectedLog.status)"
+								>
+									{{ logStatusLabel(selectedLog.status) }}
+								</q-chip>
+							</div>
+							<div>
+								<span>{{ t('admin.logs.runId') }}</span>
+								<strong dir="ltr">{{ selectedLog.external_id }}</strong>
+							</div>
+							<div>
+								<span>{{ t('admin.logs.mode') }}</span>
+								<strong>{{ selectedLog.data?.dry_run ? t('admin.logs.dryRun') : t('admin.logs.liveRun') }}</strong>
+							</div>
+							<div>
+								<span>{{ t('admin.logs.duration') }}</span>
+								<strong>{{ formatDuration(selectedLog.data?.duration_seconds) }}</strong>
+							</div>
+						</div>
+
+						<section v-if="selectedLog.type === 'business_import_run'" class="log-detail-section">
+							<h3>{{ t('admin.logs.metrics') }}</h3>
+							<div class="log-metrics">
+								<div v-for="metric in ['found', 'new', 'existing', 'imported', 'updated', 'duplicates', 'incomplete', 'failed']" :key="metric">
+									<strong>{{ Number(selectedLog.data?.[metric] || 0).toLocaleString(intlLocale) }}</strong>
+									<span>{{ t(`admin.logs.metricsLabels.${metric}`) }}</span>
+								</div>
+							</div>
+						</section>
+
+						<section v-if="selectedLog.data?.targets?.length" class="log-detail-section">
+							<h3>{{ t('admin.logs.combinations') }}</h3>
+							<div class="log-target-list">
+								<div v-for="target in selectedLog.data.targets" :key="target.key" class="log-target-row">
+									<span>{{ localizedLocation(target.city, 'city') }}</span>
+									<strong>{{ logTargetCategoryLabel(target.category_key) }}</strong>
+									<small>{{ t('admin.logs.foundCount', { count: Number(target.found || 0).toLocaleString(intlLocale) }) }}</small>
+								</div>
+							</div>
+						</section>
+
+						<section v-if="selectedLog.data?.used_sources?.length" class="log-detail-section">
+							<h3>{{ t('admin.logs.usedSources') }}</h3>
+							<div class="log-source-list">
+								<q-chip v-for="source in selectedLog.data.used_sources" :key="source" dense>{{ source }}</q-chip>
+							</div>
+						</section>
+
+						<section v-if="selectedLog.data?.errors?.length" class="log-detail-section log-error-section">
+							<h3>{{ t('admin.logs.errors') }}</h3>
+							<div v-for="(error, index) in selectedLog.data.errors" :key="`${error.stage}-${index}`" class="log-error-row">
+								<strong>{{ error.stage }}</strong>
+								<span>{{ error.message }}</span>
+							</div>
+						</section>
+
+						<q-expansion-item dense icon="data_object" :label="t('admin.logs.rawData')" class="log-raw-data">
+							<pre dir="ltr">{{ formattedLogData(selectedLog) }}</pre>
+						</q-expansion-item>
+					</q-card-section>
+				</q-card>
+			</q-dialog>
 
 			<q-dialog v-model="userDetailsOpen">
 				<q-card class="user-detail-dialog">
@@ -2437,6 +2788,234 @@
   display: grid;
   gap: 20px;
   padding: 26px;
+}
+
+.logs-panel {
+  display: grid;
+  gap: 18px;
+  padding: 26px;
+}
+
+.logs-panel__head {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.logs-panel__head h2,
+.logs-panel__head p {
+  margin: 0;
+}
+
+.logs-panel__head h2 {
+  color: var(--soz-ink);
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.logs-panel__head p {
+  max-width: 720px;
+  margin-top: 6px;
+  color: rgba(17, 34, 45, 0.62);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.logs-total {
+  flex: 0 0 auto;
+}
+
+.log-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 220px)) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.log-time-cell {
+  white-space: nowrap;
+}
+
+.log-event-cell {
+  min-width: 190px;
+}
+
+.log-summary {
+  display: block;
+  min-width: 280px;
+  max-width: 440px;
+  color: var(--soz-muted);
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.log-detail-dialog {
+  width: min(920px, calc(100vw - 32px));
+  max-width: 920px;
+  max-height: min(860px, calc(100vh - 40px));
+  border-radius: 8px !important;
+  background: #fff8fb;
+  overflow: hidden;
+}
+
+.log-detail-head {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 22px 24px;
+  border-bottom: 1px solid rgba(17, 34, 45, 0.1);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.log-detail-head h2,
+.log-detail-head p {
+  margin: 0;
+}
+
+.log-detail-head h2 {
+  margin-top: 3px;
+  color: var(--soz-ink);
+  font-size: 23px;
+}
+
+.log-detail-head small {
+  color: var(--soz-primary);
+  font-weight: 800;
+}
+
+.log-detail-head p {
+  margin-top: 4px;
+  color: var(--soz-muted);
+}
+
+.log-detail-body {
+  display: grid;
+  gap: 22px;
+  max-height: calc(min(860px, 100vh - 40px) - 94px);
+  padding: 22px 24px 28px;
+  overflow-y: auto;
+}
+
+.log-detail-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px 24px;
+  border-block: 1px solid rgba(17, 34, 45, 0.09);
+}
+
+.log-detail-meta > div {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 11px 0;
+}
+
+.log-detail-meta span {
+  color: var(--soz-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.log-detail-meta strong {
+  overflow-wrap: anywhere;
+  text-align: end;
+}
+
+.log-detail-section {
+  display: grid;
+  gap: 10px;
+}
+
+.log-detail-section h3 {
+  margin: 0;
+  color: var(--soz-ink);
+  font-size: 17px;
+}
+
+.log-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-block: 1px solid rgba(17, 34, 45, 0.09);
+}
+
+.log-metrics > div {
+  display: grid;
+  gap: 2px;
+  padding: 12px 8px;
+}
+
+.log-metrics strong {
+  color: var(--soz-ink);
+  font-size: 20px;
+}
+
+.log-metrics span {
+  color: var(--soz-muted);
+  font-size: 12px;
+}
+
+.log-target-list {
+  border-block: 1px solid rgba(17, 34, 45, 0.09);
+}
+
+.log-target-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(180px, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.log-target-row + .log-target-row,
+.log-error-row + .log-error-row {
+  border-top: 1px solid rgba(17, 34, 45, 0.07);
+}
+
+.log-target-row small {
+  color: var(--soz-muted);
+}
+
+.log-source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.log-error-section {
+  padding: 12px 14px;
+  border-inline-start: 4px solid var(--q-negative);
+  background: rgba(193, 39, 45, 0.05);
+}
+
+.log-error-row {
+  display: grid;
+  gap: 3px;
+  padding: 8px 0;
+}
+
+.log-error-row span {
+  color: var(--soz-muted);
+  overflow-wrap: anywhere;
+}
+
+.log-raw-data {
+  border-top: 1px solid rgba(17, 34, 45, 0.09);
+}
+
+.log-raw-data pre {
+  max-height: 300px;
+  margin: 0;
+  padding: 14px;
+  background: rgba(17, 34, 45, 0.05);
+  color: var(--soz-ink);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow: auto;
 }
 
 .statistics-panel__head {
@@ -3096,6 +3675,50 @@
 
   .statistics-panel {
     padding: 20px;
+  }
+
+  .logs-panel {
+    padding: 20px 14px;
+  }
+
+  .logs-panel__head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .logs-total {
+    justify-content: flex-end;
+  }
+
+  .log-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .log-filters .q-btn {
+    justify-self: end;
+  }
+
+  .log-detail-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+  }
+
+  .log-detail-head,
+  .log-detail-body {
+    padding-inline: 16px;
+  }
+
+  .log-detail-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .log-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .log-target-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
   }
 
   .landing-pages-panel__head,
