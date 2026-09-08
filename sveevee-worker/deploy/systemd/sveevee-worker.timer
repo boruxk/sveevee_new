@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Sveevee business research worker daily
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=30m
+Persistent=true
+Unit=sveevee-worker.service
+
+[Install]
+WantedBy=timers.target

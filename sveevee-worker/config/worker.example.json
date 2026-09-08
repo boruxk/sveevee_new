@@ -1,0 +1,57 @@
+{
+  "target_per_run": 1000,
+  "batch_size": 100,
+  "cities": ["Jerusalem", "Tel Aviv"],
+  "neighborhoods": {},
+  "categories": ["professionals.electricians"],
+  "quotas": {
+    "per_category": null,
+    "per_neighborhood": null,
+    "max_new_per_day": null
+  },
+  "api": {
+    "request_interval_ms": 550,
+    "timeout_seconds": 30,
+    "max_retries": 4
+  },
+  "sources": {
+    "json_seed": {
+      "enabled": false,
+      "paths": ["config/seeds.json"],
+      "refresh_after_days": 30
+    },
+    "overpass": {
+      "enabled": false,
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "allow_public_instance": false,
+      "country_code": "IL",
+      "timeout_seconds": 30,
+      "min_interval_seconds": 10,
+      "max_queries_per_run": 20,
+      "refresh_after_days": 30,
+      "city_names": {
+        "Jerusalem": ["Jerusalem"],
+        "Tel Aviv": ["Tel Aviv-Yafo"]
+      },
+      "neighborhood_names": {},
+      "category_tags": {
+        "professionals.electricians": [
+          {"key": "craft", "value": "electrician"}
+        ]
+      }
+    },
+    "official_website": {
+      "enabled": true,
+      "timeout_seconds": 12,
+      "min_interval_seconds": 2,
+      "refresh_after_days": 30,
+      "max_response_bytes": 2097152
+    }
+  },
+  "storage": {
+    "database": "var/worker.sqlite",
+    "reports_dir": "var/reports",
+    "log_file": "var/logs/worker.log"
+  }
+}
+

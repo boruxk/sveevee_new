@@ -1,0 +1,24 @@
+[
+  {
+    "type": "business",
+    "name": "Replace With A Real Business",
+    "public_description": "Verified public description.",
+    "contact_email": "info@example.com",
+    "phone": "03-0000000",
+    "website": "https://example.com",
+    "category_key": "professionals.electricians",
+    "address": {
+      "street": "Example Street",
+      "number": "10",
+      "city": "Tel Aviv",
+      "neighborhood": "Ramat Aviv"
+    },
+    "socials": {},
+    "service_areas": ["Tel Aviv"],
+    "specialties": ["Electrical repairs"],
+    "opening_hours": [],
+    "source_name": "licensed_seed_file",
+    "source_url": "https://example.com/business-record/1",
+    "source_checked_at": "2026-09-08T10:00:00Z"
+  }
+]

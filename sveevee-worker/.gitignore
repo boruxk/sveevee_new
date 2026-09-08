@@ -1,0 +1,6 @@
+/.env
+/config/worker.json
+/config/seeds.json
+/var/*
+!/var/.gitignore
+
