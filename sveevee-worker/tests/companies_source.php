@@ -113,7 +113,8 @@ $tests['ten categories share one scoped city scan and canonical addresses'] = st
         parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
         $assert(Json::decode($query['filters']) === ['שם עיר' => ['חיפה'], 'סטטוס חברה' => 'פעילה'], 'City and active status must be applied on the server.');
         $assert($query['sort'] === 'מספר חברה asc, _id asc', 'Pagination must use a deterministic sort.');
-        $assert($query['total_estimation_threshold'] === '0' && $query['offset'] === (string) ($index * 3), 'Expected exact counts and advancing offsets.');
+        $assert($query['include_total'] === 'true' && ! array_key_exists('total_estimation_threshold', $query)
+            && $query['offset'] === (string) ($index * 3), 'Expected exact counts and advancing offsets.');
         $assert(str_contains($query['fields'], 'מספר חברה'), 'Fetch the documented registry fields.');
     }
     $businesses = iterator_to_array($source->research(new ResearchTarget('Jerusalem', 'food_catering.restaurants'), 100));

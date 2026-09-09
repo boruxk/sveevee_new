@@ -188,7 +188,7 @@ final class DataGovCkanSource implements CursorSourceInterface
         $requested = min($pageSize, $maximum - $offset);
         $payload = $this->request($this->apiUrl.'/datastore_search?'.http_build_query([
             'resource_id' => $resourceId, 'limit' => $requested, 'offset' => $offset,
-            'include_total' => 'true', 'total_estimation_threshold' => 0,
+            'include_total' => 'true',
         ] + $profile->fullSearchParameters(), '', '&', PHP_QUERY_RFC3986));
         $result = $payload['result'] ?? null;
         if (! is_array($result) || ! is_array($result['records'] ?? null)
@@ -263,7 +263,6 @@ final class DataGovCkanSource implements CursorSourceInterface
                 'limit' => min($pageSize, $maximum - $offset),
                 'offset' => $offset,
                 'include_total' => 'true',
-                'total_estimation_threshold' => 0,
             ] + $parameters, '', '&', PHP_QUERY_RFC3986);
             // HTTP/budget failures preserve previous pages and the next offset exactly as committed.
             $payload = $this->request($url);

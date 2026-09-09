@@ -7,6 +7,7 @@ use App\Models\BusinessImportSource;
 use App\Models\Page;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Laravel\Passport\Client;
 use Laravel\Passport\Passport;
@@ -498,6 +499,32 @@ class BusinessImportSourceApiTest extends TestCase
         $this->assertSame('Original business', Page::findOrFail($id)->name);
         $this->assertSame($source['metadata'], BusinessImportSource::query()->sole()->metadata);
         $this->assertDatabaseCount('pages', 1);
+    }
+
+    public function test_long_encoded_websites_import_without_losing_their_distinct_paths(): void
+    {
+        $prefix = 'https://example.com/'.str_repeat('%D7%A9', 50).'/';
+        $payloads = [];
+        foreach (['school-one', 'school-two'] as $id) {
+            $payloads[] = [...$this->payload($id), 'website' => $prefix.$id];
+        }
+        $batch = ['client_import_id' => (string) Str::uuid(), 'businesses' => $payloads];
+        $items = $this->postJson('/api/v1/business-import/businesses/batch', $batch)
+            ->assertCreated()->assertJsonPath('data.created_count', 2)->json('data.items');
+        $this->assertSame('text', Schema::getColumnType('page_identity_keys', 'normalized_website'));
+        foreach ($items as $index => $item) {
+            $page = Page::findOrFail($item['business']['id']);
+            $this->assertSame($payloads[$index]['website'], $page->setup['website']);
+            $this->assertSame(substr($payloads[$index]['website'], strlen('https://')), $page->identityKey->normalized_website);
+            $this->assertGreaterThan(255, strlen($page->identityKey->normalized_website));
+        }
+        $this->assertNotSame(
+            Page::findOrFail($items[0]['business']['id'])->identityKey->normalized_website,
+            Page::findOrFail($items[1]['business']['id'])->identityKey->normalized_website,
+        );
+        $this->postJson('/api/v1/business-import/businesses/batch', $batch)
+            ->assertOk()->assertJsonPath('data.replayed', true)->assertJsonPath('data.items', $items);
+        $this->assertDatabaseCount('pages', 2);
     }
 
     private function govSource(int $recordId, bool $companies = true): array

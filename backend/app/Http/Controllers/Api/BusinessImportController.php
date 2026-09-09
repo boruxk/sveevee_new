@@ -169,84 +169,102 @@ class BusinessImportController extends Controller
             'input_count' => count($data['businesses']),
         ]);
 
-        if (! $batch->wasRecentlyCreated) {
-            if (! hash_equals($batch->request_hash, $requestHash)) {
-                return ApiResponseService::error(
-                    'The client_import_id was already used for a different payload.',
-                    ['client_import_id' => ['Use a new UUID for a different batch.']],
-                    409
-                );
-            }
-            if ($batch->status !== 'completed' || ! is_array($batch->result)) {
-                return ApiResponseService::error('This batch already exists but is not complete.', status: 409);
-            }
-
-            return ApiResponseService::success([
-                ...$batch->result,
-                'replayed' => true,
-            ], 'Import already processed.');
+        if (! hash_equals($batch->request_hash, $requestHash)) {
+            return ApiResponseService::error(
+                'The client_import_id was already used for a different payload.',
+                ['client_import_id' => ['Use a new UUID for a different batch.']],
+                409
+            );
         }
-        $items = [];
-        $counts = [
-            'created_count' => 0,
-            'updated_count' => 0,
-            'duplicate_count' => 0,
-            'invalid_count' => 0,
-            'conflict_count' => 0,
-        ];
 
         try {
-            foreach (array_values($data['businesses']) as $index => $input) {
-                $position = $index + 1;
+            do {
+                $outcome = DB::transaction(function () use ($batch, $clientId, $requestHash, $data): array {
+                    // Commit each page and its checkpoint together. The row lock makes retries
+                    // agree on the next position without keeping an entire batch uncommitted.
+                    $batch = BusinessImportBatch::query()->whereKey($batch->id)->lockForUpdate()->firstOrFail();
+                    if (! hash_equals($batch->request_hash, $requestHash)) {
+                        throw new BusinessImportException('The client_import_id was already used for a different payload.', 409, 'client_import_id');
+                    }
+                    if ($batch->status === 'completed') {
+                        if (! is_array($batch->result)) {
+                            throw new BusinessImportException('The completed batch result is unavailable.', 409, 'batch_state');
+                        }
 
-                try {
-                    $result = $this->businesses->upsert($clientId, $input);
-                    $countKey = $result['operation'].'_count';
-                    $counts[$countKey]++;
-                    $items[] = ['position' => $position, 'status' => $result['operation'], ...$result];
-                } catch (ExactPageDuplicateException $exception) {
-                    $counts['duplicate_count']++;
-                    $items[] = [
-                        'position' => $position,
-                        'status' => 'duplicate',
-                        'matches' => $exception->matches,
+                        return ['result' => $batch->result, 'replayed' => true, 'completed' => true];
+                    }
+                    // Failed or interrupted legacy batches may already have committed some pages.
+                    // Their original source IDs and explicit page IDs remain authoritative on retry.
+                    $items = $batch->result['items'] ?? [];
+                    if ($batch->result !== null && (
+                        ($batch->result['checkpoint_version'] ?? null) !== 1
+                        || ! is_array($items) || ! array_is_list($items)
+                        || count($items) >= count($data['businesses'])
+                    )) {
+                        throw new BusinessImportException('The batch checkpoint is invalid.', 409, 'batch_state');
+                    }
+                    $counts = ['created_count' => 0, 'updated_count' => 0, 'duplicate_count' => 0, 'invalid_count' => 0, 'conflict_count' => 0];
+                    foreach ($items as $index => $item) {
+                        if (! is_array($item) || ($item['position'] ?? null) !== $index + 1 || ! is_string($item['status'] ?? null)) {
+                            throw new BusinessImportException('The batch checkpoint is invalid.', 409, 'batch_state');
+                        }
+                        $counter = in_array($item['status'], ['created', 'updated', 'duplicate', 'invalid'], true) ? $item['status'].'_count' : 'conflict_count';
+                        $counts[$counter]++;
+                    }
+                    $batch->update(['status' => 'processing']);
+                    $position = count($items) + 1;
+                    $input = array_values($data['businesses'])[$position - 1];
+                    try {
+                        $result = $this->businesses->upsert($clientId, $input);
+                        $counts[$result['operation'].'_count']++;
+                        $items[] = ['position' => $position, 'status' => $result['operation'], ...$result];
+                    } catch (ExactPageDuplicateException $exception) {
+                        $counts['duplicate_count']++;
+                        $items[] = ['position' => $position, 'status' => 'duplicate', 'matches' => $exception->matches];
+                    } catch (ValidationException $exception) {
+                        $counts['invalid_count']++;
+                        $items[] = ['position' => $position, 'status' => 'invalid', 'errors' => $exception->errors()];
+                    } catch (BusinessImportException $exception) {
+                        if ($exception->status >= 500 || $exception->status === 429) {
+                            throw $exception;
+                        }
+                        $counts['conflict_count']++;
+                        $items[] = ['position' => $position, 'status' => $exception->reason, 'message' => $exception->getMessage()];
+                    }
+                    $result = [
+                        'client_import_id' => $data['client_import_id'], 'input_count' => count($data['businesses']),
+                        ...$counts, 'items' => $items, 'replayed' => false,
                     ];
-                } catch (ValidationException $exception) {
-                    $counts['invalid_count']++;
-                    $items[] = [
-                        'position' => $position,
-                        'status' => 'invalid',
-                        'errors' => $exception->errors(),
-                    ];
-                } catch (BusinessImportException $exception) {
-                    $counts['conflict_count']++;
-                    $items[] = [
-                        'position' => $position,
-                        'status' => $exception->reason,
-                        'message' => $exception->getMessage(),
-                    ];
-                }
-            }
+                    $completed = count($items) === count($data['businesses']);
+                    $batch->update([
+                        'status' => $completed ? 'completed' : 'processing', ...$counts,
+                        'result' => $completed ? $result : ['checkpoint_version' => 1, ...$result],
+                    ]);
 
-            $result = [
-                'client_import_id' => $data['client_import_id'],
-                'input_count' => count($data['businesses']),
-                ...$counts,
-                'items' => $items,
-                'replayed' => false,
-            ];
-            $batch->update([
-                'status' => 'completed',
-                ...$counts,
-                'result' => $result,
-            ]);
+                    return ['result' => $result, 'replayed' => false, 'completed' => $completed];
+                }, 3);
+            } while (! $outcome['completed']);
         } catch (Throwable $exception) {
-            $batch->update(['status' => 'failed']);
+            try {
+                // Another waiting request may have recovered this batch after our rollback.
+                // Never replace that committed result with a stale failure status.
+                BusinessImportBatch::query()->whereKey($batch->id)->where('request_hash', $requestHash)
+                    ->where('status', '!=', 'completed')->update(['status' => 'failed']);
+            } catch (Throwable $statusError) {
+                report($statusError);
+            }
+            if ($exception instanceof BusinessImportException) {
+                return $this->businessImportError($exception);
+            }
 
             throw $exception;
         }
 
-        return ApiResponseService::success($result, 'Batch import completed.', 201);
+        return ApiResponseService::success(
+            [...$outcome['result'], 'replayed' => $outcome['replayed']],
+            $outcome['replayed'] ? 'Import already processed.' : 'Batch import completed.',
+            $outcome['replayed'] ? 200 : 201
+        );
     }
 
     private function clientId(Request $request): string

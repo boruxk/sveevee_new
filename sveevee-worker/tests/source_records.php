@@ -28,6 +28,8 @@ final class FullRecordsHttp implements HttpClientInterface
 
     public bool $repeat = false;
 
+    public bool $forceEstimatedTotal = false;
+
     public function __construct(public array $resources) {}
 
     public function request(string $method, string $url, array $headers = [], ?string $body = null, array $options = []): HttpResponse
@@ -39,10 +41,14 @@ final class FullRecordsHttp implements HttpClientInterface
             return new HttpResponse(503, [], '{}');
         }
         $all = $this->resources[$query['resource_id']] ?? [];
+        // CKAN only estimates unfiltered counts when an explicit threshold is exceeded.
+        $estimated = $this->forceEstimatedTotal || (! isset($query['filters'])
+            && isset($query['total_estimation_threshold'])
+            && count($all) > (int) $query['total_estimation_threshold']);
 
         return new HttpResponse(200, [], Json::encode(['success' => true, 'result' => [
             'records' => array_slice($all, $this->repeat ? 0 : $offset, (int) $query['limit']),
-            'total' => count($all), 'total_was_estimated' => false,
+            'total' => count($all), 'total_was_estimated' => $estimated,
         ]]));
     }
 }
@@ -117,6 +123,39 @@ $company = static fn (int $id): array => [
     'שם עיר' => 'יישוב שאינו בקטלוג', 'שם רחוב' => null, 'מספר בית' => null,
 ];
 $tests = [];
+
+$tests['full and legacy unfiltered requests use CKAN exact-count defaults'] = static function () use ($assert): void {
+    foreach (['all_records', 'catalog'] as $mode) {
+        $fixture = new FullRecordsFixture;
+        $http = new FullRecordsHttp([FULL_BEERSHEBA => [[
+            '_id' => 1, 'שם עסק' => 'מסעדת בדיקה', 'תאור רישיון' => 'מסעדה',
+            'סטטוס' => 6, 'תאריך תוקף' => '2099-12-31',
+        ]]]);
+        $source = $fixture->source($http, ['import_mode' => $mode, 'datasets' => [
+            ['profile' => 'beer_sheva_business_licenses', 'resource_id' => FULL_BEERSHEBA],
+        ]]);
+        $rows = $mode === 'all_records' ? $fixture->consume($source)
+            : iterator_to_array($source->research(new ResearchTarget('Beersheba', 'food_catering.restaurants'), 10));
+        $assert(count($rows) === 1 && count($http->requests) === 1, 'Exact-count request did not import the source record.');
+        $query = $http->requests[0];
+        $assert($query['include_total'] === 'true' && ! array_key_exists('total_estimation_threshold', $query), 'An estimate threshold must not override CKAN exact-count defaults.');
+    }
+};
+
+$tests['unexpected estimated totals preserve the cursor for exact-count retry'] = static function () use ($assert, $throws, $company): void {
+    $fixture = new FullRecordsFixture;
+    $http = new FullRecordsHttp([FULL_COMPANIES => array_map($company, range(1, 15))]);
+    $fixture->consume($fixture->source($http), 10);
+    $http->forceEstimatedTotal = true;
+    $throws(static fn () => $fixture->consume($fixture->source($http)), 'exact nonnegative total');
+    $state = $fixture->state();
+    $assert((int) $state['consumed_offset'] === 10 && (int) $state['next_offset'] === 10
+        && (int) $state['complete'] === 0 && $fixture->queued() === 0, 'Estimated response advanced or completed the scan.');
+    $http->forceEstimatedTotal = false;
+    $http->requests = [];
+    $rows = $fixture->consume($fixture->source($http));
+    $assert(count($rows) === 5 && count($http->requests) === 1 && (int) $http->requests[0]['offset'] === 10, 'Exact-count retry lost the committed offset.');
+};
 
 $tests['full registry keeps inactive companies, unknown categories and raw cities without legacy limits'] = static function () use ($assert, $company): void {
     $fixture = new FullRecordsFixture;
