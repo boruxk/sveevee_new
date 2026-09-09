@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Laravel\Passport\Client;
 use Laravel\Passport\Passport;
+use RuntimeException;
 use Tests\TestCase;
 
 class BusinessImportSourceApiTest extends TestCase
@@ -525,6 +526,55 @@ class BusinessImportSourceApiTest extends TestCase
         $this->postJson('/api/v1/business-import/businesses/batch', $batch)
             ->assertOk()->assertJsonPath('data.replayed', true)->assertJsonPath('data.items', $items);
         $this->assertDatabaseCount('pages', 2);
+    }
+
+    public function test_a_long_display_address_keeps_every_validated_component_and_replays_the_batch(): void
+    {
+        $payload = $this->payload('312f828f-d6d9-4f3a-88f0-febfcf3599d7');
+        $payload['name'] = 'Creative Corner';
+        $payload['source']['metadata']['original_name'] = $payload['name'];
+        $street = 'Dizengoff Centre, 2nd floor.\n\nAcross the bridge from עגבנייה turn left after the bridge, 7th shop on the left.\nOr you can enter from \'be\' on the corner of dizengoff and king keorge, go upstairs in be and walk straight ahead, 7th shop on the left.';
+        $payload['address'] = ['street' => $street, 'city' => 'Tel Aviv'];
+        $expected = $street.', Tel Aviv';
+        $this->assertSame(249, mb_strlen($street));
+        $this->assertSame(259, mb_strlen($expected));
+        $this->assertSame('text', Schema::getColumnType('pages', 'address'));
+        $batch = ['client_import_id' => (string) Str::uuid(), 'businesses' => [$payload]];
+        $items = $this->postJson('/api/v1/business-import/businesses/batch', $batch)
+            ->assertCreated()->assertJsonPath('data.created_count', 1)
+            ->assertJsonPath('data.items.0.business.address.street', $street)
+            ->assertJsonPath('data.items.0.business.address.city', 'Tel Aviv')->json('data.items');
+        $page = Page::findOrFail($items[0]['business']['id']);
+        $this->assertSame($expected, $page->address);
+        $this->assertSame($street, $page->setup['address']['street']);
+        $this->getJson('/api/v1/pages/'.$page->id)->assertOk()
+            ->assertJsonPath('data.address', $expected)
+            ->assertJsonPath('data.address_details.street', $street)
+            ->assertJsonPath('data.address_details.city', 'Tel Aviv');
+        $this->postJson('/api/v1/business-import/businesses/batch', $batch)->assertOk()
+            ->assertJsonPath('data.replayed', true)->assertJsonPath('data.items', $items);
+        $this->patchJson('/api/v1/business-import/businesses/'.$page->id, ['source' => $payload['source']])
+            ->assertOk()->assertJsonPath('data.business.address.street', $street);
+        $this->assertSame($expected, $page->fresh()->address);
+        $this->assertDatabaseCount('pages', 1);
+        $this->assertDatabaseCount('business_import_sources', 1);
+    }
+
+    public function test_address_migration_refuses_a_lossy_rollback(): void
+    {
+        $payload = $this->payload('protected-address-rollback');
+        $payload['address'] = ['street' => str_repeat('a', 255), 'city' => 'Tel Aviv'];
+        $pageId = $this->postBusiness($payload)->assertCreated()->json('data.business.id');
+        $address = Page::findOrFail($pageId)->address;
+        $migration = require database_path('migrations/2026_09_10_000300_expand_page_address_column.php');
+        try {
+            $migration->down();
+            $this->fail('The migration allowed a rollback that would truncate an existing address.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Cannot shrink the page address column while longer addresses are stored.', $exception->getMessage());
+        }
+        $this->assertSame('text', Schema::getColumnType('pages', 'address'));
+        $this->assertSame($address, Page::findOrFail($pageId)->address);
     }
 
     private function govSource(int $recordId, bool $companies = true): array
