@@ -76,6 +76,9 @@
 	const authStore = useAuthStore()
 	const supportLoading = ref(false)
 	const tableLoading = ref(false)
+	const userTableError = ref(false)
+	const userTableRequestedPage = ref(1)
+	let userTableRequest = null
 	const pagesLoading = ref(false)
 	const adminTabNames = ['communication', 'users', 'pages', 'landing-pages', 'statistics', 'logs', 'settings']
 	const activeTab = ref(adminTabNames.includes(String(route.query.tab || '')) ? String(route.query.tab) : 'communication')
@@ -110,6 +113,10 @@
 	const selectedUser = ref(null)
 	const userDetailsOpen = ref(false)
 	const userDetailsLoading = ref(false)
+	const userDetailsError = ref(false)
+	const userDetailsRequestedPage = ref(1)
+	const userPagesPagination = ref({ current_page: 1, last_page: 1, per_page: 25, total: 0 })
+	let userDetailsRequest = null
 	const deletingUserId = ref(null)
 	const selectedSupportKey = ref(null)
 	const activeSupportConversation = ref(null)
@@ -509,27 +516,66 @@
 		}
 	}
 
+	function validPagination(value) {
+		return value && typeof value === 'object' && !Array.isArray(value) &&
+			Number.isInteger(value.current_page) && value.current_page > 0 &&
+			Number.isInteger(value.last_page) && value.last_page > 0 &&
+			Number.isInteger(value.per_page) && value.per_page > 0 && value.per_page <= 50 &&
+			Number.isInteger(value.total) && value.total >= 0
+	}
+
+	function validRows(rows) {
+		return Array.isArray(rows) && rows.every((row) => row && Number.isInteger(row.id) && row.id > 0)
+	}
+
+	function cancelUserTableRequest() {
+		userTableRequest?.controller.abort()
+		userTableRequest = null
+		tableLoading.value = false
+	}
+
 	async function loadUserTable(page = tablePagination.value.page, { silent = false } = {}) {
+		if (silent && userTableRequest) {
+			return
+		}
+
+		cancelUserTableRequest()
+		const request = { controller: new AbortController() }
+		userTableRequest = request
+		userTableRequestedPage.value = page
+		tableLoading.value = !silent
 		if (!silent) {
-			tableLoading.value = true
+			userTableError.value = false
 		}
 		try {
 			const { data } = await fetchAdminUserTable({
 				page,
 				q: appliedUserSearch.value || undefined
-			})
-			const payload = data.data || {}
-			const pagination = payload.pagination || {}
-
-			userRows.value = payload.items || []
-			totalUsers.value = Number(payload.total_users || pagination.total || userRows.value.length)
+			}, { signal: request.controller.signal })
+			if (userTableRequest !== request) {
+				return
+			}
+			const payload = data?.data
+			if (!validRows(payload?.items) || !validPagination(payload?.pagination) ||
+				!Number.isInteger(payload.total_users) || payload.total_users < 0) {
+				throw new Error('Invalid admin user table response.')
+			}
+			const pagination = payload.pagination
+			userRows.value = payload.items
+			totalUsers.value = payload.total_users
 			tablePagination.value = {
-				page: pagination.current_page || page,
-				rowsPerPage: pagination.per_page || 50,
-				rowsNumber: pagination.total || userRows.value.length
+				page: pagination.current_page,
+				rowsPerPage: pagination.per_page,
+				rowsNumber: pagination.total
+			}
+			userTableError.value = false
+		} catch {
+			if (userTableRequest === request && !request.controller.signal.aborted) {
+				userTableError.value = true
 			}
 		} finally {
-			if (!silent) {
+			if (userTableRequest === request) {
+				userTableRequest = null
 				tableLoading.value = false
 			}
 		}
@@ -544,7 +590,7 @@
 		try {
 			await Promise.all([
 				refreshSupportConversations(),
-				loadUserTable(tablePagination.value.page, { silent: true })
+				...(activeTab.value === 'users' ? [loadUserTable(tablePagination.value.page, { silent: true })] : [])
 			])
 
 			const refreshedConversation = supportConversations.value.find((conversation) => (
@@ -817,17 +863,51 @@
 			return
 		}
 
-		selectedUser.value = row
+		selectedUser.value = { ...row, pages: [] }
+		userPagesPagination.value = { current_page: 1, last_page: 1, per_page: 25, total: 0 }
 		userDetailsOpen.value = true
+		await loadUserDetailsPage(1)
+	}
+
+	function cancelUserDetailsRequest() {
+		userDetailsRequest?.controller.abort()
+		userDetailsRequest = null
+		userDetailsLoading.value = false
+	}
+
+	async function loadUserDetailsPage(page = userPagesPagination.value.current_page) {
+		const userId = selectedUser.value?.id
+		if (!userId || !userDetailsOpen.value) {
+			return
+		}
+
+		cancelUserDetailsRequest()
+		const request = { controller: new AbortController() }
+		userDetailsRequest = request
+		userDetailsRequestedPage.value = page
+		userDetailsError.value = false
 		userDetailsLoading.value = true
 
 		try {
-			const { data } = await fetchAdminUser(row.id)
-			selectedUser.value = data.data
+			const { data } = await fetchAdminUser(userId, { pages_page: page, per_page: 25 }, { signal: request.controller.signal })
+			if (userDetailsRequest !== request || !userDetailsOpen.value || selectedUser.value?.id !== userId) {
+				return
+			}
+			const payload = data?.data
+			if (payload?.id !== userId || !validRows(payload?.pages) || !validPagination(payload?.pages_pagination)) {
+				throw new Error('Invalid admin user details response.')
+			}
+			selectedUser.value = payload
+			userPagesPagination.value = payload.pages_pagination
 		} catch {
-			$q.notify({ type: 'negative', message: t('admin.userDetailsFailed') })
+			if (userDetailsRequest === request && !request.controller.signal.aborted) {
+				userDetailsError.value = true
+			}
 		} finally {
-			userDetailsLoading.value = false
+			if (userDetailsRequest === request) {
+				userDetailsRequest = null
+				userDetailsLoading.value = false
+			}
 		}
 	}
 
@@ -1103,7 +1183,19 @@
 			activeTab.value = String(tab)
 		}
 	})
-	watch(activeTab, (tab) => {
+	watch(userDetailsOpen, (open) => {
+		if (!open) {
+			cancelUserDetailsRequest()
+		}
+	})
+	watch(activeTab, (tab, previousTab) => {
+		if (previousTab === 'users') {
+			cancelUserTableRequest()
+		}
+		if (tab === 'users') {
+			loadUserTable()
+		}
+
 		if (tab === 'statistics') {
 			loadLeadPageTable(1)
 		}
@@ -1120,7 +1212,9 @@
 	onMounted(() => {
 		window.addEventListener(accountNotificationEventName, handleAccountNotification)
 		loadSupportConversations()
-		loadUserTable()
+		if (activeTab.value === 'users') {
+			loadUserTable()
+		}
 		loadPageTable()
 		loadLeadPageTable()
 		if (activeTab.value === 'logs') {
@@ -1130,6 +1224,8 @@
 		adminPresenceTimer = window.setInterval(refreshAdminPresence, 30_000)
 	})
 	onBeforeUnmount(() => {
+		cancelUserTableRequest()
+		cancelUserDetailsRequest()
 		window.removeEventListener(accountNotificationEventName, handleAccountNotification)
 		if (adminPresenceTimer) {
 			window.clearInterval(adminPresenceTimer)
@@ -1350,6 +1446,12 @@
 								<span>{{ t('admin.totalUsers') }}</span>
 							</div>
 						</div>
+						<q-banner v-if="userTableError" rounded class="bg-red-1 text-negative" role="alert">
+							{{ t('admin.userTableFailed') }}
+							<template #action>
+								<q-btn flat :label="t('admin.retry')" :loading="tableLoading" @click="loadUserTable(userTableRequestedPage)" />
+							</template>
+						</q-banner>
 						<q-table
 							v-model:pagination="tablePagination"
 							flat
@@ -2342,6 +2444,12 @@
 
 					<div class="user-detail-body">
 						<q-inner-loading :showing="userDetailsLoading" />
+						<q-banner v-if="userDetailsError" rounded class="bg-red-1 text-negative" role="alert">
+							{{ t('admin.userDetailsFailed') }}
+							<template #action>
+								<q-btn flat :label="t('admin.retry')" @click="loadUserDetailsPage(userDetailsRequestedPage)" />
+							</template>
+						</q-banner>
 						<template v-if="selectedUser">
 							<section class="user-detail-section">
 								<h3>{{ t('admin.accountDetails') }}</h3>
@@ -2381,7 +2489,19 @@
 										<q-btn flat round icon="open_in_new" :aria-label="t('admin.openLandingPage')" :to="userPage.public_path" />
 									</article>
 								</div>
-								<div v-else class="support-empty user-pages-empty">{{ t('admin.noUserPages') }}</div>
+								<div v-else-if="!userDetailsLoading && !userDetailsError" class="support-empty user-pages-empty">{{ t('admin.noUserPages') }}</div>
+								<q-pagination
+									v-if="userPagesPagination.last_page > 1"
+									:model-value="userPagesPagination.current_page"
+									:max="userPagesPagination.last_page"
+									:max-pages="5"
+									:disable="userDetailsLoading"
+									:aria-label="t('admin.userPagesPagination')"
+									boundary-numbers
+									direction-links
+									class="user-pages-pagination"
+									@update:model-value="loadUserDetailsPage"
+								/>
 							</section>
 						</template>
 					</div>
@@ -2766,6 +2886,10 @@
 .user-page-list {
   display: grid;
   gap: 10px;
+}
+
+.user-pages-pagination {
+  justify-content: center;
 }
 
 .user-page-row {

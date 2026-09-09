@@ -22,7 +22,7 @@ class AdminUserController extends Controller
         $search = trim((string) $request->query('q', ''));
 
         $query = User::query()
-            ->with(['profile', 'pages'])
+            ->with('profile')
             ->when($search !== '', function ($query) use ($search): void {
                 $like = '%'.$search.'%';
                 $query->where(function ($inner) use ($like): void {
@@ -70,19 +70,28 @@ class AdminUserController extends Controller
         return ApiResponseService::success($users);
     }
 
-    public function show(User $user)
+    public function show(Request $request, User $user)
     {
-        $user->load(['profile', 'pages.ads']);
+        $user->load('profile');
+        $perPage = min(50, max(1, $request->integer('per_page', 25)));
+        $pages = $user->pages()->with('ads')->orderBy('id')
+            ->paginate($perPage, ['*'], 'pages_page');
         $payload = $this->payloads->user($user, includePrivate: true);
         $payload['login'] = $user->login;
         $payload['email_verified_at'] = $user->email_verified_at?->toISOString();
         $payload['banned_reason'] = $user->banned_reason;
         $payload['created_at'] = $user->created_at?->toISOString();
         $payload['updated_at'] = $user->updated_at?->toISOString();
-        $payload['pages'] = $user->pages
+        $payload['pages'] = $pages->getCollection()
             ->map(fn ($page) => $this->payloads->page($page, withAds: true))
             ->values()
             ->all();
+        $payload['pages_pagination'] = [
+            'current_page' => $pages->currentPage(),
+            'last_page' => $pages->lastPage(),
+            'per_page' => $pages->perPage(),
+            'total' => $pages->total(),
+        ];
 
         return ApiResponseService::success($payload);
     }
@@ -115,7 +124,7 @@ class AdminUserController extends Controller
 
         $user->tokens()->delete();
 
-        return ApiResponseService::success($this->payloads->user($user->fresh(['profile', 'pages']), includePrivate: true), 'User banned.');
+        return ApiResponseService::success($this->payloads->user($user->fresh('profile'), includePrivate: true), 'User banned.');
     }
 
     public function restore(User $user)
@@ -127,7 +136,7 @@ class AdminUserController extends Controller
 
         EmailBan::query()->where('email', $user->email)->delete();
 
-        return ApiResponseService::success($this->payloads->user($user->fresh(['profile', 'pages']), includePrivate: true), 'User restored.');
+        return ApiResponseService::success($this->payloads->user($user->fresh('profile'), includePrivate: true), 'User restored.');
     }
 
     public function destroy(User $user)

@@ -36,7 +36,7 @@ class PayloadService
 
     public function user(User $user, bool $includePrivate = false, bool $includePresence = false): array
     {
-        $user->loadMissing(['profile', 'pages']);
+        $user->loadMissing('profile');
 
         $payload = [
             'id' => $user->id,
@@ -499,7 +499,9 @@ class PayloadService
 
     private function firstPageOfType(User $user, string $type): ?array
     {
-        $page = $user->pages->firstWhere('type', $type);
+        $page = $user->relationLoaded('pages')
+            ? $user->pages->firstWhere('type', $type)
+            : $user->pages()->where('type', $type)->orderBy('id')->first();
 
         return $page ? $this->page($page) : null;
     }

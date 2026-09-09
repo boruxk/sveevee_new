@@ -4,8 +4,8 @@ export function fetchAdminUsers(params = {}) {
 	return apiClient.get('/admin/users', { params })
 }
 
-export function fetchAdminUserTable(params = {}) {
-	return apiClient.get('/admin/users', { params: { paginated: 1, per_page: 50, ...params } })
+export function fetchAdminUserTable(params = {}, options = {}) {
+	return apiClient.get('/admin/users', { ...options, params: { paginated: 1, per_page: 50, ...params } })
 }
 
 export function fetchAdminPages(params = {}) {
@@ -52,8 +52,8 @@ export function cancelPageClaim(id) {
 	return apiClient.post(`/admin/page-claims/${id}/cancel`)
 }
 
-export function fetchAdminUser(id) {
-	return apiClient.get(`/admin/users/${id}`)
+export function fetchAdminUser(id, params = {}, options = {}) {
+	return apiClient.get(`/admin/users/${id}`, { ...options, params })
 }
 
 export function deleteAdminUser(id) {
