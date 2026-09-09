@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Sveevee\Worker\Research\Ckan;
 
 use DateTimeImmutable;
+use RuntimeException;
 use Sveevee\Worker\Config\ResearchTarget;
+use Sveevee\Worker\Research\SourceCatalogMetadata;
 
-final class BeerShevaBusinessLicenseProfile implements CkanDatasetProfileInterface
+final class BeerShevaBusinessLicenseProfile implements CkanAllRecordsProfileInterface
 {
     private const CATEGORY_LABELS = [
         'food_catering.restaurants' => 'מסעדה',
@@ -45,6 +47,44 @@ final class BeerShevaBusinessLicenseProfile implements CkanDatasetProfileInterfa
         }
 
         return null;
+    }
+
+    public function fullSearchParameters(): array
+    {
+        return ['sort' => '_id asc'];
+    }
+
+    public function mapAll(array $record, array $dataset, string $sourceUrl, string $checkedAt): array
+    {
+        $this->assertRecordSchema($record);
+        $id = $this->recordId($record);
+        $name = $this->text($record['שם עסק'] ?? null);
+        $license = $this->text($record['תאור רישיון'] ?? $record['תיאור רישיון'] ?? $record['תאור רשיון'] ?? $record['תיאור רשיון'] ?? null) ?? '';
+
+        return [
+            'type' => 'business', 'name' => $name,
+            'category_key' => $this->category($name ?? '', $license),
+            'address' => ['city' => trim((string) ($dataset['city'] ?? 'Beersheba')),
+                'street' => $this->text($record['שם רחוב'] ?? null), 'number' => $this->addressNumber($record['בית'] ?? null)],
+            'phone' => $this->phone($record['טלפון בעסק'] ?? null),
+            'contact_email' => $this->email($record['מייל בעסק'] ?? null),
+            'source_name' => trim((string) ($dataset['source_name'] ?? $this->name())),
+            'source_url' => $sourceUrl, 'source_checked_at' => $checkedAt,
+            'source_metadata' => ['source_id' => $id === null ? null : $dataset['resource_id'].':'.$id,
+                'resource_id' => $dataset['resource_id'], 'record_id' => $id,
+                'source_city' => SourceCatalogMetadata::text($dataset['city_label'] ?? 'באר שבע', 120),
+                'source_categories' => SourceCatalogMetadata::description($license, $this->category('', $license)),
+                'profile' => $this->name(), 'original_record' => $record],
+        ];
+    }
+
+    public function assertRecordSchema(array $record): void
+    {
+        foreach (['_id', 'שם עסק'] as $field) {
+            if (! array_key_exists($field, $record)) {
+                throw new RuntimeException('The Beersheba license record is missing expected column '.$field.'.');
+            }
+        }
     }
 
     public function map(

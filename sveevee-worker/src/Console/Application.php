@@ -68,6 +68,9 @@ final class Application
             // The original database can contain candidates from the formerly combined job.
             $sourceScope = $governmentSources !== [] && array_diff($enabledSources, [...$governmentSources, 'official_website']) === []
                 ? $governmentSources : null;
+            if (($fullSource = $config->fullSourceProvider()) !== null) {
+                $sourceScope = [$fullSource];
+            }
             $repository = new WorkerRepository(new Database($paths['database']), $normalizer, $merger, $sourceScope);
             $targets = $config->targets();
             $targetsPerRun = $config->int('targets_per_run', count($targets));
@@ -134,6 +137,7 @@ final class Application
                         $config->int('businesses_per_combination', 100), $dryRun, $report, $research,
                     );
                 }
+                $research?->reportProgress($report);
                 $written = $report->write($paths['reports']);
                 $repository->finishRun($runId, 'completed', $written['path'], $written['report']);
                 $repository->queueRunLog($runId, $written['report']);

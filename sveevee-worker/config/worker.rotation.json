@@ -118,6 +118,8 @@
     },
     "data_gov_ckan": {
       "enabled": true,
+      "import_mode": "all_records",
+      "max_records_per_full_dataset": 2000000,
       "api_url": "https://data.gov.il/api/3/action",
       "timeout_seconds": 30,
       "min_interval_seconds": 2.0,

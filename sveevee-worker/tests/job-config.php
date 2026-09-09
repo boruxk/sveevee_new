@@ -96,13 +96,19 @@ try {
     }
     $assert(array_keys(array_filter($government['sources'], static fn (array $source): bool => $source['enabled'])) === ['data_gov_ckan'], 'Government profile must enable only Gov.');
     $assert(array_keys(array_filter($tel->get('sources'), static fn (array $source): bool => $source['enabled'])) === ['tel_aviv_business_licenses'], 'Tel Aviv profile must enable only its municipal source.');
-    $assert($tel->get('cities') === ['Tel Aviv'] && $tel->get('categories') === $government['categories'] && count($tel->targets()) === 10, 'Tel Aviv must have ten categories in exactly one city.');
+    $assert($tel->fullSourceProvider() === 'tel_aviv_business_licenses' && count($tel->targets()) === 1
+        && $tel->targets()[0]->isFullSource(), 'Tel Aviv must scan every municipal record without a category matrix.');
     $telBudget = new RunBudget($tel->int('target_per_run', 0), $tel->int('targets_per_run', 0), $tel->int('businesses_per_combination', 0));
     $telTargets = $tel->targets();
     $telBudget->record($telTargets[0], 0);
-    $assert($telBudget->remaining($telTargets[1]) === 10, 'Empty Tel Aviv targets must not use its productive slot.');
-    $telBudget->record($telTargets[1], 10);
-    $assert($telBudget->remaining($telTargets[2]) === 0 && $tel->int('batch_size', 0) === 10 && $tel->int('research.max_http_requests_per_run', 0) === 10, 'Tel Aviv must independently cap successes, batches and source HTTP calls at ten.');
+    $assert($telBudget->remaining($telTargets[0]) === 10, 'Empty Tel Aviv pages must not use its write budget.');
+    $telBudget->record($telTargets[0], 10);
+    $assert($telBudget->remaining($telTargets[0]) === 0 && $tel->int('batch_size', 0) === 10 && $tel->int('research.max_http_requests_per_run', 0) === 10, 'Tel Aviv must independently cap successes, batches and source HTTP calls at ten.');
+    $govFixturePath = $directory.'/government-full.json';
+    file_put_contents($govFixturePath, Json::encode(array_replace_recursive($government, ['storage' => ['database' => 'var/worker.sqlite', 'reports_dir' => 'var/reports', 'log_file' => 'var/logs/worker.log']])));
+    $govConfig = WorkerConfig::load($govFixturePath, $root);
+    $assert($govConfig->fullSourceProvider() === 'data_gov_ckan' && count($govConfig->targets()) === 1
+        && $govConfig->targets()[0]->isFullSource(), 'Gov must scan all connected resources without city/category restrictions.');
     $assert($overture->get('research.max_http_requests_per_run') === null, 'Overture must not acquire a government source HTTP budget.');
     $validationFile = $directory.'/validate-config.json';
     $validationConfig = Json::decode((string) file_get_contents($root.'/config/worker.overture.json'));
@@ -125,8 +131,15 @@ try {
 
     $budget = new RunBudget($overture->int('target_per_run', 0), $overture->int('targets_per_run', 0), $overture->int('businesses_per_combination', 0));
     $targets = $overture->targets();
+    $assert($overture->overtureAllPlaces() && count($targets) === 1 && $overture->get('sources.overture_places.import_mode') === 'all_places' && (float) $overture->get('sources.overture_places.min_confidence') === 0.0, 'Full Overture must scan one global IL source instead of the city/category matrix.');
     $budget->record($targets[0], 1000);
     $assert($budget->remaining($targets[0]) === 8000, 'Overture still has the old 100-per-combination ceiling.');
+    $budget->record($targets[0], 8000);
+    $assert($budget->remaining($targets[0]) === 0 && $overture->int('batch_size', 0) === 100, 'The global Overture run must stop at 9000 successes with 100-item batches.');
+    // Keep coverage that the general budget has no accidental ten-combination ceiling.
+    $budget = new RunBudget(9000, 830, 9000);
+    $targets = array_map(static fn (int $id): ResearchTarget => new ResearchTarget('City '.$id, 'food_catering.bakery'), range(0, 21));
+    $budget->record($targets[0], 1000);
     for ($index = 1; $index <= 20; $index++) {
         $assert($budget->remaining($targets[$index]) >= 400, 'Overture stopped at the old ten-combination ceiling.');
         $budget->record($targets[$index], 400);
@@ -142,7 +155,8 @@ try {
     $assert(str_contains($governmentTimer, '*:00,10,20,30,40,50:00 Asia/Jerusalem'), 'Government schedule must remain every ten minutes.');
     $assert(str_contains($overtureTimer, '*:00,30:00 Asia/Jerusalem') && str_contains($overtureTimer, 'Unit=sveevee-overture.service'), 'Overture needs its separate half-hour timer.');
     $assert(str_contains($overtureService, 'Type=oneshot') && str_contains($overtureService, '--config=/etc/sveevee-worker/worker.overture.json') && str_contains($overtureService, 'EnvironmentFile=/etc/sveevee-worker/worker.env'), 'Overture must use a separate oneshot job with shared credentials.');
-    $assert(str_contains($telTimer, '*:05,15,25,35,45,55:00 Asia/Jerusalem') && str_contains($telTimer, 'Unit=sveevee-tel-aviv.service'), 'Tel Aviv must run independently five minutes after each government tick.');
+    preg_match_all('/^OnCalendar=(.+)$/m', $telTimer, $telSchedule);
+    $assert(array_map('trim', $telSchedule[1]) === ['*-*-* 03:05:00 Asia/Jerusalem'] && str_contains($telTimer, 'Unit=sveevee-tel-aviv.service'), 'Tel Aviv must run independently once daily at 03:05 Israel time.');
     $assert(str_contains($telService, 'Type=oneshot') && str_contains($telService, '--config=/etc/sveevee-worker/worker.tel-aviv.json') && str_contains($telService, 'EnvironmentFile=/etc/sveevee-worker/worker.env'), 'Tel Aviv must use a separate oneshot job with shared credentials.');
     $assert(str_contains($telService, 'StateDirectory=sveevee-worker/tel-aviv') && str_contains($telService, 'ReadWritePaths=/var/lib/sveevee-worker/tel-aviv'), 'Tel Aviv service must write to its own state directory.');
     foreach (['sveevee-worker', 'sveevee-tel-aviv', 'sveevee-overture'] as $job) {

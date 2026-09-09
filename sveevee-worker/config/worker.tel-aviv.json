@@ -27,6 +27,8 @@
   "sources": {
     "tel_aviv_business_licenses": {
       "enabled": true,
+      "import_mode": "all_records",
+      "max_records_per_scan": 2000000,
       "layer_url": "https://gisn.tel-aviv.gov.il/arcgis/rest/services/IView2/MapServer/964",
       "timeout_seconds": 30,
       "min_interval_seconds": 2.0,

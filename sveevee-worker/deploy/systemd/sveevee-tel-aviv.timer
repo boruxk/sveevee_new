@@ -1,8 +1,8 @@
 [Unit]
-Description=Run the Sveevee Tel Aviv worker every ten minutes
+Description=Run the Sveevee Tel Aviv worker daily at 03:05 Israel time
 
 [Timer]
-OnCalendar=*-*-* *:05,15,25,35,45,55:00 Asia/Jerusalem
+OnCalendar=*-*-* 03:05:00 Asia/Jerusalem
 RandomizedDelaySec=0
 AccuracySec=1s
 Persistent=true

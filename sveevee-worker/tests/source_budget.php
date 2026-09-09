@@ -152,9 +152,9 @@ $tests['830 targets with unavailable real adapters make only two upstream reques
     [$repository, , $report] = $context;
     $inner = new BudgetFixtureHttp(404);
     $http = new BudgetedHttpClient($inner, 10, static fn () => $report->increment('source_requests'));
-    $gov = new DataGovCkanSource(array_replace($settings['sources']['data_gov_ckan'], ['min_interval_seconds' => 0]), $http, $repository, 'Test');
+    $gov = new DataGovCkanSource(array_replace($settings['sources']['data_gov_ckan'], ['min_interval_seconds' => 0, 'import_mode' => 'catalog']), $http, $repository, 'Test');
     $telSettings = Json::decode((string) file_get_contents(dirname(__DIR__).'/config/worker.tel-aviv.json'));
-    $tel = new TelAvivBusinessLicenseSource(array_replace($telSettings['sources']['tel_aviv_business_licenses'], ['min_interval_seconds' => 0]), $http, $repository, 'Test');
+    $tel = new TelAvivBusinessLicenseSource(array_replace($telSettings['sources']['tel_aviv_business_licenses'], ['min_interval_seconds' => 0, 'import_mode' => 'catalog']), $http, $repository, 'Test');
     [$result] = $run($targets, [$gov, $tel], $context);
     $assert(count($targets) === 830, 'Fixture must reproduce the full 83 x 10 schedule.');
     $assert($inner->calls === 2 && $result['source_requests'] === 2, 'Both failing adapters must each make exactly one upstream request.');
@@ -252,12 +252,7 @@ $tests['separate government and Tel Aviv runs retain their own failure counters 
     $reports = [];
     foreach (['data_gov_ckan' => 'worker.rotation.json', 'tel_aviv_business_licenses' => 'worker.tel-aviv.json'] as $adapter => $profile) {
         $settings = Json::decode((string) file_get_contents(dirname(__DIR__).'/config/'.$profile));
-        $targets = [];
-        foreach ($settings['cities'] as $city) {
-            foreach ($settings['categories'] as $category) {
-                $targets[] = new ResearchTarget($city, $category);
-            }
-        }
+        $targets = [ResearchTarget::sourceAll($adapter)];
         $context = $fixture($targets, [$adapter]);
         [$repository, , $report] = $context;
         $inner = new BudgetFixtureHttp(404);

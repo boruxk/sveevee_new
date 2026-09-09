@@ -1,6 +1,6 @@
 {
   "target_per_run": 9000,
-  "targets_per_run": 830,
+  "targets_per_run": 1,
   "businesses_per_combination": 9000,
   "batch_size": 100,
   "cities": [
@@ -108,8 +108,9 @@
   "sources": {
     "overture_places": {
       "enabled": true,
+      "import_mode": "all_places",
       "release": "2026-08-19.0",
-      "min_confidence": 0.75,
+      "min_confidence": 0.0,
       "refresh_after_days": 30,
       "duckdb_binary": "duckdb"
     },

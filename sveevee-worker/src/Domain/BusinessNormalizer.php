@@ -29,6 +29,7 @@ final class BusinessNormalizer
 
     public function normalize(array $raw, ResearchTarget $target, string $adapter): BusinessCandidate
     {
+        $allPlaces = $adapter === $target->fullSourceProvider();
         $source = new SourceRecord(
             $adapter,
             $this->string($raw['source_name'] ?? $adapter, 120) ?? $adapter,
@@ -47,7 +48,9 @@ final class BusinessNormalizer
                 $data[$field] = $value;
             }
         }
-        $data['category_key'] ??= $target->categoryKey;
+        if (! $allPlaces) {
+            $data['category_key'] ??= $target->categoryKey;
+        }
 
         if (isset($data['contact_email'])) {
             $email = mb_strtolower($data['contact_email'], 'UTF-8');
@@ -74,7 +77,8 @@ final class BusinessNormalizer
 
         $rawAddress = is_array($raw['address'] ?? null) ? $raw['address'] : [];
         $address = [
-            'city' => $this->canonicalCity($rawAddress['city'] ?? null) ?? $target->city,
+            'city' => $this->canonicalCity($rawAddress['city'] ?? null)
+                ?? ($allPlaces ? $this->string($rawAddress['city'] ?? null, 120) : $target->city),
         ];
         foreach (['street' => 255, 'number' => 40, 'neighborhood' => 120] as $field => $maximum) {
             $value = $this->string($rawAddress[$field] ?? null, $maximum);
@@ -109,7 +113,8 @@ final class BusinessNormalizer
             $data['opening_hours'] = $openingHours;
         }
 
-        $serviceAreas = $this->stringList($raw['service_areas'] ?? [], 10, 120);
+        // A source place's location does not establish a service area.
+        $serviceAreas = $allPlaces ? [] : $this->stringList($raw['service_areas'] ?? [], 10, 120);
         $serviceAreas = array_values(array_filter(array_map($this->canonicalCity(...), $serviceAreas)));
         if ($serviceAreas !== []) {
             $data['service_areas'] = $serviceAreas;
@@ -120,16 +125,29 @@ final class BusinessNormalizer
         }
 
         $missing = [];
-        foreach (['name', 'category_key'] as $required) {
+        foreach ($allPlaces ? ['name'] : ['name', 'category_key'] as $required) {
             if (! isset($data[$required]) || trim((string) $data[$required]) === '') {
                 $missing[] = $required;
             }
         }
-        if (($data['address']['city'] ?? '') === '') {
+        if (! $allPlaces && ($data['address']['city'] ?? '') === '') {
             $missing[] = 'address.city';
         }
         if ($missing !== []) {
             throw new IncompleteCandidateException($missing);
+        }
+
+        if ($allPlaces) {
+            $metadata = is_array($raw['source_metadata'] ?? null) ? $raw['source_metadata'] : [];
+            $metadata['original_name'] = $raw['name'];
+            if (isset($raw['website'])) {
+                $metadata['original_website'] = $raw['website'];
+            }
+            $id = $this->string($adapter === 'overture_places' ? ($metadata['overture_id'] ?? $metadata['gers_id'] ?? null) : ($metadata['source_id'] ?? null), 100);
+            if ($id === null || $source->url === null) {
+                throw new IncompleteCandidateException(['source.id', 'source.url']);
+            }
+            $data['source'] = ['provider' => $adapter, 'id' => $id, 'url' => $source->url, 'metadata' => $metadata];
         }
 
         return new BusinessCandidate($data, [$source]);

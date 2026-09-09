@@ -33,6 +33,14 @@ final class Database
     {
         $statements = [
             <<<'SQL'
+CREATE TABLE IF NOT EXISTS source_scan_progress (
+    snapshot_key TEXT PRIMARY KEY,
+    last_id TEXT NOT NULL DEFAULT '',
+    scanned INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+)
+SQL,
+            <<<'SQL'
 CREATE TABLE IF NOT EXISTS runs (
     id TEXT PRIMARY KEY,
     command TEXT NOT NULL,

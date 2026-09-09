@@ -14,7 +14,7 @@ use Sveevee\Worker\Support\Json;
 use Sveevee\Worker\Support\SourceFingerprint;
 
 /** Reads the prepared Israel extract; discovery never downloads the worldwide dataset. */
-final class OverturePlacesSource implements SourceAdapterInterface
+final class OverturePlacesSource implements CursorSourceInterface
 {
     private const CATEGORIES = [
         'food_catering.bakery',
@@ -30,6 +30,10 @@ final class OverturePlacesSource implements SourceAdapterInterface
     ];
 
     private ?PDO $database = null;
+
+    private array $metadata = [];
+
+    private ?string $snapshotKey = null;
 
     public function __construct(
         private readonly array $config,
@@ -49,6 +53,13 @@ final class OverturePlacesSource implements SourceAdapterInterface
 
     public function research(ResearchTarget $target, int $limit): iterable
     {
+        if (($this->config['import_mode'] ?? null) === 'all_places') {
+            if ($target->isOvertureAll() && $limit > 0) {
+                yield from $this->allPlaces($limit);
+            }
+
+            return;
+        }
         if ($limit <= 0 || $target->neighborhood !== null || ! in_array($target->categoryKey, self::CATEGORIES, true)) {
             return;
         }
@@ -82,6 +93,55 @@ final class OverturePlacesSource implements SourceAdapterInterface
         }
     }
 
+    private function allPlaces(int $limit): iterable
+    {
+        $database = $this->database();
+        $progress = $this->repository->sourceScanProgress($this->snapshotKey);
+        $statement = $database->prepare('SELECT * FROM places WHERE id > ? ORDER BY id');
+        $statement->execute([$progress['last_id']]);
+        $emitted = 0;
+        try {
+            while (($row = $statement->fetch()) !== false) {
+                $business = $this->map($row);
+                if ($business === null) {
+                    throw new RuntimeException('The full Overture snapshot contains an invalid row; rebuild it.');
+                }
+                if (! $this->repository->shouldProcessUrl($this->name(), $business['source_url'], $this->refreshAfterDays(), SourceFingerprint::hash($business), reconsiderLegacyOverture: true)) {
+                    $this->acknowledge($business);
+
+                    continue;
+                }
+                yield $business;
+                if (++$emitted >= $limit) {
+                    return;
+                }
+            }
+        } finally {
+            $statement->closeCursor();
+        }
+    }
+
+    public function acknowledge(array $raw): void
+    {
+        if ($this->snapshotKey !== null) {
+            $this->repository->acknowledgeSourceRow($this->snapshotKey, (string) $raw['source_metadata']['overture_id']);
+        }
+    }
+
+    public function progress(): ?array
+    {
+        if (($this->config['import_mode'] ?? null) !== 'all_places') {
+            return null;
+        }
+        $this->database();
+        $scan = $this->repository->sourceScanProgress($this->snapshotKey);
+        $total = (int) $this->metadata['row_count'];
+        $scanned = min($total, (int) $scan['scanned']);
+
+        return ['release' => $this->metadata['release'], 'total' => $total, 'scanned' => $scanned,
+            'remaining' => max(0, $total - $scanned), ...$this->repository->overtureQueueCounts()];
+    }
+
     private function database(): PDO
     {
         if ($this->database !== null) {
@@ -107,12 +167,25 @@ final class OverturePlacesSource implements SourceAdapterInterface
             ]);
             $database->exec('PRAGMA query_only = ON');
             $metadata = $database->query('SELECT key, value FROM metadata')->fetchAll(PDO::FETCH_KEY_PAIR);
-            if (($metadata['schema_version'] ?? null) !== '1') {
+            if (! in_array($metadata['schema_version'] ?? null, ['1', '2'], true)
+                || (($metadata['schema_version'] ?? null) === '2' && ($metadata['import_mode'] ?? null) !== 'all_places')) {
                 throw new RuntimeException('Unsupported prepared Overture database schema; rebuild the extract with the current preparation command.');
             }
             if (($metadata['status'] ?? null) !== 'complete' || ($metadata['country'] ?? null) !== 'IL') {
                 throw new RuntimeException('Prepared Overture database must be a complete Israel extract; rebuild the extract.');
             }
+            if (($this->config['import_mode'] ?? null) === 'all_places') {
+                if (($metadata['schema_version'] ?? null) !== '2' || ($metadata['import_mode'] ?? null) !== 'all_places') {
+                    throw new RuntimeException('All-places import requires a full schema 2 snapshot; prepare it before enabling this job.');
+                }
+                if (! ctype_digit((string) ($metadata['row_count'] ?? ''))
+                    || (int) $metadata['row_count'] < 1 || trim((string) ($metadata['release'] ?? '')) === ''
+                    || (int) $database->query('SELECT COUNT(*) FROM places')->fetchColumn() !== (int) $metadata['row_count']) {
+                    throw new RuntimeException('The full Overture snapshot has invalid progress metadata or an inconsistent row count.');
+                }
+                $this->snapshotKey = 'overture_places:'.Json::hash($metadata);
+            }
+            $this->metadata = $metadata;
             $columns = array_column($database->query('PRAGMA table_info(places)')->fetchAll(), 'name');
             $required = [
                 'id', 'name', 'category_key', 'city', 'street', 'phone', 'email', 'website', 'social_links',
@@ -141,6 +214,10 @@ final class OverturePlacesSource implements SourceAdapterInterface
             throw new RuntimeException("Overture place {$id} has an invalid source URL; rebuild the extract.");
         }
         $metadata = $this->jsonObject($row['source_metadata'], 'source_metadata', $id);
+        if (($this->config['import_mode'] ?? 'catalog') === 'all_places') {
+            // Existing schema-2 snapshots already retain taxonomy and original locality.
+            $metadata = array_replace($metadata, SourceCatalogMetadata::overture($metadata));
+        }
         $socials = $this->jsonObject($row['social_links'], 'social_links', $id);
         $business = [
             'type' => 'business',
@@ -155,7 +232,7 @@ final class OverturePlacesSource implements SourceAdapterInterface
             'source_metadata' => array_replace($metadata, [
                 'overture_id' => $id,
                 'release' => $row['release'],
-                'confidence' => (float) $row['confidence'],
+                'confidence' => $row['confidence'] === null ? null : (float) $row['confidence'],
             ]),
         ];
         if (($street = $this->text($row['street'])) !== null) {

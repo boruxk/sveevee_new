@@ -203,19 +203,75 @@ SQL);
         return new SourcePageCache($this->pdo);
     }
 
+    public function sourceRecordCursor(): SourceRecordCursor
+    {
+        return new SourceRecordCursor($this->pdo);
+    }
+
+    public function sourceScanProgress(string $snapshot): array
+    {
+        $statement = $this->pdo->prepare('SELECT last_id, scanned FROM source_scan_progress WHERE snapshot_key = ?');
+        $statement->execute([$snapshot]);
+
+        return $statement->fetch() ?: ['last_id' => '', 'scanned' => 0];
+    }
+
+    /** Called only after a candidate or its failure has been durably recorded. */
+    public function acknowledgeSourceRow(string $snapshot, string $id): void
+    {
+        $statement = $this->pdo->prepare(<<<'SQL'
+INSERT INTO source_scan_progress (snapshot_key, last_id, scanned, updated_at) VALUES (?, ?, 1, ?)
+ON CONFLICT(snapshot_key) DO UPDATE SET last_id = excluded.last_id,
+    scanned = source_scan_progress.scanned + 1, updated_at = excluded.updated_at
+WHERE excluded.last_id > source_scan_progress.last_id
+SQL);
+        $statement->execute([$snapshot, $id, Clock::now()]);
+    }
+
+    public function overtureQueueCounts(): array
+    {
+        $counts = $this->pdo->query(<<<'SQL'
+SELECT status, COUNT(*) AS count FROM businesses
+WHERE EXISTS (SELECT 1 FROM business_sources s WHERE s.business_id = businesses.id AND s.adapter = 'overture_places')
+GROUP BY status
+SQL)->fetchAll(PDO::FETCH_KEY_PAIR);
+        $unmappedFailures = (int) $this->pdo->query("SELECT COUNT(*) FROM researched_urls WHERE adapter = 'overture_places' AND business_id IS NULL AND status IN ('failed', 'rejected')")->fetchColumn();
+
+        return [
+            'pending' => (int) ($counts['pending'] ?? 0) + (int) ($counts['queued'] ?? 0),
+            'failed' => $unmappedFailures + (int) ($counts['failed'] ?? 0) + (int) ($counts['invalid'] ?? 0) + (int) ($counts['not_found'] ?? 0),
+        ];
+    }
+
     public function shouldProcessUrl(
         string $adapter,
         string $url,
         int $refreshAfterDays,
         ?string $rawHash = null,
+        bool $reconsiderLegacyOverture = false,
+        bool $reconsiderLegacySource = false,
     ): bool {
         $statement = $this->pdo->prepare(
-            'SELECT status, checked_at, raw_hash FROM researched_urls WHERE adapter = ? AND url_hash = ?'
+            'SELECT status, checked_at, raw_hash, business_id FROM researched_urls WHERE adapter = ? AND url_hash = ?'
         );
         $statement->execute([$adapter, hash('sha256', $url)]);
         $row = $statement->fetch();
         if ($row === false) {
             return true;
+        }
+        if (($reconsiderLegacyOverture || $reconsiderLegacySource)
+            && in_array($adapter, ['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses'], true)) {
+            if ($row['status'] === 'rejected') {
+                return true;
+            }
+            if ($row['business_id'] !== null) {
+                $business = $this->business((int) $row['business_id']);
+                if (in_array($business['status'], ['failed', 'invalid', 'not_found'], true)
+                    && ($business['payload']['source']['provider'] ?? null) !== $adapter) {
+                    // Full-mode provenance/validation can now accept a previously filtered row.
+                    return true;
+                }
+            }
         }
         if ($row['status'] === 'rejected') {
             return $rawHash !== null
@@ -333,16 +389,19 @@ SQL);
     {
         $afterId = 0;
         [$sourceCondition, $sourceParameters] = $this->sourceCondition();
+        $targetCondition = $target->isFullSource()
+            ? ' AND EXISTS (SELECT 1 FROM business_sources s WHERE s.business_id = businesses.id AND s.adapter = ?)'
+            : " AND json_extract(payload_json, '$.address.city') = ? AND json_extract(payload_json, '$.category_key') = ?";
+        $targetParameters = $target->isFullSource() ? [$target->fullSourceProvider()] : [$target->city, $target->categoryKey];
         do {
             $statement = $this->pdo->prepare(<<<SQL
 SELECT * FROM businesses
 WHERE status = 'pending' AND id > ?
-  AND json_extract(payload_json, '$.address.city') = ?
-  AND json_extract(payload_json, '$.category_key') = ?
+  {$targetCondition}
   {$sourceCondition}
 ORDER BY id LIMIT 100
 SQL);
-            $statement->execute([$afterId, $target->city, $target->categoryKey, ...$sourceParameters]);
+            $statement->execute([$afterId, ...$targetParameters, ...$sourceParameters]);
             $rows = $statement->fetchAll();
             foreach ($rows as $row) {
                 $afterId = (int) $row['id'];
@@ -606,10 +665,13 @@ SQL);
     /** Resolve a place after gathering non-exclusive name/contact hints. */
     private function matchingBusinessId(BusinessCandidate $candidate, array $keys): ?int
     {
+        $provider = $candidate->data['source']['provider'] ?? null;
+        $allPlaces = in_array($provider, ['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses'], true);
         $sourceIds = [];
         $sourceLookup = $this->pdo->prepare('SELECT business_id FROM business_sources WHERE adapter = ? AND source_url = ?');
         foreach ($candidate->sources as $source) {
-            if ($source->adapter !== 'overture_places' || $source->url === null || $source->url === '') {
+            if (($source->adapter !== 'overture_places' && (! $allPlaces || $source->adapter !== $provider))
+                || $source->url === null || $source->url === '') {
                 continue;
             }
             $sourceLookup->execute([$source->adapter, $source->url]);
@@ -618,10 +680,28 @@ SQL);
             }
         }
         if (count($sourceIds) > 1) {
-            throw new IdentityConflictException(array_keys($sourceIds), 'A stable Overture place ID is attached to several local businesses.');
+            throw new IdentityConflictException(array_keys($sourceIds), 'A source record is attached to several local businesses.');
         }
         if ($sourceIds !== []) {
-            return (int) array_key_first($sourceIds);
+            $id = (int) array_key_first($sourceIds);
+            if ($provider === 'data_gov_ckan'
+                && str_starts_with((string) ($candidate->data['source']['id'] ?? ''), '7d4c61e2-2416-453e-8efb-bd02ec89db35:')) {
+                $current = $this->business($id)['payload'];
+                if (BusinessLocationIdentity::name($current) !== BusinessLocationIdentity::name($candidate->data)) {
+                    throw new IdentityConflictException([$id], 'A reused municipal row ID names a different business.');
+                }
+            }
+
+            return $id;
+        }
+
+        if ($allPlaces) {
+            if (! BusinessLocationIdentity::hasNumberedAddress($candidate->data)) {
+                return null;
+            }
+            // Only a confirmed name/address can join distinct source IDs. Shared chain contacts
+            // cannot qualify and querying them would repeatedly scan every other branch.
+            $keys = array_intersect_key($keys, ['name_location' => true]);
         }
 
         $ids = [];
@@ -638,7 +718,7 @@ SQL);
         foreach (array_keys($ids) as $id) {
             $current = Json::decode($this->businessRow($id)['payload_json']);
             $status = BusinessLocationIdentity::matchStatus($current, $candidate->data);
-            if ($status === 'same') {
+            if ($status === 'same' && (! $allPlaces || BusinessLocationIdentity::hasNumberedAddress($candidate->data))) {
                 $same[] = $id;
             } elseif ($status === 'ambiguous') {
                 $ambiguous[] = $id;
@@ -654,6 +734,10 @@ SQL);
         }
         if (count($same) > 1) {
             throw new IdentityConflictException($same, 'Several local businesses describe the same named location.');
+        }
+        if ($allPlaces) {
+            // Different GERS IDs with incomplete addresses are separate places, even with shared contacts.
+            return null;
         }
         if (count($ambiguous) === 1 && $legacyWithoutStreet === $ambiguous) {
             // Preserve a unique pre-existing name/city record without assigning it to a known branch.

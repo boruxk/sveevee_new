@@ -6,10 +6,11 @@ namespace Sveevee\Worker\Research\Ckan;
 
 use RuntimeException;
 use Sveevee\Worker\Config\ResearchTarget;
+use Sveevee\Worker\Research\SourceCatalogMetadata;
 use Sveevee\Worker\Support\Json;
 
 /** Israeli Companies Authority register: registered companies, not business licenses. */
-final class IsraelCompaniesProfile implements CkanScopedDatasetProfileInterface
+final class IsraelCompaniesProfile implements CkanAllRecordsProfileInterface, CkanScopedDatasetProfileInterface
 {
     private const FIELDS = [
         '_id', 'מספר חברה', 'שם חברה', 'שם באנגלית', 'סטטוס חברה', 'קוד סטטוס חברה',
@@ -56,6 +57,54 @@ final class IsraelCompaniesProfile implements CkanScopedDatasetProfileInterface
     public function recordFilters(string $recordId): array
     {
         return ['מספר חברה' => (int) $recordId];
+    }
+
+    public function fullSearchParameters(): array
+    {
+        return ['sort' => '_id asc'];
+    }
+
+    public function mapAll(array $record, array $dataset, string $sourceUrl, string $checkedAt): array
+    {
+        $this->assertRecordSchema($record);
+        $id = $this->recordId($record);
+        $city = $this->text($record['שם עיר'] ?? null);
+        $matches = [];
+        foreach ((array) ($dataset['city_names'] ?? []) as $canonical => $names) {
+            foreach ([$canonical, ...(array) $names] as $alias) {
+                if ($city !== null && mb_strtolower($city, 'UTF-8') === mb_strtolower($this->text($alias) ?? '', 'UTF-8')) {
+                    $matches[(string) $canonical] = true;
+                }
+            }
+        }
+        if (count($matches) === 1) {
+            $city = array_key_first($matches);
+        }
+        $number = $this->text($record['מספר בית'] ?? null);
+
+        return [
+            'type' => 'business', 'name' => $this->text($record['שם חברה'] ?? null),
+            'category_key' => $this->category($record),
+            'address' => ['city' => $city, 'street' => $this->text($record['שם רחוב'] ?? null),
+                'number' => in_array($number, ['0', '-'], true) ? null : $number],
+            'source_name' => trim((string) ($dataset['source_name'] ?? $this->name())),
+            'source_url' => $sourceUrl, 'source_checked_at' => $checkedAt,
+            'source_metadata' => ['source_id' => $id === null ? null : $dataset['resource_id'].':'.$id,
+                'resource_id' => $dataset['resource_id'], 'record_id' => $id,
+                'source_city' => SourceCatalogMetadata::text($record['שם עיר'] ?? null, 120),
+                // Legal purpose and company type are not a source business category.
+                'source_categories' => [],
+                'profile' => $this->name(), 'original_record' => $record],
+        ];
+    }
+
+    public function assertRecordSchema(array $record): void
+    {
+        foreach (['_id', 'מספר חברה', 'שם חברה'] as $field) {
+            if (! array_key_exists($field, $record)) {
+                throw new RuntimeException('The companies register record is missing expected column '.$field.'.');
+            }
+        }
     }
 
     public function keepRecord(array $record, array $dataset, ResearchTarget $target): bool

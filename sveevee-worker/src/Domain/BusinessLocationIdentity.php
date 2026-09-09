@@ -7,6 +7,36 @@ namespace Sveevee\Worker\Domain;
 /** Shared contacts and website hosts are insufficient to identify a particular place. */
 final class BusinessLocationIdentity
 {
+    public static function hasNumberedAddress(array $data): bool
+    {
+        return self::city($data) !== '' && self::street($data) !== ''
+            && (trim((string) ($data['address']['number'] ?? '')) !== ''
+                || preg_match('/\d+[\p{L}]?\s*$/u', (string) ($data['address']['street'] ?? '')) === 1);
+    }
+
+    /** A stable source ID tolerates missing details, but never contradicting known locations. */
+    public static function sourceConflict(array $current, array $incoming): ?string
+    {
+        foreach (['city', 'street'] as $field) {
+            $before = self::$field($current);
+            $after = self::$field($incoming);
+            if ($before !== '' && $after !== '' && $before !== $after) {
+                if ($field === 'street') {
+                    foreach ([[$before, $after], [$after, $before]] as [$short, $long]) {
+                        if (str_starts_with($long, $short.' ')
+                            && preg_match('/^[0-9]+(?: [\p{L}0-9]+)*$/u', substr($long, strlen($short) + 1)) === 1) {
+                            continue 2;
+                        }
+                    }
+                }
+
+                return 'The stable source ID reports a different location; review is required.';
+            }
+        }
+
+        return null;
+    }
+
     public static function conflict(array $current, array $incoming): ?string
     {
         return match (self::matchStatus($current, $incoming)) {

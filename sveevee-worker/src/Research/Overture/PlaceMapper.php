@@ -12,8 +12,15 @@ final class PlaceMapper
 {
     private array $cities = [];
 
-    public function __construct(array $cities, array $aliases, private readonly float $minConfidence = 0.75)
-    {
+    public function __construct(
+        array $cities,
+        array $aliases,
+        private readonly float $minConfidence = 0.75,
+        private readonly string $mode = 'catalog',
+    ) {
+        if (! in_array($mode, ['catalog', 'all_places'], true)) {
+            throw new RuntimeException('Overture import_mode must be catalog or all_places.');
+        }
         if ($minConfidence < 0 || $minConfidence > 1 || ! is_finite($minConfidence)) {
             throw new RuntimeException('Overture min_confidence must be between 0 and 1.');
         }
@@ -51,7 +58,16 @@ final class PlaceMapper
             $aliases[$city] = array_merge($aliases[$city] ?? [], (array) $names);
         }
 
-        return new self($config['cities'] ?? [], $aliases, (float) ($config['sources']['overture_places']['min_confidence'] ?? 0.75));
+        return new self(
+            $config['cities'] ?? [], $aliases,
+            (float) ($config['sources']['overture_places']['min_confidence'] ?? 0.75),
+            (string) ($config['sources']['overture_places']['import_mode'] ?? 'catalog'),
+        );
+    }
+
+    public function importMode(): string
+    {
+        return $this->mode;
     }
 
     public function map(array $row, string $release, string $checkedAt, ?string &$skipReason = null): ?array
@@ -66,18 +82,21 @@ final class PlaceMapper
         if ($id === null || preg_match('/^[a-zA-Z0-9_-]{1,100}$/D', $id) !== 1) {
             return $this->skip('invalid_id', $skipReason);
         }
-        if (! is_numeric($row['confidence']) || ! is_finite((float) $row['confidence']) || (float) $row['confidence'] < $this->minConfidence || (float) $row['confidence'] > 1) {
+        $allPlaces = $this->mode === 'all_places';
+        $confidence = is_numeric($row['confidence']) && is_finite((float) $row['confidence'])
+            && (float) $row['confidence'] >= 0 && (float) $row['confidence'] <= 1 ? (float) $row['confidence'] : null;
+        if (! $allPlaces && ($confidence === null || $confidence < $this->minConfidence)) {
             return $this->skip('confidence', $skipReason);
         }
-        if (in_array($row['operating_status'], ['permanently_closed', 'temporarily_closed', 'closed'], true)) {
+        if (! $allPlaces && in_array($row['operating_status'], ['permanently_closed', 'temporarily_closed', 'closed'], true)) {
             return $this->skip('closed', $skipReason);
         }
         $name = $this->text($row['names']['primary'] ?? null, 255);
         if ($name === null || BusinessNormalizer::cleanBusinessName($name) === '' || ! preg_match('/[\p{L}\p{N}]/u', $name)) {
             return $this->skip('name', $skipReason);
         }
-        $category = $this->category(is_array($row['taxonomy']) ? $row['taxonomy'] : []);
-        if ($category === null) {
+        $category = TaxonomyMapper::map(is_array($row['taxonomy']) ? $row['taxonomy'] : [], $allPlaces);
+        if ($category === null && ! $allPlaces) {
             return $this->skip('category', $skipReason);
         }
         $address = null;
@@ -92,6 +111,23 @@ final class PlaceMapper
             if ($city !== null && $street !== null && preg_match('/[\p{L}\p{N}]/u', $street)) {
                 $address = ['city' => $city, 'street' => $street, 'original' => $candidate];
                 break;
+            }
+        }
+        if ($address === null && $allPlaces && $hadIsrael) {
+            // Keep the legacy choice above first. Otherwise preserve the best available IL address,
+            // without inventing a city from its region, postcode, coordinates or another country.
+            $score = -1;
+            foreach ($row['addresses'] as $candidate) {
+                if (! is_array($candidate) || ($candidate['country'] ?? null) !== 'IL') {
+                    continue;
+                }
+                $city = $this->cities[$this->cityKey($candidate['locality'] ?? '')] ?? $this->meaningfulText($candidate['locality'] ?? null, 120);
+                $street = $this->meaningfulText($candidate['freeform'] ?? null, 255);
+                $candidateScore = ($city !== null ? 2 : 0) + ($street !== null ? 1 : 0);
+                if ($candidateScore > $score) {
+                    $address = ['city' => $city, 'street' => $street, 'original' => $candidate];
+                    $score = $candidateScore;
+                }
             }
         }
         if ($address === null) {
@@ -118,41 +154,18 @@ final class PlaceMapper
             'email' => $this->first($row['emails'] ?? [], $this->email(...)),
             'website' => $this->first($row['websites'] ?? [], $this->url(...)),
             'social_links' => (object) $socials,
-            'confidence' => (float) $row['confidence'], 'release' => $release,
+            'confidence' => $confidence, 'release' => $release,
             'source_url' => 'https://explore.overturemaps.org/?feature=places.place.'.rawurlencode($id),
             'source_name' => 'Overture Maps Places', 'source_checked_at' => $checkedAt,
             'source_metadata' => [
-                'gers_id' => $id, 'release' => $release, 'confidence' => (float) $row['confidence'],
+                'gers_id' => $id, 'release' => $release, 'confidence' => $confidence,
                 'operating_status' => $row['operating_status'], 'taxonomy' => $row['taxonomy'],
                 'address' => $address['original'], 'sources' => $row['sources'],
                 'license_url' => 'https://docs.overturemaps.org/attribution/',
                 'attribution' => '© Overture Maps Foundation and its contributors',
+                ...array_intersect_key($row, array_flip(['basic_category', 'bbox', 'geometry', 'coordinates'])),
             ],
         ];
-    }
-
-    private function category(array $taxonomy): ?string
-    {
-        $primary = $taxonomy['primary'] ?? '';
-        $hierarchy = is_array($taxonomy['hierarchy'] ?? null) ? $taxonomy['hierarchy'] : [];
-        $has = static fn (string $value): bool => $primary === $value || in_array($value, $hierarchy, true);
-        if ($has('private_lodging') || $primary === 'cafeteria') {
-            return null;
-        }
-
-        return match (true) {
-            $has('bakery'), in_array($primary, ['cupcake_shop', 'donut_shop', 'bagel_shop'], true) => 'food_catering.bakery',
-            in_array($primary, ['fast_food_restaurant', 'pizza_restaurant', 'burger_restaurant', 'falafel_restaurant', 'doner_kebab_restaurant', 'hot_dog_restaurant', 'fish_and_chips_restaurant', 'sandwich_shop', 'food_truck_stand'], true) => 'professionals.fast_food',
-            $has('cafe'), $has('coffee_shop') => 'food_catering.cafes',
-            $primary === 'caterer' => 'professionals.catering',
-            in_array($primary, ['butcher_shop', 'delicatessen'], true) => 'food_catering.meat_deli',
-            $has('grocery_store'), in_array($primary, ['convenience_store', 'supermarket', 'produce_store', 'health_food_store'], true) => 'professionals.grocery_food',
-            $has('bar'), in_array($primary, ['beer_garden', 'gastropub', 'tapas_bar'], true) => 'food_catering.bars',
-            in_array($primary, ['event_venue', 'exhibition_and_trade_fair_venue'], true) => 'professionals.venues',
-            $has('hotel'), $has('resort'), in_array($primary, ['hostel', 'bed_and_breakfast', 'inn', 'lodge', 'service_apartment'], true) => 'travel_leisure.hotels_guesthouses',
-            $has('restaurant'), in_array($primary, ['diner', 'bistro', 'fondue_restaurant'], true) => 'food_catering.restaurants',
-            default => null,
-        };
     }
 
     private function skip(string $reason, ?string &$skipReason): ?array
@@ -165,6 +178,13 @@ final class PlaceMapper
     private function cityKey(mixed $value): string
     {
         return mb_strtolower($this->text($value, 255) ?? '', 'UTF-8');
+    }
+
+    private function meaningfulText(mixed $value, int $maximum): ?string
+    {
+        $text = $this->text($value, $maximum);
+
+        return $text !== null && preg_match('/[\p{L}\p{N}]/u', $text) ? $text : null;
     }
 
     private function text(mixed $value, int $maximum): ?string

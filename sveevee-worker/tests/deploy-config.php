@@ -67,11 +67,12 @@ try {
     [$code, $output, $error] = $run(false);
     $assert($code === 0, 'Preview failed: '.$error);
     $preview = Json::decode($output);
-    $assert($preview['applied'] === false && $preview['configured_combinations'] === count($catalogCities) * 10, 'Preview must describe every catalog city with ten categories.');
+    $assert($preview['applied'] === false && $preview['configured_combinations'] === 1
+        && $preview['source_import_modes']['data_gov_ckan'] === 'all_records', 'Preview must describe the complete connected Gov resources as one source scan.');
     $assert(file_get_contents($configPath) === $originalJson, 'Preview must preserve the existing configuration byte for byte.');
     $assert(glob($configPath.'.before-rotation-*') === [], 'Preview must not create a backup.');
     $assert(! file_exists($overtureConfigPath) && $preview['overture']['successful_entries_per_run'] === 9000, 'Preview must describe the separate Overture job without creating it.');
-    $assert(! file_exists($telConfigPath) && $preview['tel_aviv']['cities'] === ['Tel Aviv'] && $preview['tel_aviv']['configured_combinations'] === 10, 'Preview must describe the separate Tel Aviv job without creating it.');
+    $assert(! file_exists($telConfigPath) && $preview['tel_aviv']['cities'] === ['Tel Aviv'] && $preview['tel_aviv']['configured_combinations'] === 1, 'Preview must describe the separate Tel Aviv job without creating it.');
     $assert($preview['tel_aviv']['config'] === $telConfigPath && ! file_exists($directory.DIRECTORY_SEPARATOR.'worker.tel-aviv.json'), 'The explicit Tel Aviv configuration path must be honored.');
 
     [$code, $output, $error] = $run(true);
@@ -94,13 +95,15 @@ try {
     $assert($result['max_source_http_requests_per_run'] === 10 && $result['overture']['max_source_http_requests_per_run'] === null, 'Deployment summary must distinguish the government HTTP budget from Overture.');
     $tel = Json::decode((string) file_get_contents($telConfigPath));
     $assert($tel['target_per_run'] === 10 && $tel['targets_per_run'] === 1 && $tel['businesses_per_combination'] === 10 && $tel['batch_size'] === 10, 'Tel Aviv must have its own ten-entry budget and batches.');
-    $assert($tel['cities'] === ['Tel Aviv'] && $tel['categories'] === $changed['categories'] && $tel['neighborhoods'] === [], 'Tel Aviv must scan only its city and the same ten categories.');
+    $assert($tel['sources']['tel_aviv_business_licenses']['import_mode'] === 'all_records'
+        && $result['tel_aviv']['configured_combinations'] === 1, 'Tel Aviv must scan every municipal record as one source scan.');
     $assert($tel['storage']['data_subdirectory'] === 'tel-aviv' && $tel['storage']['database'] === $original['storage']['database'], 'Tel Aviv must isolate its state beneath the existing data directory.');
     $assert($tel['api'] === $original['api'] && $tel['sources']['tel_aviv_business_licenses']['installation_setting'] === 'preserved', 'New Tel Aviv job must inherit the existing access settings.');
     $assert(array_keys(array_filter($tel['sources'], static fn (array $source): bool => $source['enabled'])) === ['tel_aviv_business_licenses'], 'Only Tel Aviv may be enabled in its job.');
     $assert($tel['research']['max_http_requests_per_run'] === 10 && $result['tel_aviv']['max_source_http_requests_per_run'] === 10, 'Tel Aviv must retain its own ten-request source budget.');
     $overture = Json::decode((string) file_get_contents($overtureConfigPath));
-    $assert($overture['target_per_run'] === 9000 && $overture['targets_per_run'] === count($catalogCities) * 10 && $overture['businesses_per_combination'] === 9000 && $overture['batch_size'] === 100, 'Overture must have its separate 9000-entry budget and 100-item API batches.');
+    $assert($overture['sources']['overture_places']['import_mode'] === 'all_places' && (float) $overture['sources']['overture_places']['min_confidence'] === 0.0, 'A newly created Overture job must use the complete Israel dataset.');
+    $assert($overture['target_per_run'] === 9000 && $overture['targets_per_run'] === 1 && $overture['businesses_per_combination'] === 9000 && $overture['batch_size'] === 100, 'Overture must have one global source scope, a separate 9000-entry budget and 100-item API batches.');
     $assert($overture['storage']['data_subdirectory'] === 'overture' && $changed['storage']['data_subdirectory'] === '', 'The job states must use separate namespaces.');
     $assert($overture['api']['request_interval_ms'] === 150 && $overture['api']['installation_setting'] === 'preserved', 'Overture pacing must change while installation API settings survive.');
     $assert(array_keys(array_filter($overture['sources'], static fn (array $source): bool => $source['enabled'])) === ['overture_places'], 'Only Overture may be enabled in the Overture job.');
@@ -111,12 +114,18 @@ try {
     $tel['api']['installation_setting'] = 'tel-specific';
     file_put_contents($telConfigPath, Json::encode($tel, true).PHP_EOL);
     $overture['api']['request_interval_ms'] = 177;
+    $overture['sources']['overture_places']['import_mode'] = 'catalog';
+    $overture['sources']['overture_places']['min_confidence'] = 0.75;
+    $overture['sources']['overture_places']['database_path'] = $directory.'/installed/overture.sqlite';
+    $overture['sources']['overture_places']['installation_setting'] = 'preserved';
     file_put_contents($overtureConfigPath, Json::encode($overture)."\n\n");
     $beforeRepeat = [file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)];
     [$code, $output, $error] = $run(true);
+    $assert($code === 0, 'Repeated apply failed: '.$error);
     $repeat = Json::decode($output);
     $assert($code === 0 && array_filter($repeat['changed']) === [] && $repeat['backups'] === [], 'Repeated apply must be idempotent and avoid redundant backups: '.$error);
     $assert($beforeRepeat === [file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)], 'Repeated apply must preserve existing Tel Aviv access settings and Overture byte for byte.');
+    $assert($repeat['overture']['overture_import_mode'] === 'catalog', 'A Gov/Tel migration must not implicitly upgrade existing Overture jobs.');
 
     $datasets = $changed['sources']['data_gov_ckan']['datasets'];
     $national = array_values(array_filter($datasets, static fn (array $dataset): bool => $dataset['profile'] === 'israel_companies'));
@@ -148,7 +157,7 @@ try {
 
     $beforeInvalid = file_get_contents($configPath);
     $badProfile = Json::decode((string) file_get_contents($profilePath));
-    $badProfile['cities'] = [];
+    $badProfile['sources']['data_gov_ckan']['import_mode'] = 'invalid';
     file_put_contents($profilePath, Json::encode($badProfile));
     [$code] = $run(true);
     $assert($code !== 0, 'Invalid profile must be rejected.');
@@ -156,7 +165,7 @@ try {
     $assert([file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)] === array_slice($beforeRepeat, 1), 'Invalid government profile must not publish another job either.');
     copy(dirname(__DIR__).'/config/worker.rotation.json', $profilePath);
     $badTel = Json::decode((string) file_get_contents($telProfilePath));
-    $badTel['cities'] = [];
+    $badTel['sources']['tel_aviv_business_licenses']['import_mode'] = 'invalid';
     file_put_contents($telProfilePath, Json::encode($badTel));
     [$code] = $run(true);
     $assert($code !== 0 && [file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)] === $beforeRepeat, 'Invalid Tel Aviv profile must leave all configurations unchanged.');
@@ -170,7 +179,7 @@ try {
     [$code] = $run(true, ['--overture-config='.$telConfigPath]);
     $assert($code !== 0 && [file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)] === $beforeRepeat, 'Two jobs must never publish to the same configuration path.');
     $badOvertureProfile = Json::decode((string) file_get_contents($overtureProfilePath));
-    $badOvertureProfile['cities'] = [];
+    $badOvertureProfile['batch_size'] = 101;
     file_put_contents($overtureProfilePath, Json::encode($badOvertureProfile));
     $freshOverturePath = $directory.DIRECTORY_SEPARATOR.'fresh-overture.json';
     [$code] = $run(true, ['--overture-config='.$freshOverturePath]);
@@ -209,6 +218,21 @@ try {
     }
     $assert($failed && $publishCount === 3 && ! file_exists($freshTelPath), 'A newly published Tel Aviv configuration must be removed when the third publication fails.');
     $assert([file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)] === $beforeRepeat, 'Rollback of a newly created job must preserve every previously existing job.');
+    copy(dirname(__DIR__).'/config/worker.overture.json', $overtureProfilePath);
+    [$code, $output, $error] = $run(false, ['--update-overture']);
+    $upgradePreview = Json::decode($output);
+    $assert($code === 0 && $upgradePreview['overture']['overture_import_mode'] === 'all_places' && $upgradePreview['changed'][$overtureConfigPath], 'Explicit upgrade preview must describe the complete Overture mode: '.$error);
+    $assert($upgradePreview['overture']['configured_combinations'] === 1, 'Full-mode deployment summary must describe one global source scope, not the old 830-target matrix.');
+    $assert([file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)] === $beforeRepeat, 'Explicit upgrade preview may not modify an existing job.');
+    [$code, $output, $error] = $run(true, ['--update-overture']);
+    $upgrade = Json::decode($output);
+    $upgradedOverture = Json::decode((string) file_get_contents($overtureConfigPath));
+    $assert($code === 0 && $upgradedOverture['sources']['overture_places']['import_mode'] === 'all_places' && (float) $upgradedOverture['sources']['overture_places']['min_confidence'] === 0.0, 'The explicit update flag must upgrade an existing catalog job: '.$error);
+    $assert($upgradedOverture['storage'] === $overture['storage'] && $upgradedOverture['sources']['overture_places']['database_path'] === $overture['sources']['overture_places']['database_path'] && $upgradedOverture['sources']['overture_places']['installation_setting'] === 'preserved', 'Overture upgrade must preserve worker/cache paths and installation settings.');
+    $assert($upgradedOverture['target_per_run'] === 9000 && $upgradedOverture['batch_size'] === 100 && file_get_contents($upgrade['backups'][$overtureConfigPath]) === $beforeRepeat[2], 'The upgrade must preserve run/batch limits and back up the prior catalog configuration.');
+    $assert([file_get_contents($configPath), file_get_contents($telConfigPath)] === array_slice($beforeRepeat, 0, 2), 'Overture upgrade may not change the already configured Gov/Tel jobs.');
+    [$code, $output, $error] = $run(true, ['--update-overture']);
+    $assert($code === 0 && array_filter(Json::decode($output)['changed']) === [], 'Repeating the explicit Overture upgrade must be idempotent: '.$error);
     $assert(glob($directory.DIRECTORY_SEPARATOR.'.rotation-*') === [], 'Staging files must be removed after success and failure.');
 
     fwrite(STDOUT, "Deployment configuration: {$assertions} assertions passed.\n");

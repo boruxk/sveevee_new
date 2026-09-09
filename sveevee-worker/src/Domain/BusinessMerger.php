@@ -21,6 +21,9 @@ final class BusinessMerger
         if (isset($incoming['id'])) {
             $merged['id'] = $incoming['id'];
         }
+        if (isset($incoming['source'])) {
+            $merged['source'] = $incoming['source'];
+        }
         $merged['type'] = 'business';
         $merged['address'] = $this->mergeMap($current['address'] ?? [], $incoming['address'] ?? []);
         $merged['socials'] = $this->mergeMap($current['socials'] ?? [], $incoming['socials'] ?? []);
@@ -41,6 +44,12 @@ final class BusinessMerger
     public function patchForRemote(array $candidate, array $remote): array
     {
         $patch = ['id' => (int) $remote['id']];
+        if (isset($candidate['source'])) {
+            $patch['source'] = $candidate['source'];
+        }
+        if (! $this->filled($remote['category_key'] ?? null) && $this->filled($candidate['category_key'] ?? null)) {
+            $patch['category_key'] = $candidate['category_key'];
+        }
         foreach (self::OPTIONAL_SCALARS as $field) {
             if (! $this->filled($remote[$field] ?? null) && $this->filled($candidate[$field] ?? null)) {
                 $patch[$field] = $candidate[$field];

@@ -21,7 +21,9 @@ try {
                 ."php bin/prepare-overture.php [--config FILE] [--duckdb FILE] [--release YYYY-MM-DD.N|latest]\n"
                 ."  [--parquet LOCAL_FILE] [--output SQLITE_FILE] [--env-file FILE]\n\n"
                 ."DuckDB must already be installed. Remote exports install only its official httpfs extension\n"
-                ."inside the output directory. Existing snapshots survive failed or empty downloads.\n");
+                ."inside the output directory. Existing snapshots survive failed or empty downloads.\n"
+                ."sources.overture_places.import_mode=all_places retains every IL record, including low\n"
+                ."confidence, missing address/category and explicitly closed places; catalog uses filters.\n");
             exit(0);
         }
         if (! preg_match('/^--(config|duckdb|release|parquet|output|env-file)(?:=(.*))?$/D', $argv[$i], $match)) {
@@ -44,10 +46,14 @@ try {
         throw new RuntimeException('Worker config not found: '.$configPath);
     }
     $config = Json::decode((string) file_get_contents($configPath));
-    if (! is_array($config) || ! is_array($config['cities'] ?? null) || $config['cities'] === []) {
-        throw new RuntimeException('Configure the canonical catalog cities before preparing Overture.');
+    if (! is_array($config) || ! is_array($config['cities'] ?? [])) {
+        throw new RuntimeException('Overture configuration must be an object with an optional cities array.');
     }
     $source = $config['sources']['overture_places'] ?? [];
+    $mapper = PlaceMapper::fromConfig($config);
+    if ($mapper->importMode() === 'catalog' && ($config['cities'] ?? []) === []) {
+        throw new RuntimeException('Configure the canonical catalog cities before preparing a filtered Overture catalog.');
+    }
     $workerDatabase = WorkerPaths::resolve($config['storage'] ?? [], $root)['database'];
     $configuredDatabase = trim((string) ($source['database_path'] ?? ''));
     $destination = $options['output'] ?? ($configuredDatabase !== '' ? $resolve($configuredDatabase) : dirname($workerDatabase).'/overture.sqlite');
@@ -64,8 +70,8 @@ try {
     $release = $release === 'latest' ? $catalog->latest() : $release;
     ReleaseCatalog::validateRelease($release);
     $files = isset($options['parquet']) ? [realpath($options['parquet']) ?: $options['parquet']] : $catalog->files($release);
-    fwrite(STDERR, 'Preparing Overture '.$release.' from '.count($files)." partition(s); only country IL inside 34–36°E / 29–34°N.\n");
-    $result = (new DatasetPreparer(PlaceMapper::fromConfig($config)))->prepare(
+    fwrite(STDERR, 'Preparing Overture '.$release.' ('.$mapper->importMode().') from '.count($files)." partition(s); only country IL inside 34–36°E / 29–34°N.\n");
+    $result = (new DatasetPreparer($mapper))->prepare(
         $duckdb, $files, $release, $destination, (float) ($source['min_confidence'] ?? 0.75),
     );
     fwrite(STDOUT, Json::encode($result, true).PHP_EOL);

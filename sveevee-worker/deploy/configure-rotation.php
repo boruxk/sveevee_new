@@ -8,7 +8,7 @@ use Sveevee\Worker\Config\ConfigFileTransaction;
 use Sveevee\Worker\Support\Json;
 
 try {
-    $options = getopt('', ['config:', 'profile:', 'tel-config:', 'tel-profile:', 'overture-config:', 'overture-profile:', 'apply']);
+    $options = getopt('', ['config:', 'profile:', 'tel-config:', 'tel-profile:', 'overture-config:', 'overture-profile:', 'update-overture', 'apply']);
     $root = dirname(__DIR__);
     $configPath = realpath($options['config'] ?? '/etc/sveevee-worker/worker.json');
     if ($configPath === false || ! is_file($configPath)) {
@@ -79,7 +79,7 @@ try {
     };
     $government = $merge($government, $governmentProfile, '', ['data_gov_ckan']);
     $tel = $merge($tel, $telProfile, 'tel-aviv', ['tel_aviv_business_licenses']);
-    if (! $overtureExists) {
+    if (! $overtureExists || isset($options['update-overture'])) {
         $overtureProfile = $read($options['overture-profile'] ?? $root.'/config/worker.overture.json');
         $overture = $merge($overture, $overtureProfile, 'overture', ['overture_places']);
     }
@@ -88,12 +88,17 @@ try {
     $summary = static fn (array $config, string $path): array => [
         'config' => $path, 'cities' => $config['cities'],
         'categories_per_city' => count($config['categories']),
-        'configured_combinations' => count($config['cities']) * count($config['categories']),
+        'configured_combinations' => count(array_filter($config['sources'], static fn (array $source): bool => ($source['enabled'] ?? false)
+            && in_array($source['import_mode'] ?? null, ['all_places', 'all_records'], true))) > 0
+                ? 1 : count($config['cities']) * count($config['categories']),
         'successful_entries_per_run' => $config['target_per_run'],
         'productive_combinations_per_run' => $config['targets_per_run'],
         'successful_entries_per_combination' => $config['businesses_per_combination'],
         'batch_size' => $config['batch_size'], 'daily_limit' => null,
         'max_source_http_requests_per_run' => $config['research']['max_http_requests_per_run'] ?? null,
+        'overture_import_mode' => $config['sources']['overture_places']['import_mode'] ?? 'catalog',
+        'source_import_modes' => array_map(static fn (array $source): string => $source['import_mode'] ?? 'catalog',
+            array_filter($config['sources'], static fn (array $source): bool => ($source['enabled'] ?? false) === true)),
         'enabled_sources' => array_keys(array_filter($config['sources'], static fn (array $source): bool => $source['enabled'] === true)),
     ];
     fwrite(STDOUT, Json::encode([

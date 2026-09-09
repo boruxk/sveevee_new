@@ -148,25 +148,31 @@
 	const pageNeighborhood = computed(() => pageAddress.value.neighborhood || '')
 	const pageCityLabel = computed(() => (pageCity.value ? locationLabel(pageCity.value, 'city', locale.value) : ''))
 	const pageNeighborhoodLabel = computed(() => (pageNeighborhood.value ? locationLabel(pageNeighborhood.value, 'neighborhood', locale.value) : ''))
-	const pageTopicLabel = computed(() => catalogLabel(pageTopic.value?.labels, locale.value))
+	const sourceCategoryLabels = computed(() => [...new Set(
+		(Array.isArray(page.value?.source_categories) ? page.value.source_categories : [])
+			.map((category) => typeof category?.label === 'string' ? category.label.trim() : '')
+			.filter(Boolean)
+	)])
+	const pageTopicLabel = computed(() => (
+		catalogLabel(pageTopic.value?.labels, locale.value) || sourceCategoryLabels.value[0] || ''
+	))
 	const pageCatalogLinks = computed(() => {
-		if (!pageTopic.value) {
-			return []
-		}
-
 		return [
 			pageCity.value ? {
 				label: pageCityLabel.value,
-				to: catalogPath(pageTopic.value, pageCity.value)
+				to: pageTopic.value && page.value?.catalog_city ? catalogPath(pageTopic.value, page.value.catalog_city) : null
 			} : null,
 			pageCity.value && pageNeighborhood.value ? {
 				label: pageNeighborhoodLabel.value,
-				to: catalogPath(pageTopic.value, pageCity.value, pageNeighborhood.value)
+				to: pageTopic.value && page.value?.catalog_city && page.value?.catalog_neighborhood ? catalogPath(pageTopic.value, page.value.catalog_city, page.value.catalog_neighborhood) : null
 			} : null,
-			{
+			pageTopic.value ? {
 				label: pageTopicLabel.value,
 				to: catalogPath(pageTopic.value)
-			}
+			} : null,
+			...sourceCategoryLabels.value
+				.filter((label) => !pageTopic.value || label !== pageTopicLabel.value)
+				.map((label) => ({ label, to: null }))
 		].filter(Boolean)
 	})
 	const canonicalPath = computed(() => {
@@ -190,13 +196,16 @@
 		if (!page.value) {
 			return ''
 		}
+		if (!pageCity.value) {
+			return t('seo.pageDescription', { name: page.value.name, type: pageTypeLabel.value })
+		}
 
 		const key = isBusinessPage.value ? 'seo.businessPageDescription' : 'seo.communityPageDescription'
 
 		return t(key, {
 			name: page.value.name,
 			category: pageTopicLabel.value || pageTypeLabel.value,
-			city: pageCityLabel.value || pageCity.value || t('auth.city'),
+			city: pageCityLabel.value || pageCity.value,
 			neighborhood: pageNeighborhoodLabel.value ? ` ${pageNeighborhoodLabel.value}` : ''
 		})
 	})
@@ -267,7 +276,7 @@
 		}
 
 		const links = [
-			...pageCatalogLinks.value,
+			...pageCatalogLinks.value.filter((link) => link.to),
 			{
 				label: page.value.name,
 				to: canonicalPath.value
@@ -563,9 +572,10 @@
 			</section>
 
 			<nav v-if="pageCatalogLinks.length" class="detail-catalog-links" :aria-label="t('catalog.navigationLabel')">
-				<router-link v-for="link in pageCatalogLinks" :key="link.to" :to="link.to">
-					{{ link.label }}
-				</router-link>
+				<template v-for="(link, index) in pageCatalogLinks" :key="link.to || `location-${index}`">
+					<router-link v-if="link.to" :to="link.to">{{ link.label }}</router-link>
+					<span v-else>{{ link.label }}</span>
+				</template>
 			</nav>
 
 			<PagePreview
@@ -1257,7 +1267,12 @@
   text-decoration: none;
 }
 
-.detail-catalog-links a + a::before {
+.detail-catalog-links > * {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.detail-catalog-links > * + *::before {
   padding-inline: 8px;
   color: rgba(17, 34, 45, 0.36);
   content: "/";

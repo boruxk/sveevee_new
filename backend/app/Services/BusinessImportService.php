@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Exceptions\BusinessImportException;
+use App\Exceptions\ExactPageDuplicateException;
 use App\Models\BusinessImportPage;
+use App\Models\BusinessImportSource;
 use App\Models\Page;
 use App\Models\User;
 use App\Rules\CleanContent;
 use App\Support\CatalogTopics;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -16,6 +19,10 @@ use Illuminate\Validation\ValidationException;
 
 class BusinessImportService
 {
+    private const GOV_COMPANIES_RESOURCE = 'f004176c-b85f-4542-8901-7b3176f9a054';
+
+    private const GOV_BEER_SHEVA_RESOURCE = '7d4c61e2-2416-453e-8efb-bd02ec89db35';
+
     private const TOP_LEVEL_FIELDS = [
         'id',
         'type',
@@ -32,6 +39,7 @@ class BusinessImportService
         'opening_hours',
         'service_areas',
         'specialties',
+        'source',
     ];
 
     private const ADDRESS_FIELDS = ['street', 'number', 'city', 'neighborhood'];
@@ -41,6 +49,7 @@ class BusinessImportService
     public function __construct(
         private readonly AiWorkPageService $pages,
         private readonly PageIdentityService $identities,
+        private readonly ImportSourceCatalogService $sourceCatalog,
     ) {}
 
     public function search(array $input): array
@@ -128,10 +137,16 @@ class BusinessImportService
     {
         $this->assertKnownFields($input);
         $this->assertBusinessType($input);
+        $source = $this->sourceDescriptor($input);
+        if ($source !== null) {
+            $input = $this->withoutInvalidSourceWebsite($input);
+        }
         $prepared = [
             ...$input,
             'type' => Page::TYPE_BUSINESS,
-            'name' => trim((string) ($input['name'] ?? '')),
+            'name' => $source !== null && ! is_string($input['name'] ?? '')
+                ? $input['name']
+                : trim((string) ($input['name'] ?? '')),
             'contact_email' => $input['contact_email'] ?? null,
             'phone' => $input['phone'] ?? null,
             'address' => is_array($input['address'] ?? null) ? $input['address'] : [],
@@ -139,7 +154,7 @@ class BusinessImportService
 
         $data = Validator::make($prepared, [
             'type' => ['required', Rule::in([Page::TYPE_BUSINESS])],
-            'name' => ['nullable', 'string', 'max:255', new CleanContent],
+            'name' => ['nullable', 'string', 'max:255', ...($source === null ? [new CleanContent] : [])],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:40'],
             'website' => ['nullable', 'string', 'max:2048'],
@@ -150,6 +165,33 @@ class BusinessImportService
             'address.city' => ['nullable', 'string', 'max:120'],
             'address.neighborhood' => ['nullable', 'string', 'max:120'],
         ])->validate();
+
+        if ($source !== null) {
+            $mapping = $this->sourceQuery($source)->first();
+            if ($mapping !== null) {
+                $page = $mapping->page;
+                if ($page === null) {
+                    throw new BusinessImportException('The source was associated with a page that no longer exists.', 409, 'source_conflict');
+                }
+                $this->assertSourceAddress($data, $page);
+                $this->assertSourceRecordIdentity($input, $page, $source);
+                if (filled($input['id'] ?? null) && (int) $input['id'] !== $page->id) {
+                    throw new BusinessImportException('The source ID already belongs to another page.', 409, 'source_conflict');
+                }
+
+                return $page->id === $excludePageId ? [] : [[
+                    'id' => $page->id,
+                    'name' => $page->name,
+                    'type' => $page->type,
+                    'category_key' => $page->category_key,
+                    'public_path' => $page->public_path,
+                    'matched_on' => ['source_id'],
+                    'address' => $page->setup['address'] ?? [],
+                ]];
+            }
+
+            return $this->identities->exactMatches($data, $excludePageId, allowSingleContactSignal: true, separateLocations: true, confirmedLocationsOnly: true)->all();
+        }
 
         if (! filled($data['name'] ?? null)
             && ! filled($data['phone'] ?? null)
@@ -168,6 +210,10 @@ class BusinessImportService
         $id = Validator::make(['id' => $input['id'] ?? null], [
             'id' => ['nullable', 'integer', 'min:1'],
         ])->validate()['id'] ?? null;
+
+        if (($source = $this->sourceDescriptor($input)) !== null) {
+            return $this->upsertSource($clientId, $input, $source);
+        }
 
         if ($id) {
             $page = Page::query()->find($id);
@@ -226,6 +272,10 @@ class BusinessImportService
             throw ValidationException::withMessages(['id' => ['The body id must match the URL id.']]);
         }
 
+        if (($source = $this->sourceDescriptor($input)) !== null) {
+            return $this->upsertSource($clientId, [...$input, 'id' => $page->id], $source)['business'];
+        }
+
         unset($input['id'], $input['type']);
         if (array_intersect(array_keys($input), array_diff(self::TOP_LEVEL_FIELDS, ['id', 'type'])) === []) {
             throw ValidationException::withMessages(['business' => ['Provide at least one field to update.']]);
@@ -255,6 +305,235 @@ class BusinessImportService
             $this->sortForHash($payload),
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
         ));
+    }
+
+    private function sourceDescriptor(array $input): ?array
+    {
+        if (! array_key_exists('source', $input)) {
+            return null;
+        }
+        $source = Validator::make($input, [
+            'source' => ['required', 'array:provider,id,url,metadata'],
+            'source.provider' => ['required', Rule::in(['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses'])],
+            'source.id' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9][A-Za-z0-9._:-]*$/D'],
+            'source.url' => ['required', 'url:https', 'max:2048'],
+            'source.metadata' => ['present', 'array', function (string $attribute, mixed $value, \Closure $fail): void {
+                if (is_array($value) && $value !== [] && array_is_list($value)) {
+                    $fail('The source metadata must be an object.');
+                }
+            }],
+        ])->validate()['source'];
+        $parts = parse_url($source['url']);
+        parse_str($parts['query'] ?? '', $query);
+        if ($source['provider'] !== 'overture_places') {
+            $valid = $source['provider'] === 'data_gov_ckan'
+                ? $this->validGovSourceUrl($source, $parts, $query)
+                : $this->validTelAvivSourceUrl($source, $parts, $query);
+            if (! $valid) {
+                throw ValidationException::withMessages(['source.url' => ['Use the official record URL for this source ID.']]);
+            }
+
+            return $source;
+        }
+        if (strtolower($parts['host'] ?? '') !== 'explore.overturemaps.org'
+            || ! in_array($parts['path'] ?? '', ['', '/'], true)
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['port'])
+            || (($query['gers'] ?? null) !== $source['id'] && ($query['feature'] ?? null) !== 'places.place.'.$source['id'])
+            || (isset($query['gers']) && $query['gers'] !== $source['id'])
+            || (isset($query['feature']) && $query['feature'] !== 'places.place.'.$source['id'])) {
+            throw ValidationException::withMessages(['source.url' => ['Use the Overture Explorer URL for this source ID.']]);
+        }
+
+        return $source;
+    }
+
+    private function validGovSourceUrl(array $source, array $parts, array $query): bool
+    {
+        if (! $this->sourceEndpointMatches($parts, 'data.gov.il', '/api/3/action/datastore_search')
+            || ! $this->sourceQueryHasExactKeys($parts, ['resource_id', 'limit', 'filters'])
+            || ($query['limit'] ?? null) !== '1'
+            || ! is_string($query['resource_id'] ?? null) || ! is_string($query['filters'] ?? null)) {
+            return false;
+        }
+        $field = match ($query['resource_id']) {
+            self::GOV_COMPANIES_RESOURCE => 'מספר חברה',
+            self::GOV_BEER_SHEVA_RESOURCE => '_id',
+            default => null,
+        };
+        $filters = json_decode($query['filters'], true);
+        if ($field === null || ! is_array($filters) || array_keys($filters) !== [$field]
+            || ! is_int($filters[$field]) || $filters[$field] < 1) {
+            return false;
+        }
+        $recordId = (string) $filters[$field];
+
+        return ($field !== 'מספר חברה' || preg_match('/^[1-9][0-9]{8}$/D', $recordId) === 1)
+            && $source['id'] === $query['resource_id'].':'.$recordId;
+    }
+
+    private function validTelAvivSourceUrl(array $source, array $parts, array $query): bool
+    {
+        if (! $this->sourceEndpointMatches($parts, 'gisn.tel-aviv.gov.il', '/arcgis/rest/services/IView2/MapServer/964/query')
+            || ! $this->sourceQueryHasExactKeys($parts, ['where', 'outFields', 'returnGeometry', 'f'])
+            || ($query['outFields'] ?? null) !== '*' || ($query['returnGeometry'] ?? null) !== 'false'
+            || ($query['f'] ?? null) !== 'json' || ! is_string($query['where'] ?? null)) {
+            return false;
+        }
+        $where = $query['where'];
+
+        return preg_match("/^ms_esek_rashi=[1-9][0-9]* AND ms_esek_mishne=(?:0|[1-9][0-9]*) AND mahuiot='(?:[^'\\x00-\\x1F\\x7F]|'')*'$/Du", $where) === 1
+            && hash_equals('964:'.hash('sha256', $where), $source['id']);
+    }
+
+    private function sourceEndpointMatches(array $parts, string $host, string $path): bool
+    {
+        return strtolower($parts['scheme'] ?? '') === 'https'
+            && strtolower($parts['host'] ?? '') === $host && ($parts['path'] ?? '') === $path
+            && ! isset($parts['user']) && ! isset($parts['pass']) && ! isset($parts['port']) && ! isset($parts['fragment']);
+    }
+
+    private function sourceQueryHasExactKeys(array $parts, array $expected): bool
+    {
+        $keys = [];
+        foreach (explode('&', $parts['query'] ?? '') as $pair) {
+            $key = rawurldecode(explode('=', $pair, 2)[0]);
+            if (! in_array($key, $expected, true) || isset($keys[$key])) {
+                return false;
+            }
+            $keys[$key] = true;
+        }
+
+        return count($keys) === count($expected);
+    }
+
+    private function assertSourceRecordIdentity(array $input, Page $page, array $source): void
+    {
+        if ($source['provider'] !== 'data_gov_ckan' || ! str_starts_with($source['id'], self::GOV_BEER_SHEVA_RESOURCE.':')) {
+            return;
+        }
+        // A CKAN row number can be reassigned. Even a matching address cannot establish
+        // that the new record still describes the original business occupying it.
+        $names = [];
+        if (array_key_exists('name', $input)) {
+            $names[] = $input['name'];
+        }
+        if (array_key_exists('original_name', $source['metadata'])) {
+            $names[] = $source['metadata']['original_name'];
+        }
+        if ($names === [] || collect($names)->contains(fn ($name): bool => ! is_string($name) || ! $this->identities->importNamesMatch($name, $page->name))) {
+            throw new BusinessImportException('The source row no longer identifies the same business.', 409, 'source_conflict');
+        }
+    }
+
+    private function sourceQuery(array $source)
+    {
+        return BusinessImportSource::query()->where('provider', $source['provider'])->where('source_id', $source['id']);
+    }
+
+    private function assertSourceAddress(array $input, Page $page): void
+    {
+        $existingAddress = (array) ($page->setup['address'] ?? []);
+        $mergedAddress = array_replace($existingAddress, (array) ($input['address'] ?? []));
+        if ($page->type !== Page::TYPE_BUSINESS
+            || $this->identities->importAddressesConflict($mergedAddress, $existingAddress)) {
+            throw new BusinessImportException('The source location conflicts with its existing business page.', 409, 'source_conflict');
+        }
+    }
+
+    private function assertSourceEditable(Page $page): void
+    {
+        $this->assertEditable($page);
+        if (($page->created_by_user_id !== null && $page->created_by_user_id !== $page->user_id)
+            || ! $page->user?->hasRole('ai_worker')) {
+            throw new BusinessImportException('Transferred business pages cannot be changed by the import API.', 409, 'claimed');
+        }
+    }
+
+    private function assertSourceAssociation(string $clientId, Page $page, array $input, array $source): void
+    {
+        $this->assertSourceAddress($input, $page);
+        $this->assertSourceRecordIdentity($input, $page, $source);
+        if (! $this->identities->importNamesMatch($input['name'] ?? '', $page->name)) {
+            throw new BusinessImportException('A source can only be attached to the matching business.', 409, 'source_conflict');
+        }
+        $confirmed = $this->identities->exactMatches($input, allowSingleContactSignal: true, separateLocations: true, confirmedLocationsOnly: true)
+            ->contains(fn (array $match): bool => $match['id'] === $page->id);
+        $sameClient = BusinessImportPage::query()->where('page_id', $page->id)->where('created_by_oauth_client_id', $clientId)->exists();
+        $hasOtherSource = BusinessImportSource::query()->where('page_id', $page->id)->where('provider', $source['provider'])->exists();
+        if (! $confirmed && (! $sameClient || $hasOtherSource)) {
+            throw new BusinessImportException('This source cannot be safely associated with the requested page.', 409, 'source_conflict');
+        }
+    }
+
+    private function upsertSource(string $clientId, array $input, array $source): array
+    {
+        $this->assertBusinessType($input);
+        $input = $this->withoutInvalidSourceWebsite($input);
+        $key = 'business-import-source:'.hash('sha256', $source['provider'].'|'.$source['id']);
+
+        return Cache::lock($key, 30)->block(10, fn (): array => DB::transaction(function () use ($clientId, $input, $source): array {
+            $mapping = $this->sourceQuery($source)->lockForUpdate()->first();
+            $requestedId = (int) ($input['id'] ?? 0);
+            if ($mapping !== null && ($mapping->page_id === null || ($requestedId > 0 && $requestedId !== $mapping->page_id))) {
+                throw new BusinessImportException('The source ID cannot be moved to another page.', 409, 'source_conflict');
+            }
+            $pageId = $mapping?->page_id ?? ($requestedId ?: null);
+            $page = $pageId === null ? null : Page::query()->lockForUpdate()->find($pageId);
+            if ($pageId !== null && $page === null) {
+                throw new BusinessImportException('Business page not found.', 404, 'not_found');
+            }
+            unset($input['source'], $input['id']);
+            $input['type'] = Page::TYPE_BUSINESS;
+            $operation = 'updated';
+            if ($page !== null) {
+                $this->assertSourceEditable($page);
+                $this->assertSourceAddress($input, $page);
+                $this->assertSourceRecordIdentity($input, $page, $source);
+                $data = $this->pages->validate($this->mergeWithExisting($page, $input), allowSourcePlace: true);
+                if ($mapping === null) {
+                    $this->assertSourceAssociation($clientId, $page, $data, $source);
+                }
+                $page = $this->pages->update($page, $data, allowSingleContactDuplicate: true, separateLocations: true, confirmedLocationsOnly: true);
+            } else {
+                $data = $this->pages->validate($input, allowSourcePlace: true);
+                $data['palette_key'] = $this->pages->automaticPalette($input, $input['palette_key'] ?? null);
+                try {
+                    $page = $this->pages->create($this->creator(), $data, allowSingleContactDuplicate: true, separateLocations: true, confirmedLocationsOnly: true);
+                    $operation = 'created';
+                } catch (ExactPageDuplicateException $exception) {
+                    if (count($exception->matches) !== 1) {
+                        throw $exception;
+                    }
+                    $page = Page::query()->lockForUpdate()->findOrFail($exception->matches[0]['id']);
+                    $this->assertSourceEditable($page);
+                    $this->assertSourceAssociation($clientId, $page, $data, $source);
+                    // Register confirmed existing pages without replacing their richer public details.
+                }
+            }
+            $tracking = BusinessImportPage::query()->firstOrNew(['page_id' => $page->id]);
+            if ($operation === 'created') {
+                $tracking->created_by_oauth_client_id = $clientId;
+            }
+            $tracking->fill(['last_updated_by_oauth_client_id' => $clientId, 'last_payload_hash' => $this->payloadHash($data)])->save();
+            ($mapping ?? new BusinessImportSource)->fill([
+                'provider' => $source['provider'], 'source_id' => $source['id'], 'page_id' => $page->id,
+                'url' => $source['url'], 'metadata' => $source['metadata'],
+            ])->save();
+            $this->sourceCatalog->record($page, $source);
+
+            return ['operation' => $operation, 'business' => $this->payload($page->fresh())];
+        }, 3));
+    }
+
+    private function withoutInvalidSourceWebsite(array $input): array
+    {
+        if (Validator::make($input, ['website' => ['nullable', 'string', 'url:http,https', 'max:2048']])->fails()) {
+            // The worker retains the original value in source metadata. Omission also preserves
+            // an existing page's website when the incoming source value is malformed.
+            unset($input['website']);
+        }
+
+        return $input;
     }
 
     private function payload(Page $page): array

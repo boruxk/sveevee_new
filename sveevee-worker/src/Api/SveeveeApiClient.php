@@ -29,7 +29,7 @@ final class SveeveeApiClient implements SveeveeGateway
     public function checkDuplicate(array $business): array
     {
         $payload = array_intersect_key($business, array_flip([
-            'id', 'type', 'name', 'contact_email', 'phone', 'website', 'category_key', 'address',
+            'id', 'type', 'name', 'contact_email', 'phone', 'website', 'category_key', 'address', 'source',
         ]));
 
         return $this->request('POST', '/businesses/duplicates', $payload);
@@ -86,6 +86,7 @@ final class SveeveeApiClient implements SveeveeGateway
                 $lastTransport = $exception;
                 if ($attempt < $this->maxRetries) {
                     sleep(min(30, 2 ** $attempt));
+
                     continue;
                 }
                 throw new ApiException(
@@ -99,11 +100,13 @@ final class SveeveeApiClient implements SveeveeGateway
             if ($response->status === 401 && ! $retriedUnauthorized) {
                 $retriedUnauthorized = true;
                 $this->tokens->invalidate();
+
                 continue;
             }
             if (($response->status === 429 || $response->status >= 500) && $attempt < $this->maxRetries) {
                 $retryAfter = (int) ($response->header('retry-after') ?? 0);
                 sleep(min(60, max($retryAfter, 2 ** $attempt)));
+
                 continue;
             }
 

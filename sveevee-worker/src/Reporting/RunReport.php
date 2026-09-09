@@ -35,6 +35,13 @@ final class RunReport
 
     private bool $sourceMetricsEnabled = false;
 
+    private ?array $overtureProgress = null;
+
+    public function overtureProgress(?array $progress): void
+    {
+        $this->overtureProgress = $progress;
+    }
+
     public function __construct(
         public readonly string $runId,
         public readonly string $command,
@@ -123,6 +130,7 @@ final class RunReport
             'used_sources' => array_keys($this->sources),
             'source_counts' => $this->sources,
             'errors' => $this->errors,
+            ...($this->overtureProgress === null ? [] : ['overture_progress' => $this->overtureProgress]),
         ];
     }
 

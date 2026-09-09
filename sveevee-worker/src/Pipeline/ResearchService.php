@@ -10,6 +10,8 @@ use Sveevee\Worker\Domain\IncompleteCandidateException;
 use Sveevee\Worker\Http\SourceRequestBudgetExceeded;
 use Sveevee\Worker\Reporting\RunReport;
 use Sveevee\Worker\Research\BusinessEnricherInterface;
+use Sveevee\Worker\Research\CursorSourceInterface;
+use Sveevee\Worker\Research\OverturePlacesSource;
 use Sveevee\Worker\Research\SourceAdapterInterface;
 use Sveevee\Worker\Storage\IdentityConflictException;
 use Sveevee\Worker\Storage\WorkerRepository;
@@ -99,8 +101,12 @@ final class ResearchService
                             $sourceUrl,
                             $source->refreshAfterDays(),
                             SourceFingerprint::hash($raw),
+                            reconsiderLegacySource: $target->isFullSource(),
                         )) {
                         $report->increment('duplicates');
+                        if ($source instanceof CursorSourceInterface) {
+                            $source->acknowledge($raw);
+                        }
 
                         continue;
                     }
@@ -135,9 +141,12 @@ final class ResearchService
                         $stored = $this->repository->upsertCandidate($candidate);
                         $report->increment($stored['is_new'] ? 'new' : 'duplicates');
                         $business = $this->repository->business($stored['business_id']);
+                        if ($source instanceof CursorSourceInterface) {
+                            $source->acknowledge($raw);
+                        }
                         if ($business['status'] === 'pending'
-                            && ($business['payload']['address']['city'] ?? null) === $target->city
-                            && ($business['payload']['category_key'] ?? null) === $target->categoryKey) {
+                            && ($target->isFullSource() || (($business['payload']['address']['city'] ?? null) === $target->city
+                            && ($business['payload']['category_key'] ?? null) === $target->categoryKey))) {
                             yield $business;
                         }
                     } catch (IncompleteCandidateException $exception) {
@@ -164,6 +173,14 @@ final class ResearchService
                             $runId, $source->name(), $sourceUrl, $raw,
                             'research_error', $exception->getMessage()
                         );
+                        if ($source instanceof CursorSourceInterface && $target->isFullSource()) {
+                            // No pending business may exist yet. Keep the cursor before this row
+                            // so a transient storage/normalization failure can be retried next run.
+                            throw $exception;
+                        }
+                    }
+                    if ($source instanceof CursorSourceInterface) {
+                        $source->acknowledge($raw);
                     }
                 }
             } catch (SourceRequestBudgetExceeded $exception) {
@@ -186,6 +203,13 @@ final class ResearchService
                     'target' => $target->key(),
                     'error' => $exception->getMessage(),
                 ]);
+                if ($source instanceof OverturePlacesSource && $target->isOvertureAll()) {
+                    throw $exception;
+                }
+            } finally {
+                if ($source instanceof OverturePlacesSource) {
+                    $report->overtureProgress($source->progress());
+                }
             }
         }
     }
@@ -199,6 +223,15 @@ final class ResearchService
         }
 
         return false;
+    }
+
+    public function reportProgress(RunReport $report): void
+    {
+        foreach ($this->sources as $source) {
+            if ($source instanceof OverturePlacesSource) {
+                $report->overtureProgress($source->progress());
+            }
+        }
     }
 
     public function isTargetDeferred(ResearchTarget $target): bool

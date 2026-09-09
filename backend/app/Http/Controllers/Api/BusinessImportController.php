@@ -31,10 +31,14 @@ class BusinessImportController extends Controller
             'id' => ['nullable', 'integer', 'min:1'],
             'exclude_id' => ['nullable', 'integer', 'min:1'],
         ]);
-        $matches = $this->businesses->duplicateMatches(
-            $request->except('exclude_id'),
-            (int) ($ids['exclude_id'] ?? $ids['id'] ?? 0) ?: null
-        );
+        try {
+            $matches = $this->businesses->duplicateMatches(
+                $request->except('exclude_id'),
+                (int) ($ids['exclude_id'] ?? $ids['id'] ?? 0) ?: null
+            );
+        } catch (BusinessImportException $exception) {
+            return $this->businessImportError($exception);
+        }
 
         return ApiResponseService::success([
             'duplicate' => $matches !== [],
@@ -110,7 +114,7 @@ class BusinessImportController extends Controller
             $result = $this->businesses->upsert($clientId, $payload);
             $key->update([
                 'status' => 'completed',
-                'response_status' => 201,
+                'response_status' => $result['operation'] === 'created' ? 201 : 200,
                 'result' => $result,
             ]);
 
@@ -122,8 +126,8 @@ class BusinessImportController extends Controller
 
         $response = ApiResponseService::success(
             [...$outcome['result'], 'replayed' => $outcome['replayed']],
-            $outcome['replayed'] ? 'Import already processed.' : 'Business created.',
-            $outcome['replayed'] ? 200 : 201
+            $outcome['replayed'] ? 'Import already processed.' : ($outcome['result']['operation'] === 'created' ? 'Business created.' : 'Business updated.'),
+            $outcome['replayed'] || $outcome['result']['operation'] !== 'created' ? 200 : 201
         );
         $response->headers->set('Idempotency-Replayed', $outcome['replayed'] ? 'true' : 'false');
 

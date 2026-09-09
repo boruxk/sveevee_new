@@ -1027,6 +1027,25 @@ class AiWorksApiTest extends TestCase
             ->assertJsonStructure(['data' => ['opening_hours', 'socials', 'contact']]);
     }
 
+    public function test_ai_works_form_keeps_name_moderation_even_when_a_source_descriptor_is_submitted(): void
+    {
+        Sanctum::actingAs($this->aiWorker());
+        foreach (['Bagel Bite - בייגל בייט', 'חושך מטומטם'] as $name) {
+            $payload = $this->pagePayload();
+            $payload['name'] = $name;
+            $payload['source'] = [
+                'provider' => 'overture_places', 'id' => 'form-submitted-source',
+                'url' => 'https://explore.overturemaps.org/?feature=places.place.form-submitted-source',
+                'metadata' => ['original_name' => $name],
+            ];
+            $this->postJson('/api/v1/ai-works/pages', $payload)
+                ->assertUnprocessable()->assertJsonValidationErrors('name');
+            $this->postJson('/api/v1/ai-works/pages/duplicate-check', $payload)
+                ->assertUnprocessable()->assertJsonValidationErrors('name');
+        }
+        $this->assertDatabaseCount('pages', 0);
+    }
+
     private function aiWorker(): User
     {
         return User::query()->where('login', 'spfksfmbvpt')->firstOrFail();

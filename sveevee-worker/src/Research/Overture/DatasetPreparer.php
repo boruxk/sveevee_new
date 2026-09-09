@@ -13,7 +13,7 @@ use Sveevee\Worker\Support\ProcessLock;
 /** Build a separate snapshot, then publish one complete SQLite file with an atomic rename. */
 final class DatasetPreparer
 {
-    private const MAX_EXPORT_BYTES = 268435456;
+    private const MAX_EXPORT_BYTES = 1073741824;
 
     private const MAX_EXPORT_ROWS = 300000;
 
@@ -24,6 +24,9 @@ final class DatasetPreparer
         ReleaseCatalog::validateRelease($release);
         if ($files === [] || $minConfidence < 0 || $minConfidence > 1 || ! is_finite($minConfidence)) {
             throw new RuntimeException('Overture preparation requires source files and a valid confidence threshold.');
+        }
+        if ($this->mapper->importMode() === 'all_places') {
+            $minConfidence = 0.0;
         }
         $this->directory(dirname($destination));
         $lock = new ProcessLock($destination.'.prepare.lock');
@@ -51,6 +54,10 @@ final class DatasetPreparer
         if ($minConfidence < 0 || $minConfidence > 1 || ! is_finite($minConfidence)) {
             throw new RuntimeException('Overture min_confidence must be between 0 and 1.');
         }
+        $full = $this->mapper->importMode() === 'all_places';
+        if ($full) {
+            $minConfidence = 0.0;
+        }
         if ($expectedRows < 1 || $expectedRows > self::MAX_EXPORT_ROWS || ! is_file($jsonl) || filesize($jsonl) > self::MAX_EXPORT_BYTES) {
             throw new RuntimeException('Empty, missing or oversized Overture export; existing snapshot was retained.');
         }
@@ -67,15 +74,16 @@ final class DatasetPreparer
         $insert = null;
         $metadataInsert = null;
         $checkedAt = Clock::now();
-        $counts = ['read' => 0, 'accepted' => 0, 'phone' => 0, 'email' => 0, 'website' => 0, 'socials' => 0, 'skipped' => [], 'cities' => [], 'categories' => []];
+        $counts = ['read' => 0, 'accepted' => 0, 'phone' => 0, 'email' => 0, 'website' => 0, 'socials' => 0, 'skipped' => [], 'cities' => [], 'categories' => [], 'missing_city' => 0, 'missing_street' => 0, 'missing_category' => 0, 'missing_confidence' => 0];
         try {
             $database = new PDO('sqlite:'.$stage, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
             $database->exec('PRAGMA journal_mode = DELETE; PRAGMA synchronous = FULL');
             $database->exec('CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+            $required = $full ? '' : ' NOT NULL';
             $database->exec('CREATE TABLE places (
-                id TEXT PRIMARY KEY, name TEXT NOT NULL, category_key TEXT NOT NULL, city TEXT NOT NULL,
-                street TEXT NOT NULL, phone TEXT, email TEXT, website TEXT, social_links TEXT NOT NULL,
-                confidence REAL NOT NULL, release TEXT NOT NULL, source_url TEXT NOT NULL,
+                id TEXT PRIMARY KEY, name TEXT NOT NULL, category_key TEXT'.$required.', city TEXT'.$required.',
+                street TEXT'.$required.', phone TEXT, email TEXT, website TEXT, social_links TEXT NOT NULL,
+                confidence REAL'.$required.', release TEXT NOT NULL, source_url TEXT NOT NULL,
                 source_name TEXT NOT NULL, source_checked_at TEXT NOT NULL, source_metadata TEXT NOT NULL
             )');
             $database->exec('CREATE INDEX places_city_category_id ON places (city, category_key, id)');
@@ -102,8 +110,15 @@ final class DatasetPreparer
                     $counts[$contact] += $mapped[$contact] !== null ? 1 : 0;
                 }
                 $counts['socials'] += count((array) $mapped['social_links']) > 0 ? 1 : 0;
-                $counts['cities'][$mapped['city']] = ($counts['cities'][$mapped['city']] ?? 0) + 1;
-                $counts['categories'][$mapped['category_key']] = ($counts['categories'][$mapped['category_key']] ?? 0) + 1;
+                foreach (['city' => 'missing_city', 'street' => 'missing_street', 'category_key' => 'missing_category', 'confidence' => 'missing_confidence'] as $field => $counter) {
+                    $counts[$counter] += $mapped[$field] === null ? 1 : 0;
+                }
+                if ($mapped['city'] !== null) {
+                    $counts['cities'][$mapped['city']] = ($counts['cities'][$mapped['city']] ?? 0) + 1;
+                }
+                if ($mapped['category_key'] !== null) {
+                    $counts['categories'][$mapped['category_key']] = ($counts['categories'][$mapped['category_key']] ?? 0) + 1;
+                }
                 $mapped['social_links'] = Json::encode($mapped['social_links']);
                 $mapped['source_metadata'] = Json::encode($mapped['source_metadata']);
                 $insert->execute($mapped); // Duplicate GERS IDs indicate an inconsistent export; abort.
@@ -112,9 +127,12 @@ final class DatasetPreparer
             if (! feof($stream) || $counts['read'] !== $expectedRows || $counts['accepted'] < 1) {
                 throw new RuntimeException('Incomplete or empty Overture snapshot; existing snapshot was retained.');
             }
+            if ($full && ($counts['accepted'] !== $counts['read'] || $counts['skipped'] !== [])) {
+                throw new RuntimeException('Full Overture snapshot rejected source rows; existing snapshot was retained. Counters: '.Json::encode($counts));
+            }
             $this->assertReplacement($destination, $counts['accepted'], $release);
             $metadata = [
-                'schema_version' => '1', 'status' => 'complete', 'country' => 'IL',
+                'schema_version' => $full ? '2' : '1', 'import_mode' => $this->mapper->importMode(), 'status' => 'complete', 'country' => 'IL',
                 'release' => $release, 'prepared_at' => $checkedAt, 'source_checked_at' => $checkedAt,
                 'row_count' => (string) $counts['accepted'], 'min_confidence' => (string) $minConfidence,
                 'source_files' => Json::encode($files), 'counters' => Json::encode($counts),
@@ -136,7 +154,7 @@ final class DatasetPreparer
                 throw new RuntimeException('Cannot atomically publish Overture snapshot; existing snapshot was retained.');
             }
 
-            return ['database' => $destination, 'release' => $release, 'prepared_at' => $checkedAt, 'counts' => $counts];
+            return ['database' => $destination, 'release' => $release, 'import_mode' => $this->mapper->importMode(), 'schema_version' => $full ? '2' : '1', 'prepared_at' => $checkedAt, 'counts' => $counts];
         } finally {
             fclose($stream);
             $insert = null;
@@ -167,13 +185,17 @@ final class DatasetPreparer
             $this->directory($extensionDirectory);
             $sql .= 'SET extension_directory='.$quote($extensionDirectory).";\nINSTALL httpfs;\nLOAD httpfs;\n";
         }
+        $full = $this->mapper->importMode() === 'all_places';
         $sql .= 'CREATE TEMP TABLE export_rows AS SELECT id, names, addresses, phones, websites, emails, socials, taxonomy, confidence, operating_status, sources'
+            .($full ? ', basic_category, bbox' : '')
             .' FROM read_parquet(['.implode(', ', array_map($quote, $files)).'])'
             .' WHERE bbox.xmin BETWEEN 34.0 AND 36.0 AND bbox.ymin BETWEEN 29.0 AND 34.0'
-            ." AND list_contains(list_transform(addresses, a -> a.country), 'IL')"
-            .' AND confidence >= '.sprintf('%.8F', $minConfidence)
-            ." AND (operating_status IS NULL OR operating_status NOT IN ('permanently_closed', 'temporarily_closed', 'closed'))"
-            .' LIMIT '.(self::MAX_EXPORT_ROWS + 1).";\n"
+            ." AND list_contains(list_transform(addresses, a -> a.country), 'IL')";
+        if (! $full) {
+            $sql .= ' AND confidence >= '.sprintf('%.8F', $minConfidence)
+                ." AND (operating_status IS NULL OR operating_status NOT IN ('permanently_closed', 'temporarily_closed', 'closed'))";
+        }
+        $sql .= ' LIMIT '.(self::MAX_EXPORT_ROWS + 1).";\n"
             .'COPY export_rows TO '.$quote($jsonl)." (FORMAT JSON, ARRAY false);\n"
             .'COPY (SELECT count(*) AS count FROM export_rows) TO '.$quote($countFile)." (FORMAT JSON, ARRAY true);\n";
         $sqlFile = $jsonl.'.sql';
@@ -238,8 +260,12 @@ final class DatasetPreparer
         $existing->exec('PRAGMA query_only = ON');
         $metadata = $existing->query('SELECT key, value FROM metadata')->fetchAll(PDO::FETCH_KEY_PAIR);
         $existing = null;
-        if (($metadata['schema_version'] ?? null) !== '1' || ($metadata['status'] ?? null) !== 'complete' || ($metadata['country'] ?? null) !== 'IL') {
+        if (! in_array($metadata['schema_version'] ?? null, ['1', '2'], true) || ($metadata['status'] ?? null) !== 'complete' || ($metadata['country'] ?? null) !== 'IL'
+            || (($metadata['schema_version'] ?? null) === '2' && ($metadata['import_mode'] ?? null) !== 'all_places')) {
             throw new RuntimeException('Destination is not a complete Overture snapshot; choose another --output path.');
+        }
+        if (($metadata['import_mode'] ?? 'catalog') === 'all_places' && $this->mapper->importMode() !== 'all_places') {
+            throw new RuntimeException('A full Overture snapshot cannot be replaced by a filtered catalog snapshot; choose another --output path.');
         }
         if (version_compare($release, $metadata['release'] ?? '', '<') || $newCount < (int) ($metadata['row_count'] ?? 0) * 0.5) {
             throw new RuntimeException('Overture replacement is older or loses over half the rows; existing snapshot was retained. Inspect using another --output path.');

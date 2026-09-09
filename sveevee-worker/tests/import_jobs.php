@@ -126,8 +126,8 @@ $assert = static function (bool $condition, string $message) use (&$assertions):
         throw new RuntimeException($message);
     }
 };
-$run = static function (string $profile, array $targets, ImportJobSource $source) use (&$directories): array {
-    $settings = Json::decode((string) file_get_contents(dirname(__DIR__).'/config/'.$profile));
+$run = static function (string $profile, array $targets, ImportJobSource $source, array $overrides = []) use (&$directories): array {
+    $settings = array_replace(Json::decode((string) file_get_contents(dirname(__DIR__).'/config/'.$profile)), $overrides);
     $directory = sys_get_temp_dir().'/sveevee-import-jobs-'.bin2hex(random_bytes(8));
     $database = new Database($directory.'/worker.sqlite');
     $directories[] = $directory;
@@ -170,7 +170,7 @@ $tests['Overture imports 9000 actual rows in 90 batches and stops before row 900
     $assert(array_keys($repository->researchTargetProgress()) === [$target->key()], 'The completed Overture combination must advance the scheduler.');
 };
 
-$tests['Overture continues through more than ten productive combinations'] = static function () use ($run, $assert): void {
+$tests['Legacy Overture catalog mode continues through more than ten productive combinations'] = static function () use ($run, $assert): void {
     $targets = [];
     $counts = [];
     foreach (['Tel Aviv', 'Jerusalem'] as $city) {
@@ -181,7 +181,7 @@ $tests['Overture continues through more than ten productive combinations'] = sta
         }
     }
     $source = new ImportJobSource('overture_places', $counts);
-    [$repository, , $gateway, $report] = $run('worker.overture.json', $targets, $source);
+    [$repository, , $gateway, $report] = $run('worker.overture.json', $targets, $source, ['targets_per_run' => 830]);
 
     $assert($report['imported'] === 60 && $report['failed'] === 0, 'All 12 partially filled combinations must import their available rows.');
     $assert($report['productive_target_combinations'] === 12 && $report['scanned_target_combinations'] === 12, 'Overture must not retain the former ten-combination cap.');

@@ -8,17 +8,19 @@ use RuntimeException;
 use Sveevee\Worker\Config\ResearchTarget;
 use Sveevee\Worker\Http\HttpClientInterface;
 use Sveevee\Worker\Research\Ckan\BeerShevaBusinessLicenseProfile;
+use Sveevee\Worker\Research\Ckan\CkanAllRecordsProfileInterface;
 use Sveevee\Worker\Research\Ckan\CkanDatasetProfileInterface;
 use Sveevee\Worker\Research\Ckan\CkanScopedDatasetProfileInterface;
 use Sveevee\Worker\Research\Ckan\IsraelCompaniesProfile;
 use Sveevee\Worker\Storage\SourcePageCache;
+use Sveevee\Worker\Storage\SourceRecordCursor;
 use Sveevee\Worker\Storage\WorkerRepository;
 use Sveevee\Worker\Support\Clock;
 use Sveevee\Worker\Support\Json;
 use Sveevee\Worker\Support\Pacer;
 use Sveevee\Worker\Support\SourceFingerprint;
 
-final class DataGovCkanSource implements SourceAdapterInterface
+final class DataGovCkanSource implements CursorSourceInterface
 {
     private readonly string $apiUrl;
 
@@ -27,6 +29,12 @@ final class DataGovCkanSource implements SourceAdapterInterface
     private array $openedScopes = [];
 
     private readonly SourcePageCache $pageCache;
+
+    private ?SourceRecordCursor $recordCursor = null;
+
+    private ?string $scanKey = null;
+
+    private ?array $outstanding = null;
 
     /** @var array<string, CkanDatasetProfileInterface> */
     private array $profiles;
@@ -64,6 +72,13 @@ final class DataGovCkanSource implements SourceAdapterInterface
 
     public function research(ResearchTarget $target, int $limit): iterable
     {
+        if (($this->config['import_mode'] ?? 'catalog') === 'all_records') {
+            if ($target->fullSourceProvider() === $this->name() && $limit > 0) {
+                yield from $this->allRecords($limit);
+            }
+
+            return;
+        }
         $emitted = 0;
         foreach ($this->datasets() as $dataset) {
             $profile = $this->profile($dataset);
@@ -96,6 +111,109 @@ final class DataGovCkanSource implements SourceAdapterInterface
                 }
             }
         }
+    }
+
+    public function acknowledge(array $raw): void
+    {
+        if ($this->outstanding === null) {
+            return;
+        }
+        if ($this->outstanding['hash'] !== Json::hash($raw)) {
+            throw new RuntimeException('Cannot acknowledge a different CKAN record.');
+        }
+        $pending = $this->outstanding;
+        $this->recordCursor->acknowledge($this->scanKey, $pending['scope'], $pending['position'], $pending['cycle']);
+        $this->outstanding = null;
+    }
+
+    private function allRecords(int $limit): iterable
+    {
+        $datasets = [];
+        foreach ($this->datasets() as $dataset) {
+            $id = trim((string) ($dataset['resource_id'] ?? ''));
+            if ($id === '' || isset($datasets[$id]) || ! $this->profile($dataset) instanceof CkanAllRecordsProfileInterface) {
+                throw new RuntimeException('Full CKAN scans require unique resource IDs and a supported full-record profile.');
+            }
+            $datasets[$id] = $dataset;
+        }
+        if ($this->recordCursor === null) {
+            $this->recordCursor = $this->repository->sourceRecordCursor();
+            $this->scanKey = 'data_gov_ckan:'.Json::hash(['schema' => 'ckan-all-records-v1', 'api' => $this->apiUrl, 'datasets' => array_values($datasets)]);
+            $this->recordCursor->open($this->scanKey, $this->name(), array_keys($datasets), (int) ($this->config['cache_refresh_seconds'] ?? 86400));
+        }
+        $emitted = 0;
+        while (($scope = $this->recordCursor->currentScope($this->scanKey)) !== null) {
+            $dataset = $datasets[$scope];
+            $profile = $this->profile($dataset);
+            $state = $this->recordCursor->state($this->scanKey, $scope);
+            $rows = $this->recordCursor->pending($this->scanKey, $scope);
+            if ($rows === []) {
+                $this->fetchFullPage($scope, $profile, $state);
+
+                continue;
+            }
+            foreach ($rows as $row) {
+                $recordId = $profile->recordId($row['record']);
+                $url = $recordId === null
+                    ? $this->apiUrl.'/datastore_search?'.http_build_query(['resource_id' => $scope, 'limit' => 1, 'filters' => Json::encode(['_id' => (int) $row['record_id']])], '', '&', PHP_QUERY_RFC3986)
+                    : $this->recordUrl($dataset, $profile, $recordId);
+                $business = $profile->mapAll($row['record'], $dataset, $url, $row['checked_at']);
+                $this->outstanding = ['hash' => Json::hash($business), 'scope' => $scope, 'position' => $row['position'], 'cycle' => (int) $state['cycle']];
+                if ($recordId !== null && ! $this->repository->shouldProcessUrl(
+                    $this->name(), $url, $this->refreshAfterDays(), SourceFingerprint::hash($business), reconsiderLegacySource: true,
+                )) {
+                    $this->acknowledge($business);
+
+                    continue;
+                }
+                yield $business;
+                if ($this->outstanding !== null) {
+                    throw new RuntimeException('A CKAN record must be durably acknowledged before advancing its scan.');
+                }
+                if (++$emitted >= $limit) {
+                    return;
+                }
+            }
+        }
+    }
+
+    private function fetchFullPage(string $resourceId, CkanAllRecordsProfileInterface $profile, array $state): void
+    {
+        $offset = (int) $state['next_offset'];
+        $maximum = max(1, (int) ($this->config['max_records_per_full_dataset'] ?? 2_000_000));
+        $pageSize = max(1, min(10, (int) ($this->config['page_size'] ?? 10)));
+        if ($offset >= $maximum) {
+            throw new RuntimeException('Full CKAN scan reached max_records_per_full_dataset.');
+        }
+        $requested = min($pageSize, $maximum - $offset);
+        $payload = $this->request($this->apiUrl.'/datastore_search?'.http_build_query([
+            'resource_id' => $resourceId, 'limit' => $requested, 'offset' => $offset,
+            'include_total' => 'true', 'total_estimation_threshold' => 0,
+        ] + $profile->fullSearchParameters(), '', '&', PHP_QUERY_RFC3986));
+        $result = $payload['result'] ?? null;
+        if (! is_array($result) || ! is_array($result['records'] ?? null)
+            || ! isset($result['total']) || filter_var($result['total'], FILTER_VALIDATE_INT) === false
+            || (int) $result['total'] < 0 || ($result['total_was_estimated'] ?? false) !== false) {
+            throw new RuntimeException('Full CKAN scan requires records and an exact nonnegative total.');
+        }
+        if ((int) $result['total'] > $maximum || count($result['records']) > $requested) {
+            throw new RuntimeException('Full CKAN page or resource exceeds its configured bound.');
+        }
+        $priorIds = $state['last_page_ids'] === null ? [] : Json::decode($state['last_page_ids']);
+        $previous = $priorIds === [] ? -1 : (int) end($priorIds);
+        $rows = [];
+        foreach ($result['records'] as $record) {
+            $id = is_array($record) ? ($record['_id'] ?? null) : null;
+            if (filter_var($id, FILTER_VALIDATE_INT) === false || (int) $id <= $previous) {
+                throw new RuntimeException('Full CKAN scan requires strictly increasing numeric datastore row IDs.');
+            }
+            $previous = (int) $id;
+            $profile->assertRecordSchema($record);
+            $rows[] = ['id' => (string) $id, 'record' => $record];
+        }
+        // Changing totals are expected in a live register; the last durable offset stays intact.
+        $this->recordCursor->append($this->scanKey, $resourceId, $offset, (int) $result['total'], $rows, Clock::now(),
+            max(1, (int) ($this->config['max_cache_bytes'] ?? 134217728)));
     }
 
     private function datasets(): array

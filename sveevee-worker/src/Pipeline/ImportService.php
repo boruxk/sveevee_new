@@ -18,6 +18,8 @@ final class ImportService
 {
     private array $seenBusinessIds = [];
 
+    private ?ResearchTarget $fullSourceTarget = null;
+
     public function __construct(
         private readonly SveeveeGateway $api,
         private readonly WorkerRepository $repository,
@@ -45,6 +47,12 @@ final class ImportService
         ?ResearchService $research = null,
     ): void {
         $this->seenBusinessIds = [];
+        $this->fullSourceTarget = count($targets) === 1 && $targets[0]->isFullSource() ? $targets[0] : null;
+        if (($this->fullSourceTarget !== null)) {
+            $productiveLimit = 1;
+            $perCombination = $limit;
+            $report->source($this->fullSourceTarget->fullSourceProvider(), 0);
+        }
         $budget = new RunBudget(max(1, $limit), max(1, $productiveLimit), max(1, $perCombination));
         if (! $this->resumePendingBatches($runId, $dryRun, $report, $budget)) {
             return;
@@ -136,11 +144,12 @@ final class ImportService
             return null;
         }
         try {
-            $hasOverture = $this->repository->hasSource($business['id'], 'overture_places');
+            $provider = $payload['source']['provider'] ?? 'overture_places';
+            $hasSource = in_array($provider, ['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses'], true) && $this->repository->hasSource($business['id'], $provider);
             $knownPageId = filter_var($business['sveevee_page_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-            $linkedOverture = $hasOverture && $knownPageId !== false;
-            if ($linkedOverture) {
-                // A persisted GERS-to-page association survives a source name correction.
+            $linkedSource = $hasSource && $knownPageId !== false;
+            if ($linkedSource) {
+                // A persisted source-to-page association survives a source name correction.
                 // An absent, moved or claimed linked page must never trigger a replacement create.
                 $matches = [['id' => $knownPageId, 'matched_on' => ['source_id']]];
                 [$remote, $reason] = $this->resolveLinkedRemote($knownPageId);
@@ -157,19 +166,24 @@ final class ImportService
                 if ($matches === []) {
                     $report->increment(isset($payload['id']) ? 'planned_updates' : 'planned_imports');
 
-                    return ['business_id' => $business['id'], 'payload' => $payload, 'payload_hash' => $business['payload_hash'], 'target_city' => $payload['address']['city'], 'target_category' => $payload['category_key']];
+                    return ['business_id' => $business['id'], 'payload' => $payload, 'payload_hash' => $business['payload_hash'], 'target_city' => $payload['address']['city'] ?? '', 'target_category' => $payload['category_key'] ?? ''];
                 }
                 [$remote, $reason] = $this->resolveRemote($lookupPayload, $matches);
             }
 
             $report->increment('existing');
             $report->increment('duplicates');
-            if ($remote !== null && ($hasOverture || BusinessLocationIdentity::street($payload) !== '')) {
+            if ($remote !== null && ($hasSource || BusinessLocationIdentity::street($payload) !== '')) {
                 $identityPayload = $payload;
-                if ($linkedOverture) {
+                if ($linkedSource) {
                     $identityPayload['name'] = $remote['name'] ?? '';
                 }
-                $conflict = BusinessLocationIdentity::conflict($remote, $identityPayload);
+                $sourceLinked = isset($payload['source']) && ($linkedSource || count(array_filter($matches,
+                    static fn (array $match): bool => (int) ($match['id'] ?? 0) === (int) $remote['id']
+                        && in_array('source_id', (array) ($match['matched_on'] ?? []), true))) > 0);
+                $conflict = $sourceLinked
+                    ? BusinessLocationIdentity::sourceConflict($remote, $identityPayload)
+                    : BusinessLocationIdentity::conflict($remote, $identityPayload);
                 if ($conflict !== null) {
                     $remote = null;
                     $reason = $conflict;
@@ -204,7 +218,7 @@ final class ImportService
             }
             $report->increment('planned_updates');
 
-            return ['business_id' => $business['id'], 'payload' => $patch, 'payload_hash' => $business['payload_hash'], 'target_city' => $payload['address']['city'], 'target_category' => $payload['category_key']];
+            return ['business_id' => $business['id'], 'payload' => $patch, 'payload_hash' => $business['payload_hash'], 'target_city' => $payload['address']['city'] ?? '', 'target_category' => $payload['category_key'] ?? ''];
         } catch (ApiException $exception) {
             if (! $dryRun) {
                 $this->repository->markBusiness($business['id'], 'failed', errorCode: $exception->reason, errorMessage: $exception->getMessage());
@@ -215,6 +229,13 @@ final class ImportService
                 'reason' => $exception->reason, 'request_id' => $exception->requestId,
                 'errors' => $exception->errors,
             ]);
+            if (($this->fullSourceTarget !== null) && ($exception->retryable || in_array($exception->status, [0, 401, 403, 429], true) || $exception->status >= 500)) {
+                // Keep this row queued; an API outage must not trigger a check for every remaining place.
+                if (! $dryRun) {
+                    $this->repository->markBusiness($business['id'], 'pending');
+                }
+                throw $exception;
+            }
 
             return null;
         }
@@ -222,6 +243,9 @@ final class ImportService
 
     private function batchTarget(array $batch, array $item): ResearchTarget
     {
+        if (($this->fullSourceTarget !== null)) {
+            return $this->fullSourceTarget;
+        }
         $submitted = $batch['request']['businesses'][(int) $item['position'] - 1] ?? [];
         $current = $this->repository->business((int) $item['business_id'])['payload'];
 
@@ -406,6 +430,14 @@ final class ImportService
 
     private function resolveRemote(array $candidate, array $matches): array
     {
+        $sourceMatches = array_values(array_filter($matches, static fn (array $match): bool => in_array('source_id', (array) ($match['matched_on'] ?? []), true)));
+        if ($sourceMatches !== []) {
+            if (count($sourceMatches) !== 1 || ! isset($sourceMatches[0]['id'])) {
+                return [null, 'Several pages are linked to the same source ID.'];
+            }
+
+            return $this->resolveLinkedRemote((int) $sourceMatches[0]['id']);
+        }
         // The current API supplies branch addresses. Prefer a confirmed location to shared contacts.
         $sameLocation = array_values(array_filter($matches, static fn (array $match): bool => BusinessLocationIdentity::matchStatus($candidate, $match) === 'same'));
         if ($sameLocation !== []) {

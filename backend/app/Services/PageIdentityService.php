@@ -73,16 +73,30 @@ class PageIdentityService
         ];
     }
 
-    public function exactMatches(array $data, ?int $excludePageId = null, bool $allowSingleContactSignal = false, bool $separateLocations = false): Collection
+    public function exactMatches(array $data, ?int $excludePageId = null, bool $allowSingleContactSignal = false, bool $separateLocations = false, bool $confirmedLocationsOnly = false): Collection
     {
-        $this->ensureAll();
+        if ($confirmedLocationsOnly && ! $this->hasCompleteImportLocation($data)) {
+            return collect();
+        }
+        if (! $confirmedLocationsOnly) {
+            $this->ensureAll();
+        }
         $identity = $this->fromInput($data);
+        if ($confirmedLocationsOnly && $identity['import_location_hash'] === null) {
+            return collect();
+        }
 
         $query = PageIdentityKey::query()
             ->with('page')
             ->when($excludePageId, fn ($query) => $query->where('page_id', '!=', $excludePageId))
             ->when($identity['type'] !== '', fn ($query) => $query->where('type', $identity['type']))
-            ->where(function ($query) use ($identity, $allowSingleContactSignal, $separateLocations): void {
+            ->where(function ($query) use ($identity, $allowSingleContactSignal, $separateLocations, $confirmedLocationsOnly): void {
+                if ($confirmedLocationsOnly) {
+                    // The migration backfills this index and PageObserver maintains it for every save.
+                    $query->where('import_location_hash', $identity['import_location_hash']);
+
+                    return;
+                }
                 $query->whereRaw('1 = 0');
                 if ($separateLocations && $identity['import_location_hash']) {
                     $query->orWhere('import_location_hash', $identity['import_location_hash']);
@@ -136,7 +150,8 @@ class PageIdentityService
                 }
             });
 
-        $locationStatus = fn (PageIdentityKey $key): string => $key->page === null ? 'different'
+        $locationStatus = fn (PageIdentityKey $key): string => $key->page === null
+            || ($confirmedLocationsOnly && ! $this->hasCompleteImportLocation(['address' => $key->page->setup['address'] ?? []])) ? 'different'
             : $this->importLocationStatus($data, [
                 'name' => $key->page->name,
                 'address' => $key->page->setup['address'] ?? [],
@@ -149,7 +164,8 @@ class PageIdentityService
         if ($keys->isEmpty()) {
             // Filter before limiting: chains can have more than ten branches with shared contacts.
             $keys = $separateLocations
-                ? $query->lazyById(100)->filter(fn (PageIdentityKey $key): bool => $locationStatus($key) !== 'different')->take(10)->collect()
+                ? $query->lazyById(100)->filter(fn (PageIdentityKey $key): bool => $confirmedLocationsOnly
+                    ? $locationStatus($key) === 'same' : $locationStatus($key) !== 'different')->take(10)->collect()
                 : $query->limit(10)->get();
         }
 
@@ -228,6 +244,43 @@ class PageIdentityService
         return $name !== '' && $city !== '' && $street !== ''
             ? hash('sha256', implode('|', [$data['type'] ?? Page::TYPE_BUSINESS, $name, $city, $street]))
             : null;
+    }
+
+    public function hasCompleteImportLocation(array $data): bool
+    {
+        $address = $data['address'] ?? [];
+
+        return $this->text($address['city'] ?? '') !== '' && $this->text($address['street'] ?? '') !== ''
+            && ($this->text($address['number'] ?? '') !== '' || preg_match('/\d+[\p{L}]?\s*$/u', (string) ($address['street'] ?? '')) === 1);
+    }
+
+    public function importNamesMatch(mixed $left, mixed $right): bool
+    {
+        $name = $this->importName($left);
+
+        return $name !== '' && $name === $this->importName($right);
+    }
+
+    public function importAddressesConflict(array $left, array $right): bool
+    {
+        $leftCity = $this->text($left['city'] ?? '');
+        $rightCity = $this->text($right['city'] ?? '');
+        if ($leftCity !== '' && $rightCity !== '' && $leftCity !== $rightCity) {
+            return true;
+        }
+        $leftStreet = $this->importStreet(['address' => $left]);
+        $rightStreet = $this->importStreet(['address' => $right]);
+        if ($leftStreet === '' || $rightStreet === '' || $leftStreet === $rightStreet) {
+            return false;
+        }
+        foreach ([[$leftStreet, $rightStreet], [$rightStreet, $leftStreet]] as [$short, $long]) {
+            if (str_starts_with($long, $short.' ')
+                && preg_match('/^[0-9]+(?: [\p{L}0-9]+)*$/u', substr($long, strlen($short) + 1)) === 1) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function importNameCityHash(array $data): ?string

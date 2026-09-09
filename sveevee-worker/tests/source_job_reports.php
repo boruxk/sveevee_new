@@ -42,6 +42,7 @@ try {
         $enabled = array_keys(array_filter($config['sources'], static fn (array $settings): bool => ($settings['enabled'] ?? false) === true));
         $assert($enabled === [$source], 'The job profile must enable only its own source: '.$source);
         // Neither adapter supports this city, so successful research requires no HTTP request.
+        $config['sources'][$source]['import_mode'] = 'catalog';
         $config['cities'] = ['CLI Fixture City'];
         $config['neighborhoods'] = [];
         $config['categories'] = ['food_catering.restaurants'];

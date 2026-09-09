@@ -51,6 +51,7 @@ class SystemLogApiTest extends TestCase
         $this->assertArrayNotHasKey('source_requests', $storedReport);
         $this->assertArrayNotHasKey('source_errors', $storedReport);
         $this->assertArrayNotHasKey('deferred_target_combinations', $storedReport);
+        $this->assertArrayNotHasKey('overture_progress', $storedReport);
     }
 
     public function test_rotation_counters_survive_storage_and_admin_reads_and_cannot_change_on_replay(): void
@@ -231,6 +232,43 @@ class SystemLogApiTest extends TestCase
 
         $this->postJson('/api/v1/business-import/worker-runs', $this->runReport())
             ->assertForbidden();
+    }
+
+    public function test_overture_progress_survives_admin_reads_and_remains_idempotent(): void
+    {
+        Passport::actingAsClient($this->businessClient(), [BusinessImportClient::SCOPE_WRITE]);
+        $report = $this->runReport();
+        $report['used_sources'] = ['overture_places'];
+        $report['source_counts'] = ['overture_places' => 9000];
+        $report['overture_progress'] = [
+            'release' => '2026-08-19.0', 'total' => 162913, 'scanned' => 9100,
+            'remaining' => 153813, 'pending' => 50, 'failed' => 50,
+        ];
+        $this->postJson('/api/v1/business-import/worker-runs', $report)->assertCreated();
+        $this->postJson('/api/v1/business-import/worker-runs', $report)->assertOk()->assertJsonPath('data.replayed', true);
+        foreach (array_keys($report['overture_progress']) as $field) {
+            $changed = $report;
+            $changed['overture_progress'][$field] = $field === 'release' ? 'next-release' : $changed['overture_progress'][$field] + 1;
+            $this->postJson('/api/v1/business-import/worker-runs', $changed)
+                ->assertStatus(409)->assertJsonValidationErrors('run_id');
+        }
+        $this->assertDatabaseCount('system_log_entries', 1);
+        $this->assertSame($report['overture_progress'], SystemLogEntry::query()->sole()->data['overture_progress']);
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        $this->getJson('/api/v1/admin/logs?source=automation_worker')->assertOk()
+            ->assertJsonPath('data.items.0.data.overture_progress', $report['overture_progress']);
+    }
+
+    public function test_overture_progress_rejects_invalid_values(): void
+    {
+        Passport::actingAsClient($this->businessClient(), [BusinessImportClient::SCOPE_WRITE]);
+        $report = $this->runReport();
+        $report['overture_progress'] = ['release' => '', 'total' => 10, 'scanned' => 11, 'remaining' => -1, 'pending' => -1, 'failed' => -1];
+        $this->postJson('/api/v1/business-import/worker-runs', $report)->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'overture_progress.release', 'overture_progress.scanned', 'overture_progress.remaining', 'overture_progress.pending', 'overture_progress.failed',
+            ]);
+        $this->assertDatabaseCount('system_log_entries', 0);
     }
 
     public function test_clean_import_only_run_can_report_empty_source_and_error_lists(): void

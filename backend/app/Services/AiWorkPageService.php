@@ -88,7 +88,7 @@ class AiWorkPageService
         return self::PALETTE_KEYS[$index];
     }
 
-    public function validate(array $input): array
+    public function validate(array $input, bool $allowSourcePlace = false): array
     {
         $type = trim((string) ($input['type'] ?? ''));
         $scope = $type === Page::TYPE_COMMUNITY
@@ -102,6 +102,11 @@ class AiWorkPageService
             ? $this->canonicalValue($address['neighborhood'], $neighborhoods)
             : null;
         $website = $this->normalizedUrl($input['website'] ?? null);
+        if ($allowSourcePlace && Validator::make(['website' => $website], [
+            'website' => ['nullable', 'url:http,https', 'max:2048'],
+        ])->fails()) {
+            $website = null;
+        }
         $category = $this->categoryKey($input['category_key'] ?? $input['category'] ?? null, $scope);
         $serviceAreas = $this->listInput($input['service_areas'] ?? []);
         $specialties = $this->listInput($input['specialties'] ?? []);
@@ -128,18 +133,22 @@ class AiWorkPageService
         $prepared = [
             ...$input,
             'type' => $type,
-            'name' => trim((string) ($input['name'] ?? '')),
+            'name' => $allowSourcePlace && ! is_string($input['name'] ?? '')
+                ? $input['name']
+                : trim((string) ($input['name'] ?? '')),
             'public_description' => $this->nullableString($input['public_description'] ?? null),
             'contact_email' => $this->nullableString($input['contact_email'] ?? null),
             'phone' => $this->nullableString($input['phone'] ?? null),
             'whatsapp' => $this->nullableString($input['whatsapp'] ?? null),
             'website' => $website,
-            'category_key' => $category ?? trim((string) ($input['category_key'] ?? $input['category'] ?? '')),
+            'category_key' => $category ?? ($allowSourcePlace
+                ? $this->nullableString($input['category_key'] ?? $input['category'] ?? null)
+                : trim((string) ($input['category_key'] ?? $input['category'] ?? ''))),
             'palette_key' => $this->nullableString($input['palette_key'] ?? null) ?? 'amber-dawn',
             'address' => [
                 'street' => $this->nullableString($address['street'] ?? null),
                 'number' => $this->nullableString($address['number'] ?? null),
-                'city' => $city ?? trim((string) ($address['city'] ?? '')),
+                'city' => $city ?? ($allowSourcePlace ? $this->nullableString($address['city'] ?? null) : trim((string) ($address['city'] ?? ''))),
                 'neighborhood' => $neighborhood ?? $this->nullableString($address['neighborhood'] ?? null),
             ],
             'socials' => is_array($input['socials'] ?? null) ? $input['socials'] : [],
@@ -150,19 +159,20 @@ class AiWorkPageService
 
         return Validator::make($prepared, [
             'type' => ['required', Rule::in([Page::TYPE_BUSINESS, Page::TYPE_COMMUNITY])],
-            'name' => ['required', 'string', 'max:255', new CleanContent],
+            // Validated source imports retain original place names, including moderation matches.
+            'name' => ['required', 'string', 'max:255', ...($allowSourcePlace ? [] : [new CleanContent])],
             'public_description' => ['nullable', 'string', 'max:3000', new CleanContent],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:40'],
             'whatsapp' => ['nullable', 'string', 'max:80'],
             'website' => ['nullable', 'url:http,https', 'max:2048'],
-            'category_key' => ['required', 'string', Rule::in(CatalogTopics::keysForScope($scope))],
+            'category_key' => [$allowSourcePlace ? 'nullable' : 'required', 'string', Rule::in(CatalogTopics::keysForScope($scope))],
             'palette_key' => ['nullable', 'string', 'max:50'],
             'address' => ['required', 'array'],
             'address.street' => ['nullable', 'string', 'max:255'],
             'address.number' => ['nullable', 'string', 'max:40'],
-            'address.city' => ['required', 'string', 'max:120', Rule::in($cities)],
-            'address.neighborhood' => ['nullable', 'string', 'max:120', Rule::in($neighborhoods)],
+            'address.city' => $allowSourcePlace ? ['nullable', 'string', 'max:120'] : ['required', 'string', 'max:120', Rule::in($cities)],
+            'address.neighborhood' => $allowSourcePlace ? ['nullable', 'string', 'max:120'] : ['nullable', 'string', 'max:120', Rule::in($neighborhoods)],
             'socials' => ['nullable', 'array'],
             'socials.facebook' => ['nullable', 'string', 'max:2048'],
             'socials.instagram' => ['nullable', 'string', 'max:2048'],
@@ -181,13 +191,14 @@ class AiWorkPageService
         ])->validate();
     }
 
-    public function create(User $worker, array $data, bool $allowSingleContactDuplicate = false, bool $separateLocations = false): Page
+    public function create(User $worker, array $data, bool $allowSingleContactDuplicate = false, bool $separateLocations = false, bool $confirmedLocationsOnly = false): Page
     {
-        return $this->identities->withDuplicateLocks($data, function () use ($worker, $data, $allowSingleContactDuplicate, $separateLocations): Page {
+        return $this->identities->withDuplicateLocks($data, function () use ($worker, $data, $allowSingleContactDuplicate, $separateLocations, $confirmedLocationsOnly): Page {
             $matches = $this->identities->exactMatches(
                 $data,
                 allowSingleContactSignal: $allowSingleContactDuplicate,
                 separateLocations: $separateLocations,
+                confirmedLocationsOnly: $confirmedLocationsOnly,
             );
             if ($matches->isNotEmpty()) {
                 throw new ExactPageDuplicateException($matches->all());
@@ -207,14 +218,15 @@ class AiWorkPageService
         });
     }
 
-    public function update(Page $page, array $data, bool $allowSingleContactDuplicate = false, bool $separateLocations = false): Page
+    public function update(Page $page, array $data, bool $allowSingleContactDuplicate = false, bool $separateLocations = false, bool $confirmedLocationsOnly = false): Page
     {
-        return $this->identities->withDuplicateLocks($data, function () use ($page, $data, $allowSingleContactDuplicate, $separateLocations): Page {
+        return $this->identities->withDuplicateLocks($data, function () use ($page, $data, $allowSingleContactDuplicate, $separateLocations, $confirmedLocationsOnly): Page {
             $matches = $this->identities->exactMatches(
                 $data,
                 $page->id,
                 allowSingleContactSignal: $allowSingleContactDuplicate,
                 separateLocations: $separateLocations,
+                confirmedLocationsOnly: $confirmedLocationsOnly,
             );
             if ($matches->isNotEmpty()) {
                 throw new ExactPageDuplicateException($matches->all());

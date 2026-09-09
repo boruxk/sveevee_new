@@ -43,6 +43,7 @@ $row = static fn (string $id = '08f347c000000001') => [
     'phones' => ['invalid', '04-1234567'], 'emails' => ['broken', 'Hello@Example.org'],
     'websites' => ['javascript:alert(1)', 'example.org'], 'socials' => ['https://www.instagram.com/test', 'https://facebook.com.evil.test/page'],
     'taxonomy' => ['primary' => 'bakery', 'hierarchy' => ['food_and_drink', 'bakery']],
+    'basic_category' => 'bakery',
     'confidence' => 0.9, 'operating_status' => null,
     'sources' => [['dataset' => 'meta', 'record_id' => 'source-1', 'property' => '']],
     'bbox' => ['xmin' => 35.0, 'ymin' => 32.0, 'xmax' => 35.0, 'ymax' => 32.0],
@@ -157,6 +158,52 @@ $tests['older and suspiciously reduced snapshots preserve current data'] = stati
     $throws(static fn () => $preparer->importJsonl($one, '2026-07-22.0', $output, 1), 'Older release was published.');
     $assert(hash_file('sha256', $output) === $hash, 'Replacement guard changed the existing file.');
 };
+$tests['full snapshot retains incomplete addresses, unknown categories and low or absent confidence'] = static function () use ($row, $write, $directory, $assert): void {
+    $fullMapper = new PlaceMapper(['Haifa'], ['Haifa' => ['חיפה']], 0.75, 'all_places');
+    $missing = $row('missing');
+    $missing['addresses'][0]['locality'] = null;
+    $missing['addresses'][0]['freeform'] = null;
+    $missing['taxonomy'] = null;
+    $missing['basic_category'] = null;
+    $missing['confidence'] = null;
+    $low = $row('low');
+    $low['confidence'] = 0.01;
+    $closed = $row('closed');
+    $closed['operating_status'] = 'permanently_closed';
+    $unknown = $row('unknown');
+    $unknown['addresses'][0]['locality'] = 'A locality outside the configured cities';
+    $unknown['taxonomy'] = ['primary' => 'not_in_the_catalog', 'hierarchy' => []];
+    $unknown['basic_category'] = null;
+    $rows = [$row(), $missing, $low, $closed, $unknown];
+    $output = $directory.'/full.sqlite';
+    $result = (new DatasetPreparer($fullMapper))->importJsonl($write('full', $rows), '2026-08-19.0', $output, count($rows));
+    $assert($result['counts']['read'] === 5 && $result['counts']['accepted'] === 5 && $result['counts']['skipped'] === [], 'Full mode must keep every IL row despite optional missing values.');
+    $db = new PDO('sqlite:'.$output);
+    $metadata = $db->query('SELECT key, value FROM metadata')->fetchAll(PDO::FETCH_KEY_PAIR);
+    $assert($metadata['schema_version'] === '2' && $metadata['import_mode'] === 'all_places' && $metadata['row_count'] === '5' && (float) $metadata['min_confidence'] === 0.0, 'Full snapshots require schema 2 and an explicit unfiltered mode.');
+    $stored = $db->query("SELECT * FROM places WHERE id='missing'")->fetch(PDO::FETCH_ASSOC);
+    $assert($stored['city'] === null && $stored['street'] === null && $stored['category_key'] === null && $stored['confidence'] === null, 'Missing values must remain NULL, without invented address or category.');
+    $assert((float) $db->query("SELECT confidence FROM places WHERE id='low'")->fetchColumn() === 0.01, 'Low confidence is source data, not a full-mode exclusion.');
+    $assert($db->query("SELECT count(*) FROM places WHERE id='closed'")->fetchColumn() === 1, 'Explicit source status must not silently remove a full-mode row.');
+    $assert($db->query('PRAGMA quick_check')->fetchColumn() === 'ok', 'Full snapshot failed integrity check.');
+    $db = null;
+};
+$tests['full snapshots reject silent partial mappings and cannot be downgraded to a filtered catalog'] = static function () use ($mapper, $row, $write, $directory, $assert, $throws): void {
+    $output = $directory.'/full-atomic.sqlite';
+    $baseline = $write('full-atomic-baseline', [$row()]);
+    $legacy = new DatasetPreparer($mapper);
+    $legacy->importJsonl($baseline, '2026-08-19.0', $output, 1);
+    $full = new DatasetPreparer(new PlaceMapper(['Haifa'], ['Haifa' => ['חיפה']], 0.0, 'all_places'));
+    $full->importJsonl($baseline, '2026-08-19.0', $output, 1);
+    $hash = hash_file('sha256', $output);
+    $foreign = $row('foreign-full');
+    $foreign['addresses'][0]['country'] = 'PS';
+    $partial = $write('full-atomic-partial', [$row(), $foreign]);
+    $throws(static fn () => $full->importJsonl($partial, '2026-08-19.0', $output, 2), 'Full mode may not silently publish accepted < read.');
+    $assert(hash_file('sha256', $output) === $hash, 'A rejected full snapshot must retain the last complete data.');
+    $throws(static fn () => $legacy->importJsonl($baseline, '2026-08-19.0', $output, 1), 'A filtered catalog must not overwrite an existing full snapshot.');
+    $assert(hash_file('sha256', $output) === $hash && glob($output.'.stage-*') === [], 'Full-mode guard must leave no mutation or staging files.');
+};
 $tests['STAC latest resolves real root child links and partition coverage is complete'] = static function () use ($assert, $throws): void {
     $base = 'https://stac.overturemaps.org/2026-08-19.0/places/place/';
     $aws = 'https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/release/2026-08-19.0/theme=places/type=place/part-israel.parquet';
@@ -192,7 +239,17 @@ $tests['real DuckDB Parquet export filters Israel and publishes only complete da
     $low['confidence'] = 0.1;
     $outside = $row('outside');
     $outside['bbox']['xmin'] = 1.0;
-    $input = $write('parquet-input', [$row(), $foreign, $low, $outside]);
+    $closed = $row('closed-parquet');
+    $closed['operating_status'] = 'permanently_closed';
+    $missing = $row('missing-parquet');
+    $missing['addresses'][0]['locality'] = null;
+    $missing['addresses'][0]['freeform'] = null;
+    $missing['taxonomy'] = null;
+    $missing['basic_category'] = null;
+    $missing['confidence'] = 0.1;
+    $absentConfidence = $row('absent-confidence-parquet');
+    $absentConfidence['confidence'] = null;
+    $input = $write('parquet-input', [$row(), $foreign, $low, $outside, $closed, $missing, $absentConfidence]);
     $parquet = $directory.'/fixture.parquet';
     $quote = static fn (string $path): string => "'".str_replace("'", "''", str_replace('\\', '/', $path))."'";
     $sql = $directory.'/fixture.sql';
@@ -203,6 +260,20 @@ $tests['real DuckDB Parquet export filters Israel and publishes only complete da
     $assert(is_resource($process) && proc_close($process) === 0, 'Could not create real Parquet fixture.');
     $result = (new DatasetPreparer($mapper))->prepare($duckdb, [$parquet], '2026-08-19.0', $directory.'/parquet.sqlite');
     $assert($result['counts']['read'] === 1 && $result['counts']['accepted'] === 1, 'DuckDB must filter country, bounds and confidence before PHP mapping.');
+    $fullMapper = new PlaceMapper(['Haifa'], ['Haifa' => ['חיפה']], 0.75, 'all_places');
+    $full = (new DatasetPreparer($fullMapper))->prepare($duckdb, [$parquet], '2026-08-19.0', $directory.'/parquet-full.sqlite');
+    $assert($full['counts']['read'] === 5 && $full['counts']['accepted'] === 5 && $full['counts']['skipped'] === [], 'Full export must filter only geography/country and retain low/absent confidence, closed and incomplete places.');
+    $configPath = $directory.'/full-cli-config.json';
+    file_put_contents($configPath, Json::encode(['cities' => [], 'sources' => ['overture_places' => [
+        'import_mode' => 'all_places', 'min_confidence' => 0.0, 'release' => '2026-08-19.0',
+    ]]]));
+    $cliOutput = $directory.'/full-cli-output.json';
+    $process = proc_open([PHP_BINARY, '-d', 'xdebug.mode=off', dirname(__DIR__).'/bin/prepare-overture.php',
+        '--config='.$configPath, '--duckdb='.$duckdb, '--parquet='.$parquet, '--output='.$directory.'/full-cli.sqlite',
+    ], [1 => ['file', $cliOutput, 'w'], 2 => ['file', $directory.'/full-cli.stderr', 'w']], $pipes);
+    $assert(is_resource($process) && proc_close($process) === 0, 'Full-mode CLI must accept no catalog city restrictions.');
+    $cliResult = Json::decode((string) file_get_contents($cliOutput));
+    $assert($cliResult['import_mode'] === 'all_places' && $cliResult['counts']['read'] === 5 && $cliResult['counts']['accepted'] === 5, 'CLI must honor the full-mode contract through export and snapshot publication.');
     $hash = hash_file('sha256', $directory.'/parquet.sqlite');
     $throws(static fn () => (new DatasetPreparer($mapper))->prepare($duckdb, [$input], '2026-08-19.0', $directory.'/parquet.sqlite'), 'Invalid Parquet should fail in DuckDB.');
     $assert(hash_file('sha256', $directory.'/parquet.sqlite') === $hash, 'A failed DuckDB subprocess must preserve the existing snapshot.');

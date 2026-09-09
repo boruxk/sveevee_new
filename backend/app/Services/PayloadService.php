@@ -14,6 +14,7 @@ use App\Models\PageRating;
 use App\Models\PageService;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Support\CatalogTopics;
 use App\Support\PublicImageVariants;
 
 class PayloadService
@@ -115,6 +116,7 @@ class PayloadService
         $bannerPath = $isUnclaimed ? null : $page->banner_path;
         $contact = $this->pageContact($page, $setup);
         $addressDetails = $this->pageAddress($setup);
+        $catalogCity = CatalogTopics::resolveCitySlug(CatalogTopics::locationSlug($addressDetails['city'] ?? null));
         $socials = $this->pageSocials($setup);
         $serviceAreas = $page->type === Page::TYPE_BUSINESS
             ? $this->normalizedStringList($setup['service_areas'] ?? [], 10)
@@ -138,9 +140,16 @@ class PayloadService
             'phone' => $page->phone,
             'address' => $page->address,
             'category_key' => $page->category_key,
+            'source_categories' => collect(is_array($setup['imported_categories'] ?? null) ? $setup['imported_categories'] : [])
+                ->filter(fn ($category) => is_array($category) && is_string($category['key'] ?? null)
+                    && is_string($category['label'] ?? null) && trim($category['label']) !== '')
+                ->map(fn (array $category) => array_intersect_key($category, array_flip(['provider', 'key', 'label'])))
+                ->values()->all(),
             'website' => filled($setup['website'] ?? null) ? (string) $setup['website'] : null,
             'contact' => $contact,
             'address_details' => $addressDetails,
+            'catalog_city' => $catalogCity,
+            'catalog_neighborhood' => CatalogTopics::resolveNeighborhoodSlug($catalogCity, CatalogTopics::locationSlug($addressDetails['neighborhood'] ?? null)),
             'socials' => $socials,
             'opening_hours' => $isUnclaimed && empty($setup['opening_hours'])
                 ? []

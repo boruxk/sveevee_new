@@ -58,6 +58,9 @@ final class WorkerConfig
 
     public function targets(): array
     {
+        if (($source = $this->fullSourceProvider()) !== null) {
+            return [$source === 'overture_places' ? ResearchTarget::overtureAll() : ResearchTarget::sourceAll($source)];
+        }
         $targets = [];
         $neighborhoods = $this->get('neighborhoods', []);
 
@@ -81,6 +84,26 @@ final class WorkerConfig
         }
 
         return array_values($targets);
+    }
+
+    public function overtureAllPlaces(): bool
+    {
+        return $this->bool('sources.overture_places.enabled')
+            && $this->get('sources.overture_places.import_mode') === 'all_places';
+    }
+
+    public function fullSourceProvider(): ?string
+    {
+        if ($this->overtureAllPlaces()) {
+            return 'overture_places';
+        }
+        foreach (['data_gov_ckan', 'tel_aviv_business_licenses'] as $provider) {
+            if ($this->bool('sources.'.$provider.'.enabled') && $this->get('sources.'.$provider.'.import_mode') === 'all_records') {
+                return $provider;
+            }
+        }
+
+        return null;
     }
 
     public function resolvePath(string $configured, ?string $environmentName = null): string
@@ -109,6 +132,22 @@ final class WorkerConfig
 
     private function validate(): void
     {
+        foreach (['data_gov_ckan', 'tel_aviv_business_licenses'] as $provider) {
+            if (! in_array($this->get('sources.'.$provider.'.import_mode', 'catalog'), ['catalog', 'all_records'], true)) {
+                throw new RuntimeException('Unsupported '.$provider.' import_mode.');
+            }
+        }
+        $mode = $this->get('sources.overture_places.import_mode', 'catalog');
+        if (! in_array($mode, ['catalog', 'all_places'], true)) {
+            throw new RuntimeException('Unsupported Overture import_mode.');
+        }
+        if (($fullSource = $this->fullSourceProvider()) !== null) {
+            foreach ((array) $this->get('sources', []) as $name => $source) {
+                if ($name !== $fullSource && ($source['enabled'] ?? false)) {
+                    throw new RuntimeException('A complete source scan must enable only '.$fullSource.'.');
+                }
+            }
+        }
         $target = $this->int('target_per_run', 1000);
         $targetsPerRun = $this->int('targets_per_run', count($this->targets()));
         $perCombination = $this->int('businesses_per_combination', $target);
