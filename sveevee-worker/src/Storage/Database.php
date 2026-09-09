@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS business_identity_keys (
     business_id INTEGER NOT NULL,
     key_type TEXT NOT NULL,
     key_value TEXT NOT NULL,
-    PRIMARY KEY (key_type, key_value),
+    PRIMARY KEY (business_id, key_type, key_value),
     FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
 )
 SQL,
@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS research_target_progress (
 )
 SQL,
             'CREATE INDEX IF NOT EXISTS research_target_progress_completed_idx ON research_target_progress(last_completed_at, target_key)',
+            'CREATE TABLE IF NOT EXISTS worker_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)',
             <<<'SQL'
 CREATE TABLE IF NOT EXISTS import_batches (
     client_import_id TEXT PRIMARY KEY,
@@ -192,6 +193,40 @@ SQL,
             if (! in_array($column, $columns, true)) {
                 $this->pdo->exec('ALTER TABLE import_batch_items ADD COLUMN '.$column.' TEXT');
             }
+        }
+        $this->migrateLocationIdentityKeys();
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS business_identity_keys_lookup_idx ON business_identity_keys(key_type, key_value, business_id)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS business_sources_lookup_idx ON business_sources(adapter, source_url, business_id)');
+    }
+
+    /** Contact signals can belong to several branches; never renumber businesses or queued batch items. */
+    private function migrateLocationIdentityKeys(): void
+    {
+        $columns = $this->pdo->query('PRAGMA table_info(business_identity_keys)')->fetchAll();
+        $businessIdColumn = array_values(array_filter($columns, static fn (array $column): bool => $column['name'] === 'business_id'))[0];
+        if ((int) $businessIdColumn['pk'] > 0) {
+            return;
+        }
+        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->exec(<<<'SQL'
+CREATE TABLE business_identity_keys_locations (
+    business_id INTEGER NOT NULL,
+    key_type TEXT NOT NULL,
+    key_value TEXT NOT NULL,
+    PRIMARY KEY (business_id, key_type, key_value),
+    FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+)
+SQL);
+            $this->pdo->exec('INSERT INTO business_identity_keys_locations SELECT business_id, key_type, key_value FROM business_identity_keys');
+            $this->pdo->exec('DROP TABLE business_identity_keys');
+            $this->pdo->exec('ALTER TABLE business_identity_keys_locations RENAME TO business_identity_keys');
+            $this->pdo->commit();
+        } catch (\Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
         }
     }
 }

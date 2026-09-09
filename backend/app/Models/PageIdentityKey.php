@@ -19,6 +19,8 @@ class PageIdentityKey extends Model
         'normalized_website',
         'normalized_address',
         'identity_hash',
+        'import_location_hash',
+        'import_name_city_hash',
     ];
 
     public function page(): BelongsTo

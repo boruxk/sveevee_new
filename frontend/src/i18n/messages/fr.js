@@ -93,6 +93,7 @@ export default {
 		people: 'Personnes',
 		label: 'Liens de pied de page',
 		legalLabel: 'Liens juridiques',
+		dataSources: 'Sources des données',
 		recaptchaProtected: 'Ce site est protégé par reCAPTCHA.',
 		privacy: 'Politique de confidentialité'
 	},

@@ -93,6 +93,7 @@ export default {
 		people: 'Люди',
 		label: 'Ссылки внизу страницы',
 		legalLabel: 'Юридические ссылки',
+		dataSources: 'Источники данных',
 		recaptchaProtected: 'Этот сайт защищен с помощью reCAPTCHA.',
 		privacy: 'Политика конфиденциальности'
 	},

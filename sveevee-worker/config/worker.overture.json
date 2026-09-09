@@ -1,0 +1,430 @@
+{
+  "target_per_run": 9000,
+  "targets_per_run": 830,
+  "businesses_per_combination": 9000,
+  "batch_size": 100,
+  "cities": [
+    "Jerusalem",
+    "Tel Aviv",
+    "Haifa",
+    "Beersheba",
+    "Rishon LeZion",
+    "Petah Tikva",
+    "Netanya",
+    "Ashdod",
+    "Ashkelon",
+    "Holon",
+    "Bat Yam",
+    "Ramat Gan",
+    "Bnei Brak",
+    "Herzliya",
+    "Ra'anana",
+    "Kfar Saba",
+    "Modi'in-Maccabim-Reut",
+    "Rehovot",
+    "Lod",
+    "Ramla",
+    "Givatayim",
+    "Hadera",
+    "Nahariya",
+    "Acre",
+    "Tiberias",
+    "Safed",
+    "Eilat",
+    "Kiryat Ono",
+    "Givat Shmuel",
+    "Yehud-Monosson",
+    "Or Yehuda",
+    "Rosh HaAyin",
+    "Hod HaSharon",
+    "Ness Ziona",
+    "Kiryat Gat",
+    "Kiryat Malakhi",
+    "Dimona",
+    "Arad",
+    "Sderot",
+    "Netivot",
+    "Ofakim",
+    "Karmiel",
+    "Afula",
+    "Beit Shean",
+    "Nazareth",
+    "Nof HaGalil",
+    "Beit Shemesh",
+    "Maale Adumim",
+    "Ariel",
+    "Alfei Menashe",
+    "Ganei Tikva",
+    "Tirat Carmel",
+    "Ramat Hasharon",
+    "Yavne",
+    "Gedera",
+    "Beer Yaakov",
+    "Migdal HaEmek",
+    "Yokneam Illit",
+    "Kiryat Bialik",
+    "Kiryat Motzkin",
+    "Kiryat Yam",
+    "Kiryat Ata",
+    "Nesher",
+    "Zikhron Yaakov",
+    "Pardes Hanna-Karkur",
+    "Kiryat Tivon",
+    "Ramat Yishai",
+    "Kfar Yona",
+    "Tira",
+    "Taibe",
+    "Umm al-Fahm",
+    "Sakhnin",
+    "Tamra",
+    "Shefa-Amr",
+    "Kiryat Shmona",
+    "Rosh Pina",
+    "Katzrin",
+    "Kiryat Arba",
+    "Efrat",
+    "Givat ZeEv",
+    "Mevaseret Zion",
+    "Shoeva",
+    "Shoham"
+  ],
+  "neighborhoods": [],
+  "categories": [
+    "food_catering.bakery",
+    "food_catering.restaurants",
+    "professionals.fast_food",
+    "food_catering.cafes",
+    "professionals.catering",
+    "professionals.grocery_food",
+    "food_catering.meat_deli",
+    "food_catering.bars",
+    "professionals.venues",
+    "travel_leisure.hotels_guesthouses"
+  ],
+  "quotas": {
+    "per_category": null,
+    "per_neighborhood": null
+  },
+  "sources": {
+    "overture_places": {
+      "enabled": true,
+      "release": "2026-08-19.0",
+      "min_confidence": 0.75,
+      "refresh_after_days": 30,
+      "duckdb_binary": "duckdb"
+    },
+    "data_gov_ckan": {
+      "enabled": false,
+      "api_url": "https://data.gov.il/api/3/action",
+      "timeout_seconds": 30,
+      "min_interval_seconds": 0.5,
+      "max_retries": 3,
+      "page_size": 100,
+      "max_records_per_dataset": 50000,
+      "max_records_per_city": 100000,
+      "max_response_bytes": 10485760,
+      "refresh_after_days": 365,
+      "datasets": [
+        {
+          "profile": "beer_sheva_business_licenses",
+          "resource_id": "7d4c61e2-2416-453e-8efb-bd02ec89db35",
+          "city": "Beersheba",
+          "city_label": "באר שבע",
+          "active_statuses": [
+            6,
+            7,
+            8
+          ],
+          "source_name": "beer_sheva_business_licenses"
+        },
+        {
+          "profile": "israel_companies",
+          "resource_id": "f004176c-b85f-4542-8901-7b3176f9a054",
+          "source_name": "israel_companies",
+          "city_names": {
+            "Jerusalem": [
+              "ירושלים"
+            ],
+            "Tel Aviv": [
+              "תל אביב - יפו",
+              "תל אביב",
+              "תל  אביב",
+              "תל אביב יפו"
+            ],
+            "Haifa": [
+              "חיפה"
+            ],
+            "Beersheba": [
+              "באר שבע"
+            ],
+            "Rishon LeZion": [
+              "ראשון לציון"
+            ],
+            "Petah Tikva": [
+              "פתח תקווה",
+              "פתח תקוה"
+            ],
+            "Netanya": [
+              "נתניה"
+            ],
+            "Ashdod": [
+              "אשדוד"
+            ],
+            "Ashkelon": [
+              "אשקלון"
+            ],
+            "Holon": [
+              "חולון"
+            ],
+            "Bat Yam": [
+              "בת ים"
+            ],
+            "Ramat Gan": [
+              "רמת גן"
+            ],
+            "Bnei Brak": [
+              "בני ברק"
+            ],
+            "Herzliya": [
+              "הרצליה"
+            ],
+            "Ra'anana": [
+              "רעננה"
+            ],
+            "Kfar Saba": [
+              "כפר סבא"
+            ],
+            "Modi'in-Maccabim-Reut": [
+              "מודיעין-מכבים-רעות",
+              "מודיעין מכבים רעות"
+            ],
+            "Rehovot": [
+              "רחובות"
+            ],
+            "Lod": [
+              "לוד"
+            ],
+            "Ramla": [
+              "רמלה"
+            ],
+            "Givatayim": [
+              "גבעתיים"
+            ],
+            "Hadera": [
+              "חדרה"
+            ],
+            "Nahariya": [
+              "נהריה"
+            ],
+            "Acre": [
+              "עכו"
+            ],
+            "Tiberias": [
+              "טבריה"
+            ],
+            "Safed": [
+              "צפת"
+            ],
+            "Eilat": [
+              "אילת"
+            ],
+            "Kiryat Ono": [
+              "קריית אונו"
+            ],
+            "Givat Shmuel": [
+              "גבעת שמואל"
+            ],
+            "Yehud-Monosson": [
+              "יהוד-מונוסון",
+              "יהוד"
+            ],
+            "Or Yehuda": [
+              "אור יהודה"
+            ],
+            "Rosh HaAyin": [
+              "ראש העין"
+            ],
+            "Hod HaSharon": [
+              "הוד השרון"
+            ],
+            "Ness Ziona": [
+              "נס ציונה"
+            ],
+            "Kiryat Gat": [
+              "קריית גת",
+              "קרית גת"
+            ],
+            "Kiryat Malakhi": [
+              "קריית מלאכי"
+            ],
+            "Dimona": [
+              "דימונה"
+            ],
+            "Arad": [
+              "ערד"
+            ],
+            "Sderot": [
+              "שדרות"
+            ],
+            "Netivot": [
+              "נתיבות"
+            ],
+            "Ofakim": [
+              "אופקים"
+            ],
+            "Karmiel": [
+              "כרמיאל"
+            ],
+            "Afula": [
+              "עפולה"
+            ],
+            "Beit Shean": [
+              "בית שאן"
+            ],
+            "Nazareth": [
+              "נצרת"
+            ],
+            "Nof HaGalil": [
+              "נוף הגליל"
+            ],
+            "Beit Shemesh": [
+              "בית שמש"
+            ],
+            "Maale Adumim": [
+              "מעלה אדומים"
+            ],
+            "Ariel": [
+              "אריאל"
+            ],
+            "Alfei Menashe": [
+              "אלפי מנשה"
+            ],
+            "Ganei Tikva": [
+              "גני תקווה"
+            ],
+            "Tirat Carmel": [
+              "טירת כרמל"
+            ],
+            "Ramat Hasharon": [
+              "רמת השרון"
+            ],
+            "Yavne": [
+              "יבנה"
+            ],
+            "Gedera": [
+              "גדרה"
+            ],
+            "Beer Yaakov": [
+              "באר יעקב"
+            ],
+            "Migdal HaEmek": [
+              "מגדל העמק"
+            ],
+            "Yokneam Illit": [
+              "יקנעם עילית"
+            ],
+            "Kiryat Bialik": [
+              "קריית ביאליק"
+            ],
+            "Kiryat Motzkin": [
+              "קריית מוצקין"
+            ],
+            "Kiryat Yam": [
+              "קריית ים"
+            ],
+            "Kiryat Ata": [
+              "קריית אתא"
+            ],
+            "Nesher": [
+              "נשר"
+            ],
+            "Zikhron Yaakov": [
+              "זכרון יעקב"
+            ],
+            "Pardes Hanna-Karkur": [
+              "פרדס חנה-כרכור"
+            ],
+            "Kiryat Tivon": [
+              "קריית טבעון"
+            ],
+            "Ramat Yishai": [
+              "רמת ישי"
+            ],
+            "Kfar Yona": [
+              "כפר יונה"
+            ],
+            "Tira": [
+              "טירה"
+            ],
+            "Taibe": [
+              "טייבה"
+            ],
+            "Umm al-Fahm": [
+              "אום אל-פחם",
+              "אום אל פחם",
+              "אום אלפחם"
+            ],
+            "Sakhnin": [
+              "סח'נין"
+            ],
+            "Tamra": [
+              "טמרה"
+            ],
+            "Shefa-Amr": [
+              "שפרעם"
+            ],
+            "Kiryat Shmona": [
+              "קריית שמונה",
+              "קרית שמונה"
+            ],
+            "Rosh Pina": [
+              "ראש פינה"
+            ],
+            "Katzrin": [
+              "קצרין"
+            ],
+            "Kiryat Arba": [
+              "קריית ארבע",
+              "קרית ארבע"
+            ],
+            "Efrat": [
+              "אפרת"
+            ],
+            "Givat ZeEv": [
+              "גבעת זאב"
+            ],
+            "Mevaseret Zion": [
+              "מבשרת ציון"
+            ],
+            "Shoeva": [
+              "שואבה"
+            ],
+            "Shoham": [
+              "שוהם"
+            ]
+          }
+        }
+      ]
+    },
+    "tel_aviv_business_licenses": {
+      "enabled": false,
+      "layer_url": "https://gisn.tel-aviv.gov.il/arcgis/rest/services/IView2/MapServer/964",
+      "timeout_seconds": 30,
+      "min_interval_seconds": 0.5,
+      "max_retries": 3,
+      "page_size": 100,
+      "max_records_per_dataset": 50000,
+      "max_response_bytes": 10485760,
+      "refresh_after_days": 365
+    }
+  },
+  "storage": {
+    "data_subdirectory": "overture",
+    "database": "var/worker.sqlite",
+    "reports_dir": "var/reports",
+    "log_file": "var/logs/worker.log"
+  },
+  "api": {
+    "request_interval_ms": 150
+  }
+}

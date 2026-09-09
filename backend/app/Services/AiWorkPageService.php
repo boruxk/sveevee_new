@@ -181,12 +181,13 @@ class AiWorkPageService
         ])->validate();
     }
 
-    public function create(User $worker, array $data, bool $allowSingleContactDuplicate = false): Page
+    public function create(User $worker, array $data, bool $allowSingleContactDuplicate = false, bool $separateLocations = false): Page
     {
-        return $this->identities->withDuplicateLocks($data, function () use ($worker, $data, $allowSingleContactDuplicate): Page {
+        return $this->identities->withDuplicateLocks($data, function () use ($worker, $data, $allowSingleContactDuplicate, $separateLocations): Page {
             $matches = $this->identities->exactMatches(
                 $data,
-                allowSingleContactSignal: $allowSingleContactDuplicate
+                allowSingleContactSignal: $allowSingleContactDuplicate,
+                separateLocations: $separateLocations,
             );
             if ($matches->isNotEmpty()) {
                 throw new ExactPageDuplicateException($matches->all());
@@ -206,13 +207,14 @@ class AiWorkPageService
         });
     }
 
-    public function update(Page $page, array $data, bool $allowSingleContactDuplicate = false): Page
+    public function update(Page $page, array $data, bool $allowSingleContactDuplicate = false, bool $separateLocations = false): Page
     {
-        return $this->identities->withDuplicateLocks($data, function () use ($page, $data, $allowSingleContactDuplicate): Page {
+        return $this->identities->withDuplicateLocks($data, function () use ($page, $data, $allowSingleContactDuplicate, $separateLocations): Page {
             $matches = $this->identities->exactMatches(
                 $data,
                 $page->id,
-                allowSingleContactSignal: $allowSingleContactDuplicate
+                allowSingleContactSignal: $allowSingleContactDuplicate,
+                separateLocations: $separateLocations,
             );
             if ($matches->isNotEmpty()) {
                 throw new ExactPageDuplicateException($matches->all());

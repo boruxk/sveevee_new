@@ -529,6 +529,7 @@
 					<router-link v-for="link in legalLinks" :key="link.name" :to="{ name: link.name }">
 						{{ link.label }}
 					</router-link>
+					<a href="/data-sources/overture.html">{{ t('footer.dataSources') }}</a>
 				</nav>
 				<p class="shell-footer__recaptcha">{{ t('footer.recaptchaProtected') }}</p>
 				<nav v-if="!isCampaignPage" class="shell-footer__nav" :aria-label="t('footer.label')">

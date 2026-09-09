@@ -8,6 +8,7 @@ use PDO;
 use RuntimeException;
 use Sveevee\Worker\Config\ResearchTarget;
 use Sveevee\Worker\Domain\BusinessCandidate;
+use Sveevee\Worker\Domain\BusinessLocationIdentity;
 use Sveevee\Worker\Domain\BusinessMerger;
 use Sveevee\Worker\Domain\BusinessNormalizer;
 use Sveevee\Worker\Domain\SourceRecord;
@@ -26,6 +27,7 @@ final class WorkerRepository
         private readonly BusinessMerger $merger,
     ) {
         $this->pdo = $database->pdo;
+        $this->backfillLocationIdentityKeys();
     }
 
     public function startRun(string $id, string $command, bool $dryRun, string $configHash): void
@@ -102,22 +104,8 @@ SQL);
         $this->pdo->beginTransaction();
 
         try {
-            $ids = [];
-            $lookup = $this->pdo->prepare(
-                'SELECT business_id FROM business_identity_keys WHERE key_type = ? AND key_value = ?'
-            );
-            foreach ($keys as $type => $value) {
-                $lookup->execute([$type, $value]);
-                $id = $lookup->fetchColumn();
-                if ($id !== false) {
-                    $ids[(int) $id] = true;
-                }
-            }
-            if (count($ids) > 1) {
-                throw new IdentityConflictException(array_keys($ids));
-            }
-
-            $isNew = $ids === [];
+            $businessId = $this->matchingBusinessId($candidate, $keys);
+            $isNew = $businessId === null;
             $changed = false;
             if ($isNew) {
                 $payload = $candidate->data;
@@ -129,9 +117,17 @@ SQL);
                 $businessId = (int) $this->pdo->lastInsertId();
                 $changed = true;
             } else {
-                $businessId = (int) array_key_first($ids);
                 $row = $this->businessRow($businessId);
-                $payload = $this->merger->mergeResearchData(Json::decode($row['payload_json']), $candidate->data);
+                $current = Json::decode($row['payload_json']);
+                $incoming = $candidate->data;
+                if (BusinessLocationIdentity::street($current) !== ''
+                    && BusinessLocationIdentity::street($current) === BusinessLocationIdentity::street($incoming)) {
+                    $incoming = BusinessLocationIdentity::preserveAddressRepresentation($current, $incoming);
+                } elseif (BusinessLocationIdentity::street($incoming) !== '') {
+                    // A stable source ID can report an actual move. Do not attach the former house number.
+                    unset($current['address']['street'], $current['address']['number'], $current['address']['neighborhood']);
+                }
+                $payload = $this->merger->mergeResearchData($current, $incoming);
                 $hash = Json::hash($payload);
                 $changed = ! hash_equals($row['payload_hash'], $hash);
                 $status = $row['status'];
@@ -149,12 +145,6 @@ SQL);
             );
             foreach ($this->normalizer->identityKeys($payload) as $type => $value) {
                 $insertKey->execute([$businessId, $type, $value]);
-                if ($insertKey->rowCount() === 0) {
-                    $owner = $this->identityOwner($type, $value);
-                    if ($owner !== null && $owner !== $businessId) {
-                        throw new IdentityConflictException([$businessId, $owner]);
-                    }
-                }
             }
 
             foreach ($candidate->sources as $source) {
@@ -169,6 +159,14 @@ SQL);
             }
             throw $exception;
         }
+    }
+
+    public function hasSource(int $businessId, string $adapter): bool
+    {
+        $statement = $this->pdo->prepare('SELECT 1 FROM business_sources WHERE business_id = ? AND adapter = ? LIMIT 1');
+        $statement->execute([$businessId, $adapter]);
+
+        return $statement->fetchColumn() !== false;
     }
 
     public function shouldProcessUrl(
@@ -561,15 +559,110 @@ SQL)->fetchAll();
         return $row;
     }
 
-    private function identityOwner(string $type, string $value): ?int
+    /** Resolve a place after gathering non-exclusive name/contact hints. */
+    private function matchingBusinessId(BusinessCandidate $candidate, array $keys): ?int
     {
-        $statement = $this->pdo->prepare(
-            'SELECT business_id FROM business_identity_keys WHERE key_type = ? AND key_value = ?'
-        );
-        $statement->execute([$type, $value]);
-        $owner = $statement->fetchColumn();
+        $sourceIds = [];
+        $sourceLookup = $this->pdo->prepare('SELECT business_id FROM business_sources WHERE adapter = ? AND source_url = ?');
+        foreach ($candidate->sources as $source) {
+            if ($source->adapter !== 'overture_places' || $source->url === null || $source->url === '') {
+                continue;
+            }
+            $sourceLookup->execute([$source->adapter, $source->url]);
+            foreach ($sourceLookup->fetchAll(PDO::FETCH_COLUMN) as $id) {
+                $sourceIds[(int) $id] = true;
+            }
+        }
+        if (count($sourceIds) > 1) {
+            throw new IdentityConflictException(array_keys($sourceIds), 'A stable Overture place ID is attached to several local businesses.');
+        }
+        if ($sourceIds !== []) {
+            return (int) array_key_first($sourceIds);
+        }
 
-        return $owner === false ? null : (int) $owner;
+        $ids = [];
+        $lookup = $this->pdo->prepare('SELECT business_id FROM business_identity_keys WHERE key_type = ? AND key_value = ?');
+        foreach ($keys as $type => $value) {
+            $lookup->execute([$type, $value]);
+            foreach ($lookup->fetchAll(PDO::FETCH_COLUMN) as $id) {
+                $ids[(int) $id] = true;
+            }
+        }
+        $same = [];
+        $ambiguous = [];
+        $legacyWithoutStreet = [];
+        foreach (array_keys($ids) as $id) {
+            $current = Json::decode($this->businessRow($id)['payload_json']);
+            $status = BusinessLocationIdentity::matchStatus($current, $candidate->data);
+            if ($status === 'same') {
+                $same[] = $id;
+            } elseif ($status === 'ambiguous') {
+                $ambiguous[] = $id;
+                if (BusinessLocationIdentity::street($current) === '' && BusinessLocationIdentity::street($candidate->data) === ''
+                    && BusinessLocationIdentity::name($current) === BusinessLocationIdentity::name($candidate->data)
+                    && BusinessLocationIdentity::city($current) === BusinessLocationIdentity::city($candidate->data)) {
+                    $legacyWithoutStreet[] = $id;
+                }
+            }
+        }
+        if (count($same) === 1) {
+            return $same[0];
+        }
+        if (count($same) > 1) {
+            throw new IdentityConflictException($same, 'Several local businesses describe the same named location.');
+        }
+        if (count($ambiguous) === 1 && $legacyWithoutStreet === $ambiguous) {
+            // Preserve a unique pre-existing name/city record without assigning it to a known branch.
+            return $ambiguous[0];
+        }
+        if ($ambiguous !== []) {
+            throw new IdentityConflictException($ambiguous, 'A missing street or house number prevents a safe local branch match.');
+        }
+
+        return null;
+    }
+
+    private function backfillLocationIdentityKeys(): void
+    {
+        $migration = 'business_location_identity_v1';
+        $check = $this->pdo->prepare('SELECT 1 FROM worker_migrations WHERE name = ?');
+        $check->execute([$migration]);
+        if ($check->fetchColumn() !== false) {
+            return;
+        }
+        $this->pdo->beginTransaction();
+        try {
+            $businesses = $this->pdo->query('SELECT id, payload_json FROM businesses ORDER BY id');
+            $insert = $this->pdo->prepare('INSERT OR IGNORE INTO business_identity_keys (business_id, key_type, key_value) VALUES (?, ?, ?)');
+            while (($business = $businesses->fetch()) !== false) {
+                foreach ($this->normalizer->identityKeys(Json::decode($business['payload_json'])) as $type => $value) {
+                    $insert->execute([(int) $business['id'], $type, $value]);
+                }
+            }
+            $businesses->closeCursor();
+            // Re-evaluate records rejected only by the former global-contact branch guard once.
+            // Queued requests, claimed businesses and successful imports remain untouched.
+            $this->pdo->exec(<<<'SQL'
+UPDATE researched_urls SET status = 'failed', last_error = 'Re-evaluate with location-aware identity.'
+WHERE adapter = 'overture_places' AND status = 'rejected' AND EXISTS (
+    SELECT 1 FROM research_failures f
+    WHERE f.adapter = researched_urls.adapter AND f.source_url = researched_urls.source_url
+      AND f.error_code = 'identity_conflict'
+)
+SQL);
+            $this->pdo->exec(<<<'SQL'
+UPDATE businesses SET status = 'pending', last_error_code = NULL, last_error_message = NULL
+WHERE status = 'failed' AND last_error_code = 'duplicate_unresolved'
+  AND EXISTS (SELECT 1 FROM business_sources s WHERE s.business_id = businesses.id AND s.adapter = 'overture_places')
+SQL);
+            $this->pdo->prepare('INSERT INTO worker_migrations (name, applied_at) VALUES (?, ?)')->execute([$migration, Clock::now()]);
+            $this->pdo->commit();
+        } catch (\Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
     }
 
     private function saveSource(int $businessId, SourceRecord $source): void

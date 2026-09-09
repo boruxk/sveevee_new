@@ -80,6 +80,7 @@ export default {
 	footer: {
 		label: 'Footer links',
 		legalLabel: 'Legal links',
+		dataSources: 'Data sources',
 		recaptchaProtected: 'This site is protected by reCAPTCHA.',
 		explore: 'Explore',
 		marketplace: 'Marketplace',

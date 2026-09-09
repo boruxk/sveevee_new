@@ -350,6 +350,27 @@
 		return value === 'automation_worker' ? t('admin.logs.sources.automationWorker') : value
 	}
 
+	function logDataSourceLabels(log) {
+		const data = log?.data || {}
+		const counts = data.source_counts
+		const sources = [
+			...(Array.isArray(data.used_sources) ? data.used_sources : []),
+			...(counts && typeof counts === 'object' && !Array.isArray(counts) ? Object.keys(counts) : []),
+			...(Array.isArray(data.errors) ? data.errors.map((error) => error?.context?.source) : [])
+		]
+		const labels = {
+			overture_places: 'Overture Places',
+			data_gov_ckan: 'data.gov.il',
+			tel_aviv_business_licenses: 'gisn.tel-aviv.gov.il',
+			overpass: 'OpenStreetMap'
+		}
+
+		return [...new Set(sources
+			.filter((source) => typeof source === 'string' && source.trim())
+			.map((source) => source.trim())
+			.map((source) => Object.hasOwn(labels, source) ? labels[source] : source))]
+	}
+
 	function logTypeLabel(value) {
 		return value === 'business_import_run' ? t('admin.logs.types.businessImportRun') : value
 	}
@@ -1771,6 +1792,9 @@
 									<div class="table-name log-event-cell">
 										<strong>{{ logTypeLabel(props.row.type) }}</strong>
 										<small>{{ logSourceLabel(props.row.source) }}</small>
+										<small v-if="logDataSourceLabels(props.row).length" class="log-data-sources" dir="ltr">
+											{{ logDataSourceLabels(props.row).join(' · ') }}
+										</small>
 									</div>
 								</q-td>
 							</template>
@@ -2225,10 +2249,10 @@
 							</div>
 						</section>
 
-						<section v-if="selectedLog.data?.used_sources?.length" class="log-detail-section">
+						<section v-if="logDataSourceLabels(selectedLog).length" class="log-detail-section">
 							<h3>{{ t('admin.logs.usedSources') }}</h3>
 							<div class="log-source-list">
-								<q-chip v-for="source in selectedLog.data.used_sources" :key="source" dense>{{ source }}</q-chip>
+								<q-chip v-for="source in logDataSourceLabels(selectedLog)" :key="source" dense dir="ltr">{{ source }}</q-chip>
 							</div>
 						</section>
 
@@ -2867,6 +2891,12 @@
 
 .log-event-cell {
   min-width: 190px;
+}
+
+.log-data-sources {
+  max-width: 280px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .log-summary {

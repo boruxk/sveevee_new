@@ -81,6 +81,7 @@ export default {
 		contact: 'יצירת קשר',
 		label: 'קישורי תחתית',
 		legalLabel: 'קישורים משפטיים',
+		dataSources: 'מקורות מידע',
 		recaptchaProtected: 'אתר זה מוגן באמצעות reCAPTCHA.',
 		explore: 'גלו',
 		marketplace: 'שוק מקומי',

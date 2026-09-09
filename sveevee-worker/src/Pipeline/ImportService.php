@@ -7,6 +7,7 @@ namespace Sveevee\Worker\Pipeline;
 use Sveevee\Worker\Api\ApiException;
 use Sveevee\Worker\Api\SveeveeGateway;
 use Sveevee\Worker\Config\ResearchTarget;
+use Sveevee\Worker\Domain\BusinessLocationIdentity;
 use Sveevee\Worker\Domain\BusinessMerger;
 use Sveevee\Worker\Domain\BusinessNormalizer;
 use Sveevee\Worker\Reporting\RunReport;
@@ -44,7 +45,7 @@ final class ImportService
         ?ResearchService $research = null,
     ): void {
         $this->seenBusinessIds = [];
-        $budget = new RunBudget(min(1000, max(1, $limit)), min(10, max(1, $productiveLimit)), min(100, max(1, $perCombination)));
+        $budget = new RunBudget(max(1, $limit), max(1, $productiveLimit), max(1, $perCombination));
         if (! $this->resumePendingBatches($runId, $dryRun, $report, $budget)) {
             return;
         }
@@ -124,24 +125,47 @@ final class ImportService
             return null;
         }
         try {
-            // Legacy pages can still carry the suffix; retain their original lookup name.
-            $lookupPayload = $business['payload'];
-            $duplicate = $this->api->checkDuplicate($lookupPayload);
-            $matches = is_array($duplicate['matches'] ?? null) ? $duplicate['matches'] : [];
-            if ($matches === [] && $lookupPayload['name'] !== $payload['name']) {
-                $lookupPayload = $payload;
+            $hasOverture = $this->repository->hasSource($business['id'], 'overture_places');
+            $knownPageId = filter_var($business['sveevee_page_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $linkedOverture = $hasOverture && $knownPageId !== false;
+            if ($linkedOverture) {
+                // A persisted GERS-to-page association survives a source name correction.
+                // An absent, moved or claimed linked page must never trigger a replacement create.
+                $matches = [['id' => $knownPageId, 'matched_on' => ['source_id']]];
+                [$remote, $reason] = $this->resolveLinkedRemote($knownPageId);
+            } else {
+                // Legacy pages can still carry the suffix; retain their original lookup name.
+                $lookupPayload = $business['payload'];
                 $duplicate = $this->api->checkDuplicate($lookupPayload);
                 $matches = is_array($duplicate['matches'] ?? null) ? $duplicate['matches'] : [];
-            }
-            if ($matches === []) {
-                $report->increment(isset($payload['id']) ? 'planned_updates' : 'planned_imports');
+                if ($matches === [] && $lookupPayload['name'] !== $payload['name']) {
+                    $lookupPayload = $payload;
+                    $duplicate = $this->api->checkDuplicate($lookupPayload);
+                    $matches = is_array($duplicate['matches'] ?? null) ? $duplicate['matches'] : [];
+                }
+                if ($matches === []) {
+                    $report->increment(isset($payload['id']) ? 'planned_updates' : 'planned_imports');
 
-                return ['business_id' => $business['id'], 'payload' => $payload, 'payload_hash' => $business['payload_hash'], 'target_city' => $payload['address']['city'], 'target_category' => $payload['category_key']];
+                    return ['business_id' => $business['id'], 'payload' => $payload, 'payload_hash' => $business['payload_hash'], 'target_city' => $payload['address']['city'], 'target_category' => $payload['category_key']];
+                }
+                [$remote, $reason] = $this->resolveRemote($lookupPayload, $matches);
             }
 
             $report->increment('existing');
             $report->increment('duplicates');
-            [$remote, $reason] = $this->resolveRemote($lookupPayload, $matches);
+            if ($remote !== null && ($hasOverture || BusinessLocationIdentity::street($payload) !== '')) {
+                $identityPayload = $payload;
+                if ($linkedOverture) {
+                    $identityPayload['name'] = $remote['name'] ?? '';
+                }
+                $conflict = BusinessLocationIdentity::conflict($remote, $identityPayload);
+                if ($conflict !== null) {
+                    $remote = null;
+                    $reason = $conflict;
+                } else {
+                    $payload = BusinessLocationIdentity::preserveAddressRepresentation($remote, $payload);
+                }
+            }
             if ($remote === null) {
                 $message = $reason ?? 'Matching Sveevee page could not be resolved safely.';
                 if (! $dryRun) {
@@ -361,6 +385,13 @@ final class ImportService
 
     private function resolveRemote(array $candidate, array $matches): array
     {
+        // The current API supplies branch addresses. Prefer a confirmed location to shared contacts.
+        $sameLocation = array_values(array_filter($matches, static fn (array $match): bool => BusinessLocationIdentity::matchStatus($candidate, $match) === 'same'));
+        if ($sameLocation !== []) {
+            $matches = $sameLocation;
+        } else {
+            $matches = array_values(array_filter($matches, static fn (array $match): bool => BusinessLocationIdentity::matchStatus($candidate, $match) !== 'different'));
+        }
         usort($matches, fn (array $left, array $right): int => $this->matchScore($right) <=> $this->matchScore($left));
         $selected = $matches[0] ?? null;
         if (! is_array($selected)) {
@@ -370,7 +401,11 @@ final class ImportService
             return [null, 'Multiple equally strong duplicate matches require manual review.'];
         }
 
-        $filters = [];
+        $filters = [array_filter([
+            'name' => $selected['name'] ?? $candidate['name'] ?? null,
+            'city' => $candidate['address']['city'] ?? null,
+            'per_page' => 100,
+        ], static fn ($value) => $value !== null && $value !== '')];
         $matchedOn = (array) ($selected['matched_on'] ?? []);
         if (in_array('contact_email', $matchedOn, true) && isset($candidate['contact_email'])) {
             $filters[] = ['contact_email' => $candidate['contact_email'], 'per_page' => 100];
@@ -378,22 +413,34 @@ final class ImportService
         if (in_array('phone', $matchedOn, true) && isset($candidate['phone'])) {
             $filters[] = ['phone' => $candidate['phone'], 'per_page' => 100];
         }
-        $filters[] = array_filter([
-            'name' => $candidate['name'] ?? null,
-            'city' => $candidate['address']['city'] ?? null,
-            'per_page' => 100,
-        ], static fn ($value) => $value !== null && $value !== '');
-
         foreach ($filters as $filter) {
-            $result = $this->api->searchBusinesses($filter);
-            foreach ((array) ($result['businesses'] ?? []) as $business) {
-                if (is_array($business) && (int) ($business['id'] ?? 0) === (int) ($selected['id'] ?? 0)) {
-                    return [$business, null];
+            $page = 1;
+            do {
+                $result = $this->api->searchBusinesses($filter + ['page' => $page]);
+                $businesses = (array) ($result['businesses'] ?? []);
+                foreach ($businesses as $business) {
+                    if (is_array($business) && (int) ($business['id'] ?? 0) === (int) ($selected['id'] ?? 0)) {
+                        return [$business, null];
+                    }
                 }
-            }
+                $lastPage = (int) ($result['pagination']['last_page'] ?? 1);
+                $currentPage = (int) ($result['pagination']['current_page'] ?? $page);
+                $page++;
+            } while ($businesses !== [] && $currentPage === $page - 1 && $page <= $lastPage);
         }
 
         return [null, 'Matching page disappeared or could not be returned by the search API.'];
+    }
+
+    private function resolveLinkedRemote(int $id): array
+    {
+        $result = $this->api->searchBusinesses(['id' => $id, 'per_page' => 1]);
+        $matches = array_values(array_filter((array) ($result['businesses'] ?? []), static fn (mixed $business): bool => is_array($business) && (int) ($business['id'] ?? 0) === $id));
+        if (count($matches) !== 1) {
+            return [null, 'The previously linked Sveevee page could not be resolved by ID; no replacement page was created.'];
+        }
+
+        return [$matches[0], null];
     }
 
     private function matchScore(array $match): int

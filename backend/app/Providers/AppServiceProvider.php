@@ -102,9 +102,9 @@ class AppServiceProvider extends ServiceProvider
             $key = $clientId.'|'.$request->ip();
 
             return [
-                Limit::perMinute(max(1, (int) config('business_import.requests_per_minute', 120)))
+                Limit::perMinute(max(1, (int) config('business_import.requests_per_minute', 480)))
                     ->by('business-import-minute|'.$key),
-                Limit::perHour(max(1, (int) config('business_import.requests_per_hour', 7200)))
+                Limit::perHour(max(1, (int) config('business_import.requests_per_hour', 28800)))
                     ->by('business-import-hour|'.$key),
             ];
         });

@@ -46,6 +46,7 @@ class BusinessImportService
     public function search(array $input): array
     {
         $filters = Validator::make($input, [
+            'id' => ['nullable', 'integer', 'min:1'],
             'q' => ['nullable', 'string', 'max:255'],
             'name' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:40'],
@@ -76,6 +77,7 @@ class BusinessImportService
 
         $query = Page::query()
             ->where('type', Page::TYPE_BUSINESS)
+            ->when(filled($filters['id'] ?? null), fn ($query) => $query->whereKey((int) $filters['id']))
             ->with('identityKey')
             ->when(filled($filters['q'] ?? null), function ($query) use ($filters): void {
                 $like = $this->like((string) $filters['q']);
@@ -157,7 +159,7 @@ class BusinessImportService
             ]);
         }
 
-        return $this->identities->exactMatches($data, $excludePageId, allowSingleContactSignal: true)->all();
+        return $this->identities->exactMatches($data, $excludePageId, allowSingleContactSignal: true, separateLocations: true)->all();
     }
 
     public function upsert(string $clientId, array $input): array
@@ -200,7 +202,7 @@ class BusinessImportService
         $worker = $this->creator();
 
         $page = DB::transaction(function () use ($clientId, $worker, $data): Page {
-            $page = $this->pages->create($worker, $data, allowSingleContactDuplicate: true);
+            $page = $this->pages->create($worker, $data, allowSingleContactDuplicate: true, separateLocations: true);
             BusinessImportPage::query()->create([
                 'page_id' => $page->id,
                 'created_by_oauth_client_id' => $clientId,
@@ -233,7 +235,7 @@ class BusinessImportService
         $data = $this->pages->validate($merged);
 
         $page = DB::transaction(function () use ($clientId, $page, $data): Page {
-            $page = $this->pages->update($page, $data, allowSingleContactDuplicate: true);
+            $page = $this->pages->update($page, $data, allowSingleContactDuplicate: true, separateLocations: true);
             $tracking = BusinessImportPage::query()->firstOrNew(['page_id' => $page->id]);
             $tracking->fill([
                 'last_updated_by_oauth_client_id' => $clientId,

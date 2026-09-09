@@ -8,6 +8,7 @@ use RuntimeException;
 use Sveevee\Worker\Api\OAuthTokenProvider;
 use Sveevee\Worker\Api\SveeveeApiClient;
 use Sveevee\Worker\Config\WorkerConfig;
+use Sveevee\Worker\Config\WorkerPaths;
 use Sveevee\Worker\Domain\BusinessMerger;
 use Sveevee\Worker\Domain\BusinessNormalizer;
 use Sveevee\Worker\Domain\OpeningHoursParser;
@@ -23,6 +24,7 @@ use Sveevee\Worker\Research\DataGovCkanSource;
 use Sveevee\Worker\Research\JsonSeedSource;
 use Sveevee\Worker\Research\OfficialWebsiteEnricher;
 use Sveevee\Worker\Research\OverpassSource;
+use Sveevee\Worker\Research\OverturePlacesSource;
 use Sveevee\Worker\Research\RobotsPolicy;
 use Sveevee\Worker\Research\TelAvivBusinessLicenseSource;
 use Sveevee\Worker\Storage\Database;
@@ -181,6 +183,14 @@ final class Application
             'SveeveeResearchWorker/1.0 (+https://sveevee.co.il; mailto:info@sveevee.co.il)'
         );
         $sources = [];
+        $overture = $config->source('overture_places');
+        if (($overture['enabled'] ?? false) === true) {
+            $configuredDatabase = trim((string) ($overture['database_path'] ?? ''));
+            $overture['database_path'] = $configuredDatabase !== ''
+                ? $config->resolvePath($configuredDatabase)
+                : dirname($this->paths($config)['database']).'/overture.sqlite';
+            $sources[] = new OverturePlacesSource($overture, $this->root, $repository);
+        }
         $dataGov = $config->source('data_gov_ckan');
         if (($dataGov['enabled'] ?? false) === true) {
             $sources[] = new DataGovCkanSource($dataGov, $http, $repository, (string) $userAgent);
@@ -251,26 +261,7 @@ final class Application
 
     private function paths(WorkerConfig $config): array
     {
-        $dataDirectory = Environment::get('SVEVEE_WORKER_DATA_DIR');
-        if ($dataDirectory !== null) {
-            $dataDirectory = rtrim($dataDirectory, '/\\');
-
-            return [
-                'database' => $dataDirectory.'/worker.sqlite',
-                'reports' => $dataDirectory.'/reports',
-                'log' => $dataDirectory.'/logs/worker.log',
-                'lock' => $dataDirectory.'/worker.lock',
-            ];
-        }
-
-        $database = $config->resolvePath((string) $config->get('storage.database'));
-
-        return [
-            'database' => $database,
-            'reports' => $config->resolvePath((string) $config->get('storage.reports_dir')),
-            'log' => $config->resolvePath((string) $config->get('storage.log_file')),
-            'lock' => dirname($database).DIRECTORY_SEPARATOR.'worker.lock',
-        ];
+        return WorkerPaths::resolve((array) $config->get('storage', []), $this->root);
     }
 
     private function assertExtensions(WorkerConfig $config, string $command): void

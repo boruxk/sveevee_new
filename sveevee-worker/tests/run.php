@@ -459,6 +459,14 @@ $test('permanent research conflicts stay quarantined until source data changes',
     $assert($repository->shouldProcessUrl('fixture', $url, 30, SourceFingerprint::hash($changed)));
 });
 
+$test('source release metadata changes do not reimport unchanged business content', function () use ($assert): void {
+    $raw = ['name' => 'Example', 'phone' => '+97231234567', 'source_url' => 'https://example.com/place/1',
+        'source_checked_at' => '2026-08-19T00:00:00Z', 'source_metadata' => ['release' => '2026-08-19.0']];
+    $refreshed = [...$raw, 'source_checked_at' => '2026-09-19T00:00:00Z', 'source_metadata' => ['release' => '2026-09-19.0', 'confidence' => 0.9]];
+    $assert(SourceFingerprint::hash($raw) === SourceFingerprint::hash($refreshed));
+    $assert(SourceFingerprint::hash($raw) !== SourceFingerprint::hash([...$refreshed, 'phone' => '+97237654321']));
+});
+
 $test('normalizer keeps sources local and creates stable identity keys', function () use ($assert): void {
     $normalizer = new BusinessNormalizer(new OpeningHoursParser, ['Tel Aviv', 'Jerusalem']);
     $candidate = $normalizer->normalize([

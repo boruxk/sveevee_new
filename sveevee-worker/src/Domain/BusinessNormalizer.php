@@ -159,6 +159,14 @@ final class BusinessNormalizer
         if ($name !== '') {
             $keys['name_city'] = $name.'|'.$city;
         }
+        $placeName = BusinessLocationIdentity::name($data);
+        $placeCity = BusinessLocationIdentity::city($data);
+        if ($placeName !== '' && $placeCity !== '') {
+            $keys['place_name_city'] = $placeName.'|'.$placeCity;
+            if (($street = BusinessLocationIdentity::street($data)) !== '') {
+                $keys['name_location'] = $placeName.'|'.$placeCity.'|'.$street;
+            }
+        }
         if (isset($data['contact_email'])) {
             $keys['email'] = mb_strtolower(trim((string) $data['contact_email']), 'UTF-8');
         }

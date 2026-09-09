@@ -1,5 +1,5 @@
 [Unit]
-Description=Sveevee government business research and import worker
+Description=Sveevee Overture Places import worker
 Wants=network-online.target
 After=network-online.target
 
@@ -9,8 +9,8 @@ User=sveevee-worker
 Group=sveevee-worker
 WorkingDirectory=/var/www/sveevee-worker
 EnvironmentFile=/etc/sveevee-worker/worker.env
-ExecStart=/usr/bin/php /var/www/sveevee-worker/bin/worker run --config=/etc/sveevee-worker/worker.json
-StateDirectory=sveevee-worker
+ExecStart=/usr/bin/php /var/www/sveevee-worker/bin/worker run --config=/etc/sveevee-worker/worker.overture.json
+StateDirectory=sveevee-worker/overture
 UMask=0077
 Nice=10
 NoNewPrivileges=true
@@ -23,5 +23,5 @@ ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-ReadWritePaths=/var/lib/sveevee-worker
+ReadWritePaths=/var/lib/sveevee-worker/overture
 TimeoutStartSec=6h

@@ -68,20 +68,28 @@ class PageIdentityService
             'normalized_website' => $this->website($data['website'] ?? null),
             'normalized_address' => ($normalized = $this->text($streetAddress)) !== '' ? $normalized : null,
             'identity_hash' => hash('sha256', implode('|', [$type, $name, $city, $category, $neighborhood])),
+            'import_location_hash' => $this->importLocationHash($data),
+            'import_name_city_hash' => $this->importNameCityHash($data),
         ];
     }
 
-    public function exactMatches(array $data, ?int $excludePageId = null, bool $allowSingleContactSignal = false): Collection
+    public function exactMatches(array $data, ?int $excludePageId = null, bool $allowSingleContactSignal = false, bool $separateLocations = false): Collection
     {
         $this->ensureAll();
         $identity = $this->fromInput($data);
 
-        return PageIdentityKey::query()
+        $query = PageIdentityKey::query()
             ->with('page')
             ->when($excludePageId, fn ($query) => $query->where('page_id', '!=', $excludePageId))
             ->when($identity['type'] !== '', fn ($query) => $query->where('type', $identity['type']))
-            ->where(function ($query) use ($identity, $allowSingleContactSignal): void {
+            ->where(function ($query) use ($identity, $allowSingleContactSignal, $separateLocations): void {
                 $query->whereRaw('1 = 0');
+                if ($separateLocations && $identity['import_location_hash']) {
+                    $query->orWhere('import_location_hash', $identity['import_location_hash']);
+                }
+                if ($separateLocations && $identity['import_name_city_hash']) {
+                    $query->orWhere('import_name_city_hash', $identity['import_name_city_hash']);
+                }
 
                 if ($identity['normalized_name'] !== '' && $identity['normalized_city']) {
                     $query->orWhere('identity_hash', $identity['identity_hash']);
@@ -126,11 +134,28 @@ class PageIdentityService
                             ->where('normalized_address', $identity['normalized_address']);
                     });
                 }
-            })
-            ->limit(10)
-            ->get()
+            });
+
+        $locationStatus = fn (PageIdentityKey $key): string => $key->page === null ? 'different'
+            : $this->importLocationStatus($data, [
+                'name' => $key->page->name,
+                'address' => $key->page->setup['address'] ?? [],
+            ]);
+        // Prefer a confirmed branch even when many older entries have incomplete addresses.
+        $keys = $separateLocations && $identity['import_location_hash']
+            ? (clone $query)->where('import_location_hash', $identity['import_location_hash'])
+                ->lazyById(100)->filter(fn (PageIdentityKey $key): bool => $locationStatus($key) === 'same')->take(10)->collect()
+            : collect();
+        if ($keys->isEmpty()) {
+            // Filter before limiting: chains can have more than ten branches with shared contacts.
+            $keys = $separateLocations
+                ? $query->lazyById(100)->filter(fn (PageIdentityKey $key): bool => $locationStatus($key) !== 'different')->take(10)->collect()
+                : $query->limit(10)->get();
+        }
+
+        return $keys
             ->filter(fn (PageIdentityKey $key) => $key->page !== null)
-            ->map(function (PageIdentityKey $key) use ($identity): array {
+            ->map(function (PageIdentityKey $key) use ($identity, $separateLocations): array {
                 $matchedOn = [];
 
                 if ($identity['normalized_name'] !== ''
@@ -150,6 +175,10 @@ class PageIdentityService
                 if ($identity['normalized_address'] && $key->normalized_address === $identity['normalized_address']) {
                     $matchedOn[] = 'address';
                 }
+                if ($separateLocations && $identity['import_location_hash']
+                    && $key->import_location_hash === $identity['import_location_hash']) {
+                    $matchedOn[] = 'address';
+                }
 
                 return [
                     'id' => $key->page->id,
@@ -158,6 +187,7 @@ class PageIdentityService
                     'category_key' => $key->page->category_key,
                     'public_path' => $key->page->public_path,
                     'matched_on' => array_values(array_unique($matchedOn)),
+                    ...($separateLocations ? ['address' => $key->page->setup['address'] ?? []] : []),
                 ];
             })
             ->values();
@@ -167,6 +197,8 @@ class PageIdentityService
     {
         $identity = $this->fromInput($data);
         $signals = [
+            $identity['import_name_city_hash'] ? 'import-name-city|'.$identity['import_name_city_hash'] : null,
+            $identity['import_location_hash'] ? 'import-location|'.$identity['import_location_hash'] : null,
             $identity['normalized_phone'] ? 'phone|'.$identity['normalized_phone'] : null,
             $identity['normalized_email'] ? 'email|'.$identity['normalized_email'] : null,
             $identity['normalized_name'] !== ''
@@ -185,6 +217,70 @@ class PageIdentityService
             ->all();
 
         return $this->runWithLocks($lockKeys, 0, $callback);
+    }
+
+    private function importLocationHash(array $data): ?string
+    {
+        $name = $this->importName($data['name'] ?? '');
+        $city = $this->text($data['address']['city'] ?? '');
+        $street = $this->importStreet($data);
+
+        return $name !== '' && $city !== '' && $street !== ''
+            ? hash('sha256', implode('|', [$data['type'] ?? Page::TYPE_BUSINESS, $name, $city, $street]))
+            : null;
+    }
+
+    private function importNameCityHash(array $data): ?string
+    {
+        $name = $this->importName($data['name'] ?? '');
+        $city = $this->text($data['address']['city'] ?? '');
+
+        return $name !== '' && $city !== ''
+            ? hash('sha256', implode('|', [$data['type'] ?? Page::TYPE_BUSINESS, $name, $city]))
+            : null;
+    }
+
+    private function importLocationStatus(array $left, array $right): string
+    {
+        $leftName = $this->importName($left['name'] ?? '');
+        $rightName = $this->importName($right['name'] ?? '');
+        $leftCity = $this->text($left['address']['city'] ?? '');
+        $rightCity = $this->text($right['address']['city'] ?? '');
+        if (($leftName !== '' && $rightName !== '' && $leftName !== $rightName)
+            || ($leftCity !== '' && $rightCity !== '' && $leftCity !== $rightCity)) {
+            return 'different';
+        }
+        $leftStreet = $this->importStreet($left);
+        $rightStreet = $this->importStreet($right);
+        if ($leftName === '' || $rightName === '' || $leftCity === '' || $rightCity === '' || $leftStreet === '' || $rightStreet === '') {
+            return 'ambiguous';
+        }
+        if ($leftStreet === $rightStreet) {
+            return 'same';
+        }
+        foreach ([[$leftStreet, $rightStreet], [$rightStreet, $leftStreet]] as [$short, $long]) {
+            if (str_starts_with($long, $short.' ')
+                && preg_match('/^[0-9]+(?: [\p{L}0-9]+)*$/u', substr($long, strlen($short) + 1)) === 1) {
+                return 'ambiguous';
+            }
+        }
+
+        return 'different';
+    }
+
+    private function importStreet(array $data): string
+    {
+        $street = $this->text($data['address']['street'] ?? '');
+
+        return $street !== '' ? $this->text($street.' '.($data['address']['number'] ?? '')) : '';
+    }
+
+    private function importName(mixed $value): string
+    {
+        $marker = 'בע(?:\\s*["״“”„~\\x{0027}׳]{1,2}\\s*)?מ';
+        $name = preg_replace('/(?<![\\p{L}\\p{M}\\p{N}])(?:\\(\\s*'.$marker.'\\s*\\)|'.$marker.')(?![\\p{L}\\p{M}\\p{N}])/u', '', (string) $value);
+
+        return $this->text($name ?? $value);
     }
 
     public function text(mixed $value): string

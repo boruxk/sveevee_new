@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\BusinessImportApiLog;
 use App\Models\BusinessImportClient;
 use App\Models\Page;
+use App\Services\PageIdentityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Laravel\Passport\Client;
@@ -55,7 +56,7 @@ class BusinessImportApiTest extends TestCase
         $this->assertTrue($registration->oauthClient()->firstOrFail()->revoked);
     }
 
-    public function test_business_is_created_and_duplicates_are_blocked_by_email_or_phone(): void
+    public function test_shared_contacts_allow_distinct_locations_and_contact_only_lookup_still_finds_pages(): void
     {
         $client = $this->businessClient();
         Passport::actingAsClient($client, [
@@ -90,9 +91,8 @@ class BusinessImportApiTest extends TestCase
         $sameEmail['address']['neighborhood'] = null;
 
         $this->postBusiness($sameEmail)
-            ->assertStatus(409)
-            ->assertJsonPath('data.matches.0.id', $pageId)
-            ->assertJsonPath('data.matches.0.matched_on.0', 'contact_email');
+            ->assertCreated()
+            ->assertJsonPath('data.business.address.city', 'Jerusalem');
 
         $this->postJson('/api/v1/business-import/businesses/duplicates', [
             'phone' => '(03) 000-0000',
@@ -269,6 +269,99 @@ class BusinessImportApiTest extends TestCase
             'name' => 'Incomplete Business',
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['category_key', 'address.city']);
+    }
+
+    public function test_every_chain_location_is_imported_and_duplicate_lookup_finds_branches_beyond_ten_matches(): void
+    {
+        Passport::actingAsClient($this->businessClient(), [BusinessImportClient::SCOPE_READ, BusinessImportClient::SCOPE_WRITE]);
+        $ids = [];
+        foreach (range(1, 12) as $number) {
+            $payload = $this->businessPayload();
+            $payload['address']['number'] = (string) $number;
+            $ids[$number] = $this->postBusiness($payload)->assertCreated()->json('data.business.id');
+        }
+        $payload = $this->businessPayload();
+        $payload['address']['number'] = '12';
+        $this->postJson('/api/v1/business-import/businesses/duplicates', $payload)
+            ->assertOk()->assertJsonCount(1, 'data.matches')
+            ->assertJsonPath('data.matches.0.id', $ids[12])
+            ->assertJsonPath('data.matches.0.address.number', '12');
+        $this->postBusiness($payload)->assertStatus(409)->assertJsonPath('data.matches.0.id', $ids[12]);
+
+        $this->patchJson('/api/v1/business-import/businesses/'.$ids[12], ['public_description' => 'Only the twelfth branch.'])
+            ->assertOk()->assertJsonPath('data.business.public_description', 'Only the twelfth branch.');
+        $this->assertSame('Short public description.', Page::findOrFail($ids[1])->public_description);
+        $this->getJson('/api/v1/business-import/businesses?id='.$ids[12])
+            ->assertOk()->assertJsonPath('data.pagination.total', 1)
+            ->assertJsonPath('data.businesses.0.id', $ids[12]);
+        $this->getJson('/api/v1/business-import/businesses?id=999999')
+            ->assertOk()->assertJsonCount(0, 'data.businesses');
+        $this->getJson('/api/v1/business-import/businesses?id=0')->assertUnprocessable();
+
+        $payload['address']['city'] = 'Jerusalem';
+        $payload['address']['neighborhood'] = null;
+        $this->postBusiness($payload)->assertCreated();
+        $payload['address']['street'] = 'Different Street';
+        $this->postBusiness($payload)->assertCreated();
+        $this->assertDatabaseCount('pages', 14);
+    }
+
+    public function test_same_location_is_recognized_after_company_suffix_cleanup_and_address_formatting(): void
+    {
+        Passport::actingAsClient($this->businessClient(), [BusinessImportClient::SCOPE_READ, BusinessImportClient::SCOPE_WRITE]);
+        $payload = $this->businessPayload();
+        $payload['name'] = 'קפה בדיקה בע״מ';
+        unset($payload['phone'], $payload['contact_email'], $payload['website']);
+        $pageId = $this->postBusiness($payload)->assertCreated()->json('data.business.id');
+        $payload['name'] = 'קפה בדיקה';
+        $payload['address'] = ['city' => 'Tel Aviv', 'street' => 'Example Street 10'];
+
+        $this->postJson('/api/v1/business-import/businesses/duplicates', $payload)
+            ->assertOk()->assertJsonPath('data.matches.0.id', $pageId)
+            ->assertJsonPath('data.matches.0.matched_on.0', 'address');
+        $this->postBusiness($payload)->assertStatus(409);
+        $payload['address']['street'] = 'Example Street';
+        $this->postBusiness($payload)->assertStatus(409)->assertJsonPath('data.matches.0.id', $pageId);
+        $this->assertDatabaseCount('pages', 1);
+    }
+
+    public function test_confirmed_location_has_priority_over_ten_older_incomplete_addresses(): void
+    {
+        Passport::actingAsClient($this->businessClient(), [BusinessImportClient::SCOPE_READ, BusinessImportClient::SCOPE_WRITE]);
+        $payload = $this->businessPayload();
+        $firstId = $this->postBusiness($payload)->assertCreated()->json('data.business.id');
+        $first = Page::findOrFail($firstId);
+        // Reproduce existing legacy rows, which can predate the import API's duplicate rules.
+        foreach (range(1, 10) as $number) {
+            $legacy = $first->replicate();
+            $legacy->setup = array_replace($first->setup, ['address' => ['city' => 'Tel Aviv']]);
+            $legacy->save();
+            app(PageIdentityService::class)->sync($legacy);
+        }
+        $confirmed = $first->replicate();
+        $confirmed->setup = array_replace($first->setup, ['address' => ['city' => 'Tel Aviv', 'street' => 'Example Street', 'number' => '12']]);
+        $confirmed->save();
+        app(PageIdentityService::class)->sync($confirmed);
+        $payload['address']['number'] = '12';
+        $this->postJson('/api/v1/business-import/businesses/duplicates', $payload)
+            ->assertOk()->assertJsonCount(1, 'data.matches')
+            ->assertJsonPath('data.matches.0.id', $confirmed->id);
+    }
+
+    public function test_missing_house_number_is_ambiguous_and_claimed_branch_does_not_block_a_different_location(): void
+    {
+        Passport::actingAsClient($this->businessClient(), [BusinessImportClient::SCOPE_READ, BusinessImportClient::SCOPE_WRITE]);
+        $payload = $this->businessPayload();
+        $pageId = $this->postBusiness($payload)->assertCreated()->json('data.business.id');
+        unset($payload['address']['number']);
+        $this->postBusiness($payload)->assertStatus(409)->assertJsonPath('data.matches.0.id', $pageId);
+
+        Page::findOrFail($pageId)->update(['is_unclaimed' => false]);
+        $payload['address']['number'] = '11';
+        $this->postBusiness($payload)->assertCreated();
+        $this->patchJson('/api/v1/business-import/businesses/'.$pageId, ['phone' => '03-2222222'])
+            ->assertStatus(409)->assertJsonValidationErrors('claimed');
+        $this->assertDatabaseCount('pages', 2);
     }
 
     private function businessClient(array $allowedScopes = [

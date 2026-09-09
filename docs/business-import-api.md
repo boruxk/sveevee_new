@@ -2,6 +2,12 @@
 
 Die Business Import API ist eine reine Machine-to-Machine-API. Sie verwendet den OAuth-2.0-Client-Credentials-Grant und akzeptiert keine normalen Benutzer- oder Admin-Tokens.
 
+## Hinweise zu Overture-Quelldaten
+
+Geschaeftsdaten koennen aus Overture Maps Places stammen und von Sveevee hinsichtlich Auswahl, Kategorien, Namen, Adressen und Kontakten angepasst oder mit bestehenden Seiten zusammengefuehrt sein. Fuer die jeweiligen Quelldaten gelten [CDLA-Permissive 2.0](../frontend/public/data-sources/CDLA-Permissive-2.0.txt), [Apache 2.0](../frontend/public/data-sources/Apache-2.0.txt) beziehungsweise [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/legalcode.en). Die [vollstaendige Foursquare-NOTICE](../frontend/public/data-sources/Foursquare-NOTICE.txt) ist Bestandteil dieser Dokumentation; sie ist zusammen mit den zutreffenden Lizenztexten bei einer Weitergabe zu erhalten. Copyright 2024 Foursquare Labs, Inc. All rights reserved. Overture hat die Foursquare-Daten in sein Schema ueberfuehrt (Aenderung vom 18.03.2026).
+
+Die oeffentlichen Hinweise liegen nach dem Deployment unter `/data-sources/overture.html`. Originalquellen, Lizenzverweise und Ausgabe werden ausserdem in den Worker-Rohdaten gespeichert. Fehlender Betriebsstatus ist kein Nachweis eines geoeffneten Geschaefts. [Offizielle Overture-Quellenliste](https://docs.overturemaps.org/attribution/#places).
+
 ## Server einrichten
 
 Nach dem Deployment werden die Tabellen migriert und einmalig die Passport-Schluessel erzeugt:
@@ -99,7 +105,7 @@ curl --get 'https://sveevee.co.il/api/v1/business-import/businesses' \
   --data-urlencode 'per_page=25'
 ```
 
-Moegliche Filter sind `q`, `name`, `phone`, `contact_email`, `category_key`, `city`, `neighborhood`, `page` und `per_page` bis 100.
+Moegliche Filter sind `id` (positive Sveevee-Seiten-ID), `q`, `name`, `phone`, `contact_email`, `category_key`, `city`, `neighborhood`, `page` und `per_page` bis 100. `id` ermoeglicht die eindeutige Wiedererkennung bereits importierter Filialen trotz spaeterer Quellkorrekturen.
 
 ## Dubletten pruefen
 
@@ -114,7 +120,9 @@ curl --request POST 'https://sveevee.co.il/api/v1/business-import/businesses/dup
   }'
 ```
 
-Telefonnummern, E-Mail-Adressen, Unicode, Satzzeichen und Leerraeume werden fuer die Pruefung normalisiert. `matches[].matched_on` nennt die uebereinstimmenden Signale.
+Telefonnummern, E-Mail-Adressen, Unicode, Satzzeichen und Leerraeume werden fuer die Pruefung normalisiert. `matches[].matched_on` nennt die uebereinstimmenden Signale; `matches[].address` liefert die vorhandene Filialadresse.
+
+Fuer Standortpruefungen immer auch `name` und `address` mit Stadt, Strasse und vorhandener Hausnummer senden. Gemeinsam genutzte Kontakte oder Websites verhindern keine getrennten Filialen: bekannte andere Namen, Staedte oder Strassenadressen werden aus den Standorttreffern entfernt, bevor das Ergebnis auf zehn Treffer begrenzt wird. Gleicher bereinigter Name am gleichen Standort bleibt eine Dublette; die Varianten des hebraeischen Firmensuffixes und freie/splitte Hausnummern werden dabei beruecksichtigt. Ohne ausreichende Adressdaten kann ein Treffer mehrdeutig sein und darf nicht automatisch einer Filiale zugeordnet werden. Reine Telefon-/E-Mail-Suchen liefern weiterhin moegliche Treffer. Diese Standortregeln gelten fuer die Business-Import-API; die bisherigen Regeln der normalen Seitenerstellung bleiben erhalten.
 
 ## Einzelimport
 

@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the Sveevee Overture Places worker every thirty minutes
+
+[Timer]
+OnCalendar=*-*-* *:00,30:00 Asia/Jerusalem
+RandomizedDelaySec=0
+AccuracySec=1s
+Persistent=true
+Unit=sveevee-overture.service
+
+[Install]
+WantedBy=timers.target
