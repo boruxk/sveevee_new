@@ -11,7 +11,9 @@ use Sveevee\Worker\Support\Json;
 final class RunReport
 {
     private readonly float $startedTimer;
+
     private readonly string $startedAt;
+
     private array $metrics = [
         'found' => 0,
         'new' => 0,
@@ -24,8 +26,11 @@ final class RunReport
         'planned_imports' => 0,
         'planned_updates' => 0,
     ];
+
     private array $sources = [];
+
     private array $targets = [];
+
     private array $errors = [];
 
     public function __construct(
@@ -42,18 +47,26 @@ final class RunReport
         $this->metrics[$metric] = ($this->metrics[$metric] ?? 0) + $amount;
     }
 
+    public function metric(string $name): int
+    {
+        return $this->metrics[$name] ?? 0;
+    }
+
     public function source(string $name, int $amount = 1): void
     {
         $this->sources[$name] = ($this->sources[$name] ?? 0) + $amount;
     }
 
-    public function target(string $key, string $city, string $categoryKey, int $found): void
+    public function target(string $key, string $city, string $categoryKey, int $found, int $successful = 0, int $planned = 0): void
     {
-        $this->targets[] = [
+        $previous = $this->targets[$key] ?? [];
+        $this->targets[$key] = [
             'key' => $key,
             'city' => $city,
             'category_key' => $categoryKey,
-            'found' => $found,
+            'found' => ($previous['found'] ?? 0) + $found,
+            'successful' => ($previous['successful'] ?? 0) + $successful,
+            'planned' => ($previous['planned'] ?? 0) + $planned,
         ];
     }
 
@@ -71,6 +84,8 @@ final class RunReport
     public function toArray(string $status = 'completed'): array
     {
         ksort($this->sources);
+        $productive = count(array_filter($this->targets, fn (array $target): bool => ($this->dryRun ? $target['planned'] : $target['successful']) > 0));
+        $empty = count(array_filter($this->targets, static fn (array $target): bool => $target['found'] === 0 && $target['successful'] === 0 && $target['planned'] === 0));
 
         return [
             'run_id' => $this->runId,
@@ -82,7 +97,11 @@ final class RunReport
             'duration_seconds' => round(microtime(true) - $this->startedTimer, 3),
             ...$this->metrics,
             'target_combinations' => count($this->targets),
-            'targets' => $this->targets,
+            'scanned_target_combinations' => count($this->targets),
+            'productive_target_combinations' => $productive,
+            'empty_target_combinations' => $empty,
+            'unproductive_target_combinations' => count($this->targets) - $productive,
+            'targets' => array_values($this->targets),
             'used_sources' => array_keys($this->sources),
             'source_counts' => $this->sources,
             'errors' => $this->errors,

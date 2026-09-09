@@ -164,6 +164,9 @@ CREATE TABLE IF NOT EXISTS import_batch_items (
     client_import_id TEXT NOT NULL,
     position INTEGER NOT NULL,
     business_id INTEGER NOT NULL,
+    payload_hash TEXT,
+    target_city TEXT,
+    target_category TEXT,
     PRIMARY KEY (client_import_id, position),
     FOREIGN KEY (client_import_id) REFERENCES import_batches(client_import_id) ON DELETE CASCADE,
     FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
@@ -182,6 +185,13 @@ SQL,
 
         foreach ($statements as $statement) {
             $this->pdo->exec($statement);
+        }
+        // Existing installations keep pending requests unchanged; null snapshots are replayed conservatively.
+        $columns = array_column($this->pdo->query('PRAGMA table_info(import_batch_items)')->fetchAll(), 'name');
+        foreach (['payload_hash', 'target_city', 'target_category'] as $column) {
+            if (! in_array($column, $columns, true)) {
+                $this->pdo->exec('ALTER TABLE import_batch_items ADD COLUMN '.$column.' TEXT');
+            }
         }
     }
 }

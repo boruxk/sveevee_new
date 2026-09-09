@@ -49,6 +49,84 @@ class SystemLogApiTest extends TestCase
         ]);
     }
 
+    public function test_rotation_counters_survive_storage_and_admin_reads_and_cannot_change_on_replay(): void
+    {
+        $client = $this->businessClient();
+        Passport::actingAsClient($client, [BusinessImportClient::SCOPE_WRITE]);
+        $report = $this->runReport();
+        $report['scanned_target_combinations'] = 2;
+        $report['productive_target_combinations'] = 2;
+        $report['empty_target_combinations'] = 0;
+        $report['unproductive_target_combinations'] = 0;
+        $report['targets'][0]['successful'] = 10;
+        $report['targets'][0]['planned'] = 0;
+        $report['targets'][1]['successful'] = 2;
+        $report['targets'][1]['planned'] = 0;
+
+        $this->postJson('/api/v1/business-import/worker-runs', $report)
+            ->assertCreated();
+        $this->postJson('/api/v1/business-import/worker-runs', $report)
+            ->assertOk()
+            ->assertHeader('Idempotency-Replayed', 'true');
+
+        $counterPaths = [
+            'scanned_target_combinations',
+            'productive_target_combinations',
+            'empty_target_combinations',
+            'unproductive_target_combinations',
+            'targets.0.successful',
+            'targets.0.planned',
+        ];
+        foreach ($counterPaths as $path) {
+            $changed = $report;
+            data_set($changed, $path, data_get($report, $path) + 1);
+            $this->postJson('/api/v1/business-import/worker-runs', $changed)
+                ->assertStatus(409)
+                ->assertJsonValidationErrors('run_id');
+        }
+
+        $this->assertDatabaseCount('system_log_entries', 1);
+        $storedReport = SystemLogEntry::query()->sole()->data;
+        foreach ($counterPaths as $path) {
+            $this->assertSame(data_get($report, $path), data_get($storedReport, $path));
+        }
+
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        $response = $this->getJson('/api/v1/admin/logs?source=automation_worker')
+            ->assertOk()
+            ->assertJsonPath('data.pagination.total', 1)
+            ->assertJsonPath('data.items.0.data.run_id', $report['run_id']);
+        foreach ($counterPaths as $path) {
+            $response->assertJsonPath('data.items.0.data.'.$path, data_get($report, $path));
+        }
+    }
+
+    public function test_rotation_counters_reject_out_of_range_values(): void
+    {
+        $client = $this->businessClient();
+        Passport::actingAsClient($client, [BusinessImportClient::SCOPE_WRITE]);
+        $report = $this->runReport();
+        $report['scanned_target_combinations'] = 1001;
+        $report['productive_target_combinations'] = -1;
+        $report['empty_target_combinations'] = 1001;
+        $report['unproductive_target_combinations'] = -1;
+        $report['targets'][0]['successful'] = -1;
+        $report['targets'][0]['planned'] = -1;
+
+        $this->postJson('/api/v1/business-import/worker-runs', $report)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'scanned_target_combinations',
+                'productive_target_combinations',
+                'empty_target_combinations',
+                'unproductive_target_combinations',
+                'targets.0.successful',
+                'targets.0.planned',
+            ]);
+
+        $this->assertDatabaseCount('system_log_entries', 0);
+    }
+
     public function test_only_write_clients_can_report_worker_runs(): void
     {
         $client = $this->businessClient([BusinessImportClient::SCOPE_READ]);

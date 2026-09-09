@@ -104,7 +104,7 @@ class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(max(1, (int) config('business_import.requests_per_minute', 120)))
                     ->by('business-import-minute|'.$key),
-                Limit::perHour(max(1, (int) config('business_import.requests_per_hour', 5000)))
+                Limit::perHour(max(1, (int) config('business_import.requests_per_hour', 7200)))
                     ->by('business-import-hour|'.$key),
             ];
         });

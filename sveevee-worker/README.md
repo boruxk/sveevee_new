@@ -7,6 +7,9 @@ Der Worker laeuft unabhaengig von Frontend und Laravel-Web-Requests. Er recherch
 - OAuth-2.0 Client Credentials mit automatischer Token-Erneuerung
 - Lokaler, persistenter Status fuer Businesses, Identitaetssignale, Quellen-URLs, Fehler, Batches und Runs
 - Persistente Round-Robin-Rotation durch die konfigurierten Stadt-Kategorie-Kombinationen
+- Bis zu zehn produktive Kombinationen pro Lauf mit jeweils bis zu 100 erfolgreichen Neuanlagen oder Aktualisierungen; insgesamt hoechstens 1000
+- Leere Kombinationen, unveraenderte Dubletten und unbrauchbare Kandidaten verbrauchen diese Grenzen nicht
+- Ausfuehrung alle zehn Minuten ohne Tageslimit
 - Getrennte Import-Batches pro Stadt-Kategorie-Kombination
 - Idempotente Batch-Retries mit vor dem Request gespeicherter `client_import_id`
 - Einzelne Fehler stoppen die restlichen Batch-Eintraege nicht
@@ -32,13 +35,14 @@ Die Quellenfelder `source_name`, `source_url` und `source_checked_at` bleiben mi
 ./bin/worker run --dry-run --limit=10
 ```
 
-`research` schreibt nur in den lokalen Status. `import` verarbeitet bereits recherchierte Eintraege. `run` fuehrt beides aus. `--dry-run` darf die Read-Endpunkte zur Dublettenpruefung verwenden, sendet aber keinen Create-, Update- oder Batch-Request an Sveevee.
+`research` schreibt nur in den lokalen Status. `import` verarbeitet bereits recherchierte Eintraege. `run` recherchiert und importiert innerhalb jeder Kombination, bis deren Erfolgsgrenze erreicht oder ihre Quellen ausgeschoepft sind. `--dry-run` darf die Read-Endpunkte zur Dublettenpruefung verwenden, sendet aber keinen Create-, Update- oder Batch-Request an Sveevee. Im Dry-Run zaehlen geplante Schreibvorgaenge; beim echten Import zaehlen erfolgreiche Neuanlagen und Aktualisierungen.
 
 ## Quellen
 
 Mitgeliefert werden:
 
-- `data_gov_ckan`: paginierte CKAN-Recherche mit austauschbaren Datensatzprofilen. Das erste Profil verarbeitet aktive Gewerbelizenzen aus Beersheba und ordnet unterstuetzte Lizenzarten bestehenden Sveevee-Kategorien zu.
+- `data_gov_ckan`: paginierte CKAN-Recherche mit Profilen fuer das landesweite Firmenregister und aktive Gewerbelizenzen aus Beersheba.
+- `tel_aviv_business_licenses`: offizielle Gewerbelizenzen der Stadt Tel Aviv aus dem ArcGIS-Dienst, ebenfalls mit Pagination, Gueltigkeitspruefung und Zuordnung zu den zehn Kategorien.
 - `json_seed`: JSON-Array, JSONL oder `{ "businesses": [...]` fuer lizenzierte Exporte und manuell vorbereitete Daten.
 - `overpass`: OpenStreetMap-Recherche ueber konfigurierbare OSM-Tag-Zuordnungen.
 - `official_website`: optionale Anreicherung der vom Discovery-Adapter gefundenen offiziellen Website. Verarbeitet werden die Startseite, JSON-LD, Meta-Daten und oeffentliche Kontaktlinks.
@@ -49,13 +53,27 @@ Die oeffentliche Overpass-Instanz ist standardmaessig gesperrt. Ihre Betreiber b
 
 ### Data.gov.il / CKAN
 
-Der Adapter liest CKAN-Ressourcen vollstaendig und seitenweise, bevor er neue oder geaenderte Datensaetze an die normale Research-Pipeline uebergibt. Verarbeitete Datensatz-IDs und stabile Inhalts-Hashes bleiben in SQLite gespeichert. Dadurch ueberspringt ein spaeterer Lauf unveraenderte Eintraege und setzt bei noch nicht verarbeiteten Datensaetzen fort, statt immer wieder am Anfang des Exports zu stoppen.
+Der Adapter liest CKAN-Ressourcen seitenweise, beim landesweiten Register eingeschraenkt auf aktive Firmen der jeweiligen Stadt. Verarbeitete Datensatz-IDs und stabile Inhalts-Hashes bleiben in SQLite gespeichert. Dadurch ueberspringt ein spaeterer Lauf unveraenderte Eintraege und setzt bei noch nicht verarbeiteten Datensaetzen fort, statt immer wieder am Anfang des Exports zu stoppen. API- und Paginationfehler werden als Fehler gemeldet und nicht als erfolgreiche Recherche mit null Treffern.
 
-Dauerhafte Identitaetskonflikte und unveraendert unvollstaendige Quelldatensaetze werden bis zu einer Aenderung ihres Inhalts quarantiniert. Dadurch versucht ein taeglicher Lauf dieselben nicht aufloesbaren Datensaetze nicht immer wieder.
+Dauerhafte Identitaetskonflikte und unveraendert unvollstaendige Quelldatensaetze werden bis zu einer Aenderung ihres Inhalts quarantiniert. Dadurch versucht der naechste Lauf dieselben nicht aufloesbaren Datensaetze nicht immer wieder.
 
 Das Profil `beer_sheva_business_licenses` uebernimmt Name, Telefon, E-Mail, Strasse, Hausnummer, Lizenzbeschreibung, Status und Ablaufdatum. Abgelaufene oder nicht aktive Lizenzen werden verworfen. Unterstuetzt werden derzeit Restaurants, Cafes, Baeckereien, Catering, Fast Food, Lebensmittelgeschaefte, Fleischereien, Bars, Veranstaltungsorte und Hotels. Nicht eindeutig zuordenbare Lizenzarten werden nicht importiert.
 
 Die Quelle wird intern mit URL und Pruefzeitpunkt gespeichert, aber nicht in den oeffentlichen Beschreibungstext der Business-Seite geschrieben. Eine technische Lizenz-Allowlist ist noch nicht aktiv; vor produktiven automatischen Laeufen bleibt die Nutzungs- und Lizenzpruefung daher Aufgabe des Betreibers.
+
+### Landesweites Firmenregister
+
+Das Profil `israel_companies` liest das [Firmenregister der israelischen Justizbehoerde](https://data.gov.il/datasets/ministry_of_justice/ica_companies), Ressource `f004176c-b85f-4542-8901-7b3176f9a054`. Die Konfiguration bildet alle 83 Staedte des Anwendungskatalogs auf die exakten Ortsnamen des Registers ab, einschliesslich vorhandener Schreibvarianten. CKAN filtert bereits auf dem Server nach diesen Ortsnamen und dem Status `פעילה`; der Worker prueft Stadt und aktiven Status nochmals pro Datensatz.
+
+Firmenname, englischer Name und gegebenenfalls konkrete Taetigkeitsangaben werden konservativ den zehn Kategorien zugeordnet. Allgemeine Gesellschaftszwecke, unklare oder mehrdeutige Taetigkeiten sowie beispielsweise Ausruester und Holdinggesellschaften werden uebersprungen. Fuer eine Seite sind eine stabile Firmennummer, ein Name und eine Strasse erforderlich. Fehlende Telefonnummern, E-Mails oder Oeffnungszeiten werden nicht erfunden. Der Beschreibungstext kennzeichnet die Firma und ihre Registeradresse; ein aktiver Registereintrag bestaetigt keine geoeffnete Filiale oder gueltige Gewerbelizenz.
+
+Pro Stadt werden alle gefilterten Registerzeilen paginiert und nur geeignete Kandidaten fuer die zehn Kategorien im Arbeitsspeicher behalten. Beim Stadtwechsel wird dieser Cache freigegeben. Die genaue Trefferzahl, stabile Sortierung und wiederholte Zeilen werden kontrolliert. `max_records_per_city` ist im Deployment-Profil auf 100000 gesetzt; eine groessere Ergebnismenge wird ausdruecklich als unvollstaendig gemeldet. Die Quellenkennung verwendet die Firmennummer, damit eine Neunummerierung der CKAN-Zeilen unveraenderte Firmen nicht erneut importiert.
+
+### Tel Aviv / kommunale Gewerbelizenzen
+
+Die zweite kommunale Quelle ist [ArcGIS-Layer 964 der Stadt Tel Aviv-Yafo](https://gisn.tel-aviv.gov.il/arcgis/rest/services/IView2/MapServer/964). Sie wird einmal pro Lauf vollstaendig paginiert und fuer alle Kategorien desselben Laufs wiederverwendet. Unterstuetzte Lizenzcodes und ergaenzende Beschreibungen werden konservativ den zehn Kategorien zugeordnet. Abgelaufene Lizenzen sowie Datensaetze ohne Name, Strasse oder stabile Geschaeftskennung werden uebersprungen. Telefonnummern und Hausnummern sind in diesem Feed nicht enthalten und werden nicht ergaenzt.
+
+Die Quellenkennung verwendet Geschaeftsnummer, Untergeschaeftsnummer und Lizenzart; die fluechtige ArcGIS-Zeilennummer wird nur zur Pagination verwendet. Damit erzeugt eine Neunummerierung der Tabelle keine erneute Verarbeitung unveraenderter Eintraege. HTTP-, API- und Paginationfehler werden als Fehler gemeldet und nicht als leere Kombination ausgegeben.
 
 ## Konfiguration
 
@@ -80,19 +98,22 @@ Beispiel fuer feinere Ziele:
   ],
   "quotas": {
     "per_category": null,
-    "per_neighborhood": null,
-    "max_new_per_day": 1000
+    "per_neighborhood": null
   }
 }
 ```
 
-Der Worker bildet aus `cities` und `categories` alle Kombinationen. `targets_per_run` waehlt per persistentem Round-Robin die naechsten zehn Kombinationen aus. `businesses_per_combination` begrenzt jede davon auf 100 recherchierte Kandidaten; `target_per_run` bleibt das globale Maximum des Laufs. Importfaehige Eintraege derselben Kombination werden in eigenen Batches von hoechstens `batch_size` gesendet. Weniger Quelldaten oder Dubletten koennen dazu fuehren, dass ein Batch kleiner als 100 ist.
+Der Worker bildet aus `cities` und `categories` alle Kombinationen. Der persistente Scheduler sortiert zuerst unbesuchte und danach die am laengsten nicht bearbeiteten Kombinationen. `targets_per_run` begrenzt die Anzahl produktiver Kombinationen, nicht die Anzahl gepruefter Kombinationen. Bei leeren Quellen oder ausschliesslich unbrauchbaren Kandidaten geht der Lauf zur naechsten Kombination weiter, ohne einen der zehn Plaetze zu verbrauchen. Pro Lauf wird jede konfigurierte Kombination hoechstens einmal besucht; wenn alle ausgeschoepft sind, endet der Lauf auch unterhalb von 1000.
+
+`businesses_per_combination` begrenzt erfolgreiche Neuanlagen und Aktualisierungen pro Kombination auf 100. `target_per_run` begrenzt deren Gesamtzahl pro Lauf auf 1000. Nach Dubletten, beanspruchten Seiten oder ungueltigen Eintraegen wird weitergesucht, soweit die Quelle weitere Daten liefert. Eine Kombination mit wenigstens einem erfolgreichen Eintrag zaehlt als produktiv, auch wenn weniger als 100 verfuegbar sind. Batches enthalten ausschliesslich Eintraege derselben Kombination und hoechstens `batch_size` Eintraege. Offene Batches werden mit ihrer bestehenden Idempotenz-ID wiederholt und verbrauchen dieselben Laufgrenzen. Ein altes `quotas.max_new_per_day` wird nicht mehr angewendet; das Deployment entfernt den Schluessel.
 
 Der Fortschritt liegt in SQLite. Neue Kombinationen werden zuerst bearbeitet, danach beginnt automatisch der naechste Umlauf bei den am laengsten nicht verarbeiteten Kombinationen. `worker status` zeigt Gesamtzahl, bereits besuchte und die als Naechstes vorgesehenen Kombinationen. Manuelle Laeufe bewegen denselben Cursor wie Timerlaeufe.
 
-Eine konfigurierte Kombination liefert nur dann Businesses, wenn mindestens ein aktiver Source-Adapter diese Stadt und Kategorie unterstuetzt. Die Rotation ersetzt keine fehlende Datenquelle; das mitgelieferte CKAN-Profil deckt derzeit ausschliesslich Beersheba und seine zehn dokumentierten Kategorien ab.
+Das mitgelieferte Deployment-Profil `config/worker.rotation.json` aktiviert **alle 83 Staedte des Anwendungskatalogs mit jeweils denselben zehn Kategorien**, also 830 Kombinationen. Das landesweite Firmenregister deckt diese Staedte ab; die kommunalen Gewerbelizenzen aus Beersheba und Tel Aviv bleiben zusaetzlich aktiv. Eine unterstuetzte Kombination kann trotzdem leer sein, wenn keine aktiven, ausreichend vollstaendigen und eindeutig zuordenbaren Firmen vorliegen.
 
-Beispiel fuer das Aktivieren des vorhandenen Beersheba-Profils:
+Die Reports enthalten weiterhin `target_combinations` und zusaetzlich `scanned_target_combinations`, `productive_target_combinations`, `empty_target_combinations` und `unproductive_target_combinations`. Je Ziel werden `found`, `successful` und `planned` gespeichert. Auch die Admin-Logs erhalten diese Werte. So ist sichtbar, ob ein Lauf zehn produktive Kombinationen erreicht oder zusaetzlich leere Kombinationen geprueft hat.
+
+Beispiel fuer eine einzelne kommunale Quelle (fuer alle Katalogstaedte das Deployment-Profil verwenden):
 
 ```json
 {
@@ -160,6 +181,17 @@ Die bereits erzeugte lokale Credential-Datei mit `SVEEVEE_BUSINESS_IMPORT_*` und
 
 Nach dem Push und Pull des Repositories:
 
+Bei einer bestehenden Installation zuerst den Timer anhalten und warten, bis der aktuelle Import beendet ist:
+
+```bash
+sudo systemctl stop sveevee-worker.timer
+systemctl show sveevee-worker.service --property=ActiveState --property=SubState
+```
+
+Erst bei `ActiveState=inactive` (oder nach einem bereits fehlgeschlagenen Lauf) installieren. Der Installer verweigert ein Update, solange Timer oder Worker aktiv sind, damit keine PHP-Dateien waehrend eines Imports ersetzt werden.
+
+Vor dem Update eine konsistente Sicherung von `/var/lib/sveevee-worker/worker.sqlite` anlegen. Beim ersten Start ergaenzt der Worker lokale Metadaten fuer offene Import-Batches; vorhandene Businesses, Laufpositionen und Batch-IDs bleiben erhalten.
+
 ```bash
 sudo apt update
 sudo apt install php-cli php-sqlite3 php-curl php-xml php-mbstring php-intl rsync
@@ -168,6 +200,19 @@ sudo bash sveevee-worker/deploy/install.sh
 ```
 
 Der Installer kopiert den Worker nach `/var/www/sveevee-worker`, erstellt den Systemnutzer und installiert Service und Timer. Er startet und aktiviert nichts automatisch.
+
+Der Installer sichert ein vorhandenes `/etc/systemd/system/sveevee-worker.timer.d/schedule.conf` unter `/var/backups/sveevee` und ersetzt es durch den Zehn-Minuten-Zeitplan. Damit bleiben alte taegliche oder stuendliche Overrides nicht versehentlich wirksam.
+
+Das Profil fuer alle Katalogstaedte zuerst anzeigen, dann anwenden:
+
+```bash
+sudo php /var/www/sveevee-worker/deploy/configure-rotation.php
+sudo php /var/www/sveevee-worker/deploy/configure-rotation.php --apply
+```
+
+Die Umstellung setzt 1000 Eintraege pro Lauf, zehn produktive Kombinationen, 100 Eintraege pro Kombination sowie alle 83 Katalogstaedte mit dem landesweiten Register und den beiden kommunalen Quellen. Sie entfernt das Tageslimit, sichert die bestehende `worker.json` und erhaelt API-Einstellungen, Speicherpfade und andere installationsspezifische Einstellungen. Ohne `--apply` wird die bestehende Konfiguration nicht veraendert. Zugangsdaten aus `worker.env` werden weder gelesen noch ausgegeben.
+
+Auch das Laravel-Backend mitdeployen: Es nimmt die neuen Log-Zaehler an und setzt das Standardlimit der Import-API auf 7200 Requests pro Stunde bei weiterhin 120 pro Minute. Sechs volle Laeufe benoetigen bereits etwa 6000 Dublettenpruefungen zuzueglich Batch- und Log-Requests. Falls `/var/www/sveevee/backend/.env` noch explizit `BUSINESS_IMPORT_REQUESTS_PER_HOUR=5000` setzt, den Wert beim Update auf `7200` aendern und den Laravel-Konfigurationscache erneuern. Das ist eine Request-Grenze, kein Tageslimit fuer angelegte Seiten.
 
 ### 2. OAuth-Zugangsdaten eintragen
 
@@ -227,12 +272,13 @@ sudo -u sveevee-worker /var/www/sveevee-worker/bin/worker run \
 
 Auch beim 1000er-Lauf bleiben die einzelnen API-Batches auf maximal 100 begrenzt und enthalten nur Businesses derselben Stadt-Kategorie-Kombination. 1000 ist ein Maximum: Eine Kombination mit weniger neuen Quelldaten, Dubletten oder nicht aufloesbaren Datensaetzen erzeugt entsprechend weniger neue Seiten.
 
-### 7. Taegliche Ausfuehrung aktivieren
+### 7. Ausfuehrung alle zehn Minuten aktivieren
 
 Erst nach kontrolliertem Dry-Run, echtem Test und Freigabe aller aktiven Quellen:
 
 ```bash
 sudo systemctl enable --now sveevee-worker.timer
+sudo systemctl restart sveevee-worker.timer
 systemctl list-timers sveevee-worker.timer
 ```
 
@@ -246,10 +292,16 @@ sudo -u sveevee-worker /var/www/sveevee-worker/bin/worker status \
   --env-file=/etc/sveevee-worker/worker.env
 ```
 
+Der Timer ist auf Minute 00, 10, 20, 30, 40 und 50 in `Asia/Jerusalem` eingestellt, ohne Zufallsverzoegerung. Dauert ein Lauf laenger als zehn Minuten, startet keine zweite Instanz parallel; systemd und die Prozesssperre verhindern Ueberlappungen. `Persistent=true` bleibt aktiv.
+
 SQLite, Logs und Reports liegen unter `/var/lib/sveevee-worker`. Diese Daten muessen erhalten bleiben, damit der Worker erfolgreiche Imports, sichere Batch-Retries und noch nicht an den Admin-Log uebertragene Laufberichte kennt.
 
 ## Tests
 
 ```bash
 php -d xdebug.mode=off tests/run.php
+php -d xdebug.mode=off tests/deploy-config.php
+php -d xdebug.mode=off tests/tel_aviv_source.php
+php -d xdebug.mode=off tests/company_categories.php
+php -d xdebug.mode=off tests/companies_source.php
 ```

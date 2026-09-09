@@ -24,6 +24,7 @@ use Sveevee\Worker\Research\JsonSeedSource;
 use Sveevee\Worker\Research\OfficialWebsiteEnricher;
 use Sveevee\Worker\Research\OverpassSource;
 use Sveevee\Worker\Research\RobotsPolicy;
+use Sveevee\Worker\Research\TelAvivBusinessLicenseSource;
 use Sveevee\Worker\Storage\Database;
 use Sveevee\Worker\Storage\WorkerRepository;
 use Sveevee\Worker\Support\Environment;
@@ -88,6 +89,9 @@ final class Application
             $api = null;
 
             try {
+                $research = null;
+                // Scan the complete ordered schedule; empty combinations do not use a productive slot.
+                $selectedTargets = $targetScheduler->next($targets, max(1, count($targets)));
                 if (in_array($command, ['research', 'run'], true)) {
                     [$sources, $enrichers] = $this->researchComponents(
                         $config, $repository, $normalizer, $merger, $openingHours
@@ -95,32 +99,25 @@ final class Application
                     if ($sources === []) {
                         throw new RuntimeException('No research source is enabled in the worker config.');
                     }
-                    $selectedTargets = $targetScheduler->next($targets, $targetsPerRun);
-                    (new ResearchService(
-                        $sources,
-                        $enrichers,
-                        $selectedTargets,
-                        $normalizer,
-                        $repository,
-                        $logger,
-                        (array) $config->get('quotas', []),
-                        $config->int('businesses_per_combination', $limit),
-                    ))->research($runId, $limit, $report);
+                    $research = new ResearchService(
+                        $sources, $enrichers, $selectedTargets, $normalizer, $repository, $logger,
+                        $config->int('businesses_per_combination', 100), $targetsPerRun,
+                    );
+                    if ($command === 'research') {
+                        $research->research($runId, $limit, $report);
+                    }
                 }
 
                 if (in_array($command, ['import', 'run'], true)) {
                     $api = $this->api($config);
-                    $dailyLimit = $config->get('quotas.max_new_per_day');
                     (new ImportService(
-                        $api,
-                        $repository,
-                        $merger,
-                        $logger,
+                        $api, $repository, $merger, $logger,
                         min(100, $config->int('batch_size', 100)),
-                        is_numeric($dailyLimit) && (int) $dailyLimit > 0 ? (int) $dailyLimit : null,
-                    ))->import($runId, $limit, $dryRun, $report);
+                    ))->runTargets(
+                        $runId, $selectedTargets, $limit, $targetsPerRun,
+                        $config->int('businesses_per_combination', 100), $dryRun, $report, $research,
+                    );
                 }
-
                 $written = $report->write($paths['reports']);
                 $repository->finishRun($runId, 'completed', $written['path'], $written['report']);
                 $repository->queueRunLog($runId, $written['report']);
@@ -131,6 +128,7 @@ final class Application
                     'summary' => array_intersect_key($written['report'], array_flip([
                         'found', 'new', 'existing', 'updated', 'duplicates',
                         'incomplete', 'failed', 'imported', 'target_combinations',
+                        'productive_target_combinations', 'empty_target_combinations',
                         'duration_seconds',
                     ])),
                 ]);
@@ -186,6 +184,10 @@ final class Application
         $dataGov = $config->source('data_gov_ckan');
         if (($dataGov['enabled'] ?? false) === true) {
             $sources[] = new DataGovCkanSource($dataGov, $http, $repository, (string) $userAgent);
+        }
+        $telAviv = $config->source('tel_aviv_business_licenses');
+        if (($telAviv['enabled'] ?? false) === true) {
+            $sources[] = new TelAvivBusinessLicenseSource($telAviv, $http, $repository, (string) $userAgent);
         }
         $json = $config->source('json_seed');
         if (($json['enabled'] ?? false) === true) {
@@ -280,6 +282,7 @@ final class Application
         }
         $needsResearchHttp = in_array($command, ['research', 'run'], true)
             && ($config->bool('sources.data_gov_ckan.enabled')
+                || $config->bool('sources.tel_aviv_business_licenses.enabled')
                 || $config->bool('sources.overpass.enabled')
                 || $config->bool('sources.official_website.enabled'));
         $needsHttp = in_array($command, ['import', 'run'], true) || $needsResearchHttp;
@@ -327,15 +330,18 @@ final class Application
             $argument = $arguments[$index];
             if ($argument === '--dry-run') {
                 $options['dry_run'] = true;
+
                 continue;
             }
             foreach (['limit', 'config', 'env-file'] as $name) {
                 if ($argument === '--'.$name && isset($arguments[$index + 1])) {
                     $options[str_replace('-', '_', $name)] = $arguments[++$index];
+
                     continue 2;
                 }
                 if (str_starts_with($argument, '--'.$name.'=')) {
                     $options[str_replace('-', '_', $name)] = substr($argument, strlen($name) + 3);
+
                     continue 2;
                 }
             }

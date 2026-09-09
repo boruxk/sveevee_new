@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 require dirname(__DIR__).'/bootstrap.php';
 
+set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
+    if (! (error_reporting() & $severity)) {
+        return false;
+    }
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
 use Sveevee\Worker\Api\ApiException;
 use Sveevee\Worker\Api\OAuthTokenProvider;
 use Sveevee\Worker\Api\SveeveeApiClient;
@@ -23,8 +30,8 @@ use Sveevee\Worker\Pipeline\ResearchTargetScheduler;
 use Sveevee\Worker\Pipeline\RunLogPublisher;
 use Sveevee\Worker\Reporting\RunReport;
 use Sveevee\Worker\Research\DataGovCkanSource;
-use Sveevee\Worker\Research\RobotsRules;
 use Sveevee\Worker\Research\OverpassSource;
+use Sveevee\Worker\Research\RobotsRules;
 use Sveevee\Worker\Research\SourceAdapterInterface;
 use Sveevee\Worker\Storage\Database;
 use Sveevee\Worker\Storage\WorkerRepository;
@@ -36,8 +43,13 @@ use Sveevee\Worker\Support\Uuid;
 final class FakeGateway implements SveeveeGateway
 {
     public array $batchRequests = [];
+
+    public array $itemStatuses = [];
+
     public array $runReports = [];
+
     public bool $failNextBatch = false;
+
     public bool $failNextRunReport = false;
 
     public function checkDuplicate(array $business): array
@@ -97,7 +109,7 @@ final class FakeGateway implements SveeveeGateway
 
         $items = [];
         foreach ($request['businesses'] as $index => $business) {
-            $operation = isset($business['id']) ? 'updated' : 'created';
+            $operation = $this->itemStatuses[$business['name'] ?? ''] ?? (isset($business['id']) ? 'updated' : 'created');
             $items[] = [
                 'position' => $index + 1,
                 'status' => $operation,
@@ -170,7 +182,7 @@ final class CombinationSource implements SourceAdapterInterface
     public function research(ResearchTarget $target, int $limit): iterable
     {
         $this->calls[] = ['target' => $target->key(), 'limit' => $limit];
-        foreach (range(1, $limit) as $number) {
+        for ($number = 1; $number <= min($limit, 500); $number++) {
             $identity = $target->key().'|'.$number;
             yield [
                 'type' => 'business',
@@ -398,13 +410,12 @@ $test('research processes ten combinations with an independent per-combination l
         new BusinessNormalizer(new OpeningHoursParser, $cities),
         $repository,
         $logger,
-        [],
         3,
     ))->research($report->runId, 30, $report);
 
     $result = $report->toArray();
     $assert(count($source->calls) === 10);
-    $assert(array_unique(array_column($source->calls, 'limit')) === [3]);
+    $assert(array_unique(array_column($source->calls, 'limit')) === [PHP_INT_MAX]);
     $assert($result['found'] === 30);
     $assert($result['new'] === 30);
     $assert($result['target_combinations'] === 10);
@@ -548,7 +559,7 @@ $test('repository deduplicates locally and import handles create update and clai
     $gateway = new FakeGateway;
     $report = new RunReport(Uuid::v4(), 'import', false);
     $repository->startRun($report->runId, 'import', false, 'test');
-    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100, null))
+    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100))
         ->import($report->runId, 10, false, $report);
     $status = $repository->statusSummary()['businesses'];
     $assert(($status['imported'] ?? 0) === 1);
@@ -566,14 +577,14 @@ $test('retry reuses the persisted batch UUID', function () use ($assert): void {
     $firstGateway->failNextBatch = true;
     $firstReport = new RunReport(Uuid::v4(), 'import', false);
     $repository->startRun($firstReport->runId, 'import', false, 'test');
-    (new ImportService($firstGateway, $repository, new BusinessMerger, $logger, 100, null))
+    (new ImportService($firstGateway, $repository, new BusinessMerger, $logger, 100))
         ->import($firstReport->runId, 10, false, $firstReport);
     $firstId = $firstGateway->batchRequests[0]['client_import_id'];
 
     $secondGateway = new FakeGateway;
     $secondReport = new RunReport(Uuid::v4(), 'import', false);
     $repository->startRun($secondReport->runId, 'import', false, 'test');
-    (new ImportService($secondGateway, $repository, new BusinessMerger, $logger, 100, null))
+    (new ImportService($secondGateway, $repository, new BusinessMerger, $logger, 100))
         ->import($secondReport->runId, 10, false, $secondReport);
     $assert($secondGateway->batchRequests[0]['client_import_id'] === $firstId);
     $assert(($repository->statusSummary()['businesses']['imported'] ?? 0) === 1);
@@ -584,7 +595,7 @@ $test('dry run never calls the write endpoint', function () use ($assert): void 
     $repository->upsertCandidate(testCandidate('Dry Run Business'));
     $gateway = new FakeGateway;
     $report = new RunReport(Uuid::v4(), 'run', true);
-    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100, null))
+    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100))
         ->import($report->runId, 10, true, $report);
     $assert($gateway->batchRequests === []);
     $assert(($repository->statusSummary()['businesses']['pending'] ?? 0) === 1);
@@ -598,16 +609,18 @@ $test('worker splits large work blocks into batches of at most 100', function ()
     $gateway = new FakeGateway;
     $report = new RunReport(Uuid::v4(), 'import', false);
     $repository->startRun($report->runId, 'import', false, 'test');
-    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100, null))
+    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100))
         ->import($report->runId, 205, false, $report);
     $sizes = array_map(static fn (array $request): int => count($request['businesses']), $gateway->batchRequests);
-    $assert($sizes === [100, 100, 5], 'Expected batches of 100, 100, and 5.');
+    $assert($sizes === [100], 'A combination can import at most 100 businesses per run.');
 
     $secondReport = new RunReport(Uuid::v4(), 'import', false);
     $repository->startRun($secondReport->runId, 'import', false, 'test');
-    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100, null))
+    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100))
         ->import($secondReport->runId, 205, false, $secondReport);
-    $assert(count($gateway->batchRequests) === 3, 'Successful businesses must not be imported again.');
+    $assert(count($gateway->batchRequests) === 2, 'Next run should consume another 100 from the pending backlog.');
+    $assert(($repository->statusSummary()['businesses']['imported'] ?? 0) === 200);
+    $assert(($repository->statusSummary()['businesses']['pending'] ?? 0) === 5);
 });
 
 $test('import batches never mix city category combinations', function () use ($assert): void {
@@ -627,7 +640,7 @@ $test('import batches never mix city category combinations', function () use ($a
     $gateway = new FakeGateway;
     $report = new RunReport(Uuid::v4(), 'import', false);
     $repository->startRun($report->runId, 'import', false, 'test');
-    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100, null))
+    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100))
         ->import($report->runId, 120, false, $report);
 
     $sizes = array_map(static fn (array $request): int => count($request['businesses']), $gateway->batchRequests);
@@ -687,6 +700,8 @@ $test('research CLI persists seed data and writes a JSON report', function () us
     $assert($report['found'] === 1 && $report['new'] === 1);
     unset($database);
 });
+
+require __DIR__.'/pipeline.php';
 
 function testRepository(array $cities = ['Tel Aviv', 'Jerusalem']): array
 {
@@ -773,6 +788,14 @@ function removeTree(string $path): void
     if (! is_dir($path)) {
         return;
     }
+    $resolved = realpath($path);
+    $temporaryRoot = realpath(sys_get_temp_dir());
+    if ($resolved === false || $temporaryRoot === false
+        || strcasecmp(dirname($resolved), $temporaryRoot) !== 0
+        || ! preg_match('/^sveevee-worker-(?:test|cli)-[a-f0-9]+$/D', basename($resolved))) {
+        throw new RuntimeException('Refusing cleanup outside an allocated worker test directory.');
+    }
+    $path = $resolved;
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS),
         RecursiveIteratorIterator::CHILD_FIRST

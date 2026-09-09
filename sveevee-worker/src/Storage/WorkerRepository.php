@@ -176,8 +176,7 @@ SQL);
         string $url,
         int $refreshAfterDays,
         ?string $rawHash = null,
-    ): bool
-    {
+    ): bool {
         $statement = $this->pdo->prepare(
             'SELECT status, checked_at, raw_hash FROM researched_urls WHERE adapter = ? AND url_hash = ?'
         );
@@ -253,7 +252,8 @@ SQL);
 
     public function markResearchTargetCompleted(ResearchTarget $target, string $runId): void
     {
-        $now = Clock::now();
+        // Distinct visits within one second must keep their order across runs.
+        $now = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.uP');
         $statement = $this->pdo->prepare(<<<'SQL'
 INSERT INTO research_target_progress (
     target_key, city, category_key, neighborhood, completed_runs,
@@ -291,6 +291,46 @@ SQL);
         return array_map($this->decodeBusinessRow(...), $statement->fetchAll());
     }
 
+    public function business(int $id): array
+    {
+        return $this->decodeBusinessRow($this->businessRow($id));
+    }
+
+    /** Keyset pagination permits state changes while consuming the pending queue. */
+    public function pendingForTarget(ResearchTarget $target): iterable
+    {
+        $afterId = 0;
+        do {
+            $statement = $this->pdo->prepare(<<<'SQL'
+SELECT * FROM businesses
+WHERE status = 'pending' AND id > ?
+  AND json_extract(payload_json, '$.address.city') = ?
+  AND json_extract(payload_json, '$.category_key') = ?
+ORDER BY id LIMIT 100
+SQL);
+            $statement->execute([$afterId, $target->city, $target->categoryKey]);
+            $rows = $statement->fetchAll();
+            foreach ($rows as $row) {
+                $afterId = (int) $row['id'];
+                yield $this->decodeBusinessRow($row);
+            }
+        } while (count($rows) === 100);
+    }
+
+    public function pendingTargets(): array
+    {
+        $rows = $this->pdo->query(<<<'SQL'
+SELECT json_extract(payload_json, '$.address.city') AS city,
+       json_extract(payload_json, '$.category_key') AS category
+FROM businesses WHERE status IN ('pending', 'queued')
+GROUP BY city, category ORDER BY MIN(id)
+SQL)->fetchAll();
+
+        return array_map(static fn (array $row): ResearchTarget => new ResearchTarget(
+            (string) $row['city'], (string) $row['category'],
+        ), $rows);
+    }
+
     public function markBusiness(
         int $id,
         string $status,
@@ -323,6 +363,13 @@ SQL);
             throw new RuntimeException('A worker batch must contain between 1 and 100 businesses.');
         }
 
+        foreach ($items as &$item) {
+            $business = $this->business((int) $item['business_id']);
+            $item['payload_hash'] ??= $business['payload_hash'];
+            $item['target_city'] ??= $business['payload']['address']['city'];
+            $item['target_category'] ??= $business['payload']['category_key'];
+        }
+        unset($item);
         $batchId = Uuid::v4();
         $request = [
             'client_import_id' => $batchId,
@@ -336,12 +383,12 @@ SQL);
             );
             $statement->execute([$batchId, $runId, Json::hash($request['businesses']), Json::encode($request), 'pending', $now, $now]);
             $itemStatement = $this->pdo->prepare(
-                'INSERT INTO import_batch_items (client_import_id, position, business_id) VALUES (?, ?, ?)'
+                'INSERT INTO import_batch_items (client_import_id, position, business_id, payload_hash, target_city, target_category) VALUES (?, ?, ?, ?, ?, ?)'
             );
             $queue = $this->pdo->prepare("UPDATE businesses SET status = 'queued' WHERE id = ? AND status = 'pending'");
             foreach (array_values($items) as $index => $item) {
                 $position = $index + 1;
-                $itemStatement->execute([$batchId, $position, $item['business_id']]);
+                $itemStatement->execute([$batchId, $position, $item['business_id'], $item['payload_hash'], $item['target_city'], $item['target_category']]);
                 $queue->execute([$item['business_id']]);
                 if ($queue->rowCount() !== 1) {
                     throw new RuntimeException('A business changed state while the batch was being prepared.');
@@ -366,7 +413,7 @@ SQL);
 
         return array_map(function (array $row): array {
             $items = $this->pdo->prepare(
-                'SELECT position, business_id FROM import_batch_items WHERE client_import_id = ? ORDER BY position'
+                'SELECT position, business_id, payload_hash, target_city, target_category FROM import_batch_items WHERE client_import_id = ? ORDER BY position'
             );
             $items->execute([$row['client_import_id']]);
             $row['request'] = Json::decode($row['request_json']);
@@ -374,6 +421,12 @@ SQL);
 
             return $row;
         }, $rows);
+    }
+
+    public function requeueChangedBusiness(int $id, ?string $submittedHash): void
+    {
+        $statement = $this->pdo->prepare("UPDATE businesses SET status = 'pending' WHERE id = ? AND status IN ('imported', 'updated', 'duplicate', 'invalid', 'not_found', 'failed') AND (? IS NULL OR payload_hash != ?)");
+        $statement->execute([$id, $submittedHash, $submittedHash]);
     }
 
     public function markBatchAttempt(string $batchId): void
@@ -425,17 +478,6 @@ SQL);
             $this->pdo->rollBack();
             throw $exception;
         }
-    }
-
-    public function countNewImportsToday(): int
-    {
-        $midnight = gmdate('Y-m-d').'T00:00:00+00:00';
-        $statement = $this->pdo->prepare(
-            "SELECT COUNT(*) FROM businesses WHERE last_operation = 'created' AND imported_at >= ?"
-        );
-        $statement->execute([$midnight]);
-
-        return (int) $statement->fetchColumn();
     }
 
     public function statusSummary(): array

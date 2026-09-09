@@ -6,6 +6,7 @@ namespace Sveevee\Worker\Pipeline;
 
 use Sveevee\Worker\Api\ApiException;
 use Sveevee\Worker\Api\SveeveeGateway;
+use Sveevee\Worker\Config\ResearchTarget;
 use Sveevee\Worker\Domain\BusinessMerger;
 use Sveevee\Worker\Reporting\RunReport;
 use Sveevee\Worker\Storage\WorkerRepository;
@@ -13,186 +14,228 @@ use Sveevee\Worker\Support\Logger;
 
 final class ImportService
 {
+    private array $seenBusinessIds = [];
+
     public function __construct(
         private readonly SveeveeGateway $api,
         private readonly WorkerRepository $repository,
         private readonly BusinessMerger $merger,
         private readonly Logger $logger,
         private readonly int $batchSize,
-        private readonly ?int $maximumNewPerDay,
     ) {}
 
     public function import(string $runId, int $limit, bool $dryRun, RunReport $report): void
     {
-        if (! $dryRun && ! $this->resumePendingBatches($report)) {
+        $targets = $this->repository->pendingTargets();
+        $targets = (new ResearchTargetScheduler($this->repository))->next($targets, max(1, count($targets)));
+        $this->runTargets($runId, $targets, $limit, 10, 100, $dryRun, $report);
+    }
+
+    /** Visit each scheduled combination once; only successful combinations use a slot. */
+    public function runTargets(
+        string $runId,
+        array $targets,
+        int $limit,
+        int $productiveLimit,
+        int $perCombination,
+        bool $dryRun,
+        RunReport $report,
+        ?ResearchService $research = null,
+    ): void {
+        $this->seenBusinessIds = [];
+        $budget = new RunBudget(min(1000, max(1, $limit)), min(10, max(1, $productiveLimit)), min(100, max(1, $perCombination)));
+        if (! $this->resumePendingBatches($runId, $dryRun, $report, $budget)) {
             return;
         }
 
-        $readyByCombination = [];
-        $plannedCreates = 0;
-        $createdToday = $this->repository->countNewImportsToday();
-        foreach ($this->repository->pendingBusinesses(max(1, $limit)) as $business) {
-            $payload = $business['payload'];
+        foreach ($targets as $target) {
+            if ($budget->remaining($target) === 0) {
+                continue;
+            }
+            $foundBefore = $report->metric('found');
+            $ready = [];
+            $completed = false;
             try {
-                $duplicate = $this->api->checkDuplicate($payload);
-                $matches = is_array($duplicate['matches'] ?? null) ? $duplicate['matches'] : [];
-                if ($matches === []) {
-                    $isCreate = ! isset($payload['id']);
-                    if ($isCreate && $this->maximumNewPerDay !== null
-                        && $createdToday + $plannedCreates >= $this->maximumNewPerDay) {
-                        $this->logger->info('Daily new-business limit reached; remaining candidates stay pending.');
+                foreach ($this->candidates($runId, $target, $report, $research) as $business) {
+                    $item = $this->prepareBusiness($business, $dryRun, $report);
+                    if ($item === null) {
+                        continue;
+                    }
+                    if ($dryRun) {
+                        $budget->record($target);
+                        $report->target($target->key(), $target->city, $target->categoryKey, 0, 0, 1);
+                    } else {
+                        $ready[] = $item;
+                        if (count($ready) >= min(max(1, $this->batchSize), 100, $budget->remaining($target))) {
+                            if (! $this->sendNewBatch($runId, $ready, $report, $budget)) {
+                                return;
+                            }
+                            $ready = [];
+                        }
+                    }
+                    if ($budget->remaining($target) === 0) {
                         break;
                     }
-                    $report->increment($isCreate ? 'planned_imports' : 'planned_updates');
-                    if ($isCreate) {
-                        $plannedCreates++;
-                    }
-                    if (! $this->queueReady(
-                        $readyByCombination,
-                        $payload,
-                        ['business_id' => $business['id'], 'payload' => $payload],
-                        $runId,
-                        $dryRun,
-                        $report,
-                    )) {
-                        return;
-                    }
-                } else {
-                    $report->increment('existing');
-                    $report->increment('duplicates');
-                    [$remote, $reason] = $this->resolveRemote($payload, $matches);
-                    if ($remote === null) {
-                        $message = $reason ?? 'Matching Sveevee page could not be resolved safely.';
-                        if (! $dryRun) {
-                            $this->repository->markBusiness(
-                                $business['id'], 'failed', errorCode: 'duplicate_unresolved',
-                                errorMessage: $message, matches: $matches
-                            );
-                        }
-                        $report->increment('failed');
-                        $report->error('duplicate_resolution', $message, ['business_id' => $business['id']]);
-                        continue;
-                    }
-                    if (($remote['can_update'] ?? $remote['is_unclaimed'] ?? false) !== true) {
-                        if (! $dryRun) {
-                            $this->repository->markBusiness(
-                                $business['id'], 'claimed', (int) $remote['id'],
-                                'claimed', 'Claimed business pages cannot be changed.', $matches
-                            );
-                        }
-                        continue;
-                    }
-
-                    $patch = $this->merger->patchForRemote($payload, $remote);
-                    if (! $this->merger->hasRemoteChanges($patch)) {
-                        if (! $dryRun) {
-                            $this->repository->markBusiness(
-                                $business['id'], 'duplicate', (int) $remote['id'],
-                                null, null, $matches
-                            );
-                        }
-                        continue;
-                    }
-                    $report->increment('planned_updates');
-                    if (! $this->queueReady(
-                        $readyByCombination,
-                        $payload,
-                        ['business_id' => $business['id'], 'payload' => $patch],
-                        $runId,
-                        $dryRun,
-                        $report,
-                    )) {
-                        return;
-                    }
                 }
-            } catch (ApiException $exception) {
-                if (! $dryRun) {
-                    $this->repository->markBusiness(
-                        $business['id'], 'failed', errorCode: $exception->reason,
-                        errorMessage: $exception->getMessage()
-                    );
-                }
-                $report->increment('failed');
-                $report->error('api_check', $exception->getMessage(), [
-                    'business_id' => $business['id'],
-                    'status' => $exception->status,
-                    'reason' => $exception->reason,
-                    'request_id' => $exception->requestId,
-                    'errors' => $exception->errors,
-                ]);
-            }
-        }
-
-        if (! $dryRun) {
-            foreach ($readyByCombination as $ready) {
-                if ($ready !== [] && ! $this->sendNewBatch($runId, $ready, $report)) {
+                if ($ready !== [] && ! $this->sendNewBatch($runId, $ready, $report, $budget)) {
                     return;
                 }
+                $completed = true;
+            } finally {
+                $report->target($target->key(), $target->city, $target->categoryKey, $report->metric('found') - $foundBefore);
+                if ($completed && ! $dryRun) {
+                    $this->repository->markResearchTargetCompleted($target, $runId);
+                }
             }
         }
     }
 
-    private function queueReady(
-        array &$groups,
-        array $business,
-        array $item,
-        string $runId,
-        bool $dryRun,
-        RunReport $report,
-    ): bool {
-        $key = $this->combinationKey($business);
-        $groups[$key] ??= [];
-        $groups[$key][] = $item;
-        if (count($groups[$key]) < $this->batchSize) {
-            return true;
-        }
-        if ($dryRun) {
-            $groups[$key] = [];
-
-            return true;
-        }
-
-        $ready = $groups[$key];
-        $groups[$key] = [];
-
-        return $this->sendNewBatch($runId, $ready, $report);
-    }
-
-    private function combinationKey(array $business): string
+    private function candidates(string $runId, ResearchTarget $target, RunReport $report, ?ResearchService $research): iterable
     {
-        $city = trim((string) ($business['address']['city'] ?? ''));
-        $category = trim((string) ($business['category_key'] ?? ''));
-
-        return hash('sha256', $city."\0".$category);
+        foreach ($this->repository->pendingForTarget($target) as $business) {
+            if (! isset($this->seenBusinessIds[$business['id']])) {
+                $this->seenBusinessIds[$business['id']] = true;
+                yield $business;
+            }
+        }
+        if ($research !== null) {
+            foreach ($research->candidates($runId, $target, $report) as $business) {
+                if (! isset($this->seenBusinessIds[$business['id']])) {
+                    $this->seenBusinessIds[$business['id']] = true;
+                    yield $business;
+                }
+            }
+        }
     }
 
-    private function resumePendingBatches(RunReport $report): bool
+    private function prepareBusiness(array $business, bool $dryRun, RunReport $report): ?array
+    {
+        $payload = $business['payload'];
+        try {
+            $duplicate = $this->api->checkDuplicate($payload);
+            $matches = is_array($duplicate['matches'] ?? null) ? $duplicate['matches'] : [];
+            if ($matches === []) {
+                $report->increment(isset($payload['id']) ? 'planned_updates' : 'planned_imports');
+
+                return ['business_id' => $business['id'], 'payload' => $payload, 'payload_hash' => $business['payload_hash'], 'target_city' => $payload['address']['city'], 'target_category' => $payload['category_key']];
+            }
+
+            $report->increment('existing');
+            $report->increment('duplicates');
+            [$remote, $reason] = $this->resolveRemote($payload, $matches);
+            if ($remote === null) {
+                $message = $reason ?? 'Matching Sveevee page could not be resolved safely.';
+                if (! $dryRun) {
+                    $this->repository->markBusiness($business['id'], 'failed', errorCode: 'duplicate_unresolved', errorMessage: $message, matches: $matches);
+                }
+                $report->increment('failed');
+                $report->error('duplicate_resolution', $message, ['business_id' => $business['id']]);
+
+                return null;
+            }
+            if (($remote['can_update'] ?? $remote['is_unclaimed'] ?? false) !== true) {
+                if (! $dryRun) {
+                    $this->repository->markBusiness($business['id'], 'claimed', (int) $remote['id'], 'claimed', 'Claimed business pages cannot be changed.', $matches);
+                }
+
+                return null;
+            }
+            $patch = $this->merger->patchForRemote($payload, $remote);
+            if (! $this->merger->hasRemoteChanges($patch)) {
+                if (! $dryRun) {
+                    $this->repository->markBusiness($business['id'], 'duplicate', (int) $remote['id'], null, null, $matches);
+                }
+
+                return null;
+            }
+            $report->increment('planned_updates');
+
+            return ['business_id' => $business['id'], 'payload' => $patch, 'payload_hash' => $business['payload_hash'], 'target_city' => $payload['address']['city'], 'target_category' => $payload['category_key']];
+        } catch (ApiException $exception) {
+            if (! $dryRun) {
+                $this->repository->markBusiness($business['id'], 'failed', errorCode: $exception->reason, errorMessage: $exception->getMessage());
+            }
+            $report->increment('failed');
+            $report->error('api_check', $exception->getMessage(), [
+                'business_id' => $business['id'], 'status' => $exception->status,
+                'reason' => $exception->reason, 'request_id' => $exception->requestId,
+                'errors' => $exception->errors,
+            ]);
+
+            return null;
+        }
+    }
+
+    private function batchTarget(array $batch, array $item): ResearchTarget
+    {
+        $submitted = $batch['request']['businesses'][(int) $item['position'] - 1] ?? [];
+        $current = $this->repository->business((int) $item['business_id'])['payload'];
+
+        return new ResearchTarget(
+            (string) ($item['target_city'] ?? $submitted['address']['city'] ?? $current['address']['city'] ?? ''),
+            (string) ($item['target_category'] ?? $submitted['category_key'] ?? $current['category_key'] ?? ''),
+        );
+    }
+
+    private function resumePendingBatches(string $runId, bool $dryRun, RunReport $report, RunBudget $budget): bool
     {
         foreach ($this->repository->pendingBatches() as $batch) {
-            if (! $this->processBatch($batch, $report)) {
+            $targets = array_map(fn (array $item): ResearchTarget => $this->batchTarget($batch, $item), $batch['items']);
+            if (! $budget->fits($targets)) {
+                $report->error('budget_deferred', 'Pending batch is larger than the remaining run budget; its unchanged request is deferred.', [
+                    'client_import_id' => $batch['client_import_id'],
+                    'businesses' => count($batch['items']),
+                ]);
+
                 return false;
+            }
+            foreach ($batch['items'] as $item) {
+                $this->seenBusinessIds[(int) $item['business_id']] = true;
+            }
+            if ($dryRun) {
+                foreach ($targets as $index => $target) {
+                    $payload = $batch['request']['businesses'][$index];
+                    $report->increment(isset($payload['id']) ? 'planned_updates' : 'planned_imports');
+                    $budget->record($target);
+                    $report->target($target->key(), $target->city, $target->categoryKey, 0, 0, 1);
+                }
+            } else {
+                if (! $this->processBatch($batch, $report, $budget)) {
+                    return false;
+                }
+                $unique = [];
+                foreach ($targets as $target) {
+                    $unique[$target->key()] = $target;
+                    $report->target($target->key(), $target->city, $target->categoryKey, 0);
+                }
+                foreach ($unique as $target) {
+                    $this->repository->markResearchTargetCompleted($target, $runId);
+                }
             }
         }
 
         return true;
     }
 
-    private function sendNewBatch(string $runId, array $items, RunReport $report): bool
+    private function sendNewBatch(string $runId, array $items, RunReport $report, RunBudget $budget): bool
     {
         $batch = $this->repository->createBatch($runId, $items);
         $batch['items'] = array_map(
             static fn (array $item, int $index): array => [
                 'position' => $index + 1,
                 'business_id' => $item['business_id'],
+                'payload_hash' => $item['payload_hash'] ?? null,
+                'target_city' => $item['target_city'] ?? null,
+                'target_category' => $item['target_category'] ?? null,
             ],
             $items,
             array_keys($items)
         );
 
-        return $this->processBatch($batch, $report);
+        return $this->processBatch($batch, $report, $budget);
     }
 
-    private function processBatch(array $batch, RunReport $report): bool
+    private function processBatch(array $batch, RunReport $report, RunBudget $budget): bool
     {
         $batchId = (string) $batch['client_import_id'];
         $this->repository->markBatchAttempt($batchId);
@@ -236,6 +279,7 @@ final class ImportService
         foreach ($batch['items'] as $localItem) {
             $position = (int) $localItem['position'];
             $businessId = (int) $localItem['business_id'];
+            $target = $this->batchTarget($batch, $localItem);
             $item = $responseItems[$position] ?? null;
             if ($item === null) {
                 $this->repository->markBusiness(
@@ -243,6 +287,7 @@ final class ImportService
                     errorMessage: 'Batch response did not include this position.'
                 );
                 $report->increment('failed');
+
                 continue;
             }
 
@@ -251,13 +296,20 @@ final class ImportService
             if ($status === 'created') {
                 $this->repository->markBusiness($businessId, 'imported', $pageId, operation: 'created');
                 $report->increment('imported');
+                $this->repository->requeueChangedBusiness($businessId, $localItem['payload_hash'] ?? null);
+                $budget->record($target);
+                $report->target($target->key(), $target->city, $target->categoryKey, 0, 1);
             } elseif ($status === 'updated') {
                 $this->repository->markBusiness($businessId, 'updated', $pageId, operation: 'updated');
                 $report->increment('updated');
+                $this->repository->requeueChangedBusiness($businessId, $localItem['payload_hash'] ?? null);
+                $budget->record($target);
+                $report->target($target->key(), $target->city, $target->categoryKey, 0, 1);
             } elseif ($status === 'duplicate') {
                 $matches = is_array($item['matches'] ?? null) ? $item['matches'] : [];
                 $matchId = isset($matches[0]['id']) ? (int) $matches[0]['id'] : null;
                 $this->repository->markBusiness($businessId, 'duplicate', $matchId, matches: $matches);
+                $this->repository->requeueChangedBusiness($businessId, $localItem['payload_hash'] ?? null);
                 $report->increment('duplicates');
                 $report->increment('existing');
             } elseif ($status === 'claimed') {
@@ -274,6 +326,7 @@ final class ImportService
                 }
                 $localStatus = $status === 'invalid' ? 'invalid' : ($status === 'not_found' ? 'not_found' : 'failed');
                 $this->repository->markBusiness($businessId, $localStatus, errorCode: $status, errorMessage: $message);
+                $this->repository->requeueChangedBusiness($businessId, $localItem['payload_hash'] ?? null);
                 $report->increment('failed');
                 $report->error('batch_item', $message, [
                     'client_import_id' => $batchId,

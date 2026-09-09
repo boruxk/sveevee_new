@@ -8,8 +8,7 @@
   "categories": ["professionals.electricians"],
   "quotas": {
     "per_category": null,
-    "per_neighborhood": null,
-    "max_new_per_day": 1000
+    "per_neighborhood": null
   },
   "api": {
     "request_interval_ms": 550,
