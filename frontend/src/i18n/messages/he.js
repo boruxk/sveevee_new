@@ -749,6 +749,7 @@ export default {
 			minutesSeconds: '{minutes} דק׳ {seconds} שנ׳',
 			genericResult: 'אירוע מערכת',
 			workerSummary: '{found} נמצאו, {imported} יובאו, {updated} עודכנו, {failed} נכשלו',
+			govWorkerSummary: '{found} נמצאו, {imported} יובאו, {updated} עודכנו, {failed} שגיאות בסך הכול',
 			runId: 'מזהה הרצה',
 			mode: 'מצב',
 			dryRun: 'בדיקה ללא כתיבה',
@@ -762,10 +763,15 @@ export default {
 				updated: 'עודכנו',
 				duplicates: 'כפילויות',
 				incomplete: 'לא מלאים',
-				failed: 'נכשלו'
+				failed: 'נכשלו',
+				total_errors: 'סך השגיאות',
+				source_requests: 'בקשות למקורות',
+				source_errors: 'תקלות במקורות',
+				deferred_target_combinations: 'שילובים שנדחו'
 			},
 			combinations: 'שילובי עיר וקטגוריה',
 			foundCount: '{count} נמצאו',
+			deferredTarget: 'נדחה',
 			usedSources: 'מקורות שנעשה בהם שימוש',
 			errors: 'שגיאות',
 			rawData: 'נתונים גולמיים'

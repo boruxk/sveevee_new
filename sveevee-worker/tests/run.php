@@ -800,6 +800,7 @@ function ckanConfig(int $pageSize = 1000): array
         'min_interval_seconds' => 0,
         'max_retries' => 0,
         'page_size' => $pageSize,
+        'cache_refresh_seconds' => 0,
         'max_records_per_dataset' => 100,
         'refresh_after_days' => 365,
         'datasets' => [[

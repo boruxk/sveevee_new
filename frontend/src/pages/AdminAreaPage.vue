@@ -411,7 +411,7 @@
 			return t('admin.logs.genericResult')
 		}
 
-		return t('admin.logs.workerSummary', {
+		return t(logUsesGovSources(log) ? 'admin.logs.govWorkerSummary' : 'admin.logs.workerSummary', {
 			found: Number(log.data?.found || 0).toLocaleString(intlLocale.value),
 			imported: Number(log.data?.imported || 0).toLocaleString(intlLocale.value),
 			updated: Number(log.data?.updated || 0).toLocaleString(intlLocale.value),
@@ -421,6 +421,34 @@
 
 	function formattedLogData(log) {
 		return JSON.stringify(log?.data || {}, null, 2)
+	}
+
+	function logSourceMetricKeys(log) {
+		if (!logUsesGovSources(log)) return []
+		const data = log?.data || {}
+		return ['source_requests', 'source_errors', 'deferred_target_combinations']
+			.filter((key) => Object.hasOwn(data, key) && data[key] !== null)
+	}
+
+	function logUsesGovSources(log) {
+		const data = log?.data || {}
+		return Object.hasOwn(data, 'source_requests') || Object.hasOwn(data, 'source_errors') ||
+			logDataSourceLabels(log).some((source) => ['data.gov.il', 'gisn.tel-aviv.gov.il'].includes(source))
+	}
+
+	function logMetricLabel(metric, log) {
+		const key = metric === 'failed' && logUsesGovSources(log) ? 'total_errors' : metric
+		return t(`admin.logs.metricsLabels.${key}`)
+	}
+
+	function logMetricKeys(log) {
+		return ['found', 'new', 'existing', 'imported', 'updated', 'duplicates', 'incomplete', 'failed', ...logSourceMetricKeys(log)]
+	}
+
+	function logSourceSummary(log) {
+		return logSourceMetricKeys(log)
+			.map((key) => `${t(`admin.logs.metricsLabels.${key}`)}: ${Number(log.data[key]).toLocaleString(intlLocale.value)}`)
+			.join(' · ')
 	}
 
 	function logTargetCategoryLabel(key) {
@@ -1814,6 +1842,7 @@
 							<template #body-cell-summary="props">
 								<q-td :props="props">
 									<span class="log-summary">{{ logSummary(props.row) }}</span>
+									<small v-if="logSourceMetricKeys(props.row).length" class="log-summary">{{ logSourceSummary(props.row) }}</small>
 								</q-td>
 							</template>
 
@@ -2231,9 +2260,9 @@
 						<section v-if="selectedLog.type === 'business_import_run'" class="log-detail-section">
 							<h3>{{ t('admin.logs.metrics') }}</h3>
 							<div class="log-metrics">
-								<div v-for="metric in ['found', 'new', 'existing', 'imported', 'updated', 'duplicates', 'incomplete', 'failed']" :key="metric">
+								<div v-for="metric in logMetricKeys(selectedLog)" :key="metric">
 									<strong>{{ Number(selectedLog.data?.[metric] || 0).toLocaleString(intlLocale) }}</strong>
-									<span>{{ t(`admin.logs.metricsLabels.${metric}`) }}</span>
+									<span>{{ logMetricLabel(metric, selectedLog) }}</span>
 								</div>
 							</div>
 						</section>
@@ -2244,7 +2273,10 @@
 								<div v-for="target in selectedLog.data.targets" :key="target.key" class="log-target-row">
 									<span>{{ localizedLocation(target.city, 'city') }}</span>
 									<strong>{{ logTargetCategoryLabel(target.category_key) }}</strong>
-									<small>{{ t('admin.logs.foundCount', { count: Number(target.found || 0).toLocaleString(intlLocale) }) }}</small>
+									<small>
+										{{ t('admin.logs.foundCount', { count: Number(target.found || 0).toLocaleString(intlLocale) }) }}
+										<template v-if="target.deferred"> · {{ t('admin.logs.deferredTarget') }}</template>
+									</small>
 								</div>
 							</div>
 						</section>

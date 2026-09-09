@@ -7,6 +7,7 @@ namespace Sveevee\Worker\Pipeline;
 use Sveevee\Worker\Config\ResearchTarget;
 use Sveevee\Worker\Domain\BusinessNormalizer;
 use Sveevee\Worker\Domain\IncompleteCandidateException;
+use Sveevee\Worker\Http\SourceRequestBudgetExceeded;
 use Sveevee\Worker\Reporting\RunReport;
 use Sveevee\Worker\Research\BusinessEnricherInterface;
 use Sveevee\Worker\Research\SourceAdapterInterface;
@@ -17,6 +18,14 @@ use Sveevee\Worker\Support\SourceFingerprint;
 
 final class ResearchService
 {
+    private const GUARDED_SOURCES = ['data_gov_ckan', 'tel_aviv_business_licenses'];
+
+    private array $pausedSources = [];
+
+    private array $deferredTargets = [];
+
+    private bool $governmentBudgetExhausted = false;
+
     /**
      * @param  SourceAdapterInterface[]  $sources
      * @param  BusinessEnricherInterface[]  $enrichers
@@ -40,7 +49,7 @@ final class ResearchService
         $productive = 0;
         $seen = [];
         foreach ($this->targets as $target) {
-            if ($remaining === 0 || $productive >= max(1, $this->productiveTargetLimit)) {
+            if ($remaining === 0 || $productive >= max(1, $this->productiveTargetLimit) || ! $this->canResearch()) {
                 break;
             }
             $foundBefore = $report->metric('found');
@@ -59,7 +68,7 @@ final class ResearchService
             if ($accepted > 0) {
                 $productive++;
             }
-            if (! $report->dryRun) {
+            if (! $report->dryRun && ! $this->isTargetDeferred($target)) {
                 $this->repository->markResearchTargetCompleted($target, $runId);
             }
             $report->target($target->key(), $target->city, $target->categoryKey, $report->metric('found') - $foundBefore);
@@ -73,6 +82,11 @@ final class ResearchService
     public function candidates(string $runId, ResearchTarget $target, RunReport $report): iterable
     {
         foreach ($this->sources as $source) {
+            if ($this->sourcePaused($source)) {
+                $this->deferTarget($target, $report);
+
+                continue;
+            }
             $report->source($source->name(), 0);
             try {
                 foreach ($source->research($target, PHP_INT_MAX) as $raw) {
@@ -152,7 +166,16 @@ final class ResearchService
                         );
                     }
                 }
+            } catch (SourceRequestBudgetExceeded $exception) {
+                $this->governmentBudgetExhausted = true;
+                $this->deferTarget($target, $report);
+                $this->logger->info($exception->getMessage(), ['target' => $target->key()]);
             } catch (\Throwable $exception) {
+                if (in_array($source->name(), self::GUARDED_SOURCES, true)) {
+                    $this->pausedSources[$source->name()] = true;
+                    $report->increment('source_errors');
+                    $this->deferTarget($target, $report);
+                }
                 $report->increment('failed');
                 $report->error('source', $exception->getMessage(), [
                     'source' => $source->name(),
@@ -165,6 +188,45 @@ final class ResearchService
                 ]);
             }
         }
+    }
+
+    public function canResearch(): bool
+    {
+        foreach ($this->sources as $source) {
+            if (! $this->sourcePaused($source)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function isTargetDeferred(ResearchTarget $target): bool
+    {
+        return isset($this->deferredTargets[$target->key()]);
+    }
+
+    public function deferPausedSources(ResearchTarget $target, RunReport $report): void
+    {
+        foreach ($this->sources as $source) {
+            if ($this->sourcePaused($source)) {
+                $this->deferTarget($target, $report);
+
+                return;
+            }
+        }
+    }
+
+    private function sourcePaused(SourceAdapterInterface $source): bool
+    {
+        return isset($this->pausedSources[$source->name()])
+            || ($this->governmentBudgetExhausted && in_array($source->name(), self::GUARDED_SOURCES, true));
+    }
+
+    private function deferTarget(ResearchTarget $target, RunReport $report): void
+    {
+        $this->deferredTargets[$target->key()] = true;
+        $report->deferTarget($target->key(), $target->city, $target->categoryKey);
     }
 
     private function sourceUrl(array $raw): ?string

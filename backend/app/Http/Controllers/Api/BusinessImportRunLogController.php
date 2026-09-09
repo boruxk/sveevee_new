@@ -31,6 +31,8 @@ class BusinessImportRunLogController extends Controller
             'duplicates' => ['required', 'integer', 'min:0'],
             'incomplete' => ['required', 'integer', 'min:0'],
             'failed' => ['required', 'integer', 'min:0'],
+            'source_requests' => ['sometimes', 'integer', 'min:0'],
+            'source_errors' => ['sometimes', 'integer', 'min:0'],
             'imported' => ['required', 'integer', 'min:0'],
             'planned_imports' => ['required', 'integer', 'min:0'],
             'planned_updates' => ['required', 'integer', 'min:0'],
@@ -39,6 +41,7 @@ class BusinessImportRunLogController extends Controller
             'productive_target_combinations' => ['sometimes', 'integer', 'min:0', 'max:1000'],
             'empty_target_combinations' => ['sometimes', 'integer', 'min:0', 'max:1000'],
             'unproductive_target_combinations' => ['sometimes', 'integer', 'min:0', 'max:1000'],
+            'deferred_target_combinations' => ['sometimes', 'integer', 'min:0', 'max:1000'],
             'targets' => ['present', 'array', 'max:1000'],
             'targets.*.key' => ['required', 'string', 'max:255'],
             'targets.*.city' => ['required', 'string', 'max:160'],
@@ -46,6 +49,7 @@ class BusinessImportRunLogController extends Controller
             'targets.*.found' => ['required', 'integer', 'min:0'],
             'targets.*.successful' => ['sometimes', 'integer', 'min:0'],
             'targets.*.planned' => ['sometimes', 'integer', 'min:0'],
+            'targets.*.deferred' => ['sometimes', 'boolean'],
             'used_sources' => ['present', 'array', 'max:50'],
             'used_sources.*' => ['required', 'string', 'max:120', 'distinct'],
             'source_counts' => ['present', 'array', 'max:50'],
@@ -57,7 +61,7 @@ class BusinessImportRunLogController extends Controller
         ]);
         $status = $report['status'] === 'failed'
             ? SystemLogEntry::STATUS_FAILED
-            : (((int) $report['failed'] > 0 || (int) $report['incomplete'] > 0 || $report['errors'] !== [])
+            : (((int) $report['failed'] > 0 || (int) ($report['source_errors'] ?? 0) > 0 || (int) $report['incomplete'] > 0 || $report['errors'] !== [])
                 ? SystemLogEntry::STATUS_WARNING
                 : SystemLogEntry::STATUS_SUCCESS);
 

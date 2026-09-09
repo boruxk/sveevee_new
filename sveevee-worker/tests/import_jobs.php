@@ -53,8 +53,7 @@ final class ImportJobGateway implements SveeveeGateway
         if (count($rows) < 1 || count($rows) > 100) {
             throw new RuntimeException('The pipeline sent an API batch outside the 1..100 limit.');
         }
-        $combinations = array_unique(array_map(static fn (array $row): string =>
-            $row['address']['city'].'|'.$row['category_key'], $rows));
+        $combinations = array_unique(array_map(static fn (array $row): string => $row['address']['city'].'|'.$row['category_key'], $rows));
         if (count($combinations) !== 1) {
             throw new RuntimeException('An API batch mixed city-category combinations.');
         }
@@ -191,41 +190,53 @@ $tests['Overture continues through more than ten productive combinations'] = sta
     $assert(count($repository->researchTargetProgress()) === 12, 'Every completed combination must retain progress.');
 };
 
-$tests['Government skips empty combinations and replaces rejected rows until 100 succeed'] = static function () use ($run, $assert): void {
+$tests['Government skips empty combinations and replaces rejected rows until ten succeed'] = static function () use ($run, $assert): void {
     $targets = [
         new ResearchTarget('Tel Aviv', 'food_catering.bakery'),
         new ResearchTarget('Tel Aviv', 'food_catering.restaurants'),
         new ResearchTarget('Jerusalem', 'food_catering.cafes'),
         new ResearchTarget('Jerusalem', 'professionals.grocery_food'),
     ];
-    $source = new ImportJobSource('data_gov_ckan', [$targets[2]->key() => 180, $targets[3]->key() => 100], true);
+    $source = new ImportJobSource('data_gov_ckan', [$targets[2]->key() => 30, $targets[3]->key() => 20], true);
     [$repository, , $gateway, $report] = $run('worker.rotation.json', $targets, $source);
 
-    $assert($report['imported'] === 100 && $report['duplicates'] === 10 && $report['failed'] === 5, 'Rejected candidates must not consume the 100-success government budget.');
-    $assert(array_map(static fn (array $request): int => count($request['businesses']), $gateway->requests) === [100, 15], 'The government job must refill the 15 unsuccessful slots.');
-    $assert($report['found'] === 115 && $gateway->duplicateChecks === 115, 'The government source must be consumed only until 100 successes are reached.');
+    $assert($report['imported'] === 10 && $report['duplicates'] === 10 && $report['failed'] === 5, 'Rejected candidates must not consume the ten-success government budget.');
+    $assert(array_map(static fn (array $request): int => count($request['businesses']), $gateway->requests) === [10, 10, 5], 'The government job must refill unsuccessful slots using batches of at most ten.');
+    $assert($report['found'] === 25 && $gateway->duplicateChecks === 25, 'The government source must be consumed only until ten successes are reached.');
     $assert($report['empty_target_combinations'] === 2 && $report['productive_target_combinations'] === 1 && $report['scanned_target_combinations'] === 3, 'Empty combinations must not use the one productive slot.');
     $assert($source->visited === array_map(static fn (ResearchTarget $target): string => $target->key(), array_slice($targets, 0, 3)), 'A later productive combination must wait for the next government run.');
     $progress = $repository->researchTargetProgress();
     $assert(count($progress) === 3 && ! isset($progress[$targets[3]->key()]), 'Empty visits must advance progress without marking the untouched combination complete.');
-    $assert(($repository->statusSummary()['businesses']['imported'] ?? 0) === 100, 'The actual SQLite imports must match the government success limit.');
+    $assert(($repository->statusSummary()['businesses']['imported'] ?? 0) === 10, 'The actual SQLite imports must match the government success limit.');
 };
 
-$tests['Government stops after one productive combination even when fewer than 100 exist'] = static function () use ($run, $assert): void {
+$tests['Government stops after one productive combination even when fewer than ten exist'] = static function () use ($run, $assert): void {
     $targets = [
         new ResearchTarget('Tel Aviv', 'food_catering.bakery'),
         new ResearchTarget('Jerusalem', 'food_catering.cafes'),
         new ResearchTarget('Jerusalem', 'professionals.grocery_food'),
     ];
-    $source = new ImportJobSource('data_gov_ckan', [$targets[1]->key() => 25, $targets[2]->key() => 100]);
+    $source = new ImportJobSource('data_gov_ckan', [$targets[1]->key() => 5, $targets[2]->key() => 20]);
     [$repository, , $gateway, $report] = $run('worker.rotation.json', $targets, $source);
 
-    $assert($report['imported'] === 25 && count($gateway->requests) === 1, 'The government job must retain its one-combination budget when that combination has only 25 rows.');
+    $assert($report['imported'] === 5 && count($gateway->requests) === 1, 'The government job must retain its one-combination budget when that combination has only five rows.');
     $assert($report['productive_target_combinations'] === 1 && $report['empty_target_combinations'] === 1, 'Only the productive government combination must use a slot.');
     $assert($source->visited === [$targets[0]->key(), $targets[1]->key()], 'The next nonempty combination must remain unvisited.');
     $assert(count($repository->researchTargetProgress()) === 2, 'Only actually visited government combinations may advance.');
 };
 
+$tests['Tel Aviv uses its own ten-entry profile and source report'] = static function () use ($run, $assert): void {
+    $targets = [new ResearchTarget('Tel Aviv', 'food_catering.bakery'), new ResearchTarget('Tel Aviv', 'food_catering.cafes')];
+    $source = new ImportJobSource('tel_aviv_business_licenses', [$targets[0]->key() => 11, $targets[1]->key() => 20]);
+    [$repository, , $gateway, $report] = $run('worker.tel-aviv.json', $targets, $source);
+
+    $assert($report['imported'] === 10 && $report['found'] === 10 && $report['failed'] === 0, 'The independent Tel Aviv job must stop at ten successful imports.');
+    $assert(count($gateway->requests) === 1 && count($gateway->requests[0]['businesses']) === 10, 'Tel Aviv must send one separate ten-item batch.');
+    $assert($report['used_sources'] === ['tel_aviv_business_licenses'] && $source->visited === [$targets[0]->key()], 'The Tel Aviv log and productive combination must remain separate from Gov.');
+    $assert(count($repository->researchTargetProgress()) === 1, 'The second Tel Aviv category must remain for another run.');
+};
+
+$testCount = count($tests);
 $failures = 0;
 foreach ($tests as $name => $test) {
     try {
@@ -253,5 +264,5 @@ foreach ($directories as $directory) {
     }
     rmdir($resolved);
 }
-fwrite(STDOUT, "Import jobs: 4 tests, {$assertions} assertions, {$failures} failures\n");
+fwrite(STDOUT, "Import jobs: {$testCount} tests, {$assertions} assertions, {$failures} failures\n");
 exit($failures === 0 ? 0 : 1);

@@ -125,6 +125,14 @@ final class WorkerConfig
         if ($perCombination < 1) {
             throw new RuntimeException('businesses_per_combination must be at least 1.');
         }
+        $research = $this->get('research', []);
+        if (! is_array($research)) {
+            throw new RuntimeException('research must be a configuration object.');
+        }
+        if (array_key_exists('max_http_requests_per_run', $research)
+            && (! is_int($research['max_http_requests_per_run']) || $research['max_http_requests_per_run'] < 1)) {
+            throw new RuntimeException('research.max_http_requests_per_run must be a positive integer when configured.');
+        }
         if ($this->targets() === []) {
             throw new RuntimeException('Configure at least one city and category.');
         }

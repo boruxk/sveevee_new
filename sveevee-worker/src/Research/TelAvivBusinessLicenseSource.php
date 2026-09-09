@@ -9,6 +9,7 @@ use DateTimeZone;
 use RuntimeException;
 use Sveevee\Worker\Config\ResearchTarget;
 use Sveevee\Worker\Http\HttpClientInterface;
+use Sveevee\Worker\Storage\SourcePageCache;
 use Sveevee\Worker\Storage\WorkerRepository;
 use Sveevee\Worker\Support\Clock;
 use Sveevee\Worker\Support\Json;
@@ -37,7 +38,9 @@ final class TelAvivBusinessLicenseSource implements SourceAdapterInterface
 
     private readonly Pacer $pacer;
 
-    private ?array $records = null;
+    private bool $cacheOpened = false;
+
+    private readonly SourcePageCache $pageCache;
 
     public function __construct(
         private readonly array $config,
@@ -49,7 +52,8 @@ final class TelAvivBusinessLicenseSource implements SourceAdapterInterface
         if (strtolower((string) parse_url($this->layerUrl, PHP_URL_SCHEME)) !== 'https') {
             throw new RuntimeException('The Tel Aviv business license API must use HTTPS.');
         }
-        $this->pacer = new Pacer((int) round(max(0.0, (float) ($config['min_interval_seconds'] ?? 0.5)) * 1000));
+        $this->pacer = new Pacer((int) round(max(0.0, (float) ($config['min_interval_seconds'] ?? 2.0)) * 1000));
+        $this->pageCache = $repository->sourcePageCache();
     }
 
     public function name(): string
@@ -70,9 +74,8 @@ final class TelAvivBusinessLicenseSource implements SourceAdapterInterface
         }
         $emitted = 0;
         $seen = [];
-        $checkedAt = Clock::now();
-        foreach ($this->records() as $record) {
-            $business = $this->map($record, $checkedAt);
+        foreach ($this->records() as $cached) {
+            $business = $this->map($cached['record'], $cached['checked_at']);
             if ($business === null || $business['category_key'] !== $target->categoryKey) {
                 continue;
             }
@@ -92,24 +95,34 @@ final class TelAvivBusinessLicenseSource implements SourceAdapterInterface
         }
     }
 
-    private function records(): array
+    private function records(): iterable
     {
-        if ($this->records !== null) {
-            return $this->records;
+        $key = Json::hash(['schema' => 'tel-aviv-pages-v1', 'layer' => $this->layerUrl]);
+        if (! $this->cacheOpened) {
+            $this->pageCache->open($key, $this->name(), (int) ($this->config['cache_refresh_seconds'] ?? 86400));
+            $this->cacheOpened = true;
         }
-        $pageSize = max(1, min(2000, (int) ($this->config['page_size'] ?? 1000)));
-        $maximum = max($pageSize, (int) ($this->config['max_records_per_dataset'] ?? 50_000));
-        $count = $this->request(['where' => '1=1', 'returnCountOnly' => 'true']);
-        if (! isset($count['count']) || ! is_int($count['count']) || $count['count'] < 0) {
-            throw new RuntimeException('Tel Aviv returned an invalid license count.');
+        $pageSize = max(1, min(10, (int) ($this->config['page_size'] ?? 10)));
+        $maximum = max(1, (int) ($this->config['max_records_per_dataset'] ?? 50_000));
+        $state = $this->pageCache->state($key);
+        if ($state['expected_total'] === null) {
+            $count = $this->request(['where' => '1=1', 'returnCountOnly' => 'true']);
+            if (! isset($count['count']) || ! is_int($count['count']) || $count['count'] < 0) {
+                throw new RuntimeException('Tel Aviv returned an invalid license count.');
+            }
+            if ($count['count'] > $maximum) {
+                throw new RuntimeException("Tel Aviv has {$count['count']} license records, exceeding max_records_per_dataset {$maximum}.");
+            }
+            $this->pageCache->setTotal($key, $count['count']);
+            $state = $this->pageCache->state($key);
         }
-        $total = $count['count'];
+        $total = (int) $state['expected_total'];
         if ($total > $maximum) {
-            throw new RuntimeException("Tel Aviv has {$total} license records, exceeding max_records_per_dataset {$maximum}.");
+            throw new RuntimeException("Tel Aviv cached scope exceeds max_records_per_dataset {$maximum}.");
         }
-        $records = [];
-        $seenIds = [];
-        for ($offset = 0; $offset < $total;) {
+        yield from $this->pageCache->records($key);
+        while (! (bool) $state['complete']) {
+            $offset = (int) $state['next_offset'];
             $response = $this->request([
                 'where' => '1=1',
                 'outFields' => 'oid_rishayon,ms_esek_rashi,ms_esek_mishne,t_shem_esek,t_hesber_mahut_esek,taarich_tokef,mahuiot,shem_rechov',
@@ -118,25 +131,33 @@ final class TelAvivBusinessLicenseSource implements SourceAdapterInterface
                 'resultOffset' => $offset,
                 'resultRecordCount' => min($pageSize, $total - $offset),
             ]);
-            if (! is_array($response['features'] ?? null) || $response['features'] === []) {
-                throw new RuntimeException('Tel Aviv license pagination ended before the reported record count.');
-            }
-            foreach ($response['features'] as $feature) {
-                $record = $feature['attributes'] ?? null;
-                $id = is_array($record) ? ($record['oid_rishayon'] ?? null) : null;
-                if (! is_int($id) || isset($seenIds[$id])) {
-                    throw new RuntimeException('Tel Aviv returned missing or repeated license row identifiers during pagination.');
+            try {
+                if (! is_array($response['features'] ?? null) || $response['features'] === []) {
+                    throw new RuntimeException('Tel Aviv license pagination ended before the reported record count.');
                 }
-                $seenIds[$id] = true;
-                $records[] = $record;
+                if (count($response['features']) > min($pageSize, $total - $offset)) {
+                    throw new RuntimeException('Tel Aviv returned more licenses than its requested page or reported total.');
+                }
+                $rows = [];
+                foreach ($response['features'] as $feature) {
+                    $record = $feature['attributes'] ?? null;
+                    $id = is_array($record) ? ($record['oid_rishayon'] ?? null) : null;
+                    if (! is_int($id)) {
+                        throw new RuntimeException('Tel Aviv returned a missing or invalid license row identifier.');
+                    }
+                    $rows[] = ['id' => (string) $id, 'record' => $record];
+                }
+                $checkedAt = Clock::now();
+                $state = $this->pageCache->append($key, $offset, $total, $rows, $checkedAt, max(1, (int) ($this->config['max_cache_bytes'] ?? 134217728)));
+            } catch (\Throwable $exception) {
+                $this->pageCache->discard($key);
+                $this->cacheOpened = false;
+                throw new RuntimeException($exception->getMessage().' Cached scope was discarded; the next run will restart its scan.', 0, $exception);
             }
-            $offset += count($response['features']);
-            if ($offset > $maximum) {
-                throw new RuntimeException('Tel Aviv license pagination exceeded max_records_per_dataset.');
+            foreach ($rows as $row) {
+                yield ['record' => $row['record'], 'checked_at' => $checkedAt];
             }
         }
-
-        return $this->records = $records;
     }
 
     private function map(array $record, string $checkedAt): ?array
@@ -247,7 +268,7 @@ final class TelAvivBusinessLicenseSource implements SourceAdapterInterface
 
     private function request(array $query): array
     {
-        $retries = max(0, min(6, (int) ($this->config['max_retries'] ?? 3)));
+        $retries = max(0, min(6, (int) ($this->config['max_retries'] ?? 0)));
         for ($attempt = 0; $attempt <= $retries; $attempt++) {
             $this->pacer->wait();
             $response = $this->http->request('GET', $this->url($query), ['Accept' => 'application/json'], null, [

@@ -50,10 +50,21 @@ final class ImportService
             return;
         }
 
+        $localTargets = null;
         foreach ($targets as $target) {
             if ($budget->remaining($target) === 0) {
                 continue;
             }
+            if ($research !== null && ! $research->canResearch()) {
+                $localTargets ??= array_fill_keys(array_map(
+                    static fn (ResearchTarget $pending): string => $pending->key(),
+                    $this->repository->pendingTargets(),
+                ), true);
+                if (! isset($localTargets[$target->key()])) {
+                    continue;
+                }
+            }
+            $research?->deferPausedSources($target, $report);
             $foundBefore = $report->metric('found');
             $ready = [];
             $completed = false;
@@ -85,7 +96,7 @@ final class ImportService
                 $completed = true;
             } finally {
                 $report->target($target->key(), $target->city, $target->categoryKey, $report->metric('found') - $foundBefore);
-                if ($completed && ! $dryRun) {
+                if ($completed && ! $dryRun && ! $research?->isTargetDeferred($target)) {
                     $this->repository->markResearchTargetCompleted($target, $runId);
                 }
             }
@@ -223,6 +234,16 @@ final class ImportService
     private function resumePendingBatches(string $runId, bool $dryRun, RunReport $report, RunBudget $budget): bool
     {
         foreach ($this->repository->pendingBatches() as $batch) {
+            $foreignItems = array_filter($batch['items'], fn (array $item): bool => ! $this->repository->acceptsBusinessSource((int) $item['business_id']));
+            if ($foreignItems !== []) {
+                $report->error('source_scope_deferred', 'An existing batch contains businesses from another source job; its original request and ID are retained for review.', [
+                    'client_import_id' => $batch['client_import_id'],
+                    'businesses' => count($batch['items']),
+                    'foreign_businesses' => count($foreignItems),
+                ]);
+
+                continue;
+            }
             $targets = array_map(fn (array $item): ResearchTarget => $this->batchTarget($batch, $item), $batch['items']);
             if (! $budget->fits($targets)) {
                 $report->error('budget_deferred', 'Pending batch is larger than the remaining run budget; its unchanged request is deferred.', [

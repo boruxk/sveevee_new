@@ -47,6 +47,10 @@ class SystemLogApiTest extends TestCase
             'status' => SystemLogEntry::STATUS_WARNING,
             'actor_identifier' => $client->getKey(),
         ]);
+        $storedReport = SystemLogEntry::query()->sole()->data;
+        $this->assertArrayNotHasKey('source_requests', $storedReport);
+        $this->assertArrayNotHasKey('source_errors', $storedReport);
+        $this->assertArrayNotHasKey('deferred_target_combinations', $storedReport);
     }
 
     public function test_rotation_counters_survive_storage_and_admin_reads_and_cannot_change_on_replay(): void
@@ -58,10 +62,15 @@ class SystemLogApiTest extends TestCase
         $report['productive_target_combinations'] = 2;
         $report['empty_target_combinations'] = 0;
         $report['unproductive_target_combinations'] = 0;
+        $report['source_requests'] = 100;
+        $report['source_errors'] = 1;
+        $report['deferred_target_combinations'] = 1;
         $report['targets'][0]['successful'] = 10;
         $report['targets'][0]['planned'] = 0;
         $report['targets'][1]['successful'] = 2;
         $report['targets'][1]['planned'] = 0;
+        $report['targets'][0]['deferred'] = false;
+        $report['targets'][1]['deferred'] = true;
 
         $this->postJson('/api/v1/business-import/worker-runs', $report)
             ->assertCreated();
@@ -74,12 +83,18 @@ class SystemLogApiTest extends TestCase
             'productive_target_combinations',
             'empty_target_combinations',
             'unproductive_target_combinations',
+            'source_requests',
+            'source_errors',
+            'deferred_target_combinations',
             'targets.0.successful',
             'targets.0.planned',
+            'targets.0.deferred',
+            'targets.1.deferred',
         ];
         foreach ($counterPaths as $path) {
             $changed = $report;
-            data_set($changed, $path, data_get($report, $path) + 1);
+            $value = data_get($report, $path);
+            data_set($changed, $path, is_bool($value) ? ! $value : $value + 1);
             $this->postJson('/api/v1/business-import/worker-runs', $changed)
                 ->assertStatus(409)
                 ->assertJsonValidationErrors('run_id');
@@ -110,8 +125,12 @@ class SystemLogApiTest extends TestCase
         $report['productive_target_combinations'] = -1;
         $report['empty_target_combinations'] = 1001;
         $report['unproductive_target_combinations'] = -1;
+        $report['source_requests'] = -1;
+        $report['source_errors'] = -1;
+        $report['deferred_target_combinations'] = 1001;
         $report['targets'][0]['successful'] = -1;
         $report['targets'][0]['planned'] = -1;
+        $report['targets'][0]['deferred'] = 'invalid';
 
         $this->postJson('/api/v1/business-import/worker-runs', $report)
             ->assertUnprocessable()
@@ -120,11 +139,89 @@ class SystemLogApiTest extends TestCase
                 'productive_target_combinations',
                 'empty_target_combinations',
                 'unproductive_target_combinations',
+                'source_requests',
+                'source_errors',
+                'deferred_target_combinations',
                 'targets.0.successful',
                 'targets.0.planned',
+                'targets.0.deferred',
             ]);
 
         $this->assertDatabaseCount('system_log_entries', 0);
+    }
+
+    public function test_source_errors_make_a_completed_run_a_warning_even_without_item_errors(): void
+    {
+        Passport::actingAsClient($this->businessClient(), [BusinessImportClient::SCOPE_WRITE]);
+        $report = $this->runReport();
+        $report['failed'] = 0;
+        $report['incomplete'] = 0;
+        $report['errors'] = [];
+        $report['source_requests'] = 1;
+        $report['source_errors'] = 1;
+
+        $this->postJson('/api/v1/business-import/worker-runs', $report)->assertCreated();
+
+        $this->assertDatabaseHas('system_log_entries', [
+            'external_id' => $report['run_id'],
+            'status' => SystemLogEntry::STATUS_WARNING,
+        ]);
+    }
+
+    public function test_government_and_tel_aviv_jobs_keep_independent_run_logs_and_source_data(): void
+    {
+        Passport::actingAsClient($this->businessClient(), [BusinessImportClient::SCOPE_WRITE]);
+        $government = $this->runReport();
+        $government['source_requests'] = 1;
+        $government['source_errors'] = 1;
+        $government['errors'] = [
+            ['stage' => 'source', 'message' => 'Data.gov.il request failed with HTTP 404.', 'context' => ['source' => 'data_gov_ckan']],
+        ];
+
+        // A separate Tel Aviv run can import pending records without requesting its source.
+        $telAviv = $this->runReport();
+        $telAviv['used_sources'] = ['tel_aviv_business_licenses'];
+        $telAviv['source_counts'] = ['tel_aviv_business_licenses' => 0];
+        $telAviv['source_requests'] = 0;
+        $telAviv['source_errors'] = 0;
+        foreach (['found', 'new', 'updated', 'duplicates', 'incomplete', 'failed', 'target_combinations'] as $metric) {
+            $telAviv[$metric] = 0;
+        }
+        $telAviv['targets'] = [];
+        $telAviv['errors'] = [];
+
+        $reports = [$government, $telAviv];
+        $logIds = [];
+        foreach ($reports as $report) {
+            $response = $this->postJson('/api/v1/business-import/worker-runs', $report)
+                ->assertCreated()
+                ->assertJsonPath('data.run_id', $report['run_id']);
+            $logIds[$report['run_id']] = $response->json('data.id');
+        }
+        $this->assertNotSame($logIds[$government['run_id']], $logIds[$telAviv['run_id']]);
+
+        foreach ($reports as $report) {
+            $this->postJson('/api/v1/business-import/worker-runs', $report)
+                ->assertOk()
+                ->assertHeader('Idempotency-Replayed', 'true')
+                ->assertJsonPath('data.id', $logIds[$report['run_id']]);
+            $stored = SystemLogEntry::query()->where('external_id', $report['run_id'])->sole();
+            $this->assertEquals($report, $stored->data);
+        }
+        $this->assertDatabaseCount('system_log_entries', 2);
+
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        foreach (array_reverse($reports) as $index => $report) {
+            $response = $this->getJson('/api/v1/admin/logs?source=automation_worker&per_page=1&page='.($index + 1))
+                ->assertOk()
+                ->assertJsonPath('data.pagination.total', 2)
+                ->assertJsonCount(1, 'data.items')
+                ->assertJsonPath('data.items.0.id', $logIds[$report['run_id']])
+                ->assertJsonPath('data.items.0.external_id', $report['run_id']);
+            foreach (['run_id', 'used_sources', 'source_counts', 'source_requests', 'source_errors', 'errors'] as $field) {
+                $response->assertJsonPath('data.items.0.data.'.$field, $report[$field]);
+            }
+        }
     }
 
     public function test_only_write_clients_can_report_worker_runs(): void

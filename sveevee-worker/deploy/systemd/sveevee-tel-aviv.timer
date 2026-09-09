@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the Sveevee Tel Aviv worker every ten minutes
+
+[Timer]
+OnCalendar=*-*-* *:05,15,25,35,45,55:00 Asia/Jerusalem
+RandomizedDelaySec=0
+AccuracySec=1s
+Persistent=true
+Unit=sveevee-tel-aviv.service
+
+[Install]
+WantedBy=timers.target

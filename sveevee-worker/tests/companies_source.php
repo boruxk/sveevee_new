@@ -80,7 +80,7 @@ $row = static fn (int $id, string $name, string $city = 'חיפה'): array => [
     'מטרת החברה' => 'לעסוק בכל עיסוק חוקי', 'שם עיר' => $city, 'שם רחוב' => 'הרצל', 'מספר בית' => '10',
 ];
 $makeSource = static fn (CompaniesFixtureHttp $http, array $overrides = []): DataGovCkanSource => new DataGovCkanSource(
-    $overrides + ['min_interval_seconds' => 0, 'page_size' => 3, 'max_retries' => 0, 'datasets' => [$dataset]],
+    $overrides + ['min_interval_seconds' => 0, 'page_size' => 3, 'max_retries' => 0, 'cache_refresh_seconds' => 0, 'datasets' => [$dataset]],
     $http, $repository, 'SveeveeTest/1.0',
 );
 $fixtures = [

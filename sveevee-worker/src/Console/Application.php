@@ -12,6 +12,7 @@ use Sveevee\Worker\Config\WorkerPaths;
 use Sveevee\Worker\Domain\BusinessMerger;
 use Sveevee\Worker\Domain\BusinessNormalizer;
 use Sveevee\Worker\Domain\OpeningHoursParser;
+use Sveevee\Worker\Http\BudgetedHttpClient;
 use Sveevee\Worker\Http\CurlHttpClient;
 use Sveevee\Worker\Http\SafeWebClient;
 use Sveevee\Worker\Http\UrlGuard;
@@ -61,7 +62,13 @@ final class Application
             $openingHours = new OpeningHoursParser;
             $merger = new BusinessMerger;
             $normalizer = new BusinessNormalizer($openingHours, (array) $config->get('cities', []));
-            $repository = new WorkerRepository(new Database($paths['database']), $normalizer, $merger);
+            $enabledSources = array_keys(array_filter((array) $config->get('sources', []),
+                static fn (array $source): bool => ($source['enabled'] ?? false) === true));
+            $governmentSources = array_values(array_intersect($enabledSources, ['data_gov_ckan', 'tel_aviv_business_licenses']));
+            // The original database can contain candidates from the formerly combined job.
+            $sourceScope = $governmentSources !== [] && array_diff($enabledSources, [...$governmentSources, 'official_website']) === []
+                ? $governmentSources : null;
+            $repository = new WorkerRepository(new Database($paths['database']), $normalizer, $merger, $sourceScope);
             $targets = $config->targets();
             $targetsPerRun = $config->int('targets_per_run', count($targets));
             $targetScheduler = new ResearchTargetScheduler($repository);
@@ -87,6 +94,13 @@ final class Application
             $limit = max(1, (int) ($options['limit'] ?? $config->int('target_per_run', 1000)));
             $runId = Uuid::v4();
             $report = new RunReport($runId, $command, $dryRun);
+            if ($governmentSources !== []) {
+                $report->enableSourceMetrics();
+                foreach ($governmentSources as $source) {
+                    // Keep separate job labels even for empty runs or local pending imports.
+                    $report->source($source, 0);
+                }
+            }
             $repository->startRun($runId, $command, $dryRun, $config->hash());
             $api = null;
 
@@ -96,7 +110,7 @@ final class Application
                 $selectedTargets = $targetScheduler->next($targets, max(1, count($targets)));
                 if (in_array($command, ['research', 'run'], true)) {
                     [$sources, $enrichers] = $this->researchComponents(
-                        $config, $repository, $normalizer, $merger, $openingHours
+                        $config, $repository, $normalizer, $merger, $openingHours, $report
                     );
                     if ($sources === []) {
                         throw new RuntimeException('No research source is enabled in the worker config.');
@@ -176,8 +190,13 @@ final class Application
         BusinessNormalizer $normalizer,
         BusinessMerger $merger,
         OpeningHoursParser $openingHours,
+        RunReport $report,
     ): array {
         $http = new CurlHttpClient;
+        $governmentHttp = new BudgetedHttpClient(
+            $http, $config->int('research.max_http_requests_per_run', 10),
+            static fn () => $report->increment('source_requests'),
+        );
         $userAgent = Environment::get(
             'SVEVEE_WORKER_USER_AGENT',
             'SveeveeResearchWorker/1.0 (+https://sveevee.co.il; mailto:info@sveevee.co.il)'
@@ -193,11 +212,11 @@ final class Application
         }
         $dataGov = $config->source('data_gov_ckan');
         if (($dataGov['enabled'] ?? false) === true) {
-            $sources[] = new DataGovCkanSource($dataGov, $http, $repository, (string) $userAgent);
+            $sources[] = new DataGovCkanSource($dataGov, $governmentHttp, $repository, (string) $userAgent);
         }
         $telAviv = $config->source('tel_aviv_business_licenses');
         if (($telAviv['enabled'] ?? false) === true) {
-            $sources[] = new TelAvivBusinessLicenseSource($telAviv, $http, $repository, (string) $userAgent);
+            $sources[] = new TelAvivBusinessLicenseSource($telAviv, $governmentHttp, $repository, (string) $userAgent);
         }
         $json = $config->source('json_seed');
         if (($json['enabled'] ?? false) === true) {

@@ -76,7 +76,7 @@ $fixtures = [
     'travel_leisure.hotels_guesthouses' => $row(10, '701101', 'מלון בדיקה'),
 ];
 $makeSource = static fn (TelAvivFixtureHttp $http, array $overrides = []): TelAvivBusinessLicenseSource => new TelAvivBusinessLicenseSource(
-    $overrides + ['min_interval_seconds' => 0, 'page_size' => 3], $http, $repository, 'SveeveeTest/1.0',
+    $overrides + ['min_interval_seconds' => 0, 'page_size' => 3, 'cache_refresh_seconds' => 0], $http, $repository, 'SveeveeTest/1.0',
 );
 $tests = [];
 $tests['all ten verified license categories map and pagination is reused'] = static function () use ($fixtures, $makeSource, $assert): void {

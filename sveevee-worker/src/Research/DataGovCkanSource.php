@@ -11,6 +11,7 @@ use Sveevee\Worker\Research\Ckan\BeerShevaBusinessLicenseProfile;
 use Sveevee\Worker\Research\Ckan\CkanDatasetProfileInterface;
 use Sveevee\Worker\Research\Ckan\CkanScopedDatasetProfileInterface;
 use Sveevee\Worker\Research\Ckan\IsraelCompaniesProfile;
+use Sveevee\Worker\Storage\SourcePageCache;
 use Sveevee\Worker\Storage\WorkerRepository;
 use Sveevee\Worker\Support\Clock;
 use Sveevee\Worker\Support\Json;
@@ -23,9 +24,9 @@ final class DataGovCkanSource implements SourceAdapterInterface
 
     private readonly Pacer $pacer;
 
-    private array $records = [];
+    private array $openedScopes = [];
 
-    private array $scopedCacheKeys = [];
+    private readonly SourcePageCache $pageCache;
 
     /** @var array<string, CkanDatasetProfileInterface> */
     private array $profiles;
@@ -40,7 +41,7 @@ final class DataGovCkanSource implements SourceAdapterInterface
         if (strtolower((string) parse_url($this->apiUrl, PHP_URL_SCHEME)) !== 'https') {
             throw new RuntimeException('The Data.gov.il CKAN API URL must use HTTPS.');
         }
-        $this->pacer = new Pacer((int) round(max(0.0, (float) ($config['min_interval_seconds'] ?? 0.5)) * 1000));
+        $this->pacer = new Pacer((int) round(max(0.0, (float) ($config['min_interval_seconds'] ?? 2.0)) * 1000));
         $this->profiles = [];
         foreach ([new BeerShevaBusinessLicenseProfile, new IsraelCompaniesProfile] as $profile) {
             $this->profiles[$profile->name()] = $profile;
@@ -48,6 +49,7 @@ final class DataGovCkanSource implements SourceAdapterInterface
         if ($this->datasets() === []) {
             throw new RuntimeException('Data.gov.il CKAN is enabled but no datasets are configured.');
         }
+        $this->pageCache = $repository->sourcePageCache();
     }
 
     public function name(): string
@@ -68,13 +70,13 @@ final class DataGovCkanSource implements SourceAdapterInterface
             if (! $profile->supports($dataset, $target)) {
                 continue;
             }
-            $checkedAt = Clock::now();
-            foreach ($this->recordsFor($dataset, $profile, $target) as $record) {
+            foreach ($this->recordsFor($dataset, $profile, $target) as $cached) {
+                $record = $cached['record'];
                 if (! is_array($record) || ($recordId = $profile->recordId($record)) === null) {
                     continue;
                 }
                 $sourceUrl = $this->recordUrl($dataset, $profile, $recordId);
-                $business = $profile->map($record, $dataset, $target, $sourceUrl, $checkedAt);
+                $business = $profile->map($record, $dataset, $target, $sourceUrl, $cached['checked_at']);
                 if ($business === null) {
                     continue;
                 }
@@ -114,7 +116,7 @@ final class DataGovCkanSource implements SourceAdapterInterface
         return $this->profiles[$name];
     }
 
-    private function recordsFor(array $dataset, CkanDatasetProfileInterface $profile, ResearchTarget $target): array
+    private function recordsFor(array $dataset, CkanDatasetProfileInterface $profile, ResearchTarget $target): iterable
     {
         $resourceId = trim((string) ($dataset['resource_id'] ?? ''));
         if ($resourceId === '') {
@@ -122,24 +124,22 @@ final class DataGovCkanSource implements SourceAdapterInterface
         }
         $scoped = $profile instanceof CkanScopedDatasetProfileInterface;
         $parameters = $scoped ? $profile->searchParameters($dataset, $target) : ['sort' => '_id asc'];
-        $cacheKey = $resourceId.'|'.$profile->name().'|'.Json::hash($parameters);
-        if (isset($this->records[$cacheKey])) {
-            return $this->records[$cacheKey];
+        // Category is deliberately absent: all ten categories share the same validated city pages.
+        $cacheKey = Json::hash(['schema' => 'ckan-pages-v1', 'api' => $this->apiUrl, 'dataset' => $dataset, 'parameters' => $parameters]);
+        if (! isset($this->openedScopes[$cacheKey])) {
+            $this->pageCache->open($cacheKey, $this->name(), (int) ($this->config['cache_refresh_seconds'] ?? 86400));
+            $this->openedScopes[$cacheKey] = true;
         }
-        if ($scoped && isset($this->scopedCacheKeys[$resourceId])) {
-            // A national register must not accumulate every city's records in memory.
-            unset($this->records[$this->scopedCacheKeys[$resourceId]]);
-        }
-
-        $pageSize = max(1, min(5000, (int) ($this->config['page_size'] ?? 1000)));
+        $pageSize = max(1, min(10, (int) ($this->config['page_size'] ?? 10)));
         $maximumKey = $scoped ? 'max_records_per_city' : 'max_records_per_dataset';
         $maximum = max(1, (int) ($this->config[$maximumKey] ?? ($scoped ? 100_000 : 50_000)));
-        $records = [];
-        $offset = 0;
-        $expectedTotal = null;
-        $seenRows = [];
-
-        do {
+        $state = $this->pageCache->state($cacheKey);
+        if ($state['expected_total'] !== null && (int) $state['expected_total'] > $maximum) {
+            throw new RuntimeException("Data.gov.il cached scope exceeds configured {$maximumKey} {$maximum}.");
+        }
+        yield from $this->pageCache->records($cacheKey);
+        while (! (bool) $state['complete']) {
+            $offset = (int) $state['next_offset'];
             $url = $this->apiUrl.'/datastore_search?'.http_build_query([
                 'resource_id' => $resourceId,
                 'limit' => min($pageSize, $maximum - $offset),
@@ -147,59 +147,56 @@ final class DataGovCkanSource implements SourceAdapterInterface
                 'include_total' => 'true',
                 'total_estimation_threshold' => 0,
             ] + $parameters, '', '&', PHP_QUERY_RFC3986);
+            // HTTP/budget failures preserve previous pages and the next offset exactly as committed.
             $payload = $this->request($url);
-            $result = $payload['result'] ?? null;
-            if (! is_array($result) || ! is_array($result['records'] ?? null)) {
-                throw new RuntimeException('Data.gov.il returned an invalid datastore_search result.');
-            }
-            if (! isset($result['total']) || filter_var($result['total'], FILTER_VALIDATE_INT) === false
-                || (int) $result['total'] < 0 || ($result['total_was_estimated'] ?? false) !== false) {
-                throw new RuntimeException('Data.gov.il did not return the requested exact record count.');
-            }
-            $total = (int) $result['total'];
-            $expectedTotal ??= $total;
-            if ($total !== $expectedTotal) {
-                throw new RuntimeException('Data.gov.il record count changed during pagination; retry the city on the next run.');
-            }
-            if ($expectedTotal > $maximum) {
-                throw new RuntimeException(
-                    "Data.gov.il resource {$resourceId} scope contains {$expectedTotal} records, exceeding configured {$maximumKey} {$maximum}."
-                );
-            }
-            $page = $result['records'];
-            $received = count($page);
-            if (($received === 0 && $offset < $expectedTotal) || $offset + $received > $expectedTotal
-                || $received > min($pageSize, $maximum - $offset)) {
-                throw new RuntimeException('Data.gov.il returned incomplete or inconsistent pagination.');
-            }
-            foreach ($page as $record) {
-                if (! is_array($record) || ! isset($record['_id'])
-                    || filter_var($record['_id'], FILTER_VALIDATE_INT) === false) {
-                    throw new RuntimeException('Data.gov.il returned a record without a valid datastore row ID.');
+            try {
+                $result = $payload['result'] ?? null;
+                if (! is_array($result) || ! is_array($result['records'] ?? null)) {
+                    throw new RuntimeException('Data.gov.il returned an invalid datastore_search result.');
                 }
-                $rowId = (string) $record['_id'];
-                if (isset($seenRows[$rowId])) {
-                    throw new RuntimeException('Data.gov.il repeated a row during pagination.');
+                if (! isset($result['total']) || filter_var($result['total'], FILTER_VALIDATE_INT) === false
+                    || (int) $result['total'] < 0 || ($result['total_was_estimated'] ?? false) !== false) {
+                    throw new RuntimeException('Data.gov.il did not return the requested exact record count.');
                 }
-                $seenRows[$rowId] = true;
-                // Retain eligible categories only, but count every fetched row for pagination.
-                if (! $scoped || $profile->keepRecord($record, $dataset, $target)) {
-                    $records[] = $record;
+                $total = (int) $result['total'];
+                if ($state['expected_total'] !== null && $total !== (int) $state['expected_total']) {
+                    throw new RuntimeException('Data.gov.il record count changed during pagination.');
+                }
+                if ($total > $maximum) {
+                    throw new RuntimeException("Data.gov.il resource {$resourceId} scope contains {$total} records, exceeding configured {$maximumKey} {$maximum}.");
+                }
+                $page = $result['records'];
+                $received = count($page);
+                if (($received === 0 && $offset < $total) || $offset + $received > $total || $received > min($pageSize, $maximum - $offset)) {
+                    throw new RuntimeException('Data.gov.il returned incomplete or inconsistent pagination.');
+                }
+                $rows = [];
+                foreach ($page as $record) {
+                    if (! is_array($record) || ! isset($record['_id']) || filter_var($record['_id'], FILTER_VALIDATE_INT) === false) {
+                        throw new RuntimeException('Data.gov.il returned a record without a valid datastore row ID.');
+                    }
+                    // Count all raw rows and remember their IDs; store large JSON only for eligible categories.
+                    $rows[] = ['id' => (string) $record['_id'], 'record' => ! $scoped || $profile->keepRecord($record, $dataset, $target) ? $record : null];
+                }
+                $checkedAt = Clock::now();
+                $state = $this->pageCache->append($cacheKey, $offset, $total, $rows, $checkedAt, max(1, (int) ($this->config['max_cache_bytes'] ?? 134217728)));
+            } catch (\Throwable $exception) {
+                $this->pageCache->discard($cacheKey);
+                unset($this->openedScopes[$cacheKey]);
+                throw new RuntimeException($exception->getMessage().' Cached scope was discarded; the next run will restart its scan.', 0, $exception);
+            }
+            // The entire validated page is durable before the caller can stop at its successful-write limit.
+            foreach ($rows as $row) {
+                if ($row['record'] !== null) {
+                    yield ['record' => $row['record'], 'checked_at' => $checkedAt];
                 }
             }
-            $offset += $received;
-        } while ($offset < $expectedTotal);
-
-        if ($scoped) {
-            $this->scopedCacheKeys[$resourceId] = $cacheKey;
         }
-
-        return $this->records[$cacheKey] = $records;
     }
 
     private function request(string $url): array
     {
-        $maxRetries = max(0, min(6, (int) ($this->config['max_retries'] ?? 3)));
+        $maxRetries = max(0, min(6, (int) ($this->config['max_retries'] ?? 0)));
         for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
             $this->pacer->wait();
             $response = $this->http->request('GET', $url, ['Accept' => 'application/json'], null, [

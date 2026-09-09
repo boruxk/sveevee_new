@@ -25,6 +25,7 @@ final class WorkerRepository
         Database $database,
         private readonly BusinessNormalizer $normalizer,
         private readonly BusinessMerger $merger,
+        private readonly ?array $sourceScope = null,
     ) {
         $this->pdo = $database->pdo;
         $this->backfillLocationIdentityKeys();
@@ -169,6 +170,39 @@ SQL);
         return $statement->fetchColumn() !== false;
     }
 
+    public function acceptsBusinessSource(int $businessId): bool
+    {
+        if ($this->sourceScope === null) {
+            return true;
+        }
+        foreach ($this->sourceScope as $adapter) {
+            if ($this->hasSource($businessId, $adapter)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Restrict work queues without moving or rewriting historical business identities. */
+    private function sourceCondition(): array
+    {
+        if ($this->sourceScope === null) {
+            return ['', []];
+        }
+        if ($this->sourceScope === []) {
+            return [' AND 0 = 1', []];
+        }
+        $placeholders = implode(',', array_fill(0, count($this->sourceScope), '?'));
+
+        return [" AND EXISTS (SELECT 1 FROM business_sources s WHERE s.business_id = businesses.id AND s.adapter IN ({$placeholders}))", $this->sourceScope];
+    }
+
+    public function sourcePageCache(): SourcePageCache
+    {
+        return new SourcePageCache($this->pdo);
+    }
+
     public function shouldProcessUrl(
         string $adapter,
         string $url,
@@ -298,15 +332,17 @@ SQL);
     public function pendingForTarget(ResearchTarget $target): iterable
     {
         $afterId = 0;
+        [$sourceCondition, $sourceParameters] = $this->sourceCondition();
         do {
-            $statement = $this->pdo->prepare(<<<'SQL'
+            $statement = $this->pdo->prepare(<<<SQL
 SELECT * FROM businesses
 WHERE status = 'pending' AND id > ?
   AND json_extract(payload_json, '$.address.city') = ?
   AND json_extract(payload_json, '$.category_key') = ?
+  {$sourceCondition}
 ORDER BY id LIMIT 100
 SQL);
-            $statement->execute([$afterId, $target->city, $target->categoryKey]);
+            $statement->execute([$afterId, $target->city, $target->categoryKey, ...$sourceParameters]);
             $rows = $statement->fetchAll();
             foreach ($rows as $row) {
                 $afterId = (int) $row['id'];
@@ -317,12 +353,16 @@ SQL);
 
     public function pendingTargets(): array
     {
-        $rows = $this->pdo->query(<<<'SQL'
+        [$sourceCondition, $sourceParameters] = $this->sourceCondition();
+        $statement = $this->pdo->prepare(<<<SQL
 SELECT json_extract(payload_json, '$.address.city') AS city,
        json_extract(payload_json, '$.category_key') AS category
 FROM businesses WHERE status IN ('pending', 'queued')
+{$sourceCondition}
 GROUP BY city, category ORDER BY MIN(id)
-SQL)->fetchAll();
+SQL);
+        $statement->execute($sourceParameters);
+        $rows = $statement->fetchAll();
 
         return array_map(static fn (array $row): ResearchTarget => new ResearchTarget(
             (string) $row['city'], (string) $row['category'],
@@ -456,10 +496,14 @@ SQL)->fetchAll();
     {
         $this->pdo->beginTransaction();
         try {
+            [$sourceCondition, $sourceParameters] = $this->sourceCondition();
             $select = $this->pdo->prepare(
-                "SELECT id FROM businesses WHERE status IN ('failed', 'not_found') ORDER BY id LIMIT ?"
+                "SELECT id FROM businesses WHERE status IN ('failed', 'not_found') {$sourceCondition} ORDER BY id LIMIT ?"
             );
-            $select->bindValue(1, max(1, $limit), PDO::PARAM_INT);
+            foreach ($sourceParameters as $index => $adapter) {
+                $select->bindValue($index + 1, $adapter, PDO::PARAM_STR);
+            }
+            $select->bindValue(count($sourceParameters) + 1, max(1, $limit), PDO::PARAM_INT);
             $select->execute();
             $ids = array_map('intval', $select->fetchAll(PDO::FETCH_COLUMN));
             if ($ids !== []) {

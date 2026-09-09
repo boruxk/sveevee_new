@@ -31,6 +31,13 @@ final class ConfigFileTransaction
                 }
                 $stages[$path] = $stage;
                 $json = Json::encode($document, true).PHP_EOL;
+                // Retain existing formatting too when a job's values were not changed.
+                if (is_file($path)) {
+                    $existing = (string) file_get_contents($path);
+                    if (Json::decode($existing) === $document) {
+                        $json = $existing;
+                    }
+                }
                 if (file_put_contents($stage, $json, LOCK_EX) === false) {
                     throw new RuntimeException('Unable to stage configuration.');
                 }

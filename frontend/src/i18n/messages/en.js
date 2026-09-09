@@ -749,6 +749,7 @@ export default {
 			minutesSeconds: '{minutes} min {seconds} sec',
 			genericResult: 'System event',
 			workerSummary: '{found} found, {imported} imported, {updated} updated, {failed} failed',
+			govWorkerSummary: '{found} found, {imported} imported, {updated} updated, {failed} errors in total',
 			runId: 'Run ID',
 			mode: 'Mode',
 			dryRun: 'Dry run',
@@ -762,10 +763,15 @@ export default {
 				updated: 'Updated',
 				duplicates: 'Duplicates',
 				incomplete: 'Incomplete',
-				failed: 'Failed'
+				failed: 'Failed',
+				total_errors: 'Total errors',
+				source_requests: 'Source requests',
+				source_errors: 'Source failures',
+				deferred_target_combinations: 'Deferred combinations'
 			},
 			combinations: 'City and category combinations',
 			foundCount: '{count} found',
+			deferredTarget: 'Deferred',
 			usedSources: 'Sources used',
 			errors: 'Errors',
 			rawData: 'Raw data'

@@ -749,6 +749,7 @@ export default {
 			minutesSeconds: '{minutes} min {seconds} s',
 			genericResult: 'Événement système',
 			workerSummary: '{found} trouvées, {imported} importées, {updated} mises à jour, {failed} échouées',
+			govWorkerSummary: '{found} trouvées, {imported} importées, {updated} mises à jour, {failed} erreurs au total',
 			runId: 'ID d\'exécution',
 			mode: 'Mode',
 			dryRun: 'Simulation',
@@ -762,10 +763,15 @@ export default {
 				updated: 'Mises à jour',
 				duplicates: 'Doublons',
 				incomplete: 'Incomplètes',
-				failed: 'Échouées'
+				failed: 'Échouées',
+				total_errors: 'Total des erreurs',
+				source_requests: 'Requêtes aux sources',
+				source_errors: 'Erreurs des sources',
+				deferred_target_combinations: 'Combinaisons reportées'
 			},
 			combinations: 'Combinaisons ville et catégorie',
 			foundCount: '{count} trouvées',
+			deferredTarget: 'Reportée',
 			usedSources: 'Sources utilisées',
 			errors: 'Erreurs',
 			rawData: 'Données brutes'

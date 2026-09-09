@@ -33,6 +33,8 @@ final class RunReport
 
     private array $errors = [];
 
+    private bool $sourceMetricsEnabled = false;
+
     public function __construct(
         public readonly string $runId,
         public readonly string $command,
@@ -57,6 +59,13 @@ final class RunReport
         $this->sources[$name] = ($this->sources[$name] ?? 0) + $amount;
     }
 
+    public function enableSourceMetrics(): void
+    {
+        $this->sourceMetricsEnabled = true;
+        $this->metrics['source_requests'] ??= 0;
+        $this->metrics['source_errors'] ??= 0;
+    }
+
     public function target(string $key, string $city, string $categoryKey, int $found, int $successful = 0, int $planned = 0): void
     {
         $previous = $this->targets[$key] ?? [];
@@ -67,7 +76,14 @@ final class RunReport
             'found' => ($previous['found'] ?? 0) + $found,
             'successful' => ($previous['successful'] ?? 0) + $successful,
             'planned' => ($previous['planned'] ?? 0) + $planned,
+            ...(isset($previous['deferred']) ? ['deferred' => $previous['deferred']] : []),
         ];
+    }
+
+    public function deferTarget(string $key, string $city, string $categoryKey): void
+    {
+        $this->target($key, $city, $categoryKey, 0);
+        $this->targets[$key]['deferred'] = true;
     }
 
     public function error(string $stage, string $message, array $context = []): void
@@ -85,7 +101,8 @@ final class RunReport
     {
         ksort($this->sources);
         $productive = count(array_filter($this->targets, fn (array $target): bool => ($this->dryRun ? $target['planned'] : $target['successful']) > 0));
-        $empty = count(array_filter($this->targets, static fn (array $target): bool => $target['found'] === 0 && $target['successful'] === 0 && $target['planned'] === 0));
+        $empty = count(array_filter($this->targets, static fn (array $target): bool => ! ($target['deferred'] ?? false) && $target['found'] === 0 && $target['successful'] === 0 && $target['planned'] === 0));
+        $deferred = count(array_filter($this->targets, static fn (array $target): bool => $target['deferred'] ?? false));
 
         return [
             'run_id' => $this->runId,
@@ -101,6 +118,7 @@ final class RunReport
             'productive_target_combinations' => $productive,
             'empty_target_combinations' => $empty,
             'unproductive_target_combinations' => count($this->targets) - $productive,
+            ...($this->sourceMetricsEnabled ? ['deferred_target_combinations' => $deferred] : []),
             'targets' => array_values($this->targets),
             'used_sources' => array_keys($this->sources),
             'source_counts' => $this->sources,

@@ -749,6 +749,7 @@ export default {
 			minutesSeconds: '{minutes} мин. {seconds} сек.',
 			genericResult: 'Системное событие',
 			workerSummary: 'Найдено: {found}, импортировано: {imported}, обновлено: {updated}, ошибок: {failed}',
+			govWorkerSummary: 'Найдено: {found}, импортировано: {imported}, обновлено: {updated}, всего ошибок: {failed}',
 			runId: 'ID запуска',
 			mode: 'Режим',
 			dryRun: 'Тестовый запуск',
@@ -762,10 +763,15 @@ export default {
 				updated: 'Обновлено',
 				duplicates: 'Дубликатов',
 				incomplete: 'Неполных',
-				failed: 'Ошибок'
+				failed: 'Ошибок',
+				total_errors: 'Всего ошибок',
+				source_requests: 'Запросы к источникам',
+				source_errors: 'Ошибки источников',
+				deferred_target_combinations: 'Отложенные комбинации'
 			},
 			combinations: 'Комбинации города и категории',
 			foundCount: 'Найдено: {count}',
+			deferredTarget: 'Отложено',
 			usedSources: 'Использованные источники',
 			errors: 'Ошибки',
 			rawData: 'Исходные данные'
