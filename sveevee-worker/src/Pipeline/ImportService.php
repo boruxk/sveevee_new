@@ -8,6 +8,7 @@ use Sveevee\Worker\Api\ApiException;
 use Sveevee\Worker\Api\SveeveeGateway;
 use Sveevee\Worker\Config\ResearchTarget;
 use Sveevee\Worker\Domain\BusinessMerger;
+use Sveevee\Worker\Domain\BusinessNormalizer;
 use Sveevee\Worker\Reporting\RunReport;
 use Sveevee\Worker\Storage\WorkerRepository;
 use Sveevee\Worker\Support\Logger;
@@ -111,9 +112,27 @@ final class ImportService
     private function prepareBusiness(array $business, bool $dryRun, RunReport $report): ?array
     {
         $payload = $business['payload'];
+        // Older pending research also passes this filter before a new batch is created.
+        // Already submitted retry requests keep their original body and idempotency ID.
+        $payload['name'] = BusinessNormalizer::cleanBusinessName((string) ($payload['name'] ?? ''));
+        if (trim($payload['name']) === '') {
+            if (! $dryRun) {
+                $this->repository->markBusiness($business['id'], 'invalid', errorCode: 'missing_name', errorMessage: 'No business name remains after removing the company suffix.');
+            }
+            $report->increment('incomplete');
+
+            return null;
+        }
         try {
-            $duplicate = $this->api->checkDuplicate($payload);
+            // Legacy pages can still carry the suffix; retain their original lookup name.
+            $lookupPayload = $business['payload'];
+            $duplicate = $this->api->checkDuplicate($lookupPayload);
             $matches = is_array($duplicate['matches'] ?? null) ? $duplicate['matches'] : [];
+            if ($matches === [] && $lookupPayload['name'] !== $payload['name']) {
+                $lookupPayload = $payload;
+                $duplicate = $this->api->checkDuplicate($lookupPayload);
+                $matches = is_array($duplicate['matches'] ?? null) ? $duplicate['matches'] : [];
+            }
             if ($matches === []) {
                 $report->increment(isset($payload['id']) ? 'planned_updates' : 'planned_imports');
 
@@ -122,7 +141,7 @@ final class ImportService
 
             $report->increment('existing');
             $report->increment('duplicates');
-            [$remote, $reason] = $this->resolveRemote($payload, $matches);
+            [$remote, $reason] = $this->resolveRemote($lookupPayload, $matches);
             if ($remote === null) {
                 $message = $reason ?? 'Matching Sveevee page could not be resolved safely.';
                 if (! $dryRun) {

@@ -135,6 +135,21 @@ final class BusinessNormalizer
         return new BusinessCandidate($data, [$source]);
     }
 
+    public static function cleanBusinessName(string $name): string
+    {
+        $marker = 'בע(?:\s*["״“”„~\x{0027}׳]{1,2}\s*)?מ';
+        $cleaned = preg_replace(
+            '/(?<![\p{L}\p{M}\p{N}])(?:\(\s*'.$marker.'\s*\)|'.$marker.')(?![\p{L}\p{M}\p{N}])/u',
+            '',
+            $name,
+        ) ?? $name;
+        if ($cleaned === $name) {
+            return $name;
+        }
+
+        return trim(preg_replace('/[\p{Z}\s]+/u', ' ', $cleaned) ?? $cleaned);
+    }
+
     public function identityKeys(array $data): array
     {
         $address = is_array($data['address'] ?? null) ? $data['address'] : [];

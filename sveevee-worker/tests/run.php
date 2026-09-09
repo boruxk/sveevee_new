@@ -48,12 +48,22 @@ final class FakeGateway implements SveeveeGateway
 
     public array $runReports = [];
 
+    public array $remoteBusinesses = [];
+
     public bool $failNextBatch = false;
 
     public bool $failNextRunReport = false;
 
     public function checkDuplicate(array $business): array
     {
+        foreach ($this->remoteBusinesses as $remote) {
+            if ($remote['name'] === $business['name']) {
+                return ['duplicate' => true, 'matches' => [[
+                    'id' => $remote['id'], 'name' => $remote['name'], 'matched_on' => ['name'],
+                ]]];
+            }
+        }
+
         return match ($business['name']) {
             'Existing Business' => ['duplicate' => true, 'matches' => [[
                 'id' => 7, 'name' => 'Existing Business', 'matched_on' => ['name'],
@@ -68,6 +78,11 @@ final class FakeGateway implements SveeveeGateway
     public function searchBusinesses(array $filters): array
     {
         $name = $filters['name'] ?? null;
+        foreach ($this->remoteBusinesses as $remote) {
+            if ($remote['name'] === $name) {
+                return ['businesses' => [$remote]];
+            }
+        }
         if ($name === 'Existing Business') {
             return ['businesses' => [[
                 'id' => 7,
@@ -462,6 +477,56 @@ $test('normalizer keeps sources local and creates stable identity keys', functio
     $keys = $normalizer->identityKeys($candidate->data);
     $assert($keys['phone'] === '97230000000');
     $assert($keys['email'] === 'info@example.com');
+});
+
+$test('outgoing business names remove standalone company markers while preserving stored identities', function () use ($assert): void {
+    $normalizer = new BusinessNormalizer(new OpeningHoursParser, ['Haifa']);
+    $target = new ResearchTarget('Haifa', 'food_catering.bakery');
+    foreach ([
+        'מאפיית השחר בע~מ' => 'מאפיית השחר',
+        'מאפיית השחר בע"מ' => 'מאפיית השחר',
+        'מאפיית השחר בע״מ' => 'מאפיית השחר',
+        'מאפיית השחר בע”מ' => 'מאפיית השחר',
+        'מאפיית השחר בעמ' => 'מאפיית השחר',
+        'מאפיית השחר בע׳׳מ' => 'מאפיית השחר',
+        'מאפיית השחר בע " מ' => 'מאפיית השחר',
+        'מאפיית השחר (בע"מ)' => 'מאפיית השחר',
+        'מאפיית בע"מ השחר' => 'מאפיית השחר',
+        'בע"מ מאפיית השחר בע״מ' => 'מאפיית השחר',
+        'מאפיית השחר' => 'מאפיית השחר',
+        'מאפייה בעמק' => 'מאפייה בעמק',
+        'שםבע"מ' => 'שםבע"מ',
+        'מאפיית בע"מית' => 'מאפיית בע"מית',
+    ] as $original => $expected) {
+        $candidate = $normalizer->normalize(['name' => $original, 'public_description' => $original], $target, 'fixture');
+        $assert(BusinessNormalizer::cleanBusinessName($candidate->data['name']) === $expected, 'Unexpected cleaned name: '.$original);
+        $assert($candidate->data['name'] === $original, 'Stored identity must retain the original name.');
+        $assert($candidate->data['public_description'] === $original);
+        $assert($candidate->sources[0]->raw['name'] === $original);
+    }
+});
+
+$test('pending imports clean names before duplicate checks and new batch submission', function () use ($assert): void {
+    [$repository, $logger, $directory] = testRepository();
+    foreach (['New Business בע~מ', 'Claimed Business בע״מ', 'Legacy Business בע"מ', 'בע"מ'] as $name) {
+        $repository->upsertCandidate(testCandidate($name));
+    }
+    $gateway = new FakeGateway;
+    $gateway->remoteBusinesses[] = [
+        'id' => 11, 'name' => 'Legacy Business בע"מ', 'can_update' => true,
+        'public_description' => 'Verified description for Legacy Business בע"מ',
+        'category_key' => 'professionals.electricians', 'address' => ['city' => 'Tel Aviv'],
+    ];
+    $report = new RunReport(Uuid::v4(), 'import', false);
+    $repository->startRun($report->runId, 'import', false, 'fixture');
+    (new ImportService($gateway, $repository, new BusinessMerger, $logger, 100))->import($report->runId, 100, false, $report);
+    $assert(count($gateway->batchRequests) === 1);
+    $assert(count($gateway->batchRequests[0]['businesses']) === 1);
+    $assert($gateway->batchRequests[0]['businesses'][0]['name'] === 'New Business');
+    $assert($report->metric('imported') === 1);
+    $assert($report->metric('incomplete') === 1);
+    $assert($report->metric('duplicates') === 2, 'Both original and cleaned legacy names must be found.');
+    $assert($report->metric('failed') === 0);
 });
 
 $test('OAuth token is cached and renewed after an API 401', function () use ($assert): void {
