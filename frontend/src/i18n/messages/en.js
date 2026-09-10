@@ -763,6 +763,7 @@ export default {
 				updated: 'Updated',
 				duplicates: 'Duplicates',
 				incomplete: 'Incomplete',
+				review: 'Needs review',
 				failed: 'Failed',
 				total_errors: 'Total errors',
 				source_requests: 'Source requests',

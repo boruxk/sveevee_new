@@ -13,8 +13,8 @@ final class WorkerPaths
     public static function resolve(array $storage, string $root): array
     {
         $namespace = $storage['data_subdirectory'] ?? '';
-        if (! is_string($namespace) || ! in_array($namespace, ['', 'tel-aviv', 'overture'], true)) {
-            throw new RuntimeException('storage.data_subdirectory must be empty, tel-aviv or overture.');
+        if (! is_string($namespace) || ! in_array($namespace, ['', 'tel-aviv', 'overture', 'foursquare'], true)) {
+            throw new RuntimeException('storage.data_subdirectory must be empty, tel-aviv, overture or foursquare.');
         }
         $absolute = static fn (string $path): bool => str_starts_with($path, '/') || preg_match('/^[A-Za-z]:[\\\\\/]/', $path) === 1;
         $resolve = static fn (string $path): string => $absolute($path) ? $path : rtrim($root, '/\\').DIRECTORY_SEPARATOR.str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);

@@ -8,8 +8,12 @@ use Sveevee\Worker\Config\ConfigFileTransaction;
 use Sveevee\Worker\Support\Json;
 
 try {
-    $options = getopt('', ['config:', 'profile:', 'tel-config:', 'tel-profile:', 'overture-config:', 'overture-profile:', 'update-overture', 'apply']);
+    $options = getopt('', ['config:', 'profile:', 'tel-config:', 'tel-profile:', 'overture-config:', 'overture-profile:', 'update-overture', 'foursquare-config:', 'foursquare-profile:', 'add-foursquare', 'apply']);
     $root = dirname(__DIR__);
+    $addFoursquare = isset($options['add-foursquare']);
+    if ($addFoursquare && isset($options['update-overture'])) {
+        throw new RuntimeException('Add Foursquare separately from an Overture configuration update.');
+    }
     $configPath = realpath($options['config'] ?? '/etc/sveevee-worker/worker.json');
     if ($configPath === false || ! is_file($configPath)) {
         throw new RuntimeException('Existing worker configuration was not found. Install the worker first.');
@@ -24,12 +28,13 @@ try {
     };
     $telPath = $destination($options['tel-config'] ?? dirname($configPath).'/worker.tel-aviv.json');
     $overturePath = $destination($options['overture-config'] ?? dirname($configPath).'/worker.overture.json');
-    $paths = [$configPath, $telPath, $overturePath];
+    $foursquarePath = $destination($options['foursquare-config'] ?? dirname($configPath).'/worker.foursquare.json');
+    $paths = [$configPath, $telPath, $overturePath, $foursquarePath];
     if (PHP_OS_FAMILY === 'Windows') {
         $paths = array_map(strtolower(...), $paths);
     }
-    if (count(array_unique($paths)) !== 3) {
-        throw new RuntimeException('Government, Tel Aviv and Overture configurations must use different files.');
+    if (count(array_unique($paths)) !== 4) {
+        throw new RuntimeException('Government, Tel Aviv, Overture and Foursquare configurations must use different files.');
     }
     $read = static function (string $path): array {
         if (! is_file($path)) {
@@ -43,11 +48,12 @@ try {
         return $value;
     };
     $government = $read($configPath);
-    $tel = is_file($telPath) ? $read($telPath) : $government;
+    $telExists = is_file($telPath);
+    $tel = $telExists ? $read($telPath) : $government;
     $overtureExists = is_file($overturePath);
-    $overture = is_file($overturePath) ? $read($overturePath) : $government;
-    $governmentProfile = $read($options['profile'] ?? $root.'/config/worker.rotation.json');
-    $telProfile = $read($options['tel-profile'] ?? $root.'/config/worker.tel-aviv.json');
+    $overture = $overtureExists ? $read($overturePath) : $government;
+    $foursquareExists = is_file($foursquarePath);
+    $foursquare = $foursquareExists ? $read($foursquarePath) : null;
     $merge = static function (array $current, array $profile, string $namespace, array $enabledSources): array {
         foreach (['target_per_run', 'targets_per_run', 'businesses_per_combination', 'batch_size', 'cities', 'categories', 'neighborhoods'] as $key) {
             if (! array_key_exists($key, $profile)) {
@@ -59,7 +65,7 @@ try {
         unset($current['quotas']['max_new_per_day']);
         $current['storage']['data_subdirectory'] = $namespace;
         $current['api'] = array_replace((array) ($current['api'] ?? []), (array) ($profile['api'] ?? []));
-        if ($namespace !== 'overture') {
+        if (! in_array($namespace, ['overture', 'foursquare'], true)) {
             $current['research'] = array_replace((array) ($current['research'] ?? []), (array) ($profile['research'] ?? []));
         } else {
             unset($current['research']['max_http_requests_per_run']);
@@ -77,14 +83,37 @@ try {
 
         return $current;
     };
-    $government = $merge($government, $governmentProfile, '', ['data_gov_ckan']);
-    $tel = $merge($tel, $telProfile, 'tel-aviv', ['tel_aviv_business_licenses']);
-    if (! $overtureExists || isset($options['update-overture'])) {
-        $overtureProfile = $read($options['overture-profile'] ?? $root.'/config/worker.overture.json');
-        $overture = $merge($overture, $overtureProfile, 'overture', ['overture_places']);
+    if ($addFoursquare) {
+        // Adding a source must not migrate settings or create any other job.
+        if (! $foursquareExists) {
+            $foursquareProfile = $read($options['foursquare-profile'] ?? $root.'/config/worker.foursquare.json');
+            if (($foursquareProfile['sources']['foursquare_places']['import_mode'] ?? null) !== 'all_records') {
+                throw new RuntimeException('The Foursquare profile must configure foursquare_places in all_records mode.');
+            }
+            $foursquare = $merge($government, $foursquareProfile, 'foursquare', ['foursquare_places']);
+        }
+    } else {
+        $governmentProfile = $read($options['profile'] ?? $root.'/config/worker.rotation.json');
+        $telProfile = $read($options['tel-profile'] ?? $root.'/config/worker.tel-aviv.json');
+        $government = $merge($government, $governmentProfile, '', ['data_gov_ckan']);
+        $tel = $merge($tel, $telProfile, 'tel-aviv', ['tel_aviv_business_licenses']);
+        if (! $overtureExists || isset($options['update-overture'])) {
+            $overtureProfile = $read($options['overture-profile'] ?? $root.'/config/worker.overture.json');
+            $overture = $merge($overture, $overtureProfile, 'overture', ['overture_places']);
+        }
     }
     $apply = isset($options['apply']);
-    $result = (new ConfigFileTransaction)->write([$configPath => $government, $telPath => $tel, $overturePath => $overture], $root, $apply);
+    $documents = [$configPath => $government];
+    if ($telExists || ! $addFoursquare) {
+        $documents[$telPath] = $tel;
+    }
+    if ($overtureExists || ! $addFoursquare) {
+        $documents[$overturePath] = $overture;
+    }
+    if ($foursquare !== null) {
+        $documents[$foursquarePath] = $foursquare;
+    }
+    $result = (new ConfigFileTransaction)->write($documents, $root, $apply);
     $summary = static fn (array $config, string $path): array => [
         'config' => $path, 'cities' => $config['cities'],
         'categories_per_city' => count($config['categories']),
@@ -94,7 +123,7 @@ try {
         'successful_entries_per_run' => $config['target_per_run'],
         'productive_combinations_per_run' => $config['targets_per_run'],
         'successful_entries_per_combination' => $config['businesses_per_combination'],
-        'batch_size' => $config['batch_size'], 'daily_limit' => null,
+        'batch_size' => $config['batch_size'], 'daily_limit' => $config['quotas']['max_new_per_day'] ?? null,
         'max_source_http_requests_per_run' => $config['research']['max_http_requests_per_run'] ?? null,
         'overture_import_mode' => $config['sources']['overture_places']['import_mode'] ?? 'catalog',
         'source_import_modes' => array_map(static fn (array $source): string => $source['import_mode'] ?? 'catalog',
@@ -103,8 +132,9 @@ try {
     ];
     fwrite(STDOUT, Json::encode([
         'applied' => $apply, ...$summary($government, $configPath),
-        'tel_aviv' => $summary($tel, $telPath),
-        'overture' => $summary($overture, $overturePath),
+        'tel_aviv' => isset($documents[$telPath]) ? $summary($tel, $telPath) : null,
+        'overture' => isset($documents[$overturePath]) ? $summary($overture, $overturePath) : null,
+        'foursquare' => $foursquare !== null ? $summary($foursquare, $foursquarePath) : null,
         'changed' => $result['changed'], 'backups' => $result['backups'],
         'backup' => $result['backups'][$configPath] ?? null,
     ], true).PHP_EOL);

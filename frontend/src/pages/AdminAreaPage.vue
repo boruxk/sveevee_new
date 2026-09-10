@@ -367,6 +367,7 @@
 		]
 		const labels = {
 			overture_places: 'Overture Places',
+			foursquare_places: 'Foursquare Places',
 			data_gov_ckan: 'data.gov.il',
 			tel_aviv_business_licenses: 'gisn.tel-aviv.gov.il',
 			overpass: 'OpenStreetMap'
@@ -449,7 +450,8 @@
 	}
 
 	function logMetricKeys(log) {
-		return ['found', 'new', 'existing', 'imported', 'updated', 'duplicates', 'incomplete', 'failed', ...logSourceMetricKeys(log)]
+		return ['found', 'new', 'existing', 'imported', 'updated', 'duplicates', 'incomplete', 'failed',
+			...(Object.hasOwn(log?.data || {}, 'review') ? ['review'] : []), ...logSourceMetricKeys(log)]
 	}
 
 	function logSourceSummary(log) {

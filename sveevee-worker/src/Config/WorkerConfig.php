@@ -97,7 +97,7 @@ final class WorkerConfig
         if ($this->overtureAllPlaces()) {
             return 'overture_places';
         }
-        foreach (['data_gov_ckan', 'tel_aviv_business_licenses'] as $provider) {
+        foreach (['data_gov_ckan', 'tel_aviv_business_licenses', 'foursquare_places'] as $provider) {
             if ($this->bool('sources.'.$provider.'.enabled') && $this->get('sources.'.$provider.'.import_mode') === 'all_records') {
                 return $provider;
             }
@@ -132,6 +132,9 @@ final class WorkerConfig
 
     private function validate(): void
     {
+        if ($this->bool('sources.foursquare_places.enabled') && $this->get('sources.foursquare_places.import_mode') !== 'all_records') {
+            throw new RuntimeException('Foursquare requires import_mode all_records.');
+        }
         foreach (['data_gov_ckan', 'tel_aviv_business_licenses'] as $provider) {
             if (! in_array($this->get('sources.'.$provider.'.import_mode', 'catalog'), ['catalog', 'all_records'], true)) {
                 throw new RuntimeException('Unsupported '.$provider.' import_mode.');

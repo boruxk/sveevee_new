@@ -763,6 +763,7 @@ export default {
 				updated: 'עודכנו',
 				duplicates: 'כפילויות',
 				incomplete: 'לא מלאים',
+				review: 'ממתינים לבדיקה',
 				failed: 'נכשלו',
 				total_errors: 'סך השגיאות',
 				source_requests: 'בקשות למקורות',

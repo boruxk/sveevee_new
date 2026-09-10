@@ -145,7 +145,7 @@ final class ImportService
         }
         try {
             $provider = $payload['source']['provider'] ?? 'overture_places';
-            $hasSource = in_array($provider, ['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses'], true) && $this->repository->hasSource($business['id'], $provider);
+            $hasSource = in_array($provider, ['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses', 'foursquare_places'], true) && $this->repository->hasSource($business['id'], $provider);
             $knownPageId = filter_var($business['sveevee_page_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             $linkedSource = $hasSource && $knownPageId !== false;
             if ($linkedSource) {
@@ -156,10 +156,16 @@ final class ImportService
             } else {
                 // Legacy pages can still carry the suffix; retain their original lookup name.
                 $lookupPayload = $business['payload'];
+                if ($dryRun && $provider === 'foursquare_places') {
+                    $lookupPayload['dry_run'] = true;
+                }
                 $duplicate = $this->api->checkDuplicate($lookupPayload);
                 $matches = is_array($duplicate['matches'] ?? null) ? $duplicate['matches'] : [];
                 if ($matches === [] && $lookupPayload['name'] !== $payload['name']) {
                     $lookupPayload = $payload;
+                    if ($dryRun && $provider === 'foursquare_places') {
+                        $lookupPayload['dry_run'] = true;
+                    }
                     $duplicate = $this->api->checkDuplicate($lookupPayload);
                     $matches = is_array($duplicate['matches'] ?? null) ? $duplicate['matches'] : [];
                 }
@@ -180,7 +186,7 @@ final class ImportService
                 }
                 $sourceLinked = isset($payload['source']) && ($linkedSource || count(array_filter($matches,
                     static fn (array $match): bool => (int) ($match['id'] ?? 0) === (int) $remote['id']
-                        && in_array('source_id', (array) ($match['matched_on'] ?? []), true))) > 0);
+                        && array_intersect(['source_id', ...(($payload['source']['provider'] ?? null) === 'foursquare_places' ? ['source_alias'] : [])], (array) ($match['matched_on'] ?? [])) !== [])) > 0);
                 $conflict = $sourceLinked
                     ? BusinessLocationIdentity::sourceConflict($remote, $identityPayload)
                     : BusinessLocationIdentity::conflict($remote, $identityPayload);
@@ -209,6 +215,12 @@ final class ImportService
                 return null;
             }
             $patch = $this->merger->patchForRemote($payload, $remote);
+            if ($provider === 'foursquare_places') {
+                // The backend verifies a first source association against independent source facts.
+                // These are evidence; its Foursquare update path preserves existing name/address values.
+                $patch['name'] = $payload['name'];
+                $patch['address'] = $business['payload']['address'] ?? [];
+            }
             if (! $this->merger->hasRemoteChanges($patch)) {
                 if (! $dryRun) {
                     $this->repository->markBusiness($business['id'], 'duplicate', (int) $remote['id'], null, null, $matches);
@@ -220,6 +232,15 @@ final class ImportService
 
             return ['business_id' => $business['id'], 'payload' => $patch, 'payload_hash' => $business['payload_hash'], 'target_city' => $payload['address']['city'] ?? '', 'target_category' => $payload['category_key'] ?? ''];
         } catch (ApiException $exception) {
+            if (($payload['source']['provider'] ?? null) === 'foursquare_places'
+                && $exception->status === 409 && $exception->reason === 'review_required') {
+                if (! $dryRun) {
+                    $this->repository->markBusiness($business['id'], 'review', errorCode: 'review_required', errorMessage: $exception->getMessage());
+                }
+                $report->increment('review');
+
+                return null;
+            }
             if (! $dryRun) {
                 $this->repository->markBusiness($business['id'], 'failed', errorCode: $exception->reason, errorMessage: $exception->getMessage());
             }
@@ -400,6 +421,11 @@ final class ImportService
                 $this->repository->requeueChangedBusiness($businessId, $localItem['payload_hash'] ?? null);
                 $report->increment('duplicates');
                 $report->increment('existing');
+            } elseif ($status === 'review_required'
+                && ($batch['request']['businesses'][$position - 1]['source']['provider'] ?? null) === 'foursquare_places') {
+                $this->repository->markBusiness($businessId, 'review', errorCode: 'review_required',
+                    errorMessage: (string) ($item['message'] ?? 'Source overlap requires review.'));
+                $report->increment('review');
             } elseif ($status === 'claimed') {
                 $this->repository->markBusiness(
                     $businessId, 'claimed', errorCode: 'claimed',
@@ -430,7 +456,8 @@ final class ImportService
 
     private function resolveRemote(array $candidate, array $matches): array
     {
-        $sourceMatches = array_values(array_filter($matches, static fn (array $match): bool => in_array('source_id', (array) ($match['matched_on'] ?? []), true)));
+        $sourceSignals = ['source_id', ...(($candidate['source']['provider'] ?? null) === 'foursquare_places' ? ['source_alias'] : [])];
+        $sourceMatches = array_values(array_filter($matches, static fn (array $match): bool => array_intersect($sourceSignals, (array) ($match['matched_on'] ?? [])) !== []));
         if ($sourceMatches !== []) {
             if (count($sourceMatches) !== 1 || ! isset($sourceMatches[0]['id'])) {
                 return [null, 'Several pages are linked to the same source ID.'];

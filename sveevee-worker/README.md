@@ -10,9 +10,10 @@ Der Worker laeuft unabhaengig von Frontend und Laravel-Web-Requests. Er recherch
 - Getrennte Gov- und Tel-Aviv-Jobs: alle Datensaetze ihrer konfigurierten Ressourcen, jeweils hoechstens 10 erfolgreiche Neuanlagen oder Aktualisierungen pro Lauf
 - Gov und Tel Aviv haben jeweils ein eigenes Budget von hoechstens 10 Quell-HTTP-Abfragen pro Lauf, mit 10er-Seiten, ohne Retries und mindestens zwei Sekunden Abstand
 - Separater Overture-Job: alle Israel-Places der vorbereiteten Ausgabe fortlaufend nach GERS-ID, hoechstens 9000 erfolgreiche Neuanlagen oder Aktualisierungen pro Lauf
+- Separater Foursquare-Job: alle Israel-Datensaetze der vorbereiteten Ausgabe fortlaufend nach FSQ-ID, hoechstens 9000 erfolgreiche Neuanlagen oder Aktualisierungen pro Lauf; geschlossene Orte und unklare Ueberschneidungen werden separat gezaehlt
 - Unveraenderte Dubletten und unbrauchbare Kandidaten verbrauchen keine erfolgreichen Schreibplaetze; ihre Quellabfragen zaehlen zum HTTP-Budget
-- Gov alle zehn Minuten, Tel Aviv einmal taeglich um 03:05 Uhr israelischer Zeit; Overture weiterhin alle 30 Minuten, jeweils ohne Tageslimit
-- Getrennte Import-Batches pro Job: maximal 10 Eintraege bei Gov/Tel und 100 bei Overture
+- Gov alle zehn Minuten, Tel Aviv einmal taeglich um 03:05 Uhr israelischer Zeit; Overture weiterhin alle 30 Minuten und Foursquare stuendlich, jeweils ohne Tageslimit
+- Getrennte Import-Batches pro Job: maximal 10 Eintraege bei Gov/Tel und 100 bei Overture/Foursquare
 - Idempotente Batch-Retries mit vor dem Request gespeicherter `client_import_id`
 - Einzelne Fehler stoppen die restlichen Batch-Eintraege nicht
 - Fehlende Update-Felder loeschen keine vorhandenen Daten
@@ -44,6 +45,7 @@ Die Quellenfelder `source_name`, `source_url` und `source_checked_at` bleiben mi
 Mitgeliefert werden:
 
 - `overture_places`: lokal vorbereitete Israel-Daten aus Overture Maps Places mit Kategorien, Adressen und vorhandenen Kontaktdaten. Diese Quelle laeuft ausschliesslich im separaten Overture-Profil.
+- `foursquare_places`: lokal vorbereitete Israel-Daten aus Foursquare Open Source Places, im eigenen Profil mit Abgleich gegen vorhandene Seiten und belegte Foursquare-IDs aus Overture.
 - `data_gov_ckan`: vollstaendiger paginierter Durchlauf der konfigurierten Beersheba-Gewerbelizenzen und des landesweiten Firmenregisters.
 - `tel_aviv_business_licenses`: vollstaendiger paginierter Durchlauf des offiziellen Tel-Aviv-ArcGIS-Layers, einschliesslich unbekannter Lizenzarten und abgelaufener Lizenzen.
 - `json_seed`: JSON-Array, JSONL oder `{ "businesses": [...]` fuer lizenzierte Exporte und manuell vorbereitete Daten.
@@ -53,6 +55,45 @@ Mitgeliefert werden:
 B144 und Easy sind bewusst nicht fest eingebaut. Ein direkter Crawler sollte erst ergaenzt werden, wenn die jeweilige Quelle automatisierten Zugriff und die dauerhafte Weiterverwendung der Daten ausdruecklich erlaubt. Ein neuer Adapter implementiert lediglich `SourceAdapterInterface`; Import, Normalisierung und Statusverwaltung bleiben unveraendert.
 
 Die oeffentliche Overpass-Instanz ist standardmaessig gesperrt. Ihre Betreiber beschreiben sie als Ressource fuer kleine beziehungsweise einmalige Nutzung und empfehlen fuer regelmaessige oder kommerzielle Last eine eigene oder autorisierte Instanz: https://wiki.openstreetmap.org/wiki/Overpass_API und https://dev.overpass-api.de/overpass-doc/en/preface/commons.html. Fuer produktive OSM-Daten muessen ausserdem ODbL und Attribution geprueft werden. Der Website-Adapter beachtet RFC 9309 (`robots.txt`), doch robots.txt ersetzt keine Pruefung der Nutzungsbedingungen: https://www.rfc-editor.org/rfc/rfc9309.html.
+
+### Foursquare Open Source Places
+
+Die aktuellen [offenen Foursquare-Daten](https://docs.foursquare.com/data-products/docs/access-fsq-os-places) sind kostenlos unter Apache 2.0, erfordern fuer den Download aber ein Places-Portal-Konto und einen Access-Token. Der Token steht ausschliesslich in der ignorierten lokalen `sveevee-worker/.env` als `FOURSQUARE_ACCESS_TOKEN`. Er gehoert weder in Config-JSON, Git, Reports noch Befehlsargumente. Die normalen Importlaeufe lesen nur den vorbereiteten SQLite-Snapshot und brauchen keinen Foursquare-Token.
+
+```bash
+php bin/prepare-foursquare.php --config=config/worker.foursquare.json --duckdb=/path/to/duckdb
+php bin/worker research --config=config/worker.foursquare.json --limit=10
+php bin/worker run --config=config/worker.foursquare.json --limit=10 --dry-run
+```
+
+`--env-file`, `--output` und `--duckdb` waehlen abweichende Pfade. Fuer einen vorhandenen, vollstaendigen JSONL-Ausschnitt ist keine Netzwerkabfrage erforderlich:
+
+```bash
+php bin/prepare-foursquare.php --config=config/worker.foursquare.json --jsonl=/path/to/israel.jsonl --rows=N --release=YYYY-MM-DD --snapshot-id=N
+```
+
+Die Vorbereitung pinnt einen offiziellen Snapshot und exportiert ausschliesslich `country=IL`. Ungueltige Quell-IDs, Schemafehler oder eine unvollstaendige Datei verhindern die Veroeffentlichung des neuen Snapshots; eine vorhandene gute Datei bleibt erhalten. Unbrauchbare Namen bleiben dagegen mit ihren Originaldaten und `preparation_error=invalid_business_name` im Snapshot; sie erhalten keinen oeffentlichen Ersatznamen. Die fertige Datei liegt ohne expliziten `database_path` neben der Foursquare-Worker-Datenbank als `foursquare.sqlite`, auf dem Server also unter `/var/lib/sveevee-worker/foursquare/foursquare.sqlite`.
+
+Der vorbereitete Snapshot liegt unter dem von Git ausgeschlossenen `var`-Verzeichnis. Ein Push uebertraegt ihn deshalb nicht. Beim freigegebenen Deployment muss die vollstaendige Datei gesondert uebertragen und fuer `sveevee-worker` lesbar gemacht werden; der Download-Token wird dafuer nicht auf dem Server benoetigt. Vor dem ersten Foursquare-Lauf die Backend-Migrationen ausfuehren, damit Quellen-Aliasse und die Dubletten-Prueftabelle vorhanden sind.
+
+Der einmalige Download kann trotz Israel-Filter grosse Teile der globalen Parquet-Dateien lesen. Er darf bis zu 60 Minuten dauern; seine lokale JSONL-Ausgabe ist auf 1 GiB begrenzt. Diese Vorbereitungsgrenzen sind unabhaengig vom stuendlichen Import-Timer, der ausschliesslich den fertigen lokalen Snapshot liest.
+
+Alle Originaldaten bleiben in den Quellenmetadaten, darunter FSQ-ID, Datumsfelder, Koordinaten, Originalstadt, Kategorien und Qualitaetsmeldungen. Bekannte Kategorien werden konservativ zugeordnet; unbekannte Kategorien und Orte bleiben fuer die Katalogpruefung erhalten. Fehlende Adresse oder Kategorie schliesst einen Ort nicht aus. `date_closed` markierte Orte bleiben im Snapshot, werden aber nicht veroeffentlicht. Ihr Cursor wird bestaetigt und sie erscheinen separat unter `foursquare_progress.closed`. Unbestaetigte `unresolved_flags` werden unveraendert dokumentiert und fuehren nicht automatisch zum Ausschluss.
+
+Overture enthaelt bereits Foursquare-Daten. Belegte FSQ-IDs aus dessen Quellenprovenienz und bereits gespeicherte FSQ-Zuordnungen werden zuerst abgeglichen; danach folgen die vorhandenen Standortpruefungen. Sichere Ueberschneidungen ergaenzen nur fehlende Felder vorhandener unbeanspruchter Seiten. Beanspruchte Seiten bleiben geschuetzt. Unklare Treffer kommen in die Backend-Pruefliste; der Worker speichert den terminalen Status `review`, zaehlt ihn separat und importiert weitere Kandidaten. Solche Eintraege verbrauchen keinen erfolgreichen Schreibplatz und werden durch `retry-failed` nicht erneut eingereiht. Im Dry-Run wird der Reviewbedarf nur berechnet, ohne eine Backend-Pruefzeile zu speichern.
+
+Der Report enthaelt `foursquare_progress` mit `release`, `total`, `scanned`, `remaining`, `closed`, `invalid`, `pending`, `failed` und `review`. Markierte unbrauchbare Namen werden vor jedem API-Aufruf uebersprungen und im Cursor bestaetigt. `invalid` zaehlt nur bereits gescannte, nicht geschlossene Eintraege ohne brauchbaren Namen; geschlossene Eintraege zaehlen ausschliesslich unter `closed`. Die Gesamtzahl des Snapshots bleibt dabei erhalten. Bei regulaeren Kandidaten geht der Cursor erst weiter, nachdem der Kandidat beziehungsweise die Ablehnung lokal gespeichert wurde. Bereits abgeschickte Batches werden mit identischer Anfrage und UUID wiederholt; ein abgeschlossener Snapshot beginnt nicht beim naechsten Timerlauf von vorn. Ein neuer vorbereiteter Snapshot erhaelt einen eigenen Scanfortschritt, vorhandene erfolgreiche Quellenzuordnungen bleiben erhalten.
+
+Foursquare wird ausdruecklich und unabhaengig von den bestehenden Jobs zur Installation hinzugefuegt:
+
+```bash
+php deploy/configure-rotation.php --add-foursquare
+php deploy/configure-rotation.php --add-foursquare --apply
+```
+
+Dabei bleiben bereits vorhandene Gov-, Tel-Aviv-, Overture- und Foursquare-Konfigurationen bytegleich. Nur eine fehlende Foursquare-Konfiguration wird erzeugt. `--foursquare-config` und `--foursquare-profile` erlauben abweichende Pfade. Die Ergaenzung setzt keinen Cursor zurueck und startet keine Timer. Der Installer installiert die neue Unit ebenfalls ohne Aktivierung. Nach einem spaeter ausdruecklich freigegebenen Deployment kann `sveevee-foursquare.timer` aktiviert werden; der Zeitplan lautet jede Stunde zur Minute 15 in `Asia/Jerusalem`, mit maximal 9000 Erfolgen und 100er-Batches. Pro Job verhindern systemd und die Prozesssperre parallele Instanzen.
+
+Die gemeinsame Sveevee-API begrenzt alle Jobs zusammen. 9000 ist eine Obergrenze, keine garantierte Menge pro Stunde: Antwortzeiten, Dubletten, Reviews und Rate Limits beeinflussen die Laufzeit. Bei einem voruebergehenden API-Ausfall bleiben Kandidaten und Batches fuer den naechsten Lauf erhalten. Die vorhandenen Overture-, Gov- und Tel-Aviv-Einstellungen werden durch die neue Quelle nicht angepasst.
 
 ### Overture Places
 
@@ -183,13 +224,14 @@ Der Fortschritt liegt in SQLite. Manuelle Laeufe bewegen denselben Cursor wie Ti
 
 Das Gov-Profil `config/worker.rotation.json` aktiviert nur `data_gov_ckan` im Vollmodus fuer beide angeschlossenen Ressourcen. `config/worker.tel-aviv.json` aktiviert nur `tel_aviv_business_licenses` im Vollmodus. Vorhandene Stadt- und Kategorielisten bleiben als Zuordnungshilfen und fuer den optionalen Katalogmodus erhalten; sie begrenzen diese Jobs nicht.
 
-Das separate Profil `config/worker.overture.json` aktiviert nur Overture im Vollmodus. Seine vorhandene Stadt-/Kategorieliste bleibt fuer bekannte Zuordnungen erhalten; recherchiert wird ein globales Israel-Ziel. `storage.data_subdirectory` wird nach dem gemeinsamen `SVEVEE_WORKER_DATA_DIR` angewendet. Zugelassen sind der leere Namespace fuer Gov sowie `tel-aviv` und `overture`. Damit bleiben Datenbank, offene Batches, Laufposition, Quellcache, Reports, Log, Admin-Log-Outbox und Lock getrennt, auch wenn alle drei Services dieselbe Credential-Datei laden.
+Das separate Profil `config/worker.overture.json` aktiviert nur Overture im Vollmodus. Seine vorhandene Stadt-/Kategorieliste bleibt fuer bekannte Zuordnungen erhalten; recherchiert wird ein globales Israel-Ziel. `storage.data_subdirectory` wird nach dem gemeinsamen `SVEVEE_WORKER_DATA_DIR` angewendet. Zugelassen sind der leere Namespace fuer Gov sowie `tel-aviv`, `overture` und `foursquare`. Damit bleiben Datenbank, offene Batches, Laufposition, Quellcache, Reports, Log, Admin-Log-Outbox und Lock getrennt, auch wenn alle Services dieselbe Credential-Datei laden.
 
 | Job | Installierte Konfiguration | Datenverzeichnis bei `SVEVEE_WORKER_DATA_DIR=/var/lib/sveevee-worker` | Systemd-Service |
 | --- | --- | --- | --- |
 | Gov / data.gov.il | `/etc/sveevee-worker/worker.json` | `/var/lib/sveevee-worker` | `sveevee-worker.service` |
 | Tel Aviv | `/etc/sveevee-worker/worker.tel-aviv.json` | `/var/lib/sveevee-worker/tel-aviv` | `sveevee-tel-aviv.service` |
 | Overture Places | `/etc/sveevee-worker/worker.overture.json` | `/var/lib/sveevee-worker/overture` | `sveevee-overture.service` |
+| Foursquare Places | `/etc/sveevee-worker/worker.foursquare.json` | `/var/lib/sveevee-worker/foursquare` | `sveevee-foursquare.service` |
 
 In jedem Datenverzeichnis liegen `worker.sqlite`, `worker.lock`, `reports/` und `logs/worker.log`. Gov behaelt seinen bisherigen Zustand; die neue Tel-Aviv-Datenbank beginnt mit eigenem Cursor und prueft vorhandene Seiten ueber die Import-API. Die vorhandene Overture-Datenbank und ihr Zeitplan bleiben erhalten. Die alte gemeinsame Datenbank nicht in den neuen Tel-Aviv-Pfad kopieren: offene Batchanfragen und ihre Idempotenz-IDs gehoeren weiterhin zu ihrem bisherigen Zustand. Alte Reports und noch ausstehende Admin-Logs bleiben unveraendert als Historie erhalten.
 
@@ -290,7 +332,7 @@ cd /var/www/sveevee
 sudo bash sveevee-worker/deploy/install.sh
 ```
 
-Der Installer kopiert den Worker nach `/var/www/sveevee-worker`, erstellt den Systemnutzer und installiert die drei Services mit ihren drei Timern sowie das neue Tel-Aviv-Datenverzeichnis. Er verweigert ein Update, solange einer der Jobs oder Timer aktiv ist, und startet oder aktiviert nichts automatisch.
+Der Installer kopiert den Worker nach `/var/www/sveevee-worker`, erstellt den Systemnutzer und installiert die vier Services mit ihren vier Timern sowie die getrennten Datenverzeichnisse. Er verweigert ein Update, solange einer der Jobs oder Timer aktiv ist, und startet oder aktiviert nichts automatisch. Die optionale Foursquare-Konfiguration wird separat mit `--add-foursquare` erzeugt.
 
 Der Installer sichert ein vorhandenes `/etc/systemd/system/sveevee-worker.timer.d/schedule.conf` unter `/var/backups/sveevee` und ersetzt es durch den Zehn-Minuten-Zeitplan. Damit bleiben alte taegliche oder stuendliche Overrides nicht versehentlich wirksam.
 
@@ -437,6 +479,8 @@ php -d xdebug.mode=off tests/overture_prepare.php
 php -d xdebug.mode=off tests/overture_mapper.php
 php -d xdebug.mode=off tests/overture_all_places.php
 php -d xdebug.mode=off tests/overture_identity.php
+php -d xdebug.mode=off tests/foursquare.php
+php -d xdebug.mode=off tests/foursquare_prepare.php
 php -d xdebug.mode=off tests/import_jobs.php
 php -d xdebug.mode=off tests/import_locations.php
 ```

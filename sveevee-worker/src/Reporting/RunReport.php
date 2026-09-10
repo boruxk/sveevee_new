@@ -37,6 +37,13 @@ final class RunReport
 
     private ?array $overtureProgress = null;
 
+    private ?array $foursquareProgress = null;
+
+    public function foursquareProgress(?array $progress): void
+    {
+        $this->foursquareProgress = $progress;
+    }
+
     public function overtureProgress(?array $progress): void
     {
         $this->overtureProgress = $progress;
@@ -131,6 +138,7 @@ final class RunReport
             'source_counts' => $this->sources,
             'errors' => $this->errors,
             ...($this->overtureProgress === null ? [] : ['overture_progress' => $this->overtureProgress]),
+            ...($this->foursquareProgress === null ? [] : ['foursquare_progress' => $this->foursquareProgress]),
         ];
     }
 

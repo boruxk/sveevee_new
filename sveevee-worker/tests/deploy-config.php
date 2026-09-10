@@ -17,6 +17,8 @@ $telConfigPath = $directory.DIRECTORY_SEPARATOR.'installation-tel.json';
 $telProfilePath = $directory.DIRECTORY_SEPARATOR.'tel-profile.json';
 $overtureConfigPath = $directory.DIRECTORY_SEPARATOR.'worker.overture.json';
 $overtureProfilePath = $directory.DIRECTORY_SEPARATOR.'overture-profile.json';
+$foursquareConfigPath = $directory.DIRECTORY_SEPARATOR.'worker.foursquare.json';
+$foursquareProfilePath = $directory.DIRECTORY_SEPARATOR.'foursquare-profile.json';
 $original = Json::decode((string) file_get_contents(dirname(__DIR__).'/config/worker.example.json'));
 $original['cities'] = ['Beersheba'];
 $original['quotas']['max_new_per_day'] = 1000;
@@ -32,6 +34,7 @@ file_put_contents($configPath, $originalJson);
 copy(dirname(__DIR__).'/config/worker.rotation.json', $profilePath);
 copy(dirname(__DIR__).'/config/worker.tel-aviv.json', $telProfilePath);
 copy(dirname(__DIR__).'/config/worker.overture.json', $overtureProfilePath);
+copy(dirname(__DIR__).'/config/worker.foursquare.json', $foursquareProfilePath);
 $catalogCities = array_column((require dirname(__DIR__, 2).'/backend/config/locations.php')['cities'], 'name');
 
 $assertions = 0;
@@ -41,12 +44,17 @@ $assert = static function (bool $condition, string $message) use (&$assertions):
         throw new RuntimeException($message);
     }
 };
-$run = static function (bool $apply, array $extra = []) use ($configPath, $profilePath, $overtureProfilePath, $telConfigPath, $telProfilePath): array {
+$run = static function (bool $apply, array $extra = []) use ($configPath, $profilePath, $overtureProfilePath, $telConfigPath, $telProfilePath, $foursquareProfilePath): array {
     $arguments = [
         PHP_BINARY, '-d', 'xdebug.mode=off', dirname(__DIR__).'/deploy/configure-rotation.php',
         '--config='.$configPath, '--profile='.$profilePath, '--overture-profile='.$overtureProfilePath,
         '--tel-config='.$telConfigPath, '--tel-profile='.$telProfilePath,
+        '--foursquare-profile='.$foursquareProfilePath,
     ];
+    foreach ($extra as $argument) {
+        $prefix = explode('=', $argument, 2)[0].'=';
+        $arguments = array_values(array_filter($arguments, static fn (string $value): bool => ! str_starts_with($value, $prefix)));
+    }
     array_push($arguments, ...$extra);
     if ($apply) {
         $arguments[] = '--apply';
@@ -73,6 +81,7 @@ try {
     $assert(glob($configPath.'.before-rotation-*') === [], 'Preview must not create a backup.');
     $assert(! file_exists($overtureConfigPath) && $preview['overture']['successful_entries_per_run'] === 9000, 'Preview must describe the separate Overture job without creating it.');
     $assert(! file_exists($telConfigPath) && $preview['tel_aviv']['cities'] === ['Tel Aviv'] && $preview['tel_aviv']['configured_combinations'] === 1, 'Preview must describe the separate Tel Aviv job without creating it.');
+    $assert(! file_exists($foursquareConfigPath) && $preview['foursquare'] === null, 'The ordinary migration must not implicitly add Foursquare.');
     $assert($preview['tel_aviv']['config'] === $telConfigPath && ! file_exists($directory.DIRECTORY_SEPARATOR.'worker.tel-aviv.json'), 'The explicit Tel Aviv configuration path must be honored.');
 
     [$code, $output, $error] = $run(true);
@@ -233,6 +242,120 @@ try {
     $assert([file_get_contents($configPath), file_get_contents($telConfigPath)] === array_slice($beforeRepeat, 0, 2), 'Overture upgrade may not change the already configured Gov/Tel jobs.');
     [$code, $output, $error] = $run(true, ['--update-overture']);
     $assert($code === 0 && array_filter(Json::decode($output)['changed']) === [], 'Repeating the explicit Overture upgrade must be idempotent: '.$error);
+
+    // Foursquare addition is independent of legacy profile migrations, including custom budgets and formatting.
+    $customGovernment = Json::decode((string) file_get_contents($configPath));
+    $customGovernment['target_per_run'] = 37;
+    $customGovernment['quotas']['max_new_per_day'] = 123;
+    $customTel = Json::decode((string) file_get_contents($telConfigPath));
+    $customTel['sources']['tel_aviv_business_licenses']['page_size'] = 17;
+    $customOverture = Json::decode((string) file_get_contents($overtureConfigPath));
+    $customOverture['api']['request_interval_ms'] = 177;
+    foreach ([$configPath => $customGovernment, $telConfigPath => $customTel, $overtureConfigPath => $customOverture] as $path => $document) {
+        file_put_contents($path, Json::encode($document)."\n\n");
+    }
+    $beforeFoursquare = [file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)];
+    [$code, $output, $error] = $run(false, ['--add-foursquare']);
+    $foursquarePreview = Json::decode($output);
+    $assert($code === 0 && $foursquarePreview['foursquare']['configured_combinations'] === 1 && $foursquarePreview['foursquare']['source_import_modes'] === ['foursquare_places' => 'all_records'], 'Foursquare preview must describe one complete source scan: '.$error);
+    $assert($foursquarePreview['daily_limit'] === 123 && $foursquarePreview['foursquare']['daily_limit'] === null, 'Foursquare preview must accurately report preserved government limits and the independent uncapped Foursquare job.');
+    $assert(array_keys(array_filter($foursquarePreview['changed'])) === [$foursquareConfigPath] && ! file_exists($foursquareConfigPath), 'Explicit addition preview may change only the new Foursquare document and must not publish it.');
+    $assert([file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)] === $beforeFoursquare, 'Foursquare preview must preserve all prior files byte for byte.');
+
+    $badFoursquare = Json::decode((string) file_get_contents($foursquareProfilePath));
+    $badFoursquare['sources']['foursquare_places']['import_mode'] = 'invalid';
+    file_put_contents($foursquareProfilePath, Json::encode($badFoursquare));
+    [$code] = $run(true, ['--add-foursquare']);
+    $assert($code !== 0 && ! file_exists($foursquareConfigPath), 'Invalid Foursquare configuration must not be published.');
+    $assert([file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)] === $beforeFoursquare, 'Invalid fourth job must preserve every existing configuration.');
+    unset($badFoursquare['sources']['foursquare_places']);
+    file_put_contents($foursquareProfilePath, Json::encode($badFoursquare));
+    [$code] = $run(true, ['--add-foursquare']);
+    $assert($code !== 0 && ! file_exists($foursquareConfigPath), 'A profile without its Foursquare source must not create a nonfunctional job.');
+    copy(dirname(__DIR__).'/config/worker.foursquare.json', $foursquareProfilePath);
+    foreach ([$configPath, $telConfigPath, $overtureConfigPath] as $collision) {
+        [$code] = $run(true, ['--add-foursquare', '--foursquare-config='.$collision]);
+        $assert($code !== 0 && ! file_exists($foursquareConfigPath), 'Foursquare must reject every existing job configuration path.');
+    }
+    [$code] = $run(true, ['--add-foursquare', '--update-overture']);
+    $assert($code !== 0 && ! file_exists($foursquareConfigPath), 'A Foursquare addition must not simultaneously migrate Overture.');
+
+    // An unrelated legacy profile is not even read while adding Foursquare.
+    file_put_contents($profilePath, '{invalid legacy profile');
+    [$code, $output, $error] = $run(true, ['--add-foursquare']);
+    $foursquareResult = Json::decode($output);
+    $assert($code === 0, 'Explicit Foursquare addition failed: '.$error);
+    $assert(array_keys(array_filter($foursquareResult['changed'])) === [$foursquareConfigPath] && $foursquareResult['backups'] === [], 'Adding Foursquare may publish only its new file and must not back up or rewrite untouched jobs.');
+    $assert([file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)] === $beforeFoursquare, 'Foursquare addition must preserve every existing job, including custom budgets and formatting.');
+    $foursquare = Json::decode((string) file_get_contents($foursquareConfigPath));
+    $assert($foursquare['target_per_run'] === 9000 && $foursquare['targets_per_run'] === 1 && $foursquare['businesses_per_combination'] === 9000 && $foursquare['batch_size'] === 100, 'Foursquare must have an independent 9000-entry global budget and 100-item batches.');
+    $assert($foursquare['storage']['data_subdirectory'] === 'foursquare' && $foursquare['storage']['database'] === $original['storage']['database'], 'Foursquare must inherit the installation base directory while isolating its state.');
+    $assert($foursquare['api']['request_interval_ms'] === 150 && $foursquare['api']['installation_setting'] === 'preserved', 'Foursquare pacing must preserve installation API settings.');
+    $assert(! isset($foursquare['quotas']['max_new_per_day']) && ! isset($foursquare['research']['max_http_requests_per_run']) && $foursquare['research']['installation_setting'] === 'preserved', 'Foursquare must not inherit government daily or HTTP limits, and must retain unrelated settings.');
+    $assert(array_keys(array_filter($foursquare['sources'], static fn (array $source): bool => $source['enabled'])) === ['foursquare_places'], 'Only Foursquare may be enabled in its isolated job.');
+    $assert(array_keys($foursquare['sources']['foursquare_places']['city_names']) === $catalogCities, 'Foursquare city aliases must cover the canonical catalog.');
+
+    $foursquare['api']['request_interval_ms'] = 193;
+    $foursquare['sources']['foursquare_places']['database_path'] = $directory.'/custom/foursquare.sqlite';
+    file_put_contents($foursquareConfigPath, Json::encode($foursquare)."\n\n");
+    $foursquareBytes = file_get_contents($foursquareConfigPath);
+    [$code, $output, $error] = $run(true, ['--add-foursquare']);
+    $assert($code === 0 && array_filter(Json::decode($output)['changed']) === [] && file_get_contents($foursquareConfigPath) === $foursquareBytes, 'Repeating Foursquare addition must preserve installation settings and formatting without redundant backups: '.$error);
+    $assert([file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)] === $beforeFoursquare, 'Repeating Foursquare addition must not migrate legacy jobs.');
+    copy(dirname(__DIR__).'/config/worker.rotation.json', $profilePath);
+
+    $allBefore = [...$beforeFoursquare, $foursquareBytes];
+    $fourDocuments = [$configPath => $customGovernment, $telConfigPath => $customTel, $overtureConfigPath => $customOverture, $foursquareConfigPath => $foursquare];
+    foreach ($fourDocuments as &$document) {
+        $document['api']['installation_setting'] = 'transaction-mutated';
+    }
+    unset($document);
+    foreach ([2, 3, 4] as $failurePosition) {
+        $publishCount = 0;
+        $transaction = new ConfigFileTransaction(static function (string $stage, string $path) use (&$publishCount, $failurePosition): bool {
+            return ++$publishCount === $failurePosition ? false : rename($stage, $path);
+        });
+        $failed = false;
+        try {
+            $transaction->write($fourDocuments, dirname(__DIR__), true);
+        } catch (RuntimeException) {
+            $failed = true;
+        }
+        $assert($failed && $publishCount === $failurePosition, 'Four-job transaction must exercise publication failure at position '.$failurePosition.'.');
+        $assert(array_map(file_get_contents(...), array_keys($fourDocuments)) === $allBefore, 'Four-job rollback must restore every earlier document byte for byte.');
+    }
+    $freshFoursquarePath = $directory.DIRECTORY_SEPARATOR.'fresh-foursquare.json';
+    $publishCount = 0;
+    $transaction = new ConfigFileTransaction(static function (string $stage, string $path) use (&$publishCount): bool {
+        return ++$publishCount === 3 ? false : rename($stage, $path);
+    });
+    $failed = false;
+    try {
+        $transaction->write([$configPath => $fourDocuments[$configPath], $freshFoursquarePath => $foursquare, $telConfigPath => $fourDocuments[$telConfigPath], $overtureConfigPath => $fourDocuments[$overtureConfigPath]], dirname(__DIR__), true);
+    } catch (RuntimeException) {
+        $failed = true;
+    }
+    $assert($failed && $publishCount === 3 && ! file_exists($freshFoursquarePath), 'A new Foursquare file must be removed if later publication fails.');
+    $assert(array_map(file_get_contents(...), array_keys($fourDocuments)) === $allBefore, 'Rolling back a newly created Foursquare job must preserve all preexisting configurations.');
+
+    $badExistingFoursquare = $foursquare;
+    $badExistingFoursquare['batch_size'] = 101;
+    file_put_contents($foursquareConfigPath, Json::encode($badExistingFoursquare));
+    [$code] = $run(true);
+    $assert($code !== 0 && [file_get_contents($configPath), file_get_contents($telConfigPath), file_get_contents($overtureConfigPath)] === $beforeFoursquare, 'An invalid existing Foursquare job must prevent publication during an ordinary migration too.');
+    file_put_contents($foursquareConfigPath, $foursquareBytes);
+    [$code, $output, $error] = $run(true);
+    $assert($code === 0 && file_get_contents($foursquareConfigPath) === $foursquareBytes && ! Json::decode($output)['changed'][$foursquareConfigPath], 'Ordinary legacy migration must leave existing Foursquare settings and formatting untouched: '.$error);
+
+    $absentTel = $directory.DIRECTORY_SEPARATOR.'absent-tel.json';
+    $absentOverture = $directory.DIRECTORY_SEPARATOR.'absent-overture.json';
+    $minimalFoursquarePath = $directory.DIRECTORY_SEPARATOR.'minimal-foursquare.json';
+    $governmentBeforeMinimal = file_get_contents($configPath);
+    [$code, $output, $error] = $run(true, ['--add-foursquare', '--tel-config='.$absentTel, '--overture-config='.$absentOverture, '--foursquare-config='.$minimalFoursquarePath]);
+    $assert($code === 0, 'Foursquare addition with absent legacy jobs failed: '.$error);
+    $minimalResult = Json::decode($output);
+    $assert($code === 0 && is_file($minimalFoursquarePath) && $minimalResult['foursquare']['config'] === $minimalFoursquarePath, 'Foursquare addition must honor an explicit destination when other jobs are not installed: '.$error);
+    $assert(! file_exists($absentTel) && ! file_exists($absentOverture) && $minimalResult['tel_aviv'] === null && $minimalResult['overture'] === null && file_get_contents($configPath) === $governmentBeforeMinimal, 'Adding Foursquare must neither create absent legacy jobs nor modify the existing base configuration.');
     $assert(glob($directory.DIRECTORY_SEPARATOR.'.rotation-*') === [], 'Staging files must be removed after success and failure.');
 
     fwrite(STDOUT, "Deployment configuration: {$assertions} assertions passed.\n");

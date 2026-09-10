@@ -11,6 +11,7 @@ use Sveevee\Worker\Http\SourceRequestBudgetExceeded;
 use Sveevee\Worker\Reporting\RunReport;
 use Sveevee\Worker\Research\BusinessEnricherInterface;
 use Sveevee\Worker\Research\CursorSourceInterface;
+use Sveevee\Worker\Research\Foursquare\PlacesSource;
 use Sveevee\Worker\Research\OverturePlacesSource;
 use Sveevee\Worker\Research\SourceAdapterInterface;
 use Sveevee\Worker\Storage\IdentityConflictException;
@@ -203,12 +204,15 @@ final class ResearchService
                     'target' => $target->key(),
                     'error' => $exception->getMessage(),
                 ]);
-                if ($source instanceof OverturePlacesSource && $target->isOvertureAll()) {
+                if (($source instanceof OverturePlacesSource && $target->isOvertureAll()) || $source instanceof PlacesSource) {
                     throw $exception;
                 }
             } finally {
                 if ($source instanceof OverturePlacesSource) {
                     $report->overtureProgress($source->progress());
+                }
+                if ($source instanceof PlacesSource) {
+                    $report->foursquareProgress($source->progress());
                 }
             }
         }
@@ -230,6 +234,9 @@ final class ResearchService
         foreach ($this->sources as $source) {
             if ($source instanceof OverturePlacesSource) {
                 $report->overtureProgress($source->progress());
+            }
+            if ($source instanceof PlacesSource) {
+                $report->foursquareProgress($source->progress());
             }
         }
     }

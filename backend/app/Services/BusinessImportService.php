@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\BusinessImportException;
+use App\Exceptions\BusinessImportReviewException;
 use App\Exceptions\ExactPageDuplicateException;
 use App\Models\BusinessImportPage;
 use App\Models\BusinessImportSource;
@@ -50,6 +51,7 @@ class BusinessImportService
         private readonly AiWorkPageService $pages,
         private readonly PageIdentityService $identities,
         private readonly ImportSourceCatalogService $sourceCatalog,
+        private readonly FoursquareImportMatchingService $foursquare,
     ) {}
 
     public function search(array $input): array
@@ -190,6 +192,12 @@ class BusinessImportService
                 ]];
             }
 
+            if ($source['provider'] === 'foursquare_places') {
+                $match = $this->foursquare->resolve([...$input, ...$data], $source);
+
+                return $match === null || $match['id'] === $excludePageId ? [] : [$match];
+            }
+
             return $this->identities->exactMatches($data, $excludePageId, allowSingleContactSignal: true, separateLocations: true, confirmedLocationsOnly: true)->all();
         }
 
@@ -314,7 +322,7 @@ class BusinessImportService
         }
         $source = Validator::make($input, [
             'source' => ['required', 'array:provider,id,url,metadata'],
-            'source.provider' => ['required', Rule::in(['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses'])],
+            'source.provider' => ['required', Rule::in(['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses', 'foursquare_places'])],
             'source.id' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9][A-Za-z0-9._:-]*$/D'],
             'source.url' => ['required', 'url:https', 'max:2048'],
             'source.metadata' => ['present', 'array', function (string $attribute, mixed $value, \Closure $fail): void {
@@ -325,6 +333,21 @@ class BusinessImportService
         ])->validate()['source'];
         $parts = parse_url($source['url']);
         parse_str($parts['query'] ?? '', $query);
+        if ($source['provider'] === 'foursquare_places') {
+            if (preg_match('/^[a-f0-9]{24}$/D', $source['id']) !== 1) {
+                throw ValidationException::withMessages(['source.id' => ['Use the 24-character lowercase Foursquare place ID.']]);
+            }
+            if (! $this->sourceEndpointMatches($parts, 'foursquare.com', '/placemakers/review-place/'.$source['id']) || isset($parts['query'])) {
+                throw ValidationException::withMessages(['source.url' => ['Use the official Foursquare Placemaker URL for this source ID.']]);
+            }
+            foreach (['fsq_place_id', 'source_id'] as $field) {
+                if (isset($source['metadata'][$field]) && $source['metadata'][$field] !== $source['id']) {
+                    throw ValidationException::withMessages(['source.metadata.'.$field => ['The metadata source ID must match source.id.']]);
+                }
+            }
+
+            return $source;
+        }
         if ($source['provider'] !== 'overture_places') {
             $valid = $source['provider'] === 'data_gov_ckan'
                 ? $this->validGovSourceUrl($source, $parts, $query)
@@ -469,60 +492,112 @@ class BusinessImportService
     {
         $this->assertBusinessType($input);
         $input = $this->withoutInvalidSourceWebsite($input);
+        if ($source['provider'] === 'foursquare_places') {
+            Validator::make($input, [
+                'name' => ['sometimes', 'nullable', 'string', 'max:255'],
+                'address' => ['sometimes', 'nullable', 'array'],
+                'address.street' => ['nullable', 'string', 'max:255'],
+                'address.number' => ['nullable', 'string', 'max:40'],
+                'address.city' => ['nullable', 'string', 'max:120'],
+                'address.neighborhood' => ['nullable', 'string', 'max:120'],
+            ])->validate();
+        }
         $key = 'business-import-source:'.hash('sha256', $source['provider'].'|'.$source['id']);
 
-        return Cache::lock($key, 30)->block(10, fn (): array => DB::transaction(function () use ($clientId, $input, $source): array {
-            $mapping = $this->sourceQuery($source)->lockForUpdate()->first();
-            $requestedId = (int) ($input['id'] ?? 0);
-            if ($mapping !== null && ($mapping->page_id === null || ($requestedId > 0 && $requestedId !== $mapping->page_id))) {
-                throw new BusinessImportException('The source ID cannot be moved to another page.', 409, 'source_conflict');
-            }
-            $pageId = $mapping?->page_id ?? ($requestedId ?: null);
-            $page = $pageId === null ? null : Page::query()->lockForUpdate()->find($pageId);
-            if ($pageId !== null && $page === null) {
-                throw new BusinessImportException('Business page not found.', 404, 'not_found');
-            }
-            unset($input['source'], $input['id']);
-            $input['type'] = Page::TYPE_BUSINESS;
-            $operation = 'updated';
-            if ($page !== null) {
-                $this->assertSourceEditable($page);
-                $this->assertSourceAddress($input, $page);
-                $this->assertSourceRecordIdentity($input, $page, $source);
-                $data = $this->pages->validate($this->mergeWithExisting($page, $input), allowSourcePlace: true);
-                if ($mapping === null) {
-                    $this->assertSourceAssociation($clientId, $page, $data, $source);
+        try {
+            return Cache::lock($key, 30)->block(10, fn (): array => DB::transaction(function () use ($clientId, $input, $source): array {
+                $mapping = $this->sourceQuery($source)->lockForUpdate()->first();
+                $requestedId = (int) ($input['id'] ?? 0);
+                if ($mapping !== null && ($mapping->page_id === null || ($requestedId > 0 && $requestedId !== $mapping->page_id))) {
+                    throw new BusinessImportException('The source ID cannot be moved to another page.', 409, 'source_conflict');
                 }
-                $page = $this->pages->update($page, $data, allowSingleContactDuplicate: true, separateLocations: true, confirmedLocationsOnly: true);
-            } else {
-                $data = $this->pages->validate($input, allowSourcePlace: true);
-                $data['palette_key'] = $this->pages->automaticPalette($input, $input['palette_key'] ?? null);
-                try {
-                    $page = $this->pages->create($this->creator(), $data, allowSingleContactDuplicate: true, separateLocations: true, confirmedLocationsOnly: true);
-                    $operation = 'created';
-                } catch (ExactPageDuplicateException $exception) {
-                    if (count($exception->matches) !== 1) {
-                        throw $exception;
-                    }
-                    $page = Page::query()->lockForUpdate()->findOrFail($exception->matches[0]['id']);
+                $foursquareMatch = $source['provider'] === 'foursquare_places' && $mapping === null
+                    ? $this->foursquare->resolve($input, $source) : null;
+                $pageId = $mapping?->page_id ?? ($foursquareMatch['id'] ?? ($requestedId ?: null));
+                $page = $pageId === null ? null : Page::query()->lockForUpdate()->find($pageId);
+                if ($pageId !== null && $page === null) {
+                    throw new BusinessImportException('Business page not found.', 404, 'not_found');
+                }
+                unset($input['source'], $input['id']);
+                $input['type'] = Page::TYPE_BUSINESS;
+                $operation = 'updated';
+                if ($page !== null) {
                     $this->assertSourceEditable($page);
-                    $this->assertSourceAssociation($clientId, $page, $data, $source);
-                    // Register confirmed existing pages without replacing their richer public details.
+                    $this->assertSourceAddress($input, $page);
+                    $this->assertSourceRecordIdentity($input, $page, $source);
+                    $patch = $source['provider'] === 'foursquare_places' ? $this->missingSourceContacts($page, $input) : $input;
+                    $data = $this->pages->validate($this->mergeWithExisting($page, $patch), allowSourcePlace: true);
+                    if ($mapping === null && $foursquareMatch === null) {
+                        $this->assertSourceAssociation($clientId, $page, $data, $source);
+                    }
+                    $page = $this->pages->update($page, $data, allowSingleContactDuplicate: true, separateLocations: true, confirmedLocationsOnly: true);
+                } else {
+                    $data = $this->pages->validate($input, allowSourcePlace: true);
+                    $data['palette_key'] = $this->pages->automaticPalette($input, $input['palette_key'] ?? null);
+                    try {
+                        $page = $this->pages->create($this->creator(), $data, allowSingleContactDuplicate: true, separateLocations: true, confirmedLocationsOnly: true);
+                        $operation = 'created';
+                    } catch (ExactPageDuplicateException $exception) {
+                        if (count($exception->matches) !== 1) {
+                            throw $exception;
+                        }
+                        $page = Page::query()->lockForUpdate()->findOrFail($exception->matches[0]['id']);
+                        $this->assertSourceEditable($page);
+                        $this->assertSourceAssociation($clientId, $page, $data, $source);
+                        // Register confirmed existing pages without replacing their richer public details.
+                        if ($source['provider'] === 'foursquare_places') {
+                            $data = $this->pages->validate($this->mergeWithExisting($page, $this->missingSourceContacts($page, $input)), allowSourcePlace: true);
+                            $page = $this->pages->update($page, $data, allowSingleContactDuplicate: true, separateLocations: true, confirmedLocationsOnly: true);
+                        }
+                    }
                 }
-            }
-            $tracking = BusinessImportPage::query()->firstOrNew(['page_id' => $page->id]);
-            if ($operation === 'created') {
-                $tracking->created_by_oauth_client_id = $clientId;
-            }
-            $tracking->fill(['last_updated_by_oauth_client_id' => $clientId, 'last_payload_hash' => $this->payloadHash($data)])->save();
-            ($mapping ?? new BusinessImportSource)->fill([
-                'provider' => $source['provider'], 'source_id' => $source['id'], 'page_id' => $page->id,
-                'url' => $source['url'], 'metadata' => $source['metadata'],
-            ])->save();
-            $this->sourceCatalog->record($page, $source);
+                $tracking = BusinessImportPage::query()->firstOrNew(['page_id' => $page->id]);
+                if ($operation === 'created') {
+                    $tracking->created_by_oauth_client_id = $clientId;
+                }
+                $tracking->fill(['last_updated_by_oauth_client_id' => $clientId, 'last_payload_hash' => $this->payloadHash($data)])->save();
+                $mapping ??= new BusinessImportSource;
+                $mapping->fill([
+                    'provider' => $source['provider'], 'source_id' => $source['id'], 'page_id' => $page->id,
+                    'url' => $source['url'], 'metadata' => $source['metadata'],
+                ])->save();
+                $this->foursquare->syncAliases($mapping);
+                $this->sourceCatalog->record($page, $source);
 
-            return ['operation' => $operation, 'business' => $this->payload($page->fresh())];
-        }, 3));
+                return ['operation' => $operation, 'business' => $this->payload($page->fresh())];
+            }, 3));
+        } catch (ExactPageDuplicateException $exception) {
+            if ($source['provider'] === 'foursquare_places') {
+                throw new BusinessImportReviewException($source, $input, $exception->matches, 'ambiguous_confirmed_location');
+            }
+
+            throw $exception;
+        }
+    }
+
+    public function recordMatchReview(BusinessImportReviewException $exception): array
+    {
+        $review = $this->foursquare->recordReview($exception);
+
+        return ['review_id' => $review->id, 'reason' => $review->reason];
+    }
+
+    private function missingSourceContacts(Page $page, array $input): array
+    {
+        $current = $this->pages->editableData($page);
+        $patch = [];
+        foreach (['contact_email', 'phone', 'whatsapp', 'website'] as $field) {
+            if (! filled($current[$field] ?? null) && filled($input[$field] ?? null)) {
+                $patch[$field] = $input[$field];
+            }
+        }
+        foreach (self::SOCIAL_FIELDS as $field) {
+            if (! filled($current['socials'][$field] ?? null) && filled($input['socials'][$field] ?? null)) {
+                $patch['socials'][$field] = $input['socials'][$field];
+            }
+        }
+
+        return $patch;
     }
 
     private function withoutInvalidSourceWebsite(array $input): array

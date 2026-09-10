@@ -22,6 +22,7 @@ use Sveevee\Worker\Pipeline\ResearchTargetScheduler;
 use Sveevee\Worker\Pipeline\RunLogPublisher;
 use Sveevee\Worker\Reporting\RunReport;
 use Sveevee\Worker\Research\DataGovCkanSource;
+use Sveevee\Worker\Research\Foursquare\PlacesSource;
 use Sveevee\Worker\Research\JsonSeedSource;
 use Sveevee\Worker\Research\OfficialWebsiteEnricher;
 use Sveevee\Worker\Research\OverpassSource;
@@ -97,6 +98,10 @@ final class Application
             $limit = max(1, (int) ($options['limit'] ?? $config->int('target_per_run', 1000)));
             $runId = Uuid::v4();
             $report = new RunReport($runId, $command, $dryRun);
+            if (in_array('foursquare_places', $enabledSources, true)) {
+                $report->source('foursquare_places', 0);
+                $report->increment('review', 0);
+            }
             if ($governmentSources !== []) {
                 $report->enableSourceMetrics();
                 foreach ($governmentSources as $source) {
@@ -206,6 +211,14 @@ final class Application
             'SveeveeResearchWorker/1.0 (+https://sveevee.co.il; mailto:info@sveevee.co.il)'
         );
         $sources = [];
+        $foursquare = $config->source('foursquare_places');
+        if (($foursquare['enabled'] ?? false) === true) {
+            $configuredDatabase = trim((string) ($foursquare['database_path'] ?? ''));
+            $foursquare['database_path'] = $configuredDatabase !== ''
+                ? $config->resolvePath($configuredDatabase)
+                : dirname($this->paths($config)['database']).'/foursquare.sqlite';
+            $sources[] = new PlacesSource($foursquare, $this->root, $repository);
+        }
         $overture = $config->source('overture_places');
         if (($overture['enabled'] ?? false) === true) {
             $configuredDatabase = trim((string) ($overture['database_path'] ?? ''));

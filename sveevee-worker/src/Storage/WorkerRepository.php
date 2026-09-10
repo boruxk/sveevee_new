@@ -132,13 +132,16 @@ SQL);
                 $hash = Json::hash($payload);
                 $changed = ! hash_equals($row['payload_hash'], $hash);
                 $status = $row['status'];
-                if ($changed && ! in_array($status, ['queued', 'claimed'], true)) {
+                $preserveReview = $status === 'review' && ($candidate->data['source']['provider'] ?? null) === 'foursquare_places';
+                if ($changed && ! $preserveReview && ! in_array($status, ['queued', 'claimed'], true)) {
                     $status = 'pending';
                 }
                 $update = $this->pdo->prepare(
-                    'UPDATE businesses SET payload_json = ?, payload_hash = ?, status = ?, last_seen_at = ?, last_error_code = NULL, last_error_message = NULL WHERE id = ?'
+                    'UPDATE businesses SET payload_json = ?, payload_hash = ?, status = ?, last_seen_at = ?, last_error_code = ?, last_error_message = ? WHERE id = ?'
                 );
-                $update->execute([Json::encode($payload), $hash, $status, $now, $businessId]);
+                $update->execute([Json::encode($payload), $hash, $status, $now,
+                    $preserveReview ? $row['last_error_code'] : null,
+                    $preserveReview ? $row['last_error_message'] : null, $businessId]);
             }
 
             $insertKey = $this->pdo->prepare(
@@ -241,6 +244,16 @@ SQL)->fetchAll(PDO::FETCH_KEY_PAIR);
             'pending' => (int) ($counts['pending'] ?? 0) + (int) ($counts['queued'] ?? 0),
             'failed' => $unmappedFailures + (int) ($counts['failed'] ?? 0) + (int) ($counts['invalid'] ?? 0) + (int) ($counts['not_found'] ?? 0),
         ];
+    }
+
+    public function foursquareQueueCounts(): array
+    {
+        $counts = $this->pdo->query("SELECT status, COUNT(*) FROM businesses WHERE EXISTS (SELECT 1 FROM business_sources s WHERE s.business_id=businesses.id AND s.adapter='foursquare_places') GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $unmapped = (int) $this->pdo->query("SELECT COUNT(*) FROM researched_urls WHERE adapter='foursquare_places' AND business_id IS NULL AND status IN ('failed','rejected')")->fetchColumn();
+
+        return ['pending' => (int) ($counts['pending'] ?? 0) + (int) ($counts['queued'] ?? 0),
+            'failed' => $unmapped + (int) ($counts['failed'] ?? 0) + (int) ($counts['invalid'] ?? 0) + (int) ($counts['not_found'] ?? 0),
+            'review' => (int) ($counts['review'] ?? 0)];
     }
 
     public function shouldProcessUrl(
@@ -666,7 +679,7 @@ SQL);
     private function matchingBusinessId(BusinessCandidate $candidate, array $keys): ?int
     {
         $provider = $candidate->data['source']['provider'] ?? null;
-        $allPlaces = in_array($provider, ['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses'], true);
+        $allPlaces = in_array($provider, ['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses', 'foursquare_places'], true);
         $sourceIds = [];
         $sourceLookup = $this->pdo->prepare('SELECT business_id FROM business_sources WHERE adapter = ? AND source_url = ?');
         foreach ($candidate->sources as $source) {
@@ -695,6 +708,11 @@ SQL);
             return $id;
         }
 
+        if ($provider === 'foursquare_places') {
+            // Every FSQ ID must reach the backend independently so its provenance/review is retained.
+            // Remote matching can then attach several source IDs to the same actual page.
+            return null;
+        }
         if ($allPlaces) {
             if (! BusinessLocationIdentity::hasNumberedAddress($candidate->data)) {
                 return null;

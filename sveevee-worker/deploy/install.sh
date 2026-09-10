@@ -14,11 +14,11 @@ for command in php rsync systemctl; do
     fi
 done
 
-for unit in sveevee-worker.timer sveevee-worker.service sveevee-tel-aviv.timer sveevee-tel-aviv.service sveevee-overture.timer sveevee-overture.service; do
+for unit in sveevee-worker.timer sveevee-worker.service sveevee-tel-aviv.timer sveevee-tel-aviv.service sveevee-overture.timer sveevee-overture.service sveevee-foursquare.timer sveevee-foursquare.service; do
     state="$(systemctl show --property=ActiveState --value "${unit}" 2>/dev/null || true)"
     case "${state}" in
         active|activating|deactivating|reloading)
-            echo "Stop all three import timers and let the current jobs finish before installing (${unit}: ${state})." >&2
+            echo "Stop all import timers and let the current jobs finish before installing (${unit}: ${state})." >&2
             exit 1
             ;;
     esac
@@ -39,6 +39,7 @@ install -d -m 0750 -o root -g "${SERVICE_USER}" "${CONFIG_DIR}"
 install -d -m 0700 -o "${SERVICE_USER}" -g "${SERVICE_USER}" "${DATA_DIR}"
 install -d -m 0700 -o "${SERVICE_USER}" -g "${SERVICE_USER}" "${DATA_DIR}/overture"
 install -d -m 0700 -o "${SERVICE_USER}" -g "${SERVICE_USER}" "${DATA_DIR}/tel-aviv"
+install -d -m 0700 -o "${SERVICE_USER}" -g "${SERVICE_USER}" "${DATA_DIR}/foursquare"
 
 rsync -a \
     --exclude='.env' \
@@ -59,7 +60,7 @@ if [[ ! -f "${CONFIG_DIR}/worker.env" ]]; then
         "${SOURCE_DIR}/.env.example" "${CONFIG_DIR}/worker.env"
 fi
 
-for unit in sveevee-worker.service sveevee-worker.timer sveevee-tel-aviv.service sveevee-tel-aviv.timer sveevee-overture.service sveevee-overture.timer; do
+for unit in sveevee-worker.service sveevee-worker.timer sveevee-tel-aviv.service sveevee-tel-aviv.timer sveevee-overture.service sveevee-overture.timer sveevee-foursquare.service sveevee-foursquare.timer; do
     if [[ -f "/etc/systemd/system/${unit}" ]]; then
         install -d -m 0700 /var/backups/sveevee
         cp -p "/etc/systemd/system/${unit}" "/var/backups/sveevee/${unit}-$(date -u +%Y%m%dT%H%M%SZ)-$$"
@@ -78,7 +79,8 @@ ln -sfn "${TARGET_DIR}/bin/worker" /usr/local/bin/sveevee-worker
 
 systemctl daemon-reload
 
-echo "Sveevee government, Tel Aviv and Overture workers installed. No timer was enabled or started."
+echo "Sveevee government, Tel Aviv, Overture and Foursquare workers installed. No timer was enabled or started."
 echo "Configure ${CONFIG_DIR}/worker.env and ${CONFIG_DIR}/worker.json before testing."
 echo "Preview then apply deploy/configure-rotation.php to create/update the three job configurations."
+echo "Use deploy/configure-rotation.php --add-foursquare to add Foursquare without changing existing jobs."
 echo "Existing schedule.conf overrides were backed up and replaced with the ten-minute schedule."

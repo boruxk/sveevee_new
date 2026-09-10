@@ -29,7 +29,7 @@ final class SveeveeApiClient implements SveeveeGateway
     public function checkDuplicate(array $business): array
     {
         $payload = array_intersect_key($business, array_flip([
-            'id', 'type', 'name', 'contact_email', 'phone', 'website', 'category_key', 'address', 'source',
+            'id', 'type', 'name', 'contact_email', 'phone', 'website', 'category_key', 'address', 'source', 'dry_run',
         ]));
 
         return $this->request('POST', '/businesses/duplicates', $payload);

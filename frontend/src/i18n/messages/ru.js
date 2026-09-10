@@ -763,6 +763,7 @@ export default {
 				updated: 'Обновлено',
 				duplicates: 'Дубликатов',
 				incomplete: 'Неполных',
+				review: 'На проверку',
 				failed: 'Ошибок',
 				total_errors: 'Всего ошибок',
 				source_requests: 'Запросы к источникам',

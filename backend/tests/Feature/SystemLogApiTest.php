@@ -52,6 +52,86 @@ class SystemLogApiTest extends TestCase
         $this->assertArrayNotHasKey('source_errors', $storedReport);
         $this->assertArrayNotHasKey('deferred_target_combinations', $storedReport);
         $this->assertArrayNotHasKey('overture_progress', $storedReport);
+        $this->assertArrayNotHasKey('foursquare_progress', $storedReport);
+        $this->assertArrayNotHasKey('review', $storedReport);
+    }
+
+    public function test_foursquare_review_and_progress_survive_admin_reads_and_are_idempotent(): void
+    {
+        $client = $this->businessClient();
+        Passport::actingAsClient($client, [BusinessImportClient::SCOPE_WRITE]);
+        $report = $this->runReport();
+        $report['used_sources'] = ['foursquare_places'];
+        $report['source_counts'] = ['foursquare_places' => 24];
+        $report['failed'] = 0;
+        $report['incomplete'] = 0;
+        $report['errors'] = [];
+        $report['review'] = 2;
+        $report['foursquare_progress'] = [
+            'release' => '2026-09-09', 'total' => 100, 'scanned' => 24, 'remaining' => 76,
+            'closed' => 1, 'pending' => 0, 'failed' => 0, 'review' => 2,
+        ];
+        $this->postJson('/api/v1/business-import/worker-runs', $report)->assertCreated();
+        $this->postJson('/api/v1/business-import/worker-runs', $report)->assertOk()->assertJsonPath('data.replayed', true);
+        $this->assertSame(SystemLogEntry::STATUS_WARNING, SystemLogEntry::sole()->status);
+        $this->assertSame(0, SystemLogEntry::sole()->data['failed']);
+        foreach (['review', 'foursquare_progress.review', 'foursquare_progress.closed'] as $path) {
+            $changed = $report;
+            data_set($changed, $path, data_get($changed, $path) + 1);
+            $this->postJson('/api/v1/business-import/worker-runs', $changed)->assertStatus(409);
+        }
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        $this->getJson('/api/v1/admin/logs')->assertOk()
+            ->assertJsonPath('data.items.0.data.review', 2)
+            ->assertJsonPath('data.items.0.data.foursquare_progress', $report['foursquare_progress'])
+            ->assertJsonPath('data.items.0.data.used_sources', ['foursquare_places']);
+    }
+
+    public function test_foursquare_progress_and_review_reject_invalid_counters(): void
+    {
+        Passport::actingAsClient($this->businessClient(), [BusinessImportClient::SCOPE_WRITE]);
+        $report = $this->runReport();
+        $report['review'] = -1;
+        $report['foursquare_progress'] = [
+            'release' => '2026-09-09', 'total' => 100, 'scanned' => 5, 'remaining' => 101,
+            'closed' => 6, 'invalid' => 6, 'pending' => -1, 'failed' => -1, 'review' => -1,
+        ];
+        $this->postJson('/api/v1/business-import/worker-runs', $report)->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'review', 'foursquare_progress.remaining', 'foursquare_progress.closed', 'foursquare_progress.invalid',
+                'foursquare_progress.pending', 'foursquare_progress.failed', 'foursquare_progress.review',
+            ]);
+        $this->assertDatabaseCount('system_log_entries', 0);
+    }
+
+    public function test_optional_foursquare_invalid_count_is_stored_and_cannot_change_on_replay(): void
+    {
+        Passport::actingAsClient($this->businessClient(), [BusinessImportClient::SCOPE_WRITE]);
+        $report = $this->runReport();
+        $report['used_sources'] = ['foursquare_places'];
+        $report['source_counts'] = ['foursquare_places' => 24];
+        $report['foursquare_progress'] = [
+            'release' => '2026-09-09', 'total' => 100, 'scanned' => 24, 'remaining' => 76,
+            'closed' => 1, 'invalid' => 2, 'pending' => 0, 'failed' => 0, 'review' => 0,
+        ];
+
+        $invalid = $report;
+        $invalid['foursquare_progress']['invalid'] = -1;
+        $this->postJson('/api/v1/business-import/worker-runs', $invalid)->assertUnprocessable()
+            ->assertJsonValidationErrors('foursquare_progress.invalid');
+        $this->postJson('/api/v1/business-import/worker-runs', $report)->assertCreated();
+        $this->postJson('/api/v1/business-import/worker-runs', $report)->assertOk()
+            ->assertJsonPath('data.replayed', true);
+        $this->assertSame(2, SystemLogEntry::sole()->data['foursquare_progress']['invalid']);
+
+        $changed = $report;
+        $changed['foursquare_progress']['invalid'] = 3;
+        $this->postJson('/api/v1/business-import/worker-runs', $changed)->assertStatus(409);
+        $this->assertDatabaseCount('system_log_entries', 1);
+
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        $this->getJson('/api/v1/admin/logs')->assertOk()
+            ->assertJsonPath('data.items.0.data.foursquare_progress.invalid', 2);
     }
 
     public function test_rotation_counters_survive_storage_and_admin_reads_and_cannot_change_on_replay(): void

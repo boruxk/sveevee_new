@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Exceptions\BusinessImportException;
+use App\Exceptions\BusinessImportReviewException;
 use App\Exceptions\ExactPageDuplicateException;
 use App\Http\Controllers\Controller;
 use App\Models\BusinessImportBatch;
@@ -30,14 +31,15 @@ class BusinessImportController extends Controller
         $ids = $request->validate([
             'id' => ['nullable', 'integer', 'min:1'],
             'exclude_id' => ['nullable', 'integer', 'min:1'],
+            'dry_run' => ['sometimes', 'boolean'],
         ]);
         try {
             $matches = $this->businesses->duplicateMatches(
-                $request->except('exclude_id'),
+                $request->except('exclude_id', 'dry_run'),
                 (int) ($ids['exclude_id'] ?? $ids['id'] ?? 0) ?: null
             );
         } catch (BusinessImportException $exception) {
-            return $this->businessImportError($exception);
+            return $this->businessImportError($exception, persistReview: ! $request->boolean('dry_run'));
         }
 
         return ApiResponseService::success([
@@ -229,7 +231,8 @@ class BusinessImportController extends Controller
                             throw $exception;
                         }
                         $counts['conflict_count']++;
-                        $items[] = ['position' => $position, 'status' => $exception->reason, 'message' => $exception->getMessage()];
+                        $review = $exception instanceof BusinessImportReviewException ? $this->businesses->recordMatchReview($exception) : [];
+                        $items[] = ['position' => $position, 'status' => $exception->reason, 'message' => $exception->getMessage(), ...$review];
                     }
                     $result = [
                         'client_import_id' => $data['client_import_id'], 'input_count' => count($data['businesses']),
@@ -282,12 +285,18 @@ class BusinessImportController extends Controller
         );
     }
 
-    private function businessImportError(BusinessImportException $exception)
+    private function businessImportError(BusinessImportException $exception, bool $persistReview = true)
     {
+        // Store-level idempotency transactions have rolled back before this handler runs.
+        $review = $exception instanceof BusinessImportReviewException
+            ? ($persistReview ? $this->businesses->recordMatchReview($exception) : ['review_id' => null, 'reason' => $exception->reviewReason])
+            : null;
+
         return ApiResponseService::error(
             $exception->getMessage(),
             [$exception->reason => [$exception->getMessage()]],
-            $exception->status
+            $exception->status,
+            $review
         );
     }
 }

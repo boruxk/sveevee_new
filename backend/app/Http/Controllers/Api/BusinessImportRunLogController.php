@@ -31,6 +31,7 @@ class BusinessImportRunLogController extends Controller
             'duplicates' => ['required', 'integer', 'min:0'],
             'incomplete' => ['required', 'integer', 'min:0'],
             'failed' => ['required', 'integer', 'min:0'],
+            'review' => ['sometimes', 'integer', 'min:0'],
             'source_requests' => ['sometimes', 'integer', 'min:0'],
             'source_errors' => ['sometimes', 'integer', 'min:0'],
             'imported' => ['required', 'integer', 'min:0'],
@@ -49,6 +50,16 @@ class BusinessImportRunLogController extends Controller
             'overture_progress.remaining' => ['required_with:overture_progress', 'integer', 'min:0', 'lte:overture_progress.total'],
             'overture_progress.pending' => ['required_with:overture_progress', 'integer', 'min:0'],
             'overture_progress.failed' => ['required_with:overture_progress', 'integer', 'min:0'],
+            'foursquare_progress' => ['sometimes', 'array:release,total,scanned,remaining,closed,invalid,pending,failed,review'],
+            'foursquare_progress.release' => ['required_with:foursquare_progress', 'string', 'max:120'],
+            'foursquare_progress.total' => ['required_with:foursquare_progress', 'integer', 'min:0'],
+            'foursquare_progress.scanned' => ['required_with:foursquare_progress', 'integer', 'min:0', 'lte:foursquare_progress.total'],
+            'foursquare_progress.remaining' => ['required_with:foursquare_progress', 'integer', 'min:0', 'lte:foursquare_progress.total'],
+            'foursquare_progress.closed' => ['required_with:foursquare_progress', 'integer', 'min:0', 'lte:foursquare_progress.scanned'],
+            'foursquare_progress.invalid' => ['sometimes', 'integer', 'min:0', 'lte:foursquare_progress.scanned'],
+            'foursquare_progress.pending' => ['required_with:foursquare_progress', 'integer', 'min:0'],
+            'foursquare_progress.failed' => ['required_with:foursquare_progress', 'integer', 'min:0'],
+            'foursquare_progress.review' => ['required_with:foursquare_progress', 'integer', 'min:0'],
             'targets' => ['present', 'array', 'max:1000'],
             'targets.*.key' => ['required', 'string', 'max:255'],
             'targets.*.city' => ['required', 'string', 'max:160'],
@@ -68,7 +79,7 @@ class BusinessImportRunLogController extends Controller
         ]);
         $status = $report['status'] === 'failed'
             ? SystemLogEntry::STATUS_FAILED
-            : (((int) $report['failed'] > 0 || (int) ($report['source_errors'] ?? 0) > 0 || (int) $report['incomplete'] > 0 || $report['errors'] !== [])
+            : (((int) $report['failed'] > 0 || (int) ($report['source_errors'] ?? 0) > 0 || (int) ($report['review'] ?? 0) > 0 || (int) $report['incomplete'] > 0 || $report['errors'] !== [])
                 ? SystemLogEntry::STATUS_WARNING
                 : SystemLogEntry::STATUS_SUCCESS);
 

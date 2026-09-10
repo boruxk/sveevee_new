@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the Sveevee Foursquare Places worker every hour
+
+[Timer]
+OnCalendar=*-*-* *:15:00 Asia/Jerusalem
+RandomizedDelaySec=0
+AccuracySec=1s
+Persistent=true
+Unit=sveevee-foursquare.service
+
+[Install]
+WantedBy=timers.target

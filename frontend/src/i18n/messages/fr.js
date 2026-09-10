@@ -763,6 +763,7 @@ export default {
 				updated: 'Mises à jour',
 				duplicates: 'Doublons',
 				incomplete: 'Incomplètes',
+				review: 'À vérifier',
 				failed: 'Échouées',
 				total_errors: 'Total des erreurs',
 				source_requests: 'Requêtes aux sources',
