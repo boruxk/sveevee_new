@@ -30,10 +30,12 @@ use Laravel\Sanctum\Sanctum;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
 use Laravel\Socialite\Two\User as SocialiteUser;
+use Tests\Concerns\ReadsSitemaps;
 use Tests\TestCase;
 
 class SveeveeApiTest extends TestCase
 {
+    use ReadsSitemaps;
     use RefreshDatabase;
 
     private function enableRecaptcha(): void
@@ -885,7 +887,7 @@ class SveeveeApiTest extends TestCase
             'expires_at' => now()->subDay(),
         ]);
 
-        $this->get('/sitemap.xml')
+        $this->getSitemapUrlsets()
             ->assertOk()
             ->assertHeader('content-type', 'application/xml; charset=UTF-8')
             ->assertSee('https://sveevee.co.il/users/'.$user->public_slug, false)
@@ -908,7 +910,7 @@ class SveeveeApiTest extends TestCase
         $adSlug = $ad->public_slug;
         $ad->delete();
 
-        $this->get('/sitemap.xml')
+        $this->getSitemapUrlsets()
             ->assertOk()
             ->assertDontSee('https://sveevee.co.il/ads/'.$adSlug, false);
     }
@@ -1510,7 +1512,7 @@ HTML);
             ],
         ]);
 
-        $this->get('/sitemap.xml')
+        $this->getSitemapUrlsets()
             ->assertOk()
             ->assertSee('https://sveevee.co.il/catalog/businesses', false)
             ->assertSee('https://sveevee.co.il/catalog/communities', false)
@@ -1555,7 +1557,7 @@ HTML);
             'link' => 'https://seller.example/sofa',
         ]);
 
-        $this->get('/sitemap.xml')
+        $this->getSitemapUrlsets()
             ->assertOk()
             ->assertSee('https://sveevee.co.il/he/market/jerusalem', false)
             ->assertSee('https://sveevee.co.il/he/market/jerusalem/furniture', false)
@@ -1592,7 +1594,7 @@ HTML);
             'link' => 'https://seller.example/local',
         ]);
 
-        $this->get('/sitemap.xml')
+        $this->getSitemapUrlsets()
             ->assertOk()
             ->assertSee('https://sveevee.co.il/he/market/jerusalem', false)
             ->assertSee('https://sveevee.co.il/en/market/jerusalem', false)

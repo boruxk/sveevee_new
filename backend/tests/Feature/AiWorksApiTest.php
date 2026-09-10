@@ -21,10 +21,12 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
+use Tests\Concerns\ReadsSitemaps;
 use Tests\TestCase;
 
 class AiWorksApiTest extends TestCase
 {
+    use ReadsSitemaps;
     use RefreshDatabase;
 
     public function test_ai_worker_account_and_task_crud_are_isolated_from_regular_user_apis(): void
@@ -127,7 +129,7 @@ class AiWorksApiTest extends TestCase
             ->assertJsonCount(0, 'data.opening_hours');
 
         $page = Page::query()->findOrFail($pageId);
-        $this->get('/sitemap.xml')
+        $this->getSitemapUrlsets()
             ->assertOk()
             ->assertSee('/he/business/'.$page->public_slug, false);
 
@@ -187,7 +189,7 @@ class AiWorksApiTest extends TestCase
         $communityPage = Page::query()->findOrFail($pageId);
 
         $this->assertSame('/community/'.$communityPage->public_slug, $communityPage->public_path);
-        $this->get('/sitemap.xml')
+        $this->getSitemapUrlsets()
             ->assertOk()
             ->assertSee('/he/community/'.$communityPage->public_slug, false);
 
@@ -596,7 +598,7 @@ class AiWorksApiTest extends TestCase
         $this->assertNotContains($product->id, collect($discovery['products'])->pluck('id'));
         $this->assertNotContains($ad->id, collect($discovery['ads'])->pluck('id'));
 
-        $sitemap = $this->get('/sitemap.xml')->assertOk()->getContent();
+        $sitemap = $this->getSitemapUrlsets()->assertOk()->getContent();
         $this->assertStringContainsString('/he/business/'.$business->public_slug, $sitemap);
         $this->assertStringContainsString('/he/community/'.$community->public_slug, $sitemap);
         $this->assertStringNotContainsString('/he/product/'.$product->public_slug, $sitemap);

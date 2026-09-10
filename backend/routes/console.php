@@ -4,6 +4,7 @@ use App\Models\Ad;
 use App\Models\AiPageImport;
 use App\Models\GuestSupportConversation;
 use App\Services\SeoPrerenderService;
+use App\Services\Sitemap\SitemapGenerator;
 use App\Services\SystemSettingsService;
 use App\Support\PublicImageVariants;
 use Illuminate\Foundation\Inspiring;
@@ -101,6 +102,23 @@ Artisan::command('images:generate-variants {--force : Recreate existing variants
 
 Schedule::command('ads:prune-expired')->hourly();
 Schedule::command('support:prune-guest-chats')->hourly();
+
+Artisan::command('sitemap:generate', function () {
+    try {
+        $result = app(SitemapGenerator::class)->generate();
+        $this->info('Published '.count($result['parts']).' sitemaps with '.$result['urls'].' URLs.');
+        $this->line(rtrim((string) config('app.url'), '/').'/sitemap.xml');
+
+        return 0;
+    } catch (Throwable $error) {
+        report($error);
+        $this->error('Sitemap generation failed: '.$error->getMessage());
+
+        return 1;
+    }
+})->purpose('Publish sitemaps in bounded batches, split at 50,000 URLs or 50 MB');
+
+Schedule::command('sitemap:generate')->hourly()->withoutOverlapping(180)->runInBackground();
 
 Artisan::command('ai-works:prune-page-imports', function () {
     $deleted = AiPageImport::query()->where('expires_at', '<=', now())->delete();
