@@ -8,6 +8,7 @@ use App\Exceptions\ExactPageDuplicateException;
 use App\Models\BusinessImportPage;
 use App\Models\BusinessImportSource;
 use App\Models\Page;
+use App\Models\PageClaimRequest;
 use App\Models\User;
 use App\Rules\CleanContent;
 use App\Support\CatalogTopics;
@@ -52,6 +53,7 @@ class BusinessImportService
         private readonly PageIdentityService $identities,
         private readonly ImportSourceCatalogService $sourceCatalog,
         private readonly FoursquareImportMatchingService $foursquare,
+        private readonly ClosedBusinessService $closures,
     ) {}
 
     public function search(array $input): array
@@ -141,6 +143,7 @@ class BusinessImportService
         $this->assertBusinessType($input);
         $source = $this->sourceDescriptor($input);
         if ($source !== null) {
+            $this->closures->assertSourceOpen($source);
             $input = $this->withoutInvalidSourceWebsite($input);
         }
         $prepared = [
@@ -192,7 +195,7 @@ class BusinessImportService
                 ]];
             }
 
-            if ($source['provider'] === 'foursquare_places') {
+            if ($this->enrichesExisting($source)) {
                 $match = $this->foursquare->resolve([...$input, ...$data], $source);
 
                 return $match === null || $match['id'] === $excludePageId ? [] : [$match];
@@ -220,6 +223,8 @@ class BusinessImportService
         ])->validate()['id'] ?? null;
 
         if (($source = $this->sourceDescriptor($input)) !== null) {
+            $this->closures->assertSourceOpen($source);
+
             return $this->upsertSource($clientId, $input, $source);
         }
 
@@ -281,6 +286,8 @@ class BusinessImportService
         }
 
         if (($source = $this->sourceDescriptor($input)) !== null) {
+            $this->closures->assertSourceOpen($source);
+
             return $this->upsertSource($clientId, [...$input, 'id' => $page->id], $source)['business'];
         }
 
@@ -322,8 +329,9 @@ class BusinessImportService
         }
         $source = Validator::make($input, [
             'source' => ['required', 'array:provider,id,url,metadata'],
-            'source.provider' => ['required', Rule::in(['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses', 'foursquare_places'])],
-            'source.id' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9][A-Za-z0-9._:-]*$/D'],
+            'source.provider' => ['required', Rule::in(['overture_places', 'data_gov_ckan', 'tel_aviv_business_licenses', 'foursquare_places', 'osm_places'])],
+            'source.id' => ['required', 'string', 'max:255', ($input['source']['provider'] ?? null) === 'osm_places'
+                ? 'regex:#^(?:node|way|relation)/[1-9][0-9]{0,19}$#D' : 'regex:/^[A-Za-z0-9][A-Za-z0-9._:-]*$/D'],
             'source.url' => ['required', 'url:https', 'max:2048'],
             'source.metadata' => ['present', 'array', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (is_array($value) && $value !== [] && array_is_list($value)) {
@@ -333,6 +341,27 @@ class BusinessImportService
         ])->validate()['source'];
         $parts = parse_url($source['url']);
         parse_str($parts['query'] ?? '', $query);
+        if ($source['provider'] === 'osm_places') {
+            if (! $this->sourceEndpointMatches($parts, 'www.openstreetmap.org', '/'.$source['id']) || isset($parts['query'])) {
+                throw ValidationException::withMessages(['source.url' => ['Use the official OpenStreetMap object URL matching source.id.']]);
+            }
+            Validator::make(['source' => $source], [
+                'source.metadata.source_id' => ['required', Rule::in([$source['id']])],
+                'source.metadata.country' => ['required', Rule::in(['IL'])],
+                'source.metadata.lifecycle_status' => ['sometimes', Rule::in(['active'])],
+                'source.metadata.opening_hours_raw' => ['nullable', 'string', 'max:2048'],
+                'source.metadata.latitude' => ['nullable', 'numeric', 'between:-90,90'],
+                'source.metadata.longitude' => ['nullable', 'numeric', 'between:-180,180'],
+                'source.metadata.source_categories' => ['sometimes', 'array', 'max:100'],
+            ])->validate();
+            foreach (['osm_type' => explode('/', $source['id'])[0], 'osm_id' => explode('/', $source['id'])[1]] as $field => $expected) {
+                if (isset($source['metadata'][$field]) && (string) $source['metadata'][$field] !== $expected) {
+                    throw ValidationException::withMessages(['source.metadata.'.$field => ['The metadata identity must match source.id.']]);
+                }
+            }
+
+            return $source;
+        }
         if ($source['provider'] === 'foursquare_places') {
             if (preg_match('/^[a-f0-9]{24}$/D', $source['id']) !== 1) {
                 throw ValidationException::withMessages(['source.id' => ['Use the 24-character lowercase Foursquare place ID.']]);
@@ -457,6 +486,12 @@ class BusinessImportService
     {
         $existingAddress = (array) ($page->setup['address'] ?? []);
         $mergedAddress = array_replace($existingAddress, (array) ($input['address'] ?? []));
+        foreach (['existingAddress', 'mergedAddress'] as $addressName) {
+            $city = ${$addressName}['city'] ?? null;
+            if (is_string($city) && ($known = $this->sourceCatalog->knownCity($city)) !== null) {
+                ${$addressName}['city'] = $known;
+            }
+        }
         if ($page->type !== Page::TYPE_BUSINESS
             || $this->identities->importAddressesConflict($mergedAddress, $existingAddress)) {
             throw new BusinessImportException('The source location conflicts with its existing business page.', 409, 'source_conflict');
@@ -490,9 +525,12 @@ class BusinessImportService
 
     private function upsertSource(string $clientId, array $input, array $source): array
     {
+        if ($source['provider'] === 'osm_places' && ! config('business_import.osm_public_import_enabled', false)) {
+            throw new BusinessImportException('OpenStreetMap is available for preview only; public imports are disabled.', 403, 'source_disabled');
+        }
         $this->assertBusinessType($input);
         $input = $this->withoutInvalidSourceWebsite($input);
-        if ($source['provider'] === 'foursquare_places') {
+        if ($this->enrichesExisting($source)) {
             Validator::make($input, [
                 'name' => ['sometimes', 'nullable', 'string', 'max:255'],
                 'address' => ['sometimes', 'nullable', 'array'],
@@ -506,15 +544,17 @@ class BusinessImportService
 
         try {
             return Cache::lock($key, 30)->block(10, fn (): array => DB::transaction(function () use ($clientId, $input, $source): array {
+                $this->closures->assertSourceOpen($source);
                 $mapping = $this->sourceQuery($source)->lockForUpdate()->first();
                 $requestedId = (int) ($input['id'] ?? 0);
                 if ($mapping !== null && ($mapping->page_id === null || ($requestedId > 0 && $requestedId !== $mapping->page_id))) {
                     throw new BusinessImportException('The source ID cannot be moved to another page.', 409, 'source_conflict');
                 }
-                $foursquareMatch = $source['provider'] === 'foursquare_places' && $mapping === null
+                $foursquareMatch = $this->enrichesExisting($source) && $mapping === null
                     ? $this->foursquare->resolve($input, $source) : null;
                 $pageId = $mapping?->page_id ?? ($foursquareMatch['id'] ?? ($requestedId ?: null));
                 $page = $pageId === null ? null : Page::query()->lockForUpdate()->find($pageId);
+                $canAddHours = $page === null || (empty($page->setup['opening_hours']) && ! filled($page->setup['imported_opening_hours'] ?? null));
                 if ($pageId !== null && $page === null) {
                     throw new BusinessImportException('Business page not found.', 404, 'not_found');
                 }
@@ -525,7 +565,7 @@ class BusinessImportService
                     $this->assertSourceEditable($page);
                     $this->assertSourceAddress($input, $page);
                     $this->assertSourceRecordIdentity($input, $page, $source);
-                    $patch = $source['provider'] === 'foursquare_places' ? $this->missingSourceContacts($page, $input) : $input;
+                    $patch = $this->enrichesExisting($source) ? $this->missingSourceFields($page, $input, $source) : $input;
                     $data = $this->pages->validate($this->mergeWithExisting($page, $patch), allowSourcePlace: true);
                     if ($mapping === null && $foursquareMatch === null) {
                         $this->assertSourceAssociation($clientId, $page, $data, $source);
@@ -545,8 +585,9 @@ class BusinessImportService
                         $this->assertSourceEditable($page);
                         $this->assertSourceAssociation($clientId, $page, $data, $source);
                         // Register confirmed existing pages without replacing their richer public details.
-                        if ($source['provider'] === 'foursquare_places') {
-                            $data = $this->pages->validate($this->mergeWithExisting($page, $this->missingSourceContacts($page, $input)), allowSourcePlace: true);
+                        if ($this->enrichesExisting($source)) {
+                            $canAddHours = empty($page->setup['opening_hours']) && ! filled($page->setup['imported_opening_hours'] ?? null);
+                            $data = $this->pages->validate($this->mergeWithExisting($page, $this->missingSourceFields($page, $input, $source)), allowSourcePlace: true);
                             $page = $this->pages->update($page, $data, allowSingleContactDuplicate: true, separateLocations: true, confirmedLocationsOnly: true);
                         }
                     }
@@ -562,12 +603,13 @@ class BusinessImportService
                     'url' => $source['url'], 'metadata' => $source['metadata'],
                 ])->save();
                 $this->foursquare->syncAliases($mapping);
-                $this->sourceCatalog->record($page, $source);
+                $this->sourceCatalog->record($page, $source, $input);
+                $this->recordSourcePresentation($page, $source, $canAddHours);
 
                 return ['operation' => $operation, 'business' => $this->payload($page->fresh())];
             }, 3));
         } catch (ExactPageDuplicateException $exception) {
-            if ($source['provider'] === 'foursquare_places') {
+            if ($this->enrichesExisting($source)) {
                 throw new BusinessImportReviewException($source, $input, $exception->matches, 'ambiguous_confirmed_location');
             }
 
@@ -582,7 +624,12 @@ class BusinessImportService
         return ['review_id' => $review->id, 'reason' => $review->reason];
     }
 
-    private function missingSourceContacts(Page $page, array $input): array
+    private function enrichesExisting(array $source): bool
+    {
+        return in_array($source['provider'], ['foursquare_places', 'osm_places'], true);
+    }
+
+    private function missingSourceFields(Page $page, array $input, array $source): array
     {
         $current = $this->pages->editableData($page);
         $patch = [];
@@ -596,8 +643,93 @@ class BusinessImportService
                 $patch['socials'][$field] = $input['socials'][$field];
             }
         }
+        if (in_array($source['provider'], ['overture_places', 'foursquare_places', 'osm_places'], true)) {
+            foreach ($source['provider'] === 'osm_places' ? ['name', 'public_description', 'category_key'] : ['category_key'] as $field) {
+                if (! filled($current[$field] ?? null) && filled($input[$field] ?? null)) {
+                    $patch[$field] = $input[$field];
+                }
+            }
+            foreach (self::ADDRESS_FIELDS as $field) {
+                if (! filled($current['address'][$field] ?? null) && filled($input['address'][$field] ?? null)) {
+                    $patch['address'][$field] = $input['address'][$field];
+                }
+            }
+            if ($source['provider'] === 'osm_places' && empty($current['opening_hours']) && ! filled($page->setup['imported_opening_hours'] ?? null) && ! empty($input['opening_hours'])) {
+                $patch['opening_hours'] = $input['opening_hours'];
+            }
+        }
 
         return $patch;
+    }
+
+    /** Called per existing association by the bounded catalog backfill, never creates a page. */
+    public function backfillCatalogSource(BusinessImportSource $association, bool $dryRun): array
+    {
+        $source = ['provider' => $association->provider, 'id' => $association->source_id, 'url' => $association->url, 'metadata' => $association->metadata];
+        $input = $this->sourceCatalog->metadataInput($source);
+        $query = Page::whereKey($association->page_id);
+        $page = ($dryRun ? $query : $query->lockForUpdate())->first();
+        $status = $page === null ? 'orphaned' : 'unchanged';
+        $patch = [];
+        $data = null;
+        if ($page !== null) {
+            try {
+                $this->assertSourceEditable($page);
+                if ($page->claimed_at !== null || $page->claimRequests()->where('status', PageClaimRequest::STATUS_APPROVED)->exists()) {
+                    throw new BusinessImportException('Confirmed owner.', 409, 'claimed');
+                }
+                $this->closures->assertSourceOpen($source);
+                if (in_array($source['provider'], ['overture_places', 'foursquare_places'], true)) {
+                    $this->assertSourceAddress($input, $page);
+                    $patch = array_intersect_key($this->missingSourceFields($page, $input, $source), array_flip(['category_key', 'address']));
+                    if ($patch !== []) {
+                        $data = $this->pages->validate($this->mergeWithExisting($page, $patch), allowSourcePlace: true);
+                        if ($this->identities->exactMatches($data, $page->id, allowSingleContactSignal: true, separateLocations: true, confirmedLocationsOnly: true)->isNotEmpty()) {
+                            throw new BusinessImportException('The completed address conflicts with another business.', 409, 'source_conflict');
+                        }
+                    }
+                }
+                $changedLabels = $this->sourceCatalog->pageSetup($page, $source) !== $page->setup;
+                if ($patch !== [] || $changedLabels) {
+                    $status = 'updated';
+                    if (! $dryRun) {
+                        if ($data !== null) {
+                            $page = $this->pages->update($page, $data, allowSingleContactDuplicate: true, separateLocations: true, confirmedLocationsOnly: true);
+                        }
+                        $page->forceFill(['setup' => $this->sourceCatalog->pageSetup($page, $source)])->save();
+                    }
+                }
+            } catch (BusinessImportException|ExactPageDuplicateException|ValidationException $error) {
+                $status = $error instanceof BusinessImportException && $error->reason === 'claimed' ? 'protected' : 'conflict';
+            }
+        }
+        $counts = $this->sourceCatalog->aggregate($source, $input, $page, $dryRun);
+
+        return ['status' => $status, ...$counts];
+    }
+
+    private function recordSourcePresentation(Page $page, array $source, bool $canAddHours): void
+    {
+        if ($source['provider'] !== 'osm_places') {
+            return;
+        }
+        $setup = is_array($page->setup) ? $page->setup : [];
+        $attributions = is_array($setup['imported_attributions'] ?? null) ? $setup['imported_attributions'] : [];
+        if (! collect($attributions)->contains(fn ($entry): bool => is_array($entry) && ($entry['provider'] ?? null) === 'osm_places')) {
+            $attributions[] = [
+                'provider' => 'osm_places', 'source_url' => $source['url'],
+                'label' => '© OpenStreetMap contributors', 'url' => 'https://www.openstreetmap.org/copyright',
+                'license' => 'ODbL 1.0', 'license_url' => 'https://opendatacommons.org/licenses/odbl/1-0/',
+            ];
+        }
+        $setup['imported_attributions'] = $attributions;
+        $rawHours = trim((string) ($source['metadata']['opening_hours_raw'] ?? ''));
+        if ($canAddHours && $rawHours !== '') {
+            $setup['imported_opening_hours'] = $rawHours;
+        }
+        if ($setup !== $page->setup) {
+            $page->forceFill(['setup' => $setup])->save();
+        }
     }
 
     private function withoutInvalidSourceWebsite(array $input): array

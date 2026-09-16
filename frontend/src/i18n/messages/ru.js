@@ -749,7 +749,8 @@ export default {
 				automationWorker: 'Воркер автоматизации'
 			},
 			types: {
-				businessImportRun: 'Поиск и импорт бизнесов'
+				businessImportRun: 'Поиск и импорт бизнесов',
+				removeClosedBusinesses: 'Удаление закрытых бизнесов'
 			},
 			statuses: {
 				success: 'Успешно',
@@ -759,6 +760,7 @@ export default {
 			seconds: '{count} сек.',
 			minutesSeconds: '{minutes} мин. {seconds} сек.',
 			genericResult: 'Системное событие',
+			closedBusinessesSummary: 'Удалено: {removed}, к удалению: {planned}, на проверку: {review}, без совпадений: {unmatched}, ошибок: {failed}',
 			workerSummary: 'Найдено: {found}, импортировано: {imported}, обновлено: {updated}, ошибок: {failed}',
 			govWorkerSummary: 'Найдено: {found}, импортировано: {imported}, обновлено: {updated}, всего ошибок: {failed}',
 			runId: 'ID запуска',

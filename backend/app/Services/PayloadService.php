@@ -154,6 +154,14 @@ class PayloadService
             'opening_hours' => $isUnclaimed && empty($setup['opening_hours'])
                 ? []
                 : $this->normalizedOpeningHours($setup['opening_hours'] ?? []),
+            'opening_hours_raw' => is_string($setup['imported_opening_hours'] ?? null) && trim($setup['imported_opening_hours']) !== ''
+                ? mb_substr(trim($setup['imported_opening_hours']), 0, 2048) : null,
+            'source_attributions' => collect(is_array($setup['imported_attributions'] ?? null) ? $setup['imported_attributions'] : [])
+                ->contains(fn ($entry): bool => is_array($entry) && ($entry['provider'] ?? null) === 'osm_places') ? [[
+                    'provider' => 'osm_places', 'label' => '© OpenStreetMap contributors',
+                    'url' => 'https://www.openstreetmap.org/copyright', 'license' => 'ODbL 1.0',
+                    'license_url' => 'https://opendatacommons.org/licenses/odbl/1-0/',
+                ]] : [],
             'service_areas' => $serviceAreas,
             'specialties' => $specialties,
             'features' => $features,

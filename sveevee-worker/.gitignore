@@ -4,3 +4,5 @@
 /var/*
 !/var/.gitignore
 
+__pycache__/
+*.pyc

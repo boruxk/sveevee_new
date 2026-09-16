@@ -16,15 +16,19 @@ use Sveevee\Worker\Http\BudgetedHttpClient;
 use Sveevee\Worker\Http\CurlHttpClient;
 use Sveevee\Worker\Http\SafeWebClient;
 use Sveevee\Worker\Http\UrlGuard;
+use Sveevee\Worker\Pipeline\ClosedBusinessRemovalService;
 use Sveevee\Worker\Pipeline\ImportService;
 use Sveevee\Worker\Pipeline\ResearchService;
 use Sveevee\Worker\Pipeline\ResearchTargetScheduler;
 use Sveevee\Worker\Pipeline\RunLogPublisher;
 use Sveevee\Worker\Reporting\RunReport;
 use Sveevee\Worker\Research\DataGovCkanSource;
+use Sveevee\Worker\Research\Foursquare\DatasetPreparer as FoursquareDatasetPreparer;
+use Sveevee\Worker\Research\Foursquare\PlaceMapper as FoursquarePlaceMapper;
 use Sveevee\Worker\Research\Foursquare\PlacesSource;
 use Sveevee\Worker\Research\JsonSeedSource;
 use Sveevee\Worker\Research\OfficialWebsiteEnricher;
+use Sveevee\Worker\Research\OpenStreetMap\PlacesSource as OsmPlacesSource;
 use Sveevee\Worker\Research\OverpassSource;
 use Sveevee\Worker\Research\OverturePlacesSource;
 use Sveevee\Worker\Research\RobotsPolicy;
@@ -56,8 +60,13 @@ final class Application
                 ?? Environment::get('SVEVEE_WORKER_CONFIG')
                 ?? $this->root.'/config/worker.json';
             $config = WorkerConfig::load($configPath, $this->root);
+            $localOnlyRunLogs = $config->fullSourceProvider() === 'osm_places'
+                && ! $config->bool('sources.osm_places.allow_public_import', false);
             $paths = $this->paths($config);
             $this->assertExtensions($config, $command);
+            if ($command === 'remove-closed-businesses' && $config->fullSourceProvider() !== 'foursquare_places') {
+                throw new RuntimeException('Closed-business removal requires the dedicated Foursquare full-source config.');
+            }
 
             $logger = new Logger($paths['log']);
             $openingHours = new OpeningHoursParser;
@@ -94,13 +103,17 @@ final class Application
                 return 0;
             }
 
-            $dryRun = (bool) ($options['dry_run'] ?? false);
+            $dryRun = $command === 'remove-closed-businesses'
+                ? ! ($options['apply'] ?? false) : (bool) ($options['dry_run'] ?? false);
             $limit = max(1, (int) ($options['limit'] ?? $config->int('target_per_run', 1000)));
             $runId = Uuid::v4();
             $report = new RunReport($runId, $command, $dryRun);
             if (in_array('foursquare_places', $enabledSources, true)) {
                 $report->source('foursquare_places', 0);
                 $report->increment('review', 0);
+            }
+            if (in_array('osm_places', $enabledSources, true)) {
+                $report->source('osm_places', 0);
             }
             if ($governmentSources !== []) {
                 $report->enableSourceMetrics();
@@ -114,8 +127,32 @@ final class Application
 
             try {
                 $research = null;
+                if ($config->fullSourceProvider() === 'osm_places' && in_array($command, ['run', 'import'], true)
+                    && ! $dryRun && ! $config->bool('sources.osm_places.allow_public_import', false)) {
+                    throw new RuntimeException('OpenStreetMap is configured for preview only; use --dry-run.');
+                }
+                if ($command === 'remove-closed-businesses') {
+                    $api = $this->api($config);
+                    $configuredDatabase = trim((string) ($config->source('foursquare_places')['database_path'] ?? ''));
+                    $snapshot = $configuredDatabase === '' ? dirname($paths['database']).'/foursquare.sqlite'
+                        : $config->resolvePath($configuredDatabase);
+                    if ($options['refresh'] ?? false) {
+                        $duckdb = (string) ($options['duckdb'] ?? $config->source('foursquare_places')['duckdb_binary'] ?? 'duckdb');
+                        if (! in_array($duckdb, ['duckdb', 'duckdb.exe'], true)) {
+                            $duckdb = $config->resolvePath($duckdb);
+                        }
+                        // Keep the shared worker lock across refresh and removal; a failed refresh never uses the old snapshot.
+                        (new FoursquareDatasetPreparer(FoursquarePlaceMapper::fromConfig([
+                            'cities' => $config->get('cities', []), 'sources' => $config->get('sources', []),
+                        ])))->prepare(
+                            $duckdb, Environment::require('FOURSQUARE_ACCESS_TOKEN'), $snapshot,
+                        );
+                    }
+                    (new ClosedBusinessRemovalService($api))->run($snapshot, $dryRun, $report);
+                }
                 // Scan the complete ordered schedule; empty combinations do not use a productive slot.
-                $selectedTargets = $targetScheduler->next($targets, max(1, count($targets)));
+                $selectedTargets = $command === 'remove-closed-businesses' ? []
+                    : $targetScheduler->next($targets, max(1, count($targets)));
                 if (in_array($command, ['research', 'run'], true)) {
                     [$sources, $enrichers] = $this->researchComponents(
                         $config, $repository, $normalizer, $merger, $openingHours, $report
@@ -145,8 +182,10 @@ final class Application
                 $research?->reportProgress($report);
                 $written = $report->write($paths['reports']);
                 $repository->finishRun($runId, 'completed', $written['path'], $written['report']);
-                $repository->queueRunLog($runId, $written['report']);
-                $this->publishRunLogs($api, $repository, $logger);
+                if (! $localOnlyRunLogs) {
+                    $repository->queueRunLog($runId, $written['report']);
+                    $this->publishRunLogs($api, $repository, $logger);
+                }
                 $logger->info('Worker run completed.', [
                     'run_id' => $runId,
                     'report' => $written['path'],
@@ -164,8 +203,10 @@ final class Application
                 $report->error('fatal', $exception->getMessage());
                 $written = $report->write($paths['reports'], 'failed');
                 $repository->finishRun($runId, 'failed', $written['path'], $written['report'], $exception->getMessage());
-                $repository->queueRunLog($runId, $written['report']);
-                $this->publishRunLogs($api, $repository, $logger);
+                if (! $localOnlyRunLogs) {
+                    $repository->queueRunLog($runId, $written['report']);
+                    $this->publishRunLogs($api, $repository, $logger);
+                }
                 $logger->error('Worker run failed.', [
                     'run_id' => $runId,
                     'error' => $exception->getMessage(),
@@ -218,6 +259,14 @@ final class Application
                 ? $config->resolvePath($configuredDatabase)
                 : dirname($this->paths($config)['database']).'/foursquare.sqlite';
             $sources[] = new PlacesSource($foursquare, $this->root, $repository);
+        }
+        $osm = $config->source('osm_places');
+        if (($osm['enabled'] ?? false) === true) {
+            $configuredDatabase = trim((string) ($osm['database_path'] ?? ''));
+            $osm['database_path'] = $configuredDatabase !== ''
+                ? $config->resolvePath($configuredDatabase)
+                : dirname($this->paths($config)['database']).'/osm.sqlite';
+            $sources[] = new OsmPlacesSource($osm, $this->root, $repository);
         }
         $overture = $config->source('overture_places');
         if (($overture['enabled'] ?? false) === true) {
@@ -312,7 +361,7 @@ final class Application
                 || $config->bool('sources.tel_aviv_business_licenses.enabled')
                 || $config->bool('sources.overpass.enabled')
                 || $config->bool('sources.official_website.enabled'));
-        $needsHttp = in_array($command, ['import', 'run'], true) || $needsResearchHttp;
+        $needsHttp = in_array($command, ['import', 'run', 'remove-closed-businesses'], true) || $needsResearchHttp;
         if ($needsHttp && ! extension_loaded('curl')) {
             throw new RuntimeException('Required PHP extension is missing: curl');
         }
@@ -348,7 +397,7 @@ final class Application
         if (in_array($command, ['-h', '--help', 'help'], true)) {
             return ['help', []];
         }
-        if (! in_array($command, ['research', 'import', 'run', 'status', 'retry-failed'], true)) {
+        if (! in_array($command, ['research', 'import', 'run', 'status', 'retry-failed', 'remove-closed-businesses'], true)) {
             throw new RuntimeException("Unknown command: {$command}");
         }
 
@@ -360,7 +409,17 @@ final class Application
 
                 continue;
             }
-            foreach (['limit', 'config', 'env-file'] as $name) {
+            if ($argument === '--apply' && $command === 'remove-closed-businesses') {
+                $options['apply'] = true;
+
+                continue;
+            }
+            if ($argument === '--refresh' && $command === 'remove-closed-businesses') {
+                $options['refresh'] = true;
+
+                continue;
+            }
+            foreach (['limit', 'config', 'env-file', ...($command === 'remove-closed-businesses' ? ['duckdb'] : [])] as $name) {
                 if ($argument === '--'.$name && isset($arguments[$index + 1])) {
                     $options[str_replace('-', '_', $name)] = $arguments[++$index];
 
@@ -377,6 +436,15 @@ final class Application
         if (isset($options['limit']) && (! ctype_digit((string) $options['limit']) || (int) $options['limit'] < 1)) {
             throw new RuntimeException('--limit must be a positive integer.');
         }
+        if ($command === 'remove-closed-businesses' && isset($options['limit'])) {
+            throw new RuntimeException('Closure checks scan the complete snapshot; --limit is not supported.');
+        }
+        if (isset($options['apply'], $options['dry_run'])) {
+            throw new RuntimeException('Choose either --apply or --dry-run.');
+        }
+        if (isset($options['duckdb']) && ! ($options['refresh'] ?? false)) {
+            throw new RuntimeException('--duckdb requires --refresh.');
+        }
 
         return [$command, $options];
     }
@@ -392,12 +460,16 @@ Usage:
   worker run [--limit=100] [--dry-run]
   worker status
   worker retry-failed [--limit=100]
+  worker remove-closed-businesses --config=config/worker.foursquare.json [--refresh] [--apply]
 
 Options:
   --config=PATH    Worker JSON config (default: config/worker.json)
   --env-file=PATH Environment file (default: .env)
   --limit=N        Maximum businesses for this work block
   --dry-run        Permit reads and local state, but no Sveevee writes
+  --apply          Apply closed-business removals (that command otherwise defaults to dry-run)
+  --refresh        Download a fresh Foursquare snapshot before checking closures, under the same lock
+  --duckdb=PATH    DuckDB executable for a closure --refresh (default: source config)
 
 TEXT);
     }

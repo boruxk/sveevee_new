@@ -26,7 +26,7 @@ final readonly class ResearchTarget
     /** A source-wide cursor label, never a business address or category. */
     public static function sourceAll(string $provider): self
     {
-        if (! in_array($provider, ['data_gov_ckan', 'tel_aviv_business_licenses', 'foursquare_places'], true)) {
+        if (! in_array($provider, ['data_gov_ckan', 'tel_aviv_business_licenses', 'foursquare_places', 'osm_places'], true)) {
             throw new \InvalidArgumentException('Unsupported complete source scan.');
         }
 
@@ -38,7 +38,7 @@ final readonly class ResearchTarget
         if ($this->isOvertureAll()) {
             return 'overture_places';
         }
-        foreach (['data_gov_ckan', 'tel_aviv_business_licenses', 'foursquare_places'] as $provider) {
+        foreach (['data_gov_ckan', 'tel_aviv_business_licenses', 'foursquare_places', 'osm_places'] as $provider) {
             if ($this->key() === self::sourceAll($provider)->key()) {
                 return $provider;
             }

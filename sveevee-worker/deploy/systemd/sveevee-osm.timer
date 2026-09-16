@@ -1,0 +1,12 @@
+[Unit]
+Description=Preview up to 9000 OpenStreetMap records hourly (template, not activated)
+
+[Timer]
+OnCalendar=*-*-* *:40:00 Asia/Jerusalem
+RandomizedDelaySec=0
+AccuracySec=1s
+Persistent=true
+Unit=sveevee-osm.service
+
+[Install]
+WantedBy=timers.target

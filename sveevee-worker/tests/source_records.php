@@ -30,6 +30,8 @@ final class FullRecordsHttp implements HttpClientInterface
 
     public bool $forceEstimatedTotal = false;
 
+    public ?int $estimatedTotal = null;
+
     public function __construct(public array $resources) {}
 
     public function request(string $method, string $url, array $headers = [], ?string $body = null, array $options = []): HttpResponse
@@ -48,7 +50,7 @@ final class FullRecordsHttp implements HttpClientInterface
 
         return new HttpResponse(200, [], Json::encode(['success' => true, 'result' => [
             'records' => array_slice($all, $this->repeat ? 0 : $offset, (int) $query['limit']),
-            'total' => count($all), 'total_was_estimated' => $estimated,
+            'total' => $estimated ? ($this->estimatedTotal ?? count($all)) : count($all), 'total_was_estimated' => $estimated,
         ]]));
     }
 }
@@ -142,19 +144,23 @@ $tests['full and legacy unfiltered requests use CKAN exact-count defaults'] = st
     }
 };
 
-$tests['unexpected estimated totals preserve the cursor for exact-count retry'] = static function () use ($assert, $throws, $company): void {
-    $fixture = new FullRecordsFixture;
-    $http = new FullRecordsHttp([FULL_COMPANIES => array_map($company, range(1, 15))]);
-    $fixture->consume($fixture->source($http), 10);
-    $http->forceEstimatedTotal = true;
-    $throws(static fn () => $fixture->consume($fixture->source($http)), 'exact nonnegative total');
-    $state = $fixture->state();
-    $assert((int) $state['consumed_offset'] === 10 && (int) $state['next_offset'] === 10
-        && (int) $state['complete'] === 0 && $fixture->queued() === 0, 'Estimated response advanced or completed the scan.');
-    $http->forceEstimatedTotal = false;
-    $http->requests = [];
-    $rows = $fixture->consume($fixture->source($http));
-    $assert(count($rows) === 5 && count($http->requests) === 1 && (int) $http->requests[0]['offset'] === 10, 'Exact-count retry lost the committed offset.');
+$tests['estimated totals resume without truncating below or above the real count'] = static function () use ($assert, $company): void {
+    foreach ([0, 2, 731119] as $estimate) {
+        $fixture = new FullRecordsFixture;
+        $http = new FullRecordsHttp([FULL_COMPANIES => array_map($company, range(1, 25))]);
+        $http->forceEstimatedTotal = true;
+        $http->estimatedTotal = $estimate;
+        $first = $fixture->consume($fixture->source($http), 3);
+        $assert(count($first) === 3 && $fixture->queued() === 7 && (int) $fixture->state()['complete'] === 0, 'Estimate ended scan early.');
+        $http->requests = [];
+        $assert(count($fixture->consume($fixture->source($http), 7)) === 7 && $http->requests === [], 'Durable page was downloaded twice.');
+        $rows = $fixture->consume($fixture->source($http));
+        $assert(count($rows) === 15 && array_column($http->requests, 'offset') === ['10', '20', '25'], 'Estimate lost rows or fetched beyond the empty end page.');
+        $assert((int) $fixture->state()['complete'] === 1 && (int) $fixture->state()['consumed_offset'] === 25, 'Empty page did not finish scan.');
+        foreach ($http->requests as $query) {
+            $assert((int) $query['limit'] <= 10, 'Estimate fix raised request size.');
+        }
+    }
 };
 
 $tests['full registry keeps inactive companies, unknown categories and raw cities without legacy limits'] = static function () use ($assert, $company): void {

@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\BusinessImportRunLogController;
 use App\Http\Controllers\Api\BusinessPageLeadController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\ClosedBusinessController;
 use App\Http\Controllers\Api\EmailVerificationController;
 use App\Http\Controllers\Api\GuestPageChatController;
 use App\Http\Controllers\Api\GuestSupportController;
@@ -102,6 +103,9 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::post('/worker-runs', [BusinessImportRunLogController::class, 'store'])
             ->middleware($writeMiddleware)
             ->name('business-import.worker-runs.store');
+        Route::post('/closed-businesses', [ClosedBusinessController::class, 'store'])
+            ->middleware($writeMiddleware)
+            ->name('business-import.closed-businesses.store');
         Route::patch('/businesses/{page}', [BusinessImportController::class, 'update'])
             ->whereNumber('page')
             ->middleware($writeMiddleware)

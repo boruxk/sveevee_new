@@ -12,46 +12,157 @@ use Normalizer;
 /** Retain unknown source labels for review without changing the public catalog. */
 class ImportSourceCatalogService
 {
+    private ?array $cityNames = null;
+
+    private array $cityAliases = [];
+
     /** Called inside the successful source import transaction, after ownership checks. */
-    public function record(Page $page, array $source): void
+    public function record(Page $page, array $source, array $input = []): void
+    {
+        $this->aggregate($source, $input, $page);
+        $setup = $this->pageSetup($page, $source);
+        if ($setup !== $page->setup) {
+            $page->forceFill(['setup' => $setup])->save();
+        }
+    }
+
+    /** Private label aggregation also accepts unresolved reviews, without changing any page. */
+    public function aggregate(array $source, array $input = [], ?Page $example = null, bool $dryRun = false): array
     {
         $metadata = $source['metadata'];
-        $setup = is_array($page->setup) ? $page->setup : [];
-        $city = $this->text($setup['address']['city'] ?? null, 120);
+        $rawCity = $this->text($metadata['source_city'] ?? $metadata['address']['locality'] ?? $metadata['original_record']['locality'] ?? $metadata['original_record']['שם עיר'] ?? null, 120);
+        // The worker's canonical city is stronger evidence of a known alias than its original spelling.
+        $city = $this->text($input['address']['city'] ?? null, 120) ?? $rawCity;
+        $unknownCity = $city !== null && $this->knownCity($city) === null;
+        $categories = $this->unknownCategories($metadata, $source['provider']);
+        $counts = ['city_observations' => (int) $unknownCity, 'category_observations' => count($categories)];
+        if ($dryRun) {
+            return $counts;
+        }
         $now = now();
-        if ($city !== null && CatalogTopics::resolveCitySlug(CatalogTopics::locationSlug($city)) === null) {
-            // A canonical page city also proves that a translated original source spelling is known.
-            $rawCity = $this->text($metadata['source_city'] ?? $metadata['address']['locality'] ?? $metadata['original_record']['שם עיר'] ?? null, 120) ?? $city;
+        if ($unknownCity) {
+            $rawCity ??= $city;
             BusinessImportCity::query()->upsert([[
                 'provider' => $source['provider'], 'value_hash' => $this->valueHash($rawCity), 'raw_value' => $rawCity,
-                'first_source_id' => $source['id'], 'example_page_id' => $page->id, 'first_seen_at' => $now, 'last_seen_at' => $now,
+                'first_source_id' => $source['id'], 'example_page_id' => $example?->id, 'first_seen_at' => $now, 'last_seen_at' => $now,
             ]], ['provider', 'value_hash'], ['last_seen_at']);
+            if ($example !== null) {
+                BusinessImportCity::where('provider', $source['provider'])->where('value_hash', $this->valueHash($rawCity))
+                    ->whereNull('example_page_id')->update(['example_page_id' => $example->id]);
+            }
         }
 
-        foreach ($this->unknownCategories($metadata, $source['provider']) as $entry) {
+        foreach ($categories as $entry) {
             BusinessImportCategory::query()->upsert([[
                 'provider' => $source['provider'], 'value_hash' => $this->valueHash($entry['key']), 'raw_value' => $entry['key'], 'label' => $entry['label'],
-                'first_source_id' => $source['id'], 'example_page_id' => $page->id, 'first_seen_at' => $now, 'last_seen_at' => $now,
+                'first_source_id' => $source['id'], 'example_page_id' => $example?->id, 'first_seen_at' => $now, 'last_seen_at' => $now,
             ]], ['provider', 'value_hash'], ['last_seen_at']);
+            if ($example !== null) {
+                BusinessImportCategory::where('provider', $source['provider'])->where('value_hash', $this->valueHash($entry['key']))
+                    ->whereNull('example_page_id')->update(['example_page_id' => $example->id]);
+            }
         }
+
+        return $counts;
+    }
+
+    /** Build current public labels without writing, including legacy Overture taxonomy. */
+    public function pageSetup(Page $page, array $source): array
+    {
+        $setup = is_array($page->setup) ? $page->setup : [];
+        $metadata = $source['metadata'];
         // Rebuild the display from current associations so corrections and mapped/removed
         // categories take effect while another source's unknown categories remain available.
-        $associations = BusinessImportSource::query()->where('page_id', $page->id)->orderBy('updated_at')->orderBy('id')->get();
+        $associations = BusinessImportSource::query()->where('page_id', $page->id)->lazyById(100);
         $categories = [];
+        $includedSource = false;
         foreach ($associations as $association) {
             if ($association->provider === $source['provider'] && $association->source_id === $source['id']) {
-                continue;
+                $associationMetadata = $metadata;
+                $includedSource = true;
+            } else {
+                $associationMetadata = $association->metadata;
             }
-            foreach ($this->unknownCategories($association->metadata, $association->provider) as $entry) {
+            foreach ($this->unknownCategories(is_array($associationMetadata) ? $associationMetadata : [], $association->provider) as $entry) {
                 $categories[$this->categoryIdentity($entry)] = $entry;
             }
         }
-        foreach ($this->unknownCategories($metadata, $source['provider']) as $entry) {
-            $categories[$this->categoryIdentity($entry)] = $entry;
+        if (! $includedSource) {
+            foreach ($this->unknownCategories($metadata, $source['provider']) as $entry) {
+                $categories[$this->categoryIdentity($entry)] = $entry;
+            }
         }
-        if (array_values($categories) !== ($setup['imported_categories'] ?? [])) {
-            $page->forceFill(['setup' => [...$setup, 'imported_categories' => array_values($categories)]])->save();
+
+        $categories = array_values($categories);
+
+        return $categories === ($setup['imported_categories'] ?? []) ? $setup : [...$setup, 'imported_categories' => $categories];
+    }
+
+    /** Recover source facts only; never infer a city/category from unrelated page data. */
+    public function metadataInput(array $source): array
+    {
+        $metadata = $source['metadata'];
+        $original = is_array($metadata['original_record'] ?? null) ? $metadata['original_record'] : [];
+        $address = is_array($metadata['address'] ?? null) ? $metadata['address'] : [];
+        $category = null;
+        foreach ($this->descriptors($metadata, $source['provider']) as $descriptor) {
+            if (! is_array($descriptor)) {
+                continue;
+            }
+            foreach (['catalog_key', 'key'] as $field) {
+                $key = $this->text($descriptor[$field] ?? null, 120);
+                if ($key !== null && ($mapped = CatalogTopics::canonicalKeyForScope($key, CatalogTopics::SCOPE_BUSINESS_PAGES)) !== null) {
+                    $category ??= $mapped;
+                }
+            }
         }
+
+        $city = $this->text($metadata['source_city'] ?? $address['locality'] ?? $original['locality'] ?? null, 120);
+
+        return ['category_key' => $category, 'address' => [
+            'city' => $this->knownCity($city) ?? $city,
+            'street' => $this->text($address['freeform'] ?? $original['address'] ?? null, 255),
+            'number' => $this->text($address['number'] ?? $original['house_number'] ?? null, 40),
+            'neighborhood' => $this->text($address['neighborhood'] ?? $original['neighborhood'] ?? null, 120),
+        ]];
+    }
+
+    /** Resolve only current catalog names and explicitly documented import aliases. */
+    public function knownCity(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        // Build once per service instance; a 9,000-row scan must not repeatedly traverse the catalog.
+        if ($this->cityNames === null) {
+            $this->cityNames = [];
+            foreach (config('locations.cities', []) as $city) {
+                $name = $city['name'];
+                $this->cityNames[CatalogTopics::locationSlug($name)] = $name;
+            }
+            foreach (config('import_city_aliases', []) as $city => $aliases) {
+                $target = $this->cityNames[CatalogTopics::locationSlug($city)] ?? null;
+                if ($target !== null && is_array($aliases)) {
+                    foreach ($aliases as $alias) {
+                        if (is_string($alias)) {
+                            $this->cityAliases[$this->cityAliasKey($alias)][$target] = true;
+                        }
+                    }
+                }
+            }
+        }
+        $canonical = $this->cityNames[CatalogTopics::locationSlug($value)] ?? null;
+        if ($canonical !== null) {
+            return $canonical;
+        }
+        $matches = $this->cityAliases[$this->cityAliasKey($value)] ?? [];
+
+        return count($matches) === 1 ? array_key_first($matches) : null;
+    }
+
+    private function cityAliasKey(string $value): string
+    {
+        return mb_strtolower(preg_replace('/\s*[-\x{05be}\x{2010}-\x{2015}]\s*/u', '-', $this->text($value, 120) ?? '') ?? '', 'UTF-8');
     }
 
     private function unknownCategories(array $metadata, string $provider): array

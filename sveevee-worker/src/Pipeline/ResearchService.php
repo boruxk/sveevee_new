@@ -12,6 +12,7 @@ use Sveevee\Worker\Reporting\RunReport;
 use Sveevee\Worker\Research\BusinessEnricherInterface;
 use Sveevee\Worker\Research\CursorSourceInterface;
 use Sveevee\Worker\Research\Foursquare\PlacesSource;
+use Sveevee\Worker\Research\OpenStreetMap\PlacesSource as OsmPlacesSource;
 use Sveevee\Worker\Research\OverturePlacesSource;
 use Sveevee\Worker\Research\SourceAdapterInterface;
 use Sveevee\Worker\Storage\IdentityConflictException;
@@ -204,7 +205,7 @@ final class ResearchService
                     'target' => $target->key(),
                     'error' => $exception->getMessage(),
                 ]);
-                if (($source instanceof OverturePlacesSource && $target->isOvertureAll()) || $source instanceof PlacesSource) {
+                if (($source instanceof OverturePlacesSource && $target->isOvertureAll()) || $source instanceof PlacesSource || $source instanceof OsmPlacesSource) {
                     throw $exception;
                 }
             } finally {
@@ -213,6 +214,9 @@ final class ResearchService
                 }
                 if ($source instanceof PlacesSource) {
                     $report->foursquareProgress($source->progress());
+                }
+                if ($source instanceof OsmPlacesSource) {
+                    $report->osmProgress($source->progress());
                 }
             }
         }
@@ -237,6 +241,9 @@ final class ResearchService
             }
             if ($source instanceof PlacesSource) {
                 $report->foursquareProgress($source->progress());
+            }
+            if ($source instanceof OsmPlacesSource) {
+                $report->osmProgress($source->progress());
             }
         }
     }

@@ -8,10 +8,11 @@ use App\Models\BusinessImportSource;
 use App\Models\BusinessImportSourceAlias;
 use App\Models\Page;
 use App\Models\PageIdentityKey;
+use Illuminate\Support\Facades\DB;
 
 class FoursquareImportMatchingService
 {
-    public function __construct(private readonly PageIdentityService $identities) {}
+    public function __construct(private readonly PageIdentityService $identities, private readonly ImportSourceCatalogService $sourceCatalog) {}
 
     public static function aliasIds(array $metadata): array
     {
@@ -36,20 +37,38 @@ class FoursquareImportMatchingService
         if ($association->provider !== 'overture_places') {
             return;
         }
-        $ids = self::aliasIds($association->metadata);
-        BusinessImportSourceAlias::where('business_import_source_id', $association->id)
-            ->whereNotIn('source_id', $ids)->delete();
-        foreach ($ids as $id) {
-            BusinessImportSourceAlias::firstOrCreate([
-                'provider' => 'foursquare_places', 'source_id' => $id, 'business_import_source_id' => $association->id,
-            ]);
+        foreach (['foursquare_places' => self::aliasIds($association->metadata), 'osm_places' => self::osmAliasIds($association->metadata)] as $provider => $ids) {
+            BusinessImportSourceAlias::where('business_import_source_id', $association->id)->where('provider', $provider)
+                ->whereNotIn('source_id', $ids)->delete();
+            foreach ($ids as $id) {
+                BusinessImportSourceAlias::firstOrCreate([
+                    'provider' => $provider, 'source_id' => $id, 'business_import_source_id' => $association->id,
+                ]);
+            }
         }
     }
 
-    /** Resolve a new Foursquare ID without treating shared contacts as proof of identity. */
+    public static function osmAliasIds(array $metadata): array
+    {
+        $ids = [];
+        foreach (is_array($metadata['sources'] ?? null) ? $metadata['sources'] : [] as $entry) {
+            if (! is_array($entry) || ! array_key_exists('property', $entry) || ! in_array($entry['property'], ['', null], true)
+                || ! is_string($entry['dataset'] ?? null) || strcasecmp($entry['dataset'], 'OpenStreetMap') !== 0
+                || (isset($entry['provider']) && (! is_string($entry['provider']) || strcasecmp($entry['provider'], 'openstreetmap') !== 0))
+                || ! is_string($entry['record_id'] ?? null)
+                || preg_match('#^(?:node|way|relation)/[1-9][0-9]{0,19}$#D', $entry['record_id']) !== 1) {
+                continue;
+            }
+            $ids[$entry['record_id']] = true;
+        }
+
+        return array_keys($ids);
+    }
+
+    /** Resolve an enrichment source without treating shared contacts as proof of identity. */
     public function resolve(array $input, array $source): ?array
     {
-        $aliases = BusinessImportSourceAlias::query()->where('provider', 'foursquare_places')
+        $aliases = BusinessImportSourceAlias::query()->where('provider', $source['provider'])
             ->where('source_id', $source['id'])->with('association.page')->limit(101)->get();
         if ($aliases->isNotEmpty()) {
             $pages = $aliases->map(fn (BusinessImportSourceAlias $alias) => $alias->association?->page);
@@ -103,16 +122,20 @@ class FoursquareImportMatchingService
 
     public function recordReview(BusinessImportReviewException $exception): BusinessImportMatchReview
     {
-        BusinessImportMatchReview::upsert([[
-            'provider' => $exception->source['provider'], 'source_id' => $exception->source['id'],
-            'status' => 'pending', 'reason' => $exception->reviewReason,
-            'payload' => json_encode([...$exception->input, 'source' => $exception->source], JSON_THROW_ON_ERROR),
-            'candidates' => json_encode($exception->candidates, JSON_THROW_ON_ERROR),
-            'first_seen_at' => now(), 'last_seen_at' => now(),
-        ]], ['provider', 'source_id'], ['reason', 'payload', 'candidates', 'last_seen_at']);
+        return DB::transaction(function () use ($exception): BusinessImportMatchReview {
+            BusinessImportMatchReview::upsert([[
+                'provider' => $exception->source['provider'], 'source_id' => $exception->source['id'],
+                'status' => 'pending', 'reason' => $exception->reviewReason,
+                'payload' => json_encode([...$exception->input, 'source' => $exception->source], JSON_THROW_ON_ERROR),
+                'candidates' => json_encode($exception->candidates, JSON_THROW_ON_ERROR),
+                'first_seen_at' => now(), 'last_seen_at' => now(),
+            ]], ['provider', 'source_id'], ['reason', 'payload', 'candidates', 'last_seen_at']);
 
-        return BusinessImportMatchReview::where('provider', $exception->source['provider'])
-            ->where('source_id', $exception->source['id'])->sole();
+            $this->sourceCatalog->aggregate($exception->source, $exception->input);
+
+            return BusinessImportMatchReview::where('provider', $exception->source['provider'])
+                ->where('source_id', $exception->source['id'])->sole();
+        });
     }
 
     private function assertRequestedPage(array $input, array $source, array $match): array

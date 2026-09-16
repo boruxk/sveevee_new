@@ -1,0 +1,33 @@
+{
+  "target_per_run": 9000,
+  "targets_per_run": 1,
+  "businesses_per_combination": 9000,
+  "batch_size": 100,
+  "cities": ["Tel Aviv", "Jerusalem", "Haifa", "Beer Sheva"],
+  "categories": ["food_catering.restaurants"],
+  "quotas": {"per_category": null, "per_neighborhood": null},
+  "sources": {
+    "osm_places": {
+      "enabled": true,
+      "allow_public_import": false,
+      "import_mode": "all_records",
+      "database_path": "",
+      "refresh_after_days": 30,
+      "python_binary": "python3",
+      "city_names": {
+        "Tel Aviv": ["Tel Aviv-Yafo", "תל אביב", "תל אביב-יפו"],
+        "Jerusalem": ["ירושלים"],
+        "Haifa": ["חיפה"],
+        "Beer Sheva": ["באר שבע", "Beersheba", "Be'er Sheva"]
+      },
+      "category_map": {}
+    }
+  },
+  "storage": {
+    "data_subdirectory": "osm",
+    "database": "var/worker.sqlite",
+    "reports_dir": "var/reports",
+    "log_file": "var/logs/worker.log"
+  },
+  "api": {"request_interval_ms": 150}
+}

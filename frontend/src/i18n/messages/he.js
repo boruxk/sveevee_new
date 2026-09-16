@@ -749,7 +749,8 @@ export default {
 				automationWorker: 'עובד האוטומציה'
 			},
 			types: {
-				businessImportRun: 'הרצת מחקר וייבוא עסקים'
+				businessImportRun: 'הרצת מחקר וייבוא עסקים',
+				removeClosedBusinesses: 'הסרת עסקים שנסגרו'
 			},
 			statuses: {
 				success: 'הושלם בהצלחה',
@@ -759,6 +760,7 @@ export default {
 			seconds: '{count} שנ׳',
 			minutesSeconds: '{minutes} דק׳ {seconds} שנ׳',
 			genericResult: 'אירוע מערכת',
+			closedBusinessesSummary: '{removed} הוסרו, {planned} מיועדים להסרה, {review} לבדיקה, {unmatched} ללא התאמה, {failed} נכשלו',
 			workerSummary: '{found} נמצאו, {imported} יובאו, {updated} עודכנו, {failed} נכשלו',
 			govWorkerSummary: '{found} נמצאו, {imported} יובאו, {updated} עודכנו, {failed} שגיאות בסך הכול',
 			runId: 'מזהה הרצה',

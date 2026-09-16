@@ -368,6 +368,7 @@
 		const labels = {
 			overture_places: 'Overture Places',
 			foursquare_places: 'Foursquare Places',
+			osm_places: 'OpenStreetMap',
 			data_gov_ckan: 'data.gov.il',
 			tel_aviv_business_licenses: 'gisn.tel-aviv.gov.il',
 			overpass: 'OpenStreetMap'
@@ -379,7 +380,8 @@
 			.map((source) => Object.hasOwn(labels, source) ? labels[source] : source))]
 	}
 
-	function logTypeLabel(value) {
+	function logTypeLabel(value, log = null) {
+		if (log?.data?.command === 'remove-closed-businesses') return t('admin.logs.types.removeClosedBusinesses')
 		return value === 'business_import_run' ? t('admin.logs.types.businessImportRun') : value
 	}
 
@@ -417,6 +419,17 @@
 	function logSummary(log) {
 		if (log.type !== 'business_import_run') {
 			return t('admin.logs.genericResult')
+		}
+
+		if (log.data?.command === 'remove-closed-businesses') {
+			const progress = log.data.closed_businesses_progress || {}
+			return t('admin.logs.closedBusinessesSummary', {
+				removed: Number(progress.removed || 0).toLocaleString(intlLocale.value),
+				planned: Number(progress.would_remove || 0).toLocaleString(intlLocale.value),
+				review: Number((progress.review_required || 0) + (progress.protected_claimed || 0)).toLocaleString(intlLocale.value),
+				unmatched: Number(progress.unmatched || 0).toLocaleString(intlLocale.value),
+				failed: Number(log.data.failed || 0).toLocaleString(intlLocale.value)
+			})
 		}
 
 		return t(logUsesGovSources(log) ? 'admin.logs.govWorkerSummary' : 'admin.logs.workerSummary', {
@@ -1922,7 +1935,7 @@
 							<template #body-cell-event="props">
 								<q-td :props="props">
 									<div class="table-name log-event-cell">
-										<strong>{{ logTypeLabel(props.row.type) }}</strong>
+										<strong>{{ logTypeLabel(props.row.type, props.row) }}</strong>
 										<small>{{ logSourceLabel(props.row.source) }}</small>
 										<small v-if="logDataSourceLabels(props.row).length" class="log-data-sources" dir="ltr">
 											{{ logDataSourceLabels(props.row).join(' · ') }}
@@ -2322,7 +2335,7 @@
 					<header class="log-detail-head">
 						<div>
 							<small>{{ logSourceLabel(selectedLog.source) }}</small>
-							<h2>{{ logTypeLabel(selectedLog.type) }}</h2>
+							<h2>{{ logTypeLabel(selectedLog.type, selectedLog) }}</h2>
 							<p>{{ formatDateTime(selectedLog.occurred_at) }}</p>
 						</div>
 						<q-btn

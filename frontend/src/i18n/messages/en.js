@@ -749,7 +749,8 @@ export default {
 				automationWorker: 'Automation worker'
 			},
 			types: {
-				businessImportRun: 'Business research and import run'
+				businessImportRun: 'Business research and import run',
+				removeClosedBusinesses: 'Remove closed businesses'
 			},
 			statuses: {
 				success: 'Successful',
@@ -759,6 +760,7 @@ export default {
 			seconds: '{count} sec',
 			minutesSeconds: '{minutes} min {seconds} sec',
 			genericResult: 'System event',
+			closedBusinessesSummary: '{removed} removed, {planned} would be removed, {review} for review, {unmatched} unmatched, {failed} failed',
 			workerSummary: '{found} found, {imported} imported, {updated} updated, {failed} failed',
 			govWorkerSummary: '{found} found, {imported} imported, {updated} updated, {failed} errors in total',
 			runId: 'Run ID',

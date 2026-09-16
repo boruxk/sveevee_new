@@ -10,7 +10,7 @@ use Sveevee\Worker\Http\TransportException;
 use Sveevee\Worker\Support\Json;
 use Sveevee\Worker\Support\Pacer;
 
-final class SveeveeApiClient implements SveeveeGateway
+final class SveeveeApiClient implements ClosedBusinessGateway, SveeveeGateway
 {
     private readonly Pacer $pacer;
 
@@ -53,6 +53,16 @@ final class SveeveeApiClient implements SveeveeGateway
     public function reportRun(array $report): array
     {
         return $this->request('POST', '/worker-runs', $report);
+    }
+
+    public function removeClosedBusinesses(array $request): array
+    {
+        $businesses = $request['businesses'] ?? null;
+        if (! is_array($businesses) || $businesses === [] || count($businesses) > 100) {
+            throw new \InvalidArgumentException('Closure batches must contain between 1 and 100 businesses.');
+        }
+
+        return $this->request('POST', '/closed-businesses', $request);
     }
 
     private function request(string $method, string $path, ?array $payload = null): array

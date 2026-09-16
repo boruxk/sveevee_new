@@ -193,10 +193,11 @@ final class DataGovCkanSource implements CursorSourceInterface
         $result = $payload['result'] ?? null;
         if (! is_array($result) || ! is_array($result['records'] ?? null)
             || ! isset($result['total']) || filter_var($result['total'], FILTER_VALIDATE_INT) === false
-            || (int) $result['total'] < 0 || ($result['total_was_estimated'] ?? false) !== false) {
-            throw new RuntimeException('Full CKAN scan requires records and an exact nonnegative total.');
+            || (int) $result['total'] < 0 || ! is_bool($result['total_was_estimated'] ?? false)) {
+            throw new RuntimeException('Full CKAN scan requires records and a nonnegative total.');
         }
-        if ((int) $result['total'] > $maximum || count($result['records']) > $requested) {
+        $estimated = $result['total_was_estimated'] ?? false;
+        if ((! $estimated && (int) $result['total'] > $maximum) || count($result['records']) > $requested) {
             throw new RuntimeException('Full CKAN page or resource exceeds its configured bound.');
         }
         $priorIds = $state['last_page_ids'] === null ? [] : Json::decode($state['last_page_ids']);
@@ -211,9 +212,10 @@ final class DataGovCkanSource implements CursorSourceInterface
             $profile->assertRecordSchema($record);
             $rows[] = ['id' => (string) $id, 'record' => $record];
         }
-        // Changing totals are expected in a live register; the last durable offset stays intact.
+        // Estimates can be above or below the real count. Only an empty page ends an
+        // estimated scan; retain the ten-row request limit and durable acknowledgements.
         $this->recordCursor->append($this->scanKey, $resourceId, $offset, (int) $result['total'], $rows, Clock::now(),
-            max(1, (int) ($this->config['max_cache_bytes'] ?? 134217728)));
+            max(1, (int) ($this->config['max_cache_bytes'] ?? 134217728)), totalEstimated: $estimated);
     }
 
     private function datasets(): array

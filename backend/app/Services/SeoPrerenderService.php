@@ -1193,6 +1193,8 @@ class SeoPrerenderService
             .($website ? $this->section($copy['website'], '<p><a href="'.$this->escapeAttribute($website).'">'.$this->escape($website).'</a></p>') : '')
             .$this->section($copy['contact'], $this->definitionList($contactRows))
             .($hours ? $this->section($copy['openingHours'], '<p>'.$this->escape($hours).'</p>') : '')
+            .(collect($page->setup['imported_attributions'] ?? [])->contains(fn ($source): bool => is_array($source) && ($source['provider'] ?? null) === 'osm_places')
+                ? '<p><a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL 1.0</a></p>' : '')
             .($serviceAreas ? $this->section($copy['serviceAreas'], '<ul>'.$serviceAreas.'</ul>') : '')
             .($specialties ? $this->section($copy['specialties'], '<ul>'.$specialties.'</ul>') : '')
             .($prices ? $this->section($copy['priceList'], '<ul>'.$prices.'</ul>') : '')
@@ -1604,7 +1606,8 @@ HTML;
             ->map(fn (array $item): string => trim(($item['weekday'] ?? '').' '.$item['opens_at'].'-'.$item['closes_at']))
             ->implode(', ');
 
-        return $hours;
+        return $hours !== '' || ! empty($page->setup['opening_hours'])
+            ? $hours : $this->cleanText($page->setup['imported_opening_hours'] ?? '');
     }
 
     private function openingHoursSchema(Page $page): array

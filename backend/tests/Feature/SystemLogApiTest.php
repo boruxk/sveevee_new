@@ -411,6 +411,28 @@ class SystemLogApiTest extends TestCase
             ->assertJsonPath('data.filters.sources.1', 'mail');
     }
 
+    public function test_osm_and_closed_business_progress_are_persisted_and_replayed(): void
+    {
+        Passport::actingAsClient($this->businessClient(), [BusinessImportClient::SCOPE_WRITE]);
+        foreach (['osm_progress', 'closed_businesses_progress'] as $field) {
+            $report = $this->runReport();
+            $report['command'] = $field === 'osm_progress' ? 'run' : 'remove-closed-businesses';
+            $report['used_sources'] = [$field === 'osm_progress' ? 'osm_places' : 'foursquare_places'];
+            $report[$field] = $field === 'osm_progress'
+                ? ['release' => '2026-09-16', 'total' => 100, 'scanned' => 10, 'remaining' => 90,
+                    'closed' => 1, 'invalid' => 0, 'pending' => 0, 'failed' => 0, 'review' => 1]
+                : ['snapshot_id' => 'snapshot-1', 'release' => '2026-09-16', 'total' => 10, 'scanned' => 10,
+                    'closed' => 2, 'invalid_evidence' => 0, 'would_remove' => 0, 'removed' => 1,
+                    'already_removed' => 0, 'protected_claimed' => 1, 'review_required' => 0, 'unmatched' => 0, 'failed' => 0];
+            $this->postJson('/api/v1/business-import/worker-runs', $report)->assertCreated();
+            $this->postJson('/api/v1/business-import/worker-runs', $report)->assertOk()->assertJsonPath('data.replayed', true);
+            $this->assertSame($report[$field], SystemLogEntry::where('external_id', $report['run_id'])->sole()->data[$field]);
+            $report[$field]['scanned']++;
+            $this->postJson('/api/v1/business-import/worker-runs', $report)
+                ->assertStatus($report[$field]['scanned'] > $report[$field]['total'] ? 422 : 409);
+        }
+    }
+
     private function businessClient(array $allowedScopes = [BusinessImportClient::SCOPE_WRITE]): Client
     {
         $client = Client::factory()->asClientCredentials()->create();

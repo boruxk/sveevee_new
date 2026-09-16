@@ -749,7 +749,8 @@ export default {
 				automationWorker: 'Worker d\'automatisation'
 			},
 			types: {
-				businessImportRun: 'Recherche et importation d\'entreprises'
+				businessImportRun: 'Recherche et importation d\'entreprises',
+				removeClosedBusinesses: 'Supprimer les entreprises fermées'
 			},
 			statuses: {
 				success: 'Réussi',
@@ -759,6 +760,7 @@ export default {
 			seconds: '{count} s',
 			minutesSeconds: '{minutes} min {seconds} s',
 			genericResult: 'Événement système',
+			closedBusinessesSummary: '{removed} supprimées, {planned} à supprimer, {review} à vérifier, {unmatched} sans correspondance, {failed} erreurs',
 			workerSummary: '{found} trouvées, {imported} importées, {updated} mises à jour, {failed} échouées',
 			govWorkerSummary: '{found} trouvées, {imported} importées, {updated} mises à jour, {failed} erreurs au total',
 			runId: 'ID d\'exécution',

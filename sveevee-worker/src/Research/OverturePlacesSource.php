@@ -51,6 +51,21 @@ final class OverturePlacesSource implements CursorSourceInterface
         return max(1, (int) ($this->config['refresh_after_days'] ?? 30));
     }
 
+    /** Read one proven source ID for local metadata repair without reading or advancing scan progress. */
+    public function preparedPlace(string $id): ?array
+    {
+        if (($this->config['import_mode'] ?? null) !== 'all_places'
+            || preg_match('/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/D', $id) !== 1) {
+            throw new RuntimeException('Catalog repair requires a full Overture snapshot and a valid GERS ID.');
+        }
+        $statement = $this->database()->prepare('SELECT * FROM places WHERE id = ?');
+        $statement->execute([$id]);
+        $row = $statement->fetch();
+        $statement->closeCursor();
+
+        return $row === false ? null : $this->map($row);
+    }
+
     public function research(ResearchTarget $target, int $limit): iterable
     {
         if (($this->config['import_mode'] ?? null) === 'all_places') {

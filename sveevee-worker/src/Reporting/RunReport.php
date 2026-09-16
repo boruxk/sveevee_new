@@ -39,6 +39,20 @@ final class RunReport
 
     private ?array $foursquareProgress = null;
 
+    private ?array $closedBusinessesProgress = null;
+
+    public function closedBusinessesProgress(array $progress): void
+    {
+        $this->closedBusinessesProgress = $progress;
+    }
+
+    private ?array $osmProgress = null;
+
+    public function osmProgress(?array $progress): void
+    {
+        $this->osmProgress = $progress;
+    }
+
     public function foursquareProgress(?array $progress): void
     {
         $this->foursquareProgress = $progress;
@@ -139,6 +153,8 @@ final class RunReport
             'errors' => $this->errors,
             ...($this->overtureProgress === null ? [] : ['overture_progress' => $this->overtureProgress]),
             ...($this->foursquareProgress === null ? [] : ['foursquare_progress' => $this->foursquareProgress]),
+            ...($this->closedBusinessesProgress === null ? [] : ['closed_businesses_progress' => $this->closedBusinessesProgress]),
+            ...($this->osmProgress === null ? [] : ['osm_progress' => $this->osmProgress]),
         ];
     }
 

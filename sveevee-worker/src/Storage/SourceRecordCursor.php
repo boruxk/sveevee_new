@@ -137,10 +137,10 @@ SQL);
     }
 
     /** Save one complete validated page before exposing any of its rows. */
-    public function append(string $scanKey, string $scopeKey, int $offset, int $total, array $rows, string $checkedAt, int $maxBytes): void
+    public function append(string $scanKey, string $scopeKey, int $offset, int $total, array $rows, string $checkedAt, int $maxBytes, bool $totalEstimated = false): void
     {
-        if ($offset < 0 || $total < 0 || count($rows) > 10 || ($rows === [] && $offset < $total)
-            || ($rows !== [] && $offset + count($rows) > $total)) {
+        if ($offset < 0 || $total < 0 || count($rows) > 10 || (! $totalEstimated && (($rows === [] && $offset < $total)
+            || ($rows !== [] && $offset + count($rows) > $total)))) {
             throw new RuntimeException('Source returned an inconsistent sequential page.');
         }
         $this->pdo->beginTransaction();
@@ -169,7 +169,7 @@ SQL);
             }
             $next = $offset + count($rows);
             $this->pdo->prepare('UPDATE source_record_scopes SET next_offset = ?, expected_total = ?, complete = ?, last_page_ids = ? WHERE scan_key = ? AND scope_key = ?')
-                ->execute([$next, $total, $next >= $total ? 1 : 0, Json::encode($ids), $scanKey, $scopeKey]);
+                ->execute([$next, $total, ($totalEstimated ? $rows === [] : $next >= $total) ? 1 : 0, Json::encode($ids), $scanKey, $scopeKey]);
             $this->pdo->commit();
         } catch (\Throwable $error) {
             $this->pdo->rollBack();

@@ -178,6 +178,8 @@
 		.replace(/^https?:\/\//i, '')
 		.replace(/\/$/, ''))
 	const previewOpeningHours = computed(() => props.page?.opening_hours || [])
+	const previewRawOpeningHours = computed(() => props.page?.opening_hours_raw || '')
+	const previewOsmAttribution = computed(() => (props.page?.source_attributions || []).find((source) => source.provider === 'osm_places'))
 	const previewServiceAreas = computed(() => {
 		if (pageType.value !== 'business') {
 			return []
@@ -614,8 +616,10 @@
 								<span>{{ item.is_open ? `${item.opens_at} - ${item.closes_at}` : t('pages.closed') }}</span>
 							</div>
 						</div>
+						<p v-else-if="previewRawOpeningHours" class="text-body2" dir="auto">{{ previewRawOpeningHours }}</p>
 						<div v-else-if="!showEmptyDetails" class="text-body2 page-preview__empty">{{ t('pages.noOpeningHours') }}</div>
 						<div v-else class="page-preview__empty-slot" aria-hidden="true" />
+						<p v-if="previewOsmAttribution" class="text-caption"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{ previewOsmAttribution.label }}</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">{{ previewOsmAttribution.license }}</a></p>
 					</div>
 
 					<div v-if="pageType === 'business' && (previewServiceAreas.length || showEmptyDetails)" class="page-preview__detail-card">

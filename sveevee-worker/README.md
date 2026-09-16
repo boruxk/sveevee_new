@@ -2,6 +2,14 @@
 
 Der Worker laeuft unabhaengig von Frontend und Laravel-Web-Requests. Er recherchiert ueber austauschbare Source-Adapter, speichert seinen Zustand in SQLite, prueft Dubletten ueber die bestehende Business-Import-API und sendet Schreibvorgaenge in Bloecken von hoechstens 100 Businesses.
 
+## Importwartung und neue Quellen
+
+- [Live-Prüfung vom 16.09.2026 und gestoppte Timer](../docs/import-status-2026-09-16.md)
+- [Remove closed businesses: Probelauf, Schutz bestätigter Besitzer und spätere monatliche Prüfung](../docs/closed-businesses.md)
+- [OpenStreetMap: Israel-Daten, Öffnungszeiten, Dublettenabgleich und späterer stündlicher Import](docs/osm-import.md)
+
+Neue Funktionen und Systemd-Vorlagen werden lokal vorbereitet. Erst nach Push und ausdrücklichem Live-Auftrag werden sie installiert oder aktiviert. OSM ist vorerst nur für lokale Vorschau und Vergleich freigegeben: Der vorbereitete Job läuft mit `--dry-run`, die Veröffentlichung ist standardmäßig gesperrt. Die vorgesehene Laufgröße beträgt 9.000 Einträge; unsichere Überschneidungen werden getrennt ausgewiesen. Geschlossene Quellen-IDs sind nach bestätigter Entfernung dauerhaft gegen erneuten Import gesperrt.
+
 ## Eigenschaften
 
 - OAuth-2.0 Client Credentials mit automatischer Token-Erneuerung
@@ -458,6 +466,8 @@ Gov laeuft auf Minute 00, 10, 20, 30, 40 und 50, Tel Aviv einmal taeglich um 03:
 
 Gov-SQLite, Logs und Reports liegen unter `/var/lib/sveevee-worker`, Tel Aviv unter `/var/lib/sveevee-worker/tel-aviv` und Overture weiterhin unter `/var/lib/sveevee-worker/overture`. Diese Daten muessen erhalten bleiben, damit jeder Job erfolgreiche Imports, sichere Batch-Retries und noch nicht an den Admin-Log uebertragene Laufberichte kennt. Die drei Service-Namen erlauben zusaetzlich eine getrennte Kontrolle ueber `journalctl`.
 
+Gezielte Reparaturen fehlender Orts-/Kategorie-Metadaten: [Audit und Vorschau-/Importablauf](../docs/import-catalog-repair.md). `bin/repair-catalog.php` startet standardmaessig eine Datenbank-Lesevorschau; `--apply` merkt nur lokale Kandidaten vor.
+
 ## Tests
 
 ```bash
@@ -469,6 +479,7 @@ php -d xdebug.mode=off tests/source_job_reports.php
 php -d xdebug.mode=off tests/source_pagination.php
 php -d xdebug.mode=off tests/source_records.php
 php -d xdebug.mode=off tests/source_catalog_metadata.php
+php -d xdebug.mode=off tests/catalog_repair.php
 php -d xdebug.mode=off tests/government_pipeline.php
 php -d xdebug.mode=off tests/tel_aviv_all_records.php
 php -d xdebug.mode=off tests/tel_aviv_source.php

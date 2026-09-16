@@ -441,17 +441,50 @@ $tests['actual API transport keeps dry-run flag and decodes review responses as 
     $assert(count($http->requests) === 2 && $payload['dry_run'] === true && $payload['source']['provider'] === 'foursquare_places'
         && ! isset($payload['public_description']), 'Actual HTTP payload lost dry-run protection or source provenance.');
 };
-$tests['first location match sends source identity evidence without replacing existing contact values'] = static function () use ($fixture, $assert): void {
-    $f = $fixture(1, static fn (array $row): array => array_replace($row, ['name' => 'Matching place', 'locality' => 'Haifa', 'address' => 'Main road 10']));
-    $remote = ['id' => 91, 'name' => 'Matching place', 'address' => ['city' => 'Haifa', 'street' => 'Main road', 'number' => '10'],
+$tests['confirmed match in an unknown city uses exact ID and preserves identity evidence'] = static function () use ($fixture, $assert): void {
+    $f = $fixture(1, static fn (array $row): array => array_replace($row, ['name' => 'Matching place', 'locality' => 'Unknown source city', 'address' => 'Main road 10']));
+    $remote = ['id' => 91, 'name' => 'Matching place', 'address' => ['city' => 'Unknown source city', 'street' => 'Main road', 'number' => '10'],
         'phone' => '+97235559999', 'can_update' => true];
     $f->api->remote = $remote;
     $f->api->check = static fn (): array => ['matches' => [array_replace($remote, ['matched_on' => ['name', 'address']])]];
     $report = $f->run(1);
+    $assert($f->api->searches === [['id' => 91, 'per_page' => 1]], 'Confirmed page was searched again by a noncatalog city.');
     $patch = $f->api->batches[0]['businesses'][0];
     $assert($report['updated'] === 1 && $report['failed'] === 0 && $patch['id'] === 91, 'Confirmed location failed to receive a source association.');
-    $assert($patch['name'] === 'Matching place' && $patch['address'] === ['city' => 'Haifa', 'street' => 'Main road 10'], 'The patch used remote rather than original source address evidence.');
+    $assert($patch['name'] === 'Matching place' && $patch['address'] === ['city' => 'Unknown source city', 'street' => 'Main road 10'], 'The patch used remote rather than original source address evidence.');
     $assert(! isset($patch['phone']) && $patch['website'] === 'https://same.example.org', 'Patch replaced an existing contact or omitted a missing one.');
+};
+
+$tests['closed source response is terminal and does not consume a successful import slot'] = static function () use ($fixture, $assert): void {
+    foreach ([false, true] as $dryRun) {
+        $f = $fixture(1);
+        $f->api->check = static fn (): array => throw new ApiException('Permanently closed.', 409, 'source_closed');
+        $report = $f->run(1, dry: $dryRun);
+        $assert(($report['closed'] ?? 0) === 1 && $report['failed'] === 0 && $report['imported'] === 0 && $f->api->batches === [], 'Closed source was retried or imported.');
+        $queue = $f->repository->foursquareQueueCounts();
+        $assert($queue['pending'] === ($dryRun ? 1 : 0) && $queue['failed'] === 0, 'Closed decision has incorrect dry-run or retry semantics.');
+    }
+};
+
+$tests['closed source stays terminal when the same ID receives changed phone and tags'] = static function () use ($fixture, $assert): void {
+    $f = $fixture(1);
+    $f->api->check = static fn (): array => throw new ApiException('Retain permanent closure reason.', 409, 'source_closed');
+    $first = $f->run(1);
+    $assert($first['closed'] === 1 && count($f->api->checks) === 1, 'The initial closure response must be recorded.');
+    $raw = Json::decode($f->database->pdo->query('SELECT raw_json FROM business_sources ORDER BY id LIMIT 1')->fetchColumn());
+    $raw['phone'] = '+97235550999';
+    $raw['source_metadata']['original_record']['tel'] = '03-5550999';
+    $raw['source_metadata']['original_record']['tags'] = ['changed-source-tag'];
+    $candidate = $f->normalizer->normalize($raw, ResearchTarget::sourceAll('foursquare_places'), 'foursquare_places');
+    $stored = $f->repository->upsertCandidate($candidate);
+    $business = $f->repository->business($stored['business_id']);
+    $assert($stored['changed'] && ! $stored['is_new'] && $business['status'] === 'closed', 'Changed source metadata must not reopen a permanently closed source ID.');
+    $error = $f->database->pdo->query('SELECT last_error_code,last_error_message FROM businesses WHERE id='.$stored['business_id'])->fetch(PDO::FETCH_ASSOC);
+    $assert($error === ['last_error_code' => 'source_closed', 'last_error_message' => 'Retain permanent closure reason.'], 'A source refresh must retain the closure reason.');
+    $assert($business['payload']['source']['metadata']['original_record']['tags'] === ['changed-source-tag'], 'Retain new source evidence without reopening the import.');
+    $assert($f->repository->resetFailed(100) === 0 && $f->repository->foursquareQueueCounts()['pending'] === 0, 'Retry-failed must not queue the closed source.');
+    $f->run(1);
+    $assert(count($f->api->checks) === 1 && $f->api->batches === [], 'The next run must not recheck or import the changed closed source.');
 };
 
 $failed = 0;

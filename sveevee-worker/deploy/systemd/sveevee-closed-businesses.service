@@ -1,0 +1,28 @@
+[Unit]
+Description=Refresh Foursquare evidence and remove confirmed closed imported businesses
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=sveevee-worker
+Group=sveevee-worker
+WorkingDirectory=/var/www/sveevee-worker
+EnvironmentFile=/etc/sveevee-worker/worker.env
+EnvironmentFile=/etc/sveevee-worker/foursquare-download.env
+ExecStart=/usr/bin/php /var/www/sveevee-worker/bin/worker remove-closed-businesses --config=/etc/sveevee-worker/worker.foursquare.json --refresh --duckdb=/usr/local/bin/duckdb --apply
+StateDirectory=sveevee-worker/foursquare
+UMask=0077
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/sveevee-worker/foursquare
+TimeoutStartSec=6h

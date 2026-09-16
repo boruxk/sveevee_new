@@ -1,0 +1,12 @@
+[Unit]
+Description=Check confirmed business closures monthly after refreshing Foursquare
+
+[Timer]
+OnCalendar=*-*-01 04:35:00 Asia/Jerusalem
+RandomizedDelaySec=0
+AccuracySec=1min
+Persistent=true
+Unit=sveevee-closed-businesses.service
+
+[Install]
+WantedBy=timers.target
