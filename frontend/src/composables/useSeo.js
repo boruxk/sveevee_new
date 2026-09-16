@@ -1,4 +1,6 @@
-import { unref, watchEffect } from 'vue'
+import { onScopeDispose, unref, watchEffect } from 'vue'
+
+const seoSources = []
 
 const SITE_NAME = 'sveevee'
 const DEFAULT_DESCRIPTIONS = {
@@ -82,7 +84,7 @@ function setCanonical(url) {
 }
 
 function setAlternateLinks(alternates) {
-	document.head.querySelectorAll('link[data-sveevee-hreflang]').forEach((tag) => tag.remove())
+	document.head.querySelectorAll('link[rel="alternate"][hreflang]').forEach((tag) => tag.remove())
 
 	if (!alternates) {
 		return
@@ -101,6 +103,7 @@ function setAlternateLinks(alternates) {
 }
 
 function setJsonLd(value) {
+	document.head.querySelectorAll('script[type="application/ld+json"][data-sveevee-prerender]').forEach((tag) => tag.remove())
 	const id = 'sveevee-jsonld'
 	let tag = document.getElementById(id)
 
@@ -122,6 +125,9 @@ function setJsonLd(value) {
 
 function applySeo(config = {}) {
 	if (typeof document === 'undefined') {
+		return
+	}
+	if (config.pending || (config.fallback && !/\bnoindex\b/.test(config.robots || '') && hasMatchingPrerenderSeo())) {
 		return
 	}
 
@@ -183,11 +189,44 @@ function applySeo(config = {}) {
 	}
 
 	setJsonLd(config.jsonLd)
+	if (!document.querySelector('#app .sveevee-prerender')) {
+		document.head.querySelectorAll('style[data-sveevee-prerender]').forEach((tag) => tag.remove())
+	}
+}
+
+function hasMatchingPrerenderSeo() {
+	const prerender = document.head.querySelector('script[type="application/ld+json"][data-sveevee-prerender]')
+	const canonical = document.head.querySelector('link[rel="canonical"]')?.getAttribute('href')
+	if (!prerender || !canonical) return false
+	try {
+		const url = new URL(canonical, window.location.origin)
+		return url.origin === window.location.origin && url.pathname === window.location.pathname
+	} catch {
+		return false
+	}
+}
+
+function refreshSeo() {
+	if (typeof window === 'undefined') return
+	const sources = seoSources.filter((entry) => entry.path === window.location.pathname && !entry.config?.pending)
+	const privateRoute = sources.findLast((entry) => entry.config?.fallback && /\bnoindex\b/.test(entry.config.robots || ''))
+	const specific = sources.findLast((entry) => !entry.config?.fallback)
+	const active = privateRoute || specific || sources.at(-1)
+	if (active) applySeo(active.config)
 }
 
 export function useSeo(source) {
+	const entry = { config: null, path: '' }
+	seoSources.push(entry)
 	watchEffect(() => {
-		applySeo(resolveConfig(source))
+		entry.config = resolveConfig(source)
+		entry.path = typeof window === 'undefined' ? '' : window.location.pathname
+		refreshSeo()
+	})
+	onScopeDispose(() => {
+		const index = seoSources.indexOf(entry)
+		if (index !== -1) seoSources.splice(index, 1)
+		refreshSeo()
 	})
 }
 

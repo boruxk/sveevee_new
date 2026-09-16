@@ -44,7 +44,7 @@ class SitemapXmlWriterTest extends TestCase
 
         $this->assertSame([2, 2, 1], array_column($parts, 'urls'));
         $this->assertSame(['pages-0001', 'pages-0002', 'pages-0003'], array_column($parts, 'part'));
-        $this->assertSame('https://sveevee.co.il/sitemap.xml?generation=test-generation&part=pages-0001', $parts[0]['loc']);
+        $this->assertSame('https://sveevee.co.il/sitemap.xml?part=pages-0001', $parts[0]['loc']);
 
         $actualUrls = [];
         foreach ($parts as $part) {
@@ -105,6 +105,18 @@ class SitemapXmlWriterTest extends TestCase
         $this->assertSame([], glob($this->directory.DIRECTORY_SEPARATOR.'*.xml'));
     }
 
+    public function test_unknown_modification_dates_are_omitted_without_empty_xml_tags(): void
+    {
+        $entry = $this->entry('/privacy');
+        $entry['lastmod'] = null;
+        $parts = $this->writer()->write('static', [$entry]);
+        $xml = file_get_contents($this->directory.DIRECTORY_SEPARATOR.$parts[0]['file']);
+
+        $this->assertSame([$entry['loc']], $this->locations($xml));
+        $this->assertStringNotContainsString('lastmod', $xml);
+        $this->assertSame(strlen($xml), $parts[0]['bytes']);
+    }
+
     public function test_exact_url_multiple_does_not_create_an_empty_trailing_part(): void
     {
         $parts = $this->writer(maxUrls: 2)->write('users', array_fill(0, 4, $this->entry('/users/1')));
@@ -160,7 +172,7 @@ class SitemapXmlWriterTest extends TestCase
 
     private function writer(int $maxUrls = SitemapXmlWriter::MAX_URLS, int $maxBytes = SitemapXmlWriter::MAX_BYTES): SitemapXmlWriter
     {
-        return new SitemapXmlWriter($this->directory, 'test-generation', 'https://sveevee.co.il', $maxUrls, $maxBytes);
+        return new SitemapXmlWriter($this->directory, 'https://sveevee.co.il', $maxUrls, $maxBytes);
     }
 
     private function entry(string $path, array $images = []): array

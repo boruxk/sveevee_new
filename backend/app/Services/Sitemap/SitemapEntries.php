@@ -30,6 +30,8 @@ final class SitemapEntries
 
     private array $cities;
 
+    private array $resolvedLocations = [];
+
     public function __construct(private readonly SitemapPathStore $paths, private readonly int $batchSize)
     {
         if ($batchSize < 1) {
@@ -59,32 +61,32 @@ final class SitemapEntries
     public function staticEntries(): Generator
     {
         yield from [
-            $this->entry('/', now(), 'daily', '1.0', [
+            $this->entry('/', null, 'daily', '1.0', [
                 $this->image('/assets/landing/hero-main-1360.v1.webp', 'Sveevee local discovery'),
                 $this->image('/assets/landing/sveevee-logo-640.v1.webp', 'Sveevee logo'),
             ]),
-            $this->entry('/businesses', now(), 'monthly', '0.85', [
+            $this->entry('/businesses', null, 'monthly', '0.85', [
                 $this->image('/assets/landing/promo-business-hero-1360.v3.webp', 'Free business page on Sveevee'),
             ]),
-            $this->entry('/communities', now(), 'monthly', '0.85', [
+            $this->entry('/communities', null, 'monthly', '0.85', [
                 $this->image('/assets/landing/promo-community-hero-1360.v3.webp', 'Free community page on Sveevee'),
             ]),
-            $this->entry('/business-example-page', now(), 'monthly', '0.75', [
+            $this->entry('/business-example-page', null, 'monthly', '0.75', [
                 $this->image('/assets/landing/example-business-banner-1440.v1.webp', 'Business example page'),
                 $this->image('/assets/landing/example-business-logo-512.v1.webp', 'Business example logo'),
             ]),
-            $this->entry('/community-example-page', now(), 'monthly', '0.75', [
+            $this->entry('/community-example-page', null, 'monthly', '0.75', [
                 $this->image('/assets/landing/example-community-banner-1440.v1.webp', 'Community example page'),
                 $this->image('/assets/landing/example-community-logo-512.v1.webp', 'Community example logo'),
             ]),
-            $this->entry('/search', now(), 'daily', '0.8'),
-            $this->entry('/privacy', now(), 'monthly', '0.3'),
-            $this->entry('/terms', now(), 'monthly', '0.3'),
-            $this->entry('/disclaimer', now(), 'monthly', '0.3'),
+            $this->entry('/search', null, 'daily', '0.8'),
+            $this->entry('/privacy', null, 'monthly', '0.3'),
+            $this->entry('/terms', null, 'monthly', '0.3'),
+            $this->entry('/disclaimer', null, 'monthly', '0.3'),
         ];
 
         foreach (CatalogTopics::scopeHubs() as $hub) {
-            yield $this->entry($hub['path'], now(), 'daily', '0.7');
+            yield $this->entry($hub['path'], null, 'daily', '0.7');
         }
     }
 
@@ -112,6 +114,7 @@ final class SitemapEntries
     public function pageEntries(): Generator
     {
         $pages = $this->query(Page::class)
+            ->whereIn('type', [Page::TYPE_BUSINESS, Page::TYPE_COMMUNITY])
             ->whereNotNull('name')
             ->where('name', '!=', '')
             ->whereHas('user', fn (Builder $query) => $query->whereNull('banned_at'))
@@ -132,6 +135,8 @@ final class SitemapEntries
     public function productEntries(): Generator
     {
         $products = $this->query(PageProduct::class)
+            ->whereNotNull('name')
+            ->where('name', '!=', '')
             ->with('page:id,user_id,type,name,setup,address')
             ->whereHas('page', fn (Builder $query) => $query->managed()
                 ->where('type', Page::TYPE_BUSINESS)
@@ -167,7 +172,7 @@ final class SitemapEntries
     public function catalogEntries(): Generator
     {
         foreach ($this->canonicalTopics as $topic) {
-            $this->paths->register('catalog', CatalogTopics::catalogPath($topic), now());
+            $this->paths->register('catalog', CatalogTopics::catalogPath($topic), null);
         }
 
         $pages = $this->query(Page::class)
@@ -241,7 +246,7 @@ final class SitemapEntries
         }
 
         foreach ($this->paths->entries('catalog') as $row) {
-            yield $this->entry($row['path'], Carbon::parse($row['lastmod']), 'weekly', '0.65');
+            yield $this->entry($row['path'], $row['lastmod'] ? Carbon::parse($row['lastmod']) : null, 'weekly', '0.65');
         }
     }
 
@@ -255,8 +260,8 @@ final class SitemapEntries
             ->lazyById($this->batchSize);
 
         foreach ($products as $product) {
-            $city = $this->pageAddressValue($product->page, 'city');
-            if (! filled($city)) {
+            $city = $this->knownLocation($this->pageAddressValue($product->page, 'city'));
+            if ($city === null) {
                 continue;
             }
 
@@ -265,16 +270,16 @@ final class SitemapEntries
             $marketType = $isProductTopic ? ($this->marketTypes[$topic['key']] ?? null) : null;
 
             foreach (self::LOCALES as $locale) {
-                $this->paths->register('market', '/'.$locale.'/'.ltrim(CatalogTopics::marketPath($city), '/'), $product->updated_at ?: now());
+                $this->paths->register('market', '/'.$locale.'/'.ltrim(CatalogTopics::marketPath($city), '/'), $product->updated_at);
 
                 if ($isProductTopic) {
-                    $this->paths->register('market', '/'.$locale.'/'.ltrim(CatalogTopics::marketPath($city, $marketType ?: $topic), '/'), $product->updated_at ?: now());
+                    $this->paths->register('market', '/'.$locale.'/'.ltrim(CatalogTopics::marketPath($city, $marketType ?: $topic), '/'), $product->updated_at);
                 }
             }
         }
 
         foreach ($this->paths->entries('market') as $row) {
-            yield $this->entry($row['path'], Carbon::parse($row['lastmod']), 'weekly', '0.62');
+            yield $this->entry($row['path'], $row['lastmod'] ? Carbon::parse($row['lastmod']) : null, 'weekly', '0.62');
         }
     }
 
@@ -290,22 +295,43 @@ final class SitemapEntries
             return;
         }
 
-        $updatedAt ??= now();
         $this->paths->register('catalog', CatalogTopics::catalogPath($topic), $updatedAt);
 
-        if (filled($city)) {
+        $city = $this->knownLocation($city);
+        if ($city !== null) {
             $this->paths->register('catalog', CatalogTopics::catalogPath($topic, $city), $updatedAt);
-            if (filled($neighborhood)) {
+            $neighborhood = $this->knownLocation($neighborhood, $city);
+            if ($neighborhood !== null) {
                 $this->paths->register('catalog', CatalogTopics::catalogPath($topic, $city, $neighborhood), $updatedAt);
             }
         }
+    }
+
+    private function knownLocation(?string $value, ?string $city = null): ?string
+    {
+        $slug = CatalogTopics::locationSlug($value);
+        if ($slug === null) {
+            return null;
+        }
+        $key = json_encode([$city, $slug], JSON_THROW_ON_ERROR);
+        if (! array_key_exists($key, $this->resolvedLocations)) {
+            // Repeated import locations are common; cap the cache even for arbitrary source labels.
+            if (count($this->resolvedLocations) >= 1024) {
+                $this->resolvedLocations = [];
+            }
+            $this->resolvedLocations[$key] = $city === null
+                ? CatalogTopics::resolveCitySlug($slug)
+                : CatalogTopics::resolveNeighborhoodSlug($city, $slug);
+        }
+
+        return $this->resolvedLocations[$key];
     }
 
     private function entry(string $path, ?Carbon $lastModified, string $changeFrequency, string $priority, array $images = []): array
     {
         return [
             'loc' => $this->absoluteUrl($path),
-            'lastmod' => ($lastModified ?: now())->toDateString(),
+            'lastmod' => $lastModified?->toDateString(),
             'changefreq' => $changeFrequency,
             'priority' => $priority,
             'images' => array_values(array_filter($images)),

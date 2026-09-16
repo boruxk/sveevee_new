@@ -18,7 +18,6 @@ class SitemapXmlWriter
 
     public function __construct(
         private readonly string $directory,
-        private readonly string $generation,
         private readonly string $baseUrl,
         private readonly int $maxUrls = self::MAX_URLS,
         private readonly int $maxBytes = self::MAX_BYTES,
@@ -37,7 +36,7 @@ class SitemapXmlWriter
     }
 
     /**
-     * @param  iterable<array{loc: string, lastmod: string, changefreq: string, priority: string, images?: array}>  $entries
+     * @param  iterable<array{loc: string, lastmod: ?string, changefreq: string, priority: string, images?: array}>  $entries
      * @return array<array{part: string, file: string, loc: string, urls: int, bytes: int}>
      */
     public function write(string $family, iterable $entries): array
@@ -104,6 +103,9 @@ class SitemapXmlWriter
         $xml = "  <url>\n";
 
         foreach (['loc', 'lastmod', 'changefreq', 'priority'] as $field) {
+            if ($field === 'lastmod' && empty($entry[$field])) {
+                continue;
+            }
             $xml .= '    <'.$field.'>'.$this->escape((string) ($entry[$field] ?? '')).'</'.$field.">\n";
         }
 
@@ -161,7 +163,7 @@ class SitemapXmlWriter
         return [
             'part' => $part,
             'file' => $part.'.xml',
-            'loc' => rtrim($this->baseUrl, '/').'/sitemap.xml?generation='.rawurlencode($this->generation).'&part='.rawurlencode($part),
+            'loc' => rtrim($this->baseUrl, '/').'/sitemap.xml?part='.rawurlencode($part),
             'urls' => $urls,
             'bytes' => $bytes + strlen(self::FOOTER),
         ];

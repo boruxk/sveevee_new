@@ -71,7 +71,7 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('chat-send', function (Request $request) {
             $limit = app(SystemSettingsService::class)->integer('chat.messages_per_minute', 30);
-            $guestToken = (string) $request->header('X-Guest-Support-Token', '');
+            $guestToken = (string) $request->header('X-Guest-Page-Chat-Token', $request->header('X-Guest-Support-Token', ''));
             $actor = $request->user()?->id
                 ? 'user:'.$request->user()->id
                 : 'guest:'.($guestToken !== '' ? hash('sha256', $guestToken) : 'anonymous');
@@ -85,6 +85,13 @@ class AppServiceProvider extends ServiceProvider
             $browser = substr(hash('sha256', (string) $request->userAgent()), 0, 20);
 
             return Limit::perHour(10)->by($request->ip().'|'.$browser);
+        });
+
+        RateLimiter::for('guest-page-chat-start', function (Request $request) {
+            return [
+                Limit::perMinute(3)->by('guest-page-minute|'.$request->ip()),
+                Limit::perHour(10)->by('guest-page-hour|'.$request->ip()),
+            ];
         });
 
         RateLimiter::for('business-page-leads', function (Request $request) {

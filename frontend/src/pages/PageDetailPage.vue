@@ -22,6 +22,8 @@
 	import PageRatingsDialog from '@/components/ratings/PageRatingsDialog.vue'
 	import PageReviewDialog from '@/components/ratings/PageReviewDialog.vue'
 	import ChatBlock from '@/components/ChatBlock.vue'
+	import GuestPageChat from '@/components/GuestPageChat.vue'
+	import { completePendingGuestPageChatClaim, readPendingGuestPageChatClaim } from '@/utils/guestPageChatSession'
 
 	const route = useRoute()
 	const router = useRouter()
@@ -41,9 +43,14 @@
 	}
 	const page = ref(null)
 	const loading = ref(false)
+	const pageUnavailable = ref(false)
+	let latestPageRequest = 0
+	let loadedPageRouteId = null
 	const ratingsDialogOpen = ref(false)
 	const reviewDialogOpen = ref(false)
 	const pageChatDialogOpen = ref(false)
+	const pageChatClaimState = ref('idle')
+	let claimingGuestChat = false
 	const claimDialogOpen = ref(false)
 	const replacementDialogOpen = ref(false)
 	const replacementExistingName = ref('')
@@ -58,6 +65,10 @@
 	const canRate = computed(() => !isUnclaimed.value && authStore.isAuthenticated && page.value?.user_id !== authStore.user?.id)
 	const showChatAction = computed(() => Boolean(page.value?.id) && !isUnclaimed.value)
 	const isPageOwner = computed(() => authStore.isAuthenticated && page.value?.user_id === authStore.user?.id)
+	const pageChatReturnTo = computed(() => router.resolve({
+		path: route.path,
+		query: { ...route.query, pageChat: '1' }
+	}).fullPath)
 	const canRequestClaim = computed(() => authStore.isAuthenticated && authStore.canAccess(['user']))
 	const claimRegisterRoute = computed(() => ({
 		name: 'register',
@@ -329,25 +340,33 @@
 	})
 
 	useSeo(computed(() => ({
+		pending: !page.value && !pageUnavailable.value,
 		title: seoTitle.value,
 		description: seoDescription.value,
 		image: seoImage.value,
 		canonical: canonicalPath.value,
 		alternates: localizedAlternates.value,
 		type: 'website',
-		robots: page.value ? 'index,follow' : 'noindex,follow',
+		robots: pageUnavailable.value ? 'noindex,follow' : 'index,follow',
 		jsonLd: jsonLd.value
 	})))
 
 	async function load() {
+		const requestId = ++latestPageRequest
+		const routeId = String(route.params.id || '')
 		loading.value = true
+		pageUnavailable.value = false
+		if (loadedPageRouteId !== routeId) page.value = null
 		try {
 			if (routeLocale.value && routeLocale.value !== locale.value) {
 				await setLocale(routeLocale.value)
 			}
 
-			const { data } = await fetchPage(route.params.id)
+			if (requestId !== latestPageRequest) return
+			const { data } = await fetchPage(routeId)
+			if (requestId !== latestPageRequest || String(route.params.id || '') !== routeId) return
 			page.value = data.data
+			loadedPageRouteId = routeId
 			claimSent.value = data.data?.viewer_claim?.status === 'pending'
 			const completion = consumeLeadsPage001Completion(data.data?.id)
 			if (data.data?.type !== 'business') {
@@ -360,8 +379,16 @@
 				leadCompletion.value = null
 				leadCompletionVisitPageId.value = null
 			}
+		} catch (error) {
+			if (requestId !== latestPageRequest || String(route.params.id || '') !== routeId) return
+			if ([401, 403, 404, 410].includes(error.response?.status)) {
+				page.value = null
+				loadedPageRouteId = null
+				pageUnavailable.value = true
+			}
+			// A temporary request failure must not deindex an otherwise public server-rendered page.
 		} finally {
-			loading.value = false
+			if (requestId === latestPageRequest) loading.value = false
 		}
 	}
 
@@ -380,17 +407,37 @@
 		syncRatingSummary(payload.summary)
 	}
 
-	function openChat() {
-		if (!page.value?.id) {
+	async function restoreGuestChat() {
+		const pageId = page.value?.id
+		const intent = readPendingGuestPageChatClaim()
+		if (claimingGuestChat || !authStore.isAuthenticated || !pageId) return
+		if (!intent || String(intent.pageId) !== String(pageId)) {
+			pageChatClaimState.value = 'idle'
+			return
+		}
+		claimingGuestChat = true
+		pageChatClaimState.value = 'loading'
+		try {
+			const result = await completePendingGuestPageChatClaim({ pageId })
+			if (String(page.value?.id) !== String(pageId)) return
+			pageChatClaimState.value = result.status === 'pending' ? 'pending' : 'idle'
+			if (result.status === 'unavailable') $q.notify({ type: 'info', message: t('chat.guestPageClaimUnavailable') })
+		} finally {
+			claimingGuestChat = false
+			if (String(page.value?.id) !== String(pageId)) {
+				pageChatClaimState.value = 'idle'
+				if (pageChatDialogOpen.value) await restoreGuestChat()
+			}
+		}
+	}
+
+	async function openChat() {
+		if (!showChatAction.value) {
 			return
 		}
 
-		if (!authStore.isAuthenticated) {
-			const chatTarget = router.resolve({
-				path: route.path,
-				query: { ...route.query, pageChat: '1' }
-			}).fullPath
-			router.push({ name: 'login', query: { redirect: chatTarget } })
+		if (!authStore.isAuthenticated && !isBusinessPage.value) {
+			router.push({ name: 'login', query: { redirect: pageChatReturnTo.value } })
 			return
 		}
 
@@ -400,6 +447,7 @@
 		}
 
 		pageChatDialogOpen.value = true
+		await restoreGuestChat()
 	}
 
 	function showBusinessReplacementWarning(existingName = '') {
@@ -499,8 +547,8 @@
 		}
 	})
 	watch([page, () => route.query.pageChat, () => authStore.isAuthenticated], () => {
-		if (page.value && route.query.pageChat === '1' && authStore.isAuthenticated && !isPageOwner.value) {
-			pageChatDialogOpen.value = true
+		if (page.value && route.query.pageChat === '1' && showChatAction.value && !isPageOwner.value) {
+			openChat()
 		}
 	})
 
@@ -726,7 +774,20 @@
 							v-close-popup
 						/>
 					</header>
-					<ChatBlock :page-id="page.id" compact class="page-public-chat" />
+					<GuestPageChat
+						v-if="!authStore.isAuthenticated && isBusinessPage"
+						:key="page.id"
+						:page-id="page.id"
+						:return-to="pageChatReturnTo"
+					/>
+					<div v-else-if="pageChatClaimState !== 'idle'" class="page-chat-claim-status" role="status">
+						<q-spinner v-if="pageChatClaimState === 'loading'" color="primary" size="32px" />
+						<template v-else>
+							<p>{{ t('chat.guestPageClaimPending') }}</p>
+							<q-btn color="primary" :label="t('chat.guestPageClaimRetry')" @click="restoreGuestChat" />
+						</template>
+					</div>
+					<ChatBlock v-else-if="authStore.isAuthenticated" :page-id="page.id" compact class="page-public-chat" />
 				</q-card>
 			</q-dialog>
 
@@ -1350,7 +1411,7 @@
   grid-template-rows: auto minmax(0, 1fr);
   width: min(760px, calc(100vw - 32px));
   max-width: 760px;
-  height: min(720px, calc(100vh - 48px));
+  height: min(720px, calc(100dvh - 48px));
   max-height: 720px;
   border-radius: 24px !important;
   background: #fff8fb;
@@ -1385,6 +1446,15 @@
 .page-public-chat {
   min-height: 0;
   height: 100%;
+}
+
+.page-chat-claim-status {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
 }
 
 @media (max-width: 760px) {

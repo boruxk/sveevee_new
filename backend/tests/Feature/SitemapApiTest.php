@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Page;
 use App\Models\User;
+use App\Support\CatalogTopics;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\Concerns\ReadsSitemaps;
@@ -103,6 +104,7 @@ class SitemapApiTest extends TestCase
         $firstPage = $this->createPage($firstOwner);
         $this->artisan('sitemap:generate')->assertSuccessful();
         $originalParts = $this->readPublishedSitemaps();
+        $originalGeneration = $this->publishedGeneration();
         $originalUrls = array_merge(...array_column($originalParts, 'urls'));
         $stablePagePath = '/sitemap.xml?part=pages-0001';
         $originalPagePart = collect($originalParts)->first(fn (array $part) => str_contains($part['path'], 'part=pages-0001'));
@@ -121,14 +123,14 @@ class SitemapApiTest extends TestCase
         $this->assertContains($newUserUrl, $currentUrls);
         $this->assertContains($newPageUrl, $currentUrls);
         $this->assertContains('https://sveevee.co.il/he/business/'.$firstPage->public_slug, $currentUrls);
-        $this->assertNotSame($originalParts[0]['path'], $currentParts[0]['path']);
+        $this->assertSame(array_column($originalParts, 'path'), array_column($currentParts, 'path'));
         $currentPagePart = collect($currentParts)->first(fn (array $part) => str_contains($part['path'], 'part=pages-0001'));
         $stablePageContent = $this->sitemapResponseContent($this->get($stablePagePath)->assertOk());
         $this->assertSame($currentPagePart['content'], $stablePageContent);
         $this->assertStringContainsString($newPageUrl, $stablePageContent);
 
         foreach ($originalParts as $part) {
-            $response = $this->get($part['path'])->assertOk();
+            $response = $this->get($part['path'].'&generation='.$originalGeneration)->assertOk();
             $this->assertSame($part['content'], $this->sitemapResponseContent($response));
         }
 
@@ -159,6 +161,69 @@ class SitemapApiTest extends TestCase
         }
     }
 
+    public function test_sitemap_excludes_records_that_the_public_html_routes_cannot_render(): void
+    {
+        $owner = User::factory()->create();
+        $page = $this->createPage($owner);
+        $unsupportedPage = $this->createPage($owner, ['name' => 'Unsupported page', 'type' => 'unsupported']);
+        $productAttributes = ['description' => 'Public product.', 'price' => 20, 'image_path' => 'products/example.webp', 'link' => 'https://example.test/product'];
+        $validProduct = $page->products()->create(['name' => 'Visible product', ...$productAttributes]);
+        $emptyProduct = $page->products()->create(['name' => '', ...$productAttributes]);
+        $this->artisan('sitemap:generate')->assertSuccessful();
+        $parts = $this->readPublishedSitemaps();
+        $urls = array_merge(...array_column($parts, 'urls'));
+
+        foreach (['he', 'en', 'ru', 'fr'] as $locale) {
+            $this->assertContains('https://sveevee.co.il/'.$locale.'/business/'.$page->public_slug, $urls);
+            $this->assertContains('https://sveevee.co.il/'.$locale.'/product/'.$validProduct->public_slug, $urls);
+            $this->assertNotContains('https://sveevee.co.il/'.$locale.'/community/'.$unsupportedPage->public_slug, $urls);
+            $this->assertNotContains('https://sveevee.co.il/'.$locale.'/business/'.$unsupportedPage->public_slug, $urls);
+            $this->assertNotContains('https://sveevee.co.il/'.$locale.'/product/'.$emptyProduct->public_slug, $urls);
+        }
+    }
+
+    public function test_unknown_import_locations_keep_business_pages_without_phantom_catalog_or_market_urls(): void
+    {
+        $owner = User::factory()->create();
+        $unknownCity = 'Unlisted Source Village';
+        $unknownNeighborhood = 'Unlisted Source District';
+        $unknown = $this->createPage($owner, [
+            'name' => 'Imported village shop',
+            'category_key' => 'professionals.electricians',
+            'setup' => ['address' => ['city' => $unknownCity, 'neighborhood' => $unknownNeighborhood]],
+        ]);
+        $knownCity = $this->createPage($owner, [
+            'name' => 'Known city shop',
+            'category_key' => 'professionals.electricians',
+            'setup' => ['address' => ['city' => 'Jerusalem', 'neighborhood' => $unknownNeighborhood]],
+        ]);
+        foreach ([$unknown, $knownCity] as $page) {
+            $page->products()->create([
+                'name' => 'Public local product', 'description' => 'Product description.',
+                'category_key' => 'products.home_garden.furniture', 'price' => 20,
+                'image_path' => 'products/example.webp', 'link' => 'https://example.test/product',
+            ]);
+        }
+        $this->artisan('sitemap:generate')->assertSuccessful();
+        $parts = $this->readPublishedSitemaps();
+        $urls = array_merge(...array_column($parts, 'urls'));
+
+        $this->assertContains('https://sveevee.co.il/catalog/electricians', $urls);
+        $this->assertContains('https://sveevee.co.il/catalog/jerusalem/electricians', $urls);
+        foreach (['he', 'en', 'ru', 'fr'] as $locale) {
+            $this->assertContains('https://sveevee.co.il/'.$locale.'/business/'.$unknown->public_slug, $urls);
+            $this->assertContains('https://sveevee.co.il/'.$locale.'/business/'.$knownCity->public_slug, $urls);
+            $this->assertContains('https://sveevee.co.il/'.$locale.'/market/jerusalem', $urls);
+        }
+        foreach ($urls as $url) {
+            $this->assertStringNotContainsString('/catalog/unlisted-source-village/', $url);
+            $this->assertStringNotContainsString('/market/unlisted-source-village', $url);
+            $this->assertStringNotContainsString('/catalog/jerusalem/unlisted-source-district/', $url);
+        }
+        $this->assertSame($unknownCity, $unknown->fresh()->setup['address']['city']);
+        $this->assertSame($unknownNeighborhood, $knownCity->fresh()->setup['address']['neighborhood']);
+    }
+
     public function test_failed_generation_keeps_the_previous_complete_sitemap_published(): void
     {
         $owner = User::factory()->create();
@@ -179,6 +244,7 @@ class SitemapApiTest extends TestCase
         $this->artisan('sitemap:generate')->assertSuccessful();
         $parts = $this->readPublishedSitemaps();
         parse_str((string) parse_url($parts[0]['path'], PHP_URL_QUERY), $query);
+        $query['generation'] = $this->publishedGeneration();
 
         foreach ([
             ['generation' => $query['generation'], 'part' => 'pages-999999'],
@@ -209,6 +275,8 @@ class SitemapApiTest extends TestCase
 
         $lastModified = $indexResponse->headers->get('Last-Modified');
         $this->assertNotEmpty($lastModified);
+        $indexEtag = $indexResponse->headers->get('ETag');
+        $this->assertNotEmpty($indexEtag);
 
         $indexHead = $this->head('/sitemap.xml')->assertOk()
             ->assertHeader('Content-Length', (string) strlen($indexContent));
@@ -227,8 +295,104 @@ class SitemapApiTest extends TestCase
             ->assertHeader('ETag', $etag);
         $this->assertSame('', $this->sitemapResponseContent($childHead));
 
-        $unchangedIndex = $this->get('/sitemap.xml', ['If-Modified-Since' => $lastModified])->assertStatus(304);
+        $unchangedIndex = $this->get('/sitemap.xml', ['If-None-Match' => $indexEtag, 'If-Modified-Since' => $lastModified])->assertStatus(304);
         $this->assertSame('', $this->sitemapResponseContent($unchangedIndex));
+    }
+
+    public function test_stable_aliases_revalidate_after_regeneration_even_when_index_mtime_is_the_same(): void
+    {
+        $page = $this->createPage(User::factory()->create());
+        $this->artisan('sitemap:generate')->assertSuccessful();
+        $oldGeneration = $this->publishedGeneration();
+        $oldIndex = $this->get('/sitemap.xml')->assertOk();
+        $oldIndexEtag = $oldIndex->headers->get('ETag');
+        $oldLastModified = $oldIndex->headers->get('Last-Modified');
+        $oldIndexTime = filemtime(config('sitemap.directory').'/generations/'.$oldGeneration.'/index.xml');
+        $oldIndexXml = $this->sitemapResponseContent($oldIndex);
+        $alias = '/sitemap.xml?part=pages-0001';
+        $oldPart = $this->get($alias)->assertOk();
+        $oldPartEtag = $oldPart->headers->get('ETag');
+        $oldPartXml = $this->sitemapResponseContent($oldPart);
+
+        $page->forceFill(['name' => 'Updated business name'])->save();
+        $this->artisan('sitemap:generate')->assertSuccessful();
+        $newGeneration = $this->publishedGeneration();
+        $newIndexPath = config('sitemap.directory').'/generations/'.$newGeneration.'/index.xml';
+        touch($newIndexPath, $oldIndexTime);
+        clearstatcache(true, $newIndexPath);
+
+        // The index contains the same stable addresses, but the child content changed.
+        $index = $this->get('/sitemap.xml', ['If-None-Match' => $oldIndexEtag, 'If-Modified-Since' => $oldLastModified])->assertOk();
+        $this->assertNotSame($oldIndexEtag, $index->headers->get('ETag'));
+        $this->assertSame($oldIndexXml, $this->sitemapResponseContent($index));
+        $this->get('/sitemap.xml', ['If-Modified-Since' => $oldLastModified])->assertOk();
+
+        $part = $this->get($alias, ['If-None-Match' => $oldPartEtag])->assertOk();
+        $newPartEtag = $part->headers->get('ETag');
+        $this->assertNotSame($oldPartEtag, $newPartEtag);
+        $this->assertStringContainsString($page->public_slug, $this->sitemapResponseContent($part));
+        $this->assertStringContainsString('must-revalidate', $part->headers->get('Cache-Control'));
+        $this->get($alias, ['If-None-Match' => $newPartEtag])->assertStatus(304);
+        $legacy = $alias.'&generation='.$oldGeneration;
+        $this->assertSame($oldPartXml, $this->sitemapResponseContent($this->get($legacy)->assertOk()));
+        $this->get($legacy, ['If-None-Match' => $oldPartEtag])->assertStatus(304);
+    }
+
+    public function test_stable_child_addresses_survive_pruning_of_old_generations(): void
+    {
+        $this->createPage(User::factory()->create());
+        $this->artisan('sitemap:generate')->assertSuccessful();
+        $oldGeneration = $this->publishedGeneration();
+        $alias = '/sitemap.xml?part=pages-0001';
+        $legacy = $alias.'&generation='.$oldGeneration;
+        $this->get($legacy)->assertOk();
+
+        $oldDirectory = config('sitemap.directory').'/generations/'.$oldGeneration;
+        touch($oldDirectory, time() - 8 * 86400);
+        clearstatcache(true, $oldDirectory);
+        $this->artisan('sitemap:generate')->assertSuccessful();
+
+        $this->get('/sitemap.xml')->assertOk();
+        $this->get($alias)->assertOk();
+        $this->get($legacy)->assertNotFound();
+        $this->assertDirectoryDoesNotExist($oldDirectory);
+        $this->assertNotSame($oldGeneration, $this->publishedGeneration());
+    }
+
+    public function test_lastmod_uses_known_content_dates_instead_of_sitemap_generation_time(): void
+    {
+        $topic = CatalogTopics::all()->first();
+        $owner = User::factory()->create();
+        $newerPage = $this->createPage($owner, ['category_key' => $topic['key']]);
+        $olderPage = $this->createPage($owner, ['name' => 'Older business', 'category_key' => $topic['key']]);
+        DB::table('pages')->where('id', $newerPage->id)->update(['updated_at' => '2026-09-01 10:00:00']);
+        DB::table('pages')->where('id', $olderPage->id)->update(['updated_at' => '2026-08-25 10:00:00']);
+        $this->artisan('sitemap:generate')->assertSuccessful();
+
+        $static = $this->sitemapResponseContent($this->get('/sitemap.xml?part=static-0001')->assertOk());
+        $this->assertStringNotContainsString('<lastmod>', $static);
+        $pages = $this->parseSitemap($this->sitemapResponseContent($this->get('/sitemap.xml?part=pages-0001')->assertOk()));
+        $this->assertSame(['2026-09-01', '2026-08-25'], array_values(array_unique(array_map('strval', $pages->xpath('//sm:url/sm:lastmod')))));
+
+        $catalog = $this->parseSitemap($this->sitemapResponseContent($this->get('/sitemap.xml?part=catalog-0001')->assertOk()));
+        $topicUrl = 'https://sveevee.co.il'.CatalogTopics::catalogPath($topic);
+        $topicEntry = collect($catalog->xpath('//sm:url'))->first(fn ($entry) => (string) $entry->loc === $topicUrl);
+        $this->assertNotNull($topicEntry);
+        $this->assertSame('2026-09-01', (string) $topicEntry->lastmod);
+
+        $this->travel(2)->days();
+        $this->artisan('sitemap:generate')->assertSuccessful();
+        $this->assertSame($static, $this->sitemapResponseContent($this->get('/sitemap.xml?part=static-0001')->assertOk()));
+        $catalogAgain = $this->sitemapResponseContent($this->get('/sitemap.xml?part=catalog-0001')->assertOk());
+        $this->assertSame($catalog->asXML(), $this->parseSitemap($catalogAgain)->asXML());
+        $this->travelBack();
+    }
+
+    private function publishedGeneration(): string
+    {
+        $manifest = json_decode(file_get_contents(config('sitemap.directory').'/current.json'), true, 512, JSON_THROW_ON_ERROR);
+
+        return $manifest['generation'];
     }
 
     private function createPage(User $owner, array $attributes = []): Page
@@ -258,7 +422,7 @@ class SitemapApiTest extends TestCase
             $this->assertSame('sveevee.co.il', $url['host']);
             $this->assertSame('/sitemap.xml', $url['path']);
             parse_str($url['query'] ?? '', $parameters);
-            $this->assertMatchesRegularExpression('/^\d{8}T\d{6}Z-[a-f0-9]{12}$/', $parameters['generation'] ?? '');
+            $this->assertArrayNotHasKey('generation', $parameters);
             $this->assertMatchesRegularExpression('/^(?:static|users|pages|products|ads|catalog|market)-\d+$/', $parameters['part'] ?? '');
             $path = $url['path'].'?'.$url['query'];
             $childResponse = $this->get($path)->assertOk()

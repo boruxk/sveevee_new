@@ -149,6 +149,10 @@
 		return message.sender_id === authStore.user?.id
 	}
 
+	function participantName(participant) {
+		return participant?.is_guest ? t('chat.guestLabel') : participant?.display_name || ''
+	}
+
 	function conversationKey(conversation) {
 		return `${conversation?.is_page_chat ? 'page' : 'person'}-${conversation?.id}`
 	}
@@ -438,21 +442,21 @@
 									v-if="conversation.other_user?.profile?.photo_url"
 									class="chat-avatar-image"
 									:src="conversation.other_user.profile.photo_url"
-									:alt="conversation.other_user?.display_name || ''"
+									:alt="participantName(conversation.other_user)"
 									:avif-srcset="conversation.other_user.profile.photo_avif_srcset || ''"
 									:webp-srcset="conversation.other_user.profile.photo_webp_srcset || ''"
 									sizes="40px"
 									:width="conversation.other_user.profile.photo_width || 96"
 									:height="conversation.other_user.profile.photo_height || 96"
 								/>
-								<span v-else>{{ conversation.other_user?.display_name?.slice(0, 1) || 'S' }}</span>
+								<span v-else>{{ participantName(conversation.other_user).slice(0, 1) || 'S' }}</span>
 							</q-avatar>
 							<span v-if="conversation.other_user?.presence?.is_online" class="chat-presence-dot" :aria-label="t('chat.online')">
 								<q-tooltip>{{ t('chat.online') }}</q-tooltip>
 							</span>
 						</div>
 						<span class="chat-list__copy">
-							<strong>{{ conversation.other_user?.display_name }}</strong>
+							<strong>{{ participantName(conversation.other_user) }}</strong>
 							<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
 						</span>
 						<q-badge v-if="conversation.unread_count" color="negative" rounded>{{ conversation.unread_count }}</q-badge>
@@ -475,7 +479,7 @@
 								<q-tooltip>{{ t('chat.backToList') }}</q-tooltip>
 							</q-btn>
 							<div class="chat-main__identity">
-								<div class="text-h6">{{ active?.other_user?.display_name || t('chat.empty') }}</div>
+								<div class="text-h6">{{ participantName(active?.other_user) || t('chat.empty') }}</div>
 								<div v-if="activeIsOnline" class="chat-online-label">
 									<span class="chat-online-label__dot" />
 									{{ t('chat.online') }}
@@ -570,21 +574,21 @@
 								v-if="conversation.other_user?.profile?.photo_url"
 								class="chat-avatar-image"
 								:src="conversation.other_user.profile.photo_url"
-								:alt="conversation.other_user?.display_name || ''"
+								:alt="participantName(conversation.other_user)"
 								:avif-srcset="conversation.other_user.profile.photo_avif_srcset || ''"
 								:webp-srcset="conversation.other_user.profile.photo_webp_srcset || ''"
 								sizes="40px"
 								:width="conversation.other_user.profile.photo_width || 96"
 								:height="conversation.other_user.profile.photo_height || 96"
 							/>
-							<span v-else>{{ conversation.other_user?.display_name?.slice(0, 1) || 'S' }}</span>
+							<span v-else>{{ participantName(conversation.other_user).slice(0, 1) || 'S' }}</span>
 						</q-avatar>
 						<span v-if="conversation.other_user?.presence?.is_online" class="chat-presence-dot" :aria-label="t('chat.online')">
 							<q-tooltip>{{ t('chat.online') }}</q-tooltip>
 						</span>
 					</div>
 					<span class="chat-list__copy">
-						<strong>{{ conversation.other_user?.display_name }}</strong>
+						<strong>{{ participantName(conversation.other_user) }}</strong>
 						<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
 					</span>
 					<q-badge v-if="conversation.unread_count" color="negative" rounded>{{ conversation.unread_count }}</q-badge>
@@ -606,7 +610,7 @@
 								<q-tooltip>{{ t('chat.backToList') }}</q-tooltip>
 							</q-btn>
 							<div class="chat-main__identity">
-								<div class="text-h6">{{ active?.other_user?.display_name || t('chat.empty') }}</div>
+								<div class="text-h6">{{ participantName(active?.other_user) || t('chat.empty') }}</div>
 								<div v-if="activeIsOnline" class="chat-online-label">
 									<span class="chat-online-label__dot" />
 									{{ t('chat.online') }}

@@ -32,7 +32,7 @@ final class SitemapGenerator
             $paths = new SitemapPathStore($building.'/paths.sqlite');
             $entries = new SitemapEntries($paths, max(1, min(1000, (int) config('sitemap.batch_size', 200))));
             $writer = new SitemapXmlWriter(
-                $building, $generation, (string) config('app.url'),
+                $building, (string) config('app.url'),
                 (int) config('sitemap.max_urls', SitemapXmlWriter::MAX_URLS),
                 (int) config('sitemap.max_bytes', SitemapXmlWriter::MAX_BYTES),
             );

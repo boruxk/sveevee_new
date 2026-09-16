@@ -493,6 +493,17 @@ export default {
 		deleteFailed: 'L’événement n’a pas pu être supprimé.'
 	},
 	chat: {
+		guestPageStorageUnavailable: 'Votre navigateur bloque le stockage de session. Autorisez-le pour conserver cette conversation lors de votre inscription. Vous pouvez continuer à discuter dans cette fenêtre.',
+		guestLabel: 'Invité',
+		guestKeepTitle: 'Conservez cette conversation',
+		guestKeepBody: 'Vous pouvez discuter avec cette entreprise sans compte. L’entreprise conserve la conversation. Inscrivez-vous pour la conserver aussi dans votre compte et la reprendre plus tard.',
+		guestKeepAction: 'M’inscrire et conserver ce chat',
+		guestPageSessionExpired: 'L’accès invité à ce chat n’est plus disponible. L’entreprise conserve la conversation. Vous pouvez démarrer un nouveau chat.',
+		guestPageUnavailable: 'Le chat avec cette entreprise est actuellement indisponible.',
+		guestPageLoadFailed: 'Impossible de charger le chat. Veuillez réessayer.',
+		guestPageClaimPending: 'Votre compte est prêt, mais le chat n’a pas encore pu y être rattaché. Réessayez pour conserver ses messages.',
+		guestPageClaimUnavailable: 'Ce chat invité ne peut plus être rattaché à votre compte. Vous pouvez démarrer une nouvelle conversation depuis votre compte.',
+		guestPageClaimRetry: 'Réessayer',
 		online: 'En ligne',
 		deleteChat: 'Supprimer le chat',
 		deleteTitle: 'Supprimer ce chat ?',

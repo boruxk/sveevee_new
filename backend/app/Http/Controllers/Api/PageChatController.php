@@ -9,12 +9,17 @@ use App\Models\PageConversation;
 use App\Models\User;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
+use App\Services\PageChatService;
 use App\Services\PayloadService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PageChatController extends Controller
 {
-    public function __construct(private readonly PayloadService $payloads) {}
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly PageChatService $chats,
+    ) {}
 
     public function ownerIndex(Request $request, Page $page)
     {
@@ -130,72 +135,61 @@ class PageChatController extends Controller
 
     private function sendIntoConversation(Request $request, PageConversation $conversation)
     {
-        $conversation->loadMissing(['page.user', 'messages']);
-        $state = $this->composerState($request->user(), $conversation);
+        return DB::transaction(function () use ($request, $conversation) {
+            $page = Page::query()->lockForUpdate()->findOrFail($conversation->page_id);
+            $conversation = PageConversation::query()->lockForUpdate()->findOrFail($conversation->id);
+            $conversation->setRelation('page', $page);
 
-        if (! $state['can_send']) {
-            return ApiResponseService::error($state['message'], ['reason' => $state['reason']], 409);
-        }
+            if (! $this->isParticipant($request->user(), $conversation)) {
+                return ApiResponseService::error('This action is unauthorized.', status: 403);
+            }
 
-        $data = $request->validate([
-            'body' => ['required', 'string', 'max:5000', new CleanContent],
-        ]);
+            $conversation->loadMissing(['page.user', 'messages']);
+            $state = $this->composerState($request->user(), $conversation);
 
-        $senderAsPage = $conversation->page->user_id === $request->user()->id;
-        $message = PageChatMessage::query()->create([
-            'page_conversation_id' => $conversation->id,
-            'sender_id' => $request->user()->id,
-            'sender_as_page' => $senderAsPage,
-            'body' => trim($data['body']),
-        ]);
+            if (! $state['can_send']) {
+                return ApiResponseService::error($state['message'], ['reason' => $state['reason']], 409);
+            }
 
-        $conversation->forceFill(['last_message_at' => $message->created_at])->save();
-        $this->loadConversation($conversation);
+            $data = $request->validate([
+                'body' => ['required', 'string', 'max:5000', new CleanContent],
+            ]);
 
-        return ApiResponseService::success($this->payloads->pageConversation(
-            $conversation,
-            $request->user(),
-            $this->composerState($request->user(), $conversation),
-            withMessages: true
-        ), 'Message sent.', 201);
+            $senderAsPage = $conversation->page->user_id === $request->user()->id;
+            $message = PageChatMessage::query()->create([
+                'page_conversation_id' => $conversation->id,
+                'sender_id' => $request->user()->id,
+                'sender_as_page' => $senderAsPage,
+                'body' => trim($data['body']),
+            ]);
+
+            $conversation->forceFill(['last_message_at' => $message->created_at])->save();
+            $this->loadConversation($conversation);
+
+            return ApiResponseService::success($this->payloads->pageConversation(
+                $conversation,
+                $request->user(),
+                $this->composerState($request->user(), $conversation),
+                withMessages: true
+            ), 'Message sent.', 201);
+        }, 3);
     }
 
     private function conversationFor(Page $page, User $visitor): PageConversation
     {
-        return PageConversation::query()->firstOrCreate([
-            'page_id' => $page->id,
-            'visitor_id' => $visitor->id,
-        ]);
+        return DB::transaction(function () use ($page, $visitor) {
+            Page::query()->lockForUpdate()->findOrFail($page->id);
+
+            return PageConversation::query()->firstOrCreate([
+                'page_id' => $page->id,
+                'visitor_id' => $visitor->id,
+            ]);
+        }, 3);
     }
 
     private function composerState(User $user, PageConversation $conversation): array
     {
-        $conversation->loadMissing(['page', 'messages']);
-
-        if ($conversation->page->is_unclaimed) {
-            return [
-                'can_send' => false,
-                'reason' => 'page_unclaimed',
-                'message' => 'Chat becomes available after this page is claimed.',
-            ];
-        }
-
-        if ($conversation->page->user_id === $user->id) {
-            return ['can_send' => true, 'reason' => null, 'message' => null];
-        }
-
-        $visitorMessages = $conversation->messages->where('sender_as_page', false)->count();
-        $pageMessages = $conversation->messages->where('sender_as_page', true)->count();
-
-        if ($visitorMessages > 0 && $pageMessages === 0) {
-            return [
-                'can_send' => false,
-                'reason' => 'page_pending_reply',
-                'message' => 'You can write again after this page replies to your first message.',
-            ];
-        }
-
-        return ['can_send' => true, 'reason' => null, 'message' => null];
+        return $this->chats->composerState($user, $conversation);
     }
 
     private function guardOwner(User $user, Page $page)
@@ -234,7 +228,13 @@ class PageChatController extends Controller
 
     private function isParticipant(User $user, PageConversation $conversation): bool
     {
-        $conversation->loadMissing('page');
+        $conversation->loadMissing('page.user');
+
+        if ($user->banned_at || ! $conversation->page?->user || $conversation->page->user->banned_at
+            || $conversation->page->is_unclaimed
+            || ($conversation->guest_claimed_conversation_id && $conversation->guest_claimed_conversation_id !== $conversation->id)) {
+            return false;
+        }
 
         return $conversation->visitor_id === $user->id || $conversation->page->user_id === $user->id;
     }
@@ -243,7 +243,7 @@ class PageChatController extends Controller
     {
         PageChatMessage::query()
             ->where('page_conversation_id', $conversation->id)
-            ->where('sender_id', '!=', $user->id)
+            ->where('sender_as_page', $conversation->page->user_id !== $user->id)
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
     }

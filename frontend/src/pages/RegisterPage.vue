@@ -11,6 +11,7 @@
 	import PasswordInput from '@/components/PasswordInput.vue'
 	import { getLegalDocument } from '@/constants/legalDocuments'
 	import { clearLeadsPage001Registration, readLeadsPage001Registration } from '@/utils/leadsPageCompletion'
+	import { completePendingGuestPageChatClaim, readPendingGuestPageChatClaim } from '@/utils/guestPageChatSession'
 
 	const { t, locale } = useI18n()
 	const $q = useQuasar()
@@ -19,6 +20,7 @@
 	const authStore = useAuthStore()
 	const appStore = useAppStore()
 	const formRef = ref(null)
+	const submitting = ref(false)
 	const form = reactive({
 		email: '',
 		password: '',
@@ -35,6 +37,11 @@
 	const consentRule = (value) => value === true || t('auth.consentRequired')
 
 	onMounted(() => {
+		if (readPendingGuestPageChatClaim()) {
+			clearLeadsPage001Registration()
+			return
+		}
+
 		const leadRegistration = readLeadsPage001Registration()
 
 		if (leadRegistration?.email) {
@@ -43,18 +50,28 @@
 	})
 
 	async function submit() {
-		if (!(await validateRequiredForm(formRef))) {
+		if (submitting.value) {
 			return
 		}
 
+		submitting.value = true
 		try {
-			const leadRegistration = readLeadsPage001Registration()
+			if (!(await validateRequiredForm(formRef))) {
+				return
+			}
+
+			const guestChatIntent = readPendingGuestPageChatClaim()
+			const leadRegistration = guestChatIntent ? null : readLeadsPage001Registration()
 			const response = await authStore.register({
 				...form,
 				locale: appStore.locale,
 				...(leadRegistration?.token ? { lead_page_registration_token: leadRegistration.token } : {})
 			})
 			clearLeadsPage001Registration()
+			const guestChat = await completePendingGuestPageChatClaim()
+			if (guestChat.status === 'pending' || guestChat.status === 'unavailable') {
+				$q.notify({ type: 'warning', message: t(guestChat.status === 'pending' ? 'chat.guestPageClaimPending' : 'chat.guestPageClaimUnavailable') })
+			}
 
 			if (response.data?.lead_page_attached) {
 				router.replace({ name: 'business' })
@@ -66,11 +83,13 @@
 				name: 'profile',
 				query: {
 					complete: '1',
-					...(route.query.redirect ? { redirect: route.query.redirect } : {})
+					...(guestChat.redirect || route.query.redirect ? { redirect: guestChat.redirect || route.query.redirect } : {})
 				}
 			})
 		} catch {
 			$q.notify({ type: 'negative', message: t('auth.registerFailed') })
+		} finally {
+			submitting.value = false
 		}
 	}
 </script>
@@ -153,7 +172,7 @@
 							rounded
 							type="submit"
 							icon="person_add"
-							:loading="authStore.loading"
+							:loading="authStore.loading || submitting"
 							:label="t('nav.register')"
 						/>
 					</q-form>

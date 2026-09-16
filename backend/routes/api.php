@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\BusinessPageLeadController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\EmailVerificationController;
+use App\Http\Controllers\Api\GuestPageChatController;
 use App\Http\Controllers\Api\GuestSupportController;
 use App\Http\Controllers\Api\HomeFeedController;
 use App\Http\Controllers\Api\LocationController;
@@ -65,6 +66,9 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         ->middleware('throttle:120,1');
     Route::get('/pages/{page}/ratings', [PageRatingController::class, 'index']);
     Route::get('/pages/{page}', [PageController::class, 'show']);
+    Route::post('/pages/{page}/guest-chat', [GuestPageChatController::class, 'store'])->middleware('throttle:guest-page-chat-start');
+    Route::get('/pages/{page}/guest-chat', [GuestPageChatController::class, 'show'])->middleware('throttle:120,1');
+    Route::post('/pages/{page}/guest-chat/messages', [GuestPageChatController::class, 'send'])->middleware('throttle:chat-send');
 
     Route::post('/business-page-leads', [BusinessPageLeadController::class, 'store'])
         ->middleware('throttle:business-page-leads');
@@ -135,6 +139,7 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
 
     Route::middleware(['auth:sanctum', 'role:user,admin'])->group(function () {
         Route::post('/guest-support/claim', [GuestSupportController::class, 'claim'])->middleware('throttle:10,1');
+        Route::post('/pages/{page}/guest-chat/claim', [GuestPageChatController::class, 'claim'])->middleware('throttle:10,1');
 
         Route::get('/home-feed', [HomeFeedController::class, 'index']);
 

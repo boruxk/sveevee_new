@@ -29,6 +29,7 @@
 		} : null
 
 		return {
+			fallback: true,
 			title,
 			exactTitle: isLanding ? `${title} | Sveevee` : undefined,
 			description: legalDocument?.intro || seo.description || (seo.descriptionKey ? t(seo.descriptionKey) : t('seo.defaultDescription')),

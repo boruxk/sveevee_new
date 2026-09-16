@@ -176,14 +176,124 @@ class SeoPrerenderService
     public function render(?string $distPath = null): array
     {
         $dist = $this->resolveDistPath($distPath);
-        $indexPath = $dist.DIRECTORY_SEPARATOR.'index.html';
+        $indexHtml = $this->frontendHtml($dist);
+        $stage = $dist.DIRECTORY_SEPARATOR.'.sveevee-prerender-'.bin2hex(random_bytes(8));
+        $this->assertSafeOutput($dist, $dist.DIRECTORY_SEPARATOR.self::MANIFEST);
+        $this->assertSafeOutput($dist, $stage);
+        File::ensureDirectoryExists($stage);
 
-        if (! File::exists($indexPath)) {
-            throw new RuntimeException("Built frontend index.html was not found at {$indexPath}. Run npm run build first.");
+        try {
+            // Only the bounded entry-page set is exported. Record pages render on request.
+            $result = $this->renderEntryPages($stage, $indexHtml);
+            foreach ($result['paths'] as $relative) {
+                $target = $dist.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
+                $this->assertSafeOutput($dist, $target);
+                File::ensureDirectoryExists(dirname($target));
+                $this->assertInsideDist($dist, dirname($target));
+                File::replace($target, File::get($stage.DIRECTORY_SEPARATOR.$relative));
+            }
+            $this->cleanPreviousFiles($dist, $result['paths']);
+            File::replace($dist.DIRECTORY_SEPARATOR.self::MANIFEST, json_encode([
+                'generated_at' => now()->toISOString(),
+                'files' => $result['paths'],
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+            unset($result['paths']);
+
+            return ['dist' => $dist, ...$result];
+        } finally {
+            $this->assertInsideDist($dist, $stage);
+            File::deleteDirectory($stage);
+        }
+    }
+
+    public function renderPage(Page $page, string $locale, ?string $distPath = null): string
+    {
+        $this->assertLocale($locale);
+        if (! $page->is_unclaimed) {
+            $limits = ['prices' => ['price_list', 12], 'products' => ['store', 8], 'services' => ['services', 8], 'events' => ['events', 8]];
+            foreach ($limits as $relation => [$feature, $limit]) {
+                if (data_get($page->setup, 'features.'.$feature, false)) {
+                    $page->loadMissing([$relation => fn ($query) => $query->orderByDesc('id')->limit($limit)]);
+                    if ($relation === 'products') {
+                        $page->products->each(fn (PageProduct $product) => $product->setRelation('page', $page));
+                    }
+                }
+            }
+            $page->loadCount('ratings')->loadAvg('ratings', 'rating');
         }
 
-        $indexHtml = File::get($indexPath);
-        $this->cleanPreviousFiles($dist);
+        return $this->businessHtml($this->frontendHtml($distPath), $page, $locale);
+    }
+
+    public function renderHome(): string
+    {
+        $heading = 'עסקים, בעלי מקצוע, מוצרים ומודעות לידך';
+        $description = 'מצאו עסקים, בעלי מקצוע, מוצרים, שירותים, עמודי קהילה, אירועים ומודעות מקומיות לפי עיר ושכונה. קנו, מכרו וצרו קשר ישיר ב-Sveevee.';
+        $canonical = $this->absoluteUrl('/');
+        $links = collect(CatalogTopics::scopeHubs())->map(fn (array $hub): string => '<li><a href="'.$this->escapeAttribute($hub['path']).'">'.$this->escape($hub['labels']['he']).'</a></li>'
+        )->implode('');
+        $body = '<main class="sveevee-prerender"><article class="sveevee-prerender__card">'
+            .'<h1>'.$heading.'</h1><p>'.$description.'</p>'
+            .'<p>Sveevee נותנת לעסקים מקומיים מקום ברור להצגת עמוד עסק, מוצרים, שירותים, שעות פעילות, ביקורות ופרטי קשר. רבים מהכלים האלה עולים כסף במקומות אחרים, וב-Sveevee הם זמינים ללא תשלום.</p>'
+            .'<p>משתמשים יכולים לגלות עסקים, מוצרים, שירותים, עמודי קהילה, אירועים ומודעות מקומיות גם לפני פתיחת חשבון.</p>'
+            .'<ul>'.$links.'</ul></article></main>';
+
+        return $this->decorateIndex($this->frontendHtml(), [
+            'locale' => 'he', 'dir' => 'rtl', 'type' => 'website',
+            'title' => $heading.' | Sveevee', 'description' => $description,
+            'canonical' => $canonical, 'alternates' => [],
+            'image' => $this->absoluteUrl('/assets/landing/hero-main-1360.v1.webp'),
+            'image_alt' => 'Sveevee', 'image_width' => null, 'image_height' => null,
+        ], $body, [[
+            '@context' => 'https://schema.org', '@type' => 'WebApplication',
+            'name' => 'Sveevee', 'url' => $canonical, 'description' => $description,
+            'applicationCategory' => 'LifestyleApplication',
+        ], [
+            '@context' => 'https://schema.org', '@type' => 'Organization',
+            'name' => 'Sveevee', 'url' => $canonical, 'logo' => $this->absoluteUrl('/favicon.png'),
+        ]]);
+    }
+
+    public function renderProduct(PageProduct $product, string $locale, ?string $distPath = null): string
+    {
+        $this->assertLocale($locale);
+        $product->loadMissing('page');
+        $product->page->loadCount('ratings')->loadAvg('ratings', 'rating');
+
+        return $this->productHtml($this->frontendHtml($distPath), $product, $locale);
+    }
+
+    private function assertLocale(string $locale): void
+    {
+        if (! in_array($locale, self::LOCALES, true)) {
+            throw new RuntimeException('Unsupported public page language.');
+        }
+    }
+
+    private function frontendHtml(?string $distPath = null): string
+    {
+        $dist = $this->resolveDistPath($distPath);
+        $path = $dist.DIRECTORY_SEPARATOR.'index.html';
+        if (! File::isFile($path)) {
+            throw new RuntimeException("Built frontend index.html was not found at {$path}. Run npm run build first.");
+        }
+
+        try {
+            $html = File::get($path);
+        } catch (\Throwable $error) {
+            throw new RuntimeException('The built frontend shell could not be read.', 0, $error);
+        }
+        if (! preg_match('/<head\b[^>]*>.*?<title>.*?<\/title>.*?<\/head>/is', $html)
+            || ! preg_match('/<div id="app"[^>]*>\s*<\/div>/i', $html)
+            || ! preg_match('/<\/body>\s*<\/html>\s*$/i', $html)) {
+            throw new RuntimeException('The built frontend shell is incomplete. Rebuild the frontend before publishing it.');
+        }
+
+        return $html;
+    }
+
+    private function renderEntryPages(string $dist, string $indexHtml): array
+    {
 
         $files = [];
         $marketingPages = 0;
@@ -217,66 +327,8 @@ class SeoPrerenderService
                 $files[] = $this->writePage($dist, $path, $this->catalogTopicHtml($indexHtml, $topic, 'he'));
             });
 
-        Page::query()
-            ->with(['prices', 'products', 'services', 'events', 'user.profile'])
-            ->withCount('ratings')
-            ->withAvg('ratings', 'rating')
-            ->whereIn('type', [Page::TYPE_BUSINESS, Page::TYPE_COMMUNITY])
-            ->whereNotNull('name')
-            ->where('name', '!=', '')
-            ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
-            ->orderBy('id')
-            ->get()
-            ->each(function (Page $page) use ($dist, $indexHtml, &$files, &$businessPages, &$communityPages): void {
-                if ($page->type === Page::TYPE_COMMUNITY) {
-                    $communityPages++;
-                } else {
-                    $businessPages++;
-                }
-
-                foreach (self::LOCALES as $locale) {
-                    $path = $this->pagePath($page, $locale);
-                    $files[] = $this->writePage($dist, $path, $this->businessHtml($indexHtml, $page, $locale));
-                }
-            });
-
-        PageProduct::query()
-            ->with([
-                'page' => fn ($query) => $query
-                    ->with(['user.profile'])
-                    ->withCount('ratings')
-                    ->withAvg('ratings', 'rating'),
-            ])
-            ->whereHas('page', function ($query): void {
-                $query
-                    ->managed()
-                    ->where('type', Page::TYPE_BUSINESS)
-                    ->whereHas('user', fn ($user) => $user->whereNull('banned_at'));
-            })
-            ->whereNotNull('name')
-            ->where('name', '!=', '')
-            ->orderBy('id')
-            ->get()
-            ->each(function (PageProduct $product) use ($dist, $indexHtml, &$files, &$productPages): void {
-                if (! $product->page) {
-                    return;
-                }
-
-                $productPages++;
-
-                foreach (self::LOCALES as $locale) {
-                    $path = $this->productPath($product, $locale);
-                    $files[] = $this->writePage($dist, $path, $this->productHtml($indexHtml, $product, $locale));
-                }
-            });
-
-        File::put($dist.DIRECTORY_SEPARATOR.self::MANIFEST, json_encode([
-            'generated_at' => now()->toISOString(),
-            'files' => $files,
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-
         return [
-            'dist' => $dist,
+            'paths' => $files,
             'marketing_pages' => $marketingPages,
             'information_pages' => $informationPages,
             'catalog_hubs' => $catalogHubs,
@@ -976,25 +1028,25 @@ class SeoPrerenderService
         $address = $this->pageAddress($page);
         $topic = CatalogTopics::findByKey($page->category_key);
         $isCommunity = $page->type === Page::TYPE_COMMUNITY;
-        $category = $this->topicLabel($topic, $locale) ?: $this->copy($locale, $isCommunity ? 'communityFallback' : 'businessFallback');
-        $city = $address['city'] ?: $this->copy($locale, 'location');
+        $category = $this->topicLabel($topic, $locale) ?: $this->importedCategoryLabel($page) ?: $this->copy($locale, $isCommunity ? 'communityFallback' : 'businessFallback');
+        $city = $address['city'];
         $neighborhood = $address['neighborhood'] ? ' '.$address['neighborhood'] : '';
-        $description = $this->cleanText($page->public_description) ?: $this->template($locale, $isCommunity ? 'communityDescription' : 'businessDescription', [
+        $description = $this->cleanText($page->public_description) ?: ($city ? $this->template($locale, $isCommunity ? 'communityDescription' : 'businessDescription', [
             'name' => $page->name,
             'category' => $category,
             'city' => $city,
             'neighborhood' => $neighborhood,
-        ]);
+        ]) : $page->name.' — '.$category.'.');
         $path = $this->pagePath($page, $locale);
 
         return [
             'locale' => $locale,
             'dir' => $this->direction($locale),
             'type' => 'website',
-            'title' => $this->template($locale, $isCommunity ? 'communityTitle' : 'businessTitle', [
+            'title' => $city ? $this->template($locale, $isCommunity ? 'communityTitle' : 'businessTitle', [
                 'name' => $page->name,
                 'city' => $city,
-            ]),
+            ]) : $page->name.' | Sveevee',
             'description' => $this->truncate($description),
             'canonical' => $this->absoluteUrl($path),
             'image' => $this->absoluteUrl($page->is_unclaimed ? '/favicon.png' : ($page->banner_url ?: $page->logo_url ?: '/favicon.png')),
@@ -1016,12 +1068,12 @@ class SeoPrerenderService
         $address = $this->pageAddress($page);
         $topic = CatalogTopics::findByKey($product->category_key);
         $category = $this->topicLabel($topic, $locale);
-        $city = $address['city'] ?: $this->copy($locale, 'location');
-        $description = $this->template($locale, 'productDescription', [
+        $city = $address['city'];
+        $description = $city ? $this->template($locale, 'productDescription', [
             'name' => $product->name,
             'city' => $city,
             'price' => $this->priceLabel($product),
-        ]);
+        ]) : $product->name.' — '.$this->priceLabel($product).'.';
         $description = trim($description.' '.$this->cleanText($product->description));
         $path = $this->productPath($product, $locale);
 
@@ -1029,10 +1081,10 @@ class SeoPrerenderService
             'locale' => $locale,
             'dir' => $this->direction($locale),
             'type' => 'product',
-            'title' => $this->template($locale, 'productTitle', [
+            'title' => $city ? $this->template($locale, 'productTitle', [
                 'name' => $product->name,
                 'city' => $city,
-            ]),
+            ]) : $product->name.' | Sveevee',
             'description' => $this->truncate($description),
             'canonical' => $this->absoluteUrl($path),
             'image' => $this->absoluteUrl($product->image_url ?: '/favicon.png'),
@@ -1051,7 +1103,7 @@ class SeoPrerenderService
     private function decorateIndex(string $indexHtml, array $meta, string $bodyHtml, array $jsonLd): string
     {
         $html = preg_replace('/<html\b[^>]*>/i', '<html lang="'.$this->escapeAttribute($meta['locale']).'" dir="'.$this->escapeAttribute($meta['dir']).'">', $indexHtml, 1);
-        $html = preg_replace('/<title>.*?<\/title>/is', '<title>'.$this->escape($meta['title']).'</title>', $html, 1);
+        $html = preg_replace_callback('/<title>.*?<\/title>/is', fn () => '<title>'.$this->escape($meta['title']).'</title>', $html, 1);
         $html = $this->setMeta($html, 'name', 'description', $meta['description']);
         $html = $this->setMeta($html, 'name', 'robots', $meta['robots'] ?? 'index,follow');
         $html = $this->setMeta($html, 'property', 'og:title', $meta['title']);
@@ -1080,18 +1132,18 @@ class SeoPrerenderService
         $html = $this->removeNoscriptFallback($html);
         $html = str_replace('</head>', $this->prerenderHead($meta, $jsonLd)."\n  </head>", $html);
 
-        return preg_replace('/<div id="app"([^>]*)>.*?<\/div>/is', '<div id="app"$1>'.$bodyHtml.'</div>', $html, 1);
+        return preg_replace_callback('/<div id="app"([^>]*)>.*?<\/div>/is', fn ($match) => '<div id="app"'.$match[1].'>'.$bodyHtml.'</div>', $html, 1);
     }
 
     private function businessBody(Page $page, string $locale, array $meta): string
     {
         $copy = self::COPY[$locale];
         $contactRows = [
-            $page->phone ? [$copy['phone'], $page->phone] : null,
-            $page->contact_email ? [$copy['email'], $page->contact_email] : null,
+            ($phone = data_get($page->setup, 'contact.tel') ?: $page->phone) ? [$copy['phone'], $phone] : null,
+            ($email = data_get($page->setup, 'contact.email') ?: $page->contact_email) ? [$copy['email'], $email] : null,
         ];
         $detailRows = [
-            [$copy['category'], $meta['category']],
+            [$copy['category'], collect([$meta['category'], $this->importedCategoryLabel($page)])->filter()->unique()->implode(', ')],
             $meta['location'] ? [$copy['location'], $meta['location']] : null,
             ! $page->is_unclaimed && $this->ratingText($page, $locale) ? [$copy['rating'], $this->ratingText($page, $locale)] : null,
         ];
@@ -1106,7 +1158,7 @@ class SeoPrerenderService
             ->take(50)
             ->map(fn (string $value): string => '<li>'.$this->escape(trim($value)).'</li>')
             ->implode('') : '';
-        $website = trim((string) data_get($page->setup, 'website', ''));
+        $website = $this->publicWebsite($page);
         $prices = ! $page->is_unclaimed && data_get($page->setup, 'features.price_list', false) ? $page->prices->take(12)->map(fn ($price): string => sprintf(
             '<li><strong>%s</strong><span>%s</span></li>',
             $this->escape($price->name),
@@ -1136,7 +1188,7 @@ class SeoPrerenderService
             .$this->breadcrumbHtml($meta['breadcrumbs'])
             .(! $page->is_unclaimed && $page->banner_url ? '<img class="sveevee-prerender__image" src="'.$this->escapeAttribute($this->absoluteUrl($page->banner_url)).'" alt="'.$this->escapeAttribute($page->name).'" />' : '')
             .'<h1>'.$this->escape($page->name).'</h1>'
-            .'<p class="sveevee-prerender__lead">'.$this->escape($meta['description']).'</p>'
+            .'<p class="sveevee-prerender__lead">'.$this->escape($this->cleanText($page->public_description) ?: $meta['description']).'</p>'
             .$this->definitionList($detailRows)
             .($website ? $this->section($copy['website'], '<p><a href="'.$this->escapeAttribute($website).'">'.$this->escape($website).'</a></p>') : '')
             .$this->section($copy['contact'], $this->definitionList($contactRows))
@@ -1246,7 +1298,7 @@ class SeoPrerenderService
 
     private function businessSchema(Page $page, string $locale, array $meta): array
     {
-        $website = trim((string) data_get($page->setup, 'website', ''));
+        $website = $this->publicWebsite($page);
         $schema = [
             '@context' => 'https://schema.org',
             '@type' => $page->type === Page::TYPE_COMMUNITY ? 'Organization' : 'LocalBusiness',
@@ -1255,8 +1307,8 @@ class SeoPrerenderService
             'url' => $meta['canonical'],
             'image' => ! $page->is_unclaimed && $page->banner_url ? $this->absoluteUrl($page->banner_url) : null,
             'logo' => ! $page->is_unclaimed && $page->logo_url ? $this->absoluteUrl($page->logo_url) : null,
-            'telephone' => $page->phone,
-            'email' => $page->contact_email,
+            'telephone' => data_get($page->setup, 'contact.tel') ?: $page->phone,
+            'email' => data_get($page->setup, 'contact.email') ?: $page->contact_email,
             'sameAs' => $website ? [$website] : null,
             'address' => $this->addressSchema($meta['address']),
             'openingHoursSpecification' => $page->type === Page::TYPE_BUSINESS ? $this->openingHoursSchema($page) : null,
@@ -1404,18 +1456,20 @@ class SeoPrerenderService
     private function breadcrumbs(?array $topic, array $address, string $currentLabel, string $currentPath, string $locale): array
     {
         $items = [];
+        $city = CatalogTopics::resolveCitySlug(CatalogTopics::locationSlug($address['city'] ?? null));
+        $neighborhood = CatalogTopics::resolveNeighborhoodSlug($city, CatalogTopics::locationSlug($address['neighborhood'] ?? null));
 
-        if ($topic && filled($address['city'] ?? null)) {
+        if ($topic && $city) {
             $items[] = [
                 'label' => $address['city'],
-                'path' => CatalogTopics::catalogPath($topic, $address['city']),
+                'path' => CatalogTopics::catalogPath($topic, $city),
             ];
         }
 
-        if ($topic && filled($address['city'] ?? null) && filled($address['neighborhood'] ?? null)) {
+        if ($topic && $city && $neighborhood) {
             $items[] = [
                 'label' => $address['neighborhood'],
-                'path' => CatalogTopics::catalogPath($topic, $address['city'], $address['neighborhood']),
+                'path' => CatalogTopics::catalogPath($topic, $city, $neighborhood),
             ];
         }
 
@@ -1440,7 +1494,7 @@ class SeoPrerenderService
         $pattern = '/<meta\s+'.$attribute.'=["\']'.preg_quote($key, '/').'["\'][^>]*>/i';
 
         if (preg_match($pattern, $html)) {
-            return preg_replace($pattern, $tag, $html, 1);
+            return preg_replace_callback($pattern, fn () => $tag, $html, 1);
         }
 
         return str_replace('</head>', '    '.$tag."\n  </head>", $html);
@@ -1451,7 +1505,7 @@ class SeoPrerenderService
         $tag = '<link rel="canonical" href="'.$this->escapeAttribute($url).'" />';
 
         if (preg_match('/<link\s+rel=["\']canonical["\'][^>]*>/i', $html)) {
-            return preg_replace('/<link\s+rel=["\']canonical["\'][^>]*>/i', $tag, $html, 1);
+            return preg_replace_callback('/<link\s+rel=["\']canonical["\'][^>]*>/i', fn () => $tag, $html, 1);
         }
 
         return str_replace('</head>', '    '.$tag."\n  </head>", $html);
@@ -1465,7 +1519,7 @@ class SeoPrerenderService
             $this->escapeAttribute($this->absoluteUrl($url))
         ))->implode("\n");
         $schema = collect($jsonLd)->filter()->values()->all();
-        $json = json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $json = json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
 
         return "\n".$this->prerenderStyle()."\n".$links."\n".'    <script type="application/ld+json" data-sveevee-prerender>'.$json.'</script>';
     }
@@ -1620,6 +1674,20 @@ HTML;
         ];
     }
 
+    private function importedCategoryLabel(Page $page): string
+    {
+        return collect(data_get($page->setup, 'imported_categories', []))
+            ->pluck('label')->filter(fn ($label): bool => is_string($label) && trim($label) !== '')
+            ->map(fn (string $label): string => trim($label))->unique()->implode(', ');
+    }
+
+    private function publicWebsite(Page $page): string
+    {
+        $url = trim((string) data_get($page->setup, 'website', ''));
+
+        return preg_match('#^https?://[^/\\s]+#i', $url) && filter_var($url, FILTER_VALIDATE_URL) ? $url : '';
+    }
+
     private function locationText(array $address): string
     {
         return collect([$address['city'] ?? null, $address['neighborhood'] ?? null, $address['street'] ?? null, $address['number'] ?? null])
@@ -1727,7 +1795,7 @@ HTML;
 
     private function resolveDistPath(?string $distPath): string
     {
-        $path = $distPath ?: base_path('../frontend/dist');
+        $path = $distPath ?: (string) config('seo.frontend_dist', base_path('../frontend/dist'));
 
         if (! preg_match('/^(?:[A-Za-z]:[\/\\\\]|\/|\\\\)/', $path)) {
             $path = base_path($path);
@@ -1748,6 +1816,7 @@ HTML;
         $target = $dist.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
         $targetDir = dirname($target);
 
+        $this->assertSafeOutput($dist, $target);
         File::ensureDirectoryExists($targetDir);
         $this->assertInsideDist($dist, $targetDir);
         File::put($target, $html);
@@ -1755,7 +1824,7 @@ HTML;
         return str_replace(DIRECTORY_SEPARATOR, '/', $relative);
     }
 
-    private function cleanPreviousFiles(string $dist): void
+    private function cleanPreviousFiles(string $dist, array $keep): void
     {
         $manifestPath = $dist.DIRECTORY_SEPARATOR.self::MANIFEST;
 
@@ -1763,17 +1832,21 @@ HTML;
             return;
         }
 
-        $manifest = json_decode(File::get($manifestPath), true);
-        $files = is_array($manifest['files'] ?? null) ? $manifest['files'] : [];
-
-        foreach ($files as $file) {
-            if (! is_string($file) || str_contains($file, '..')) {
+        // Both previous and current manifests are pretty-printed, one path per line.
+        // Stream the legacy manifest too; it can contain hundreds of thousands of paths.
+        $retained = array_fill_keys($keep, true);
+        foreach (File::lines($manifestPath) as $line) {
+            $file = json_decode(rtrim(trim($line), ','), true);
+            if (! is_string($file) || isset($retained[$file]) || str_contains($file, '..')
+                || str_contains($file, '\\') || ! str_ends_with($file, '/index.html') || str_starts_with($file, '/')) {
                 continue;
             }
 
             $target = $dist.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, ltrim($file, '/'));
 
             if (File::exists($target)) {
+                $this->assertSafeOutput($dist, $target);
+                $this->assertInsideDist($dist, dirname($target));
                 File::delete($target);
             }
         }
@@ -1786,6 +1859,31 @@ HTML;
 
         if (! str_starts_with($target, $base)) {
             throw new RuntimeException('Refusing to write outside frontend dist.');
+        }
+    }
+
+    private function assertSafeOutput(string $dist, string $path): void
+    {
+        $base = rtrim($dist, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
+        if (! str_starts_with($path, $base)) {
+            throw new RuntimeException('Refusing to write outside frontend dist.');
+        }
+
+        $current = $dist;
+        foreach (preg_split('#[/\\\\]+#', substr($path, strlen($base))) as $part) {
+            if ($part === '' || $part === '.' || $part === '..') {
+                throw new RuntimeException('Invalid frontend output path.');
+            }
+            $current .= DIRECTORY_SEPARATOR.$part;
+            if (is_link($current)) {
+                throw new RuntimeException('Refusing to modify a symlink in frontend output.');
+            }
+            if (file_exists($current)) {
+                $resolved = realpath($current);
+                if ($resolved === false || ! str_starts_with($resolved, $base)) {
+                    throw new RuntimeException('Refusing to write outside frontend dist.');
+                }
+            }
         }
     }
 }

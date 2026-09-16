@@ -12,6 +12,7 @@ use App\Models\PageRating;
 use App\Models\PageService;
 use App\Models\User;
 use App\Notifications\PasswordChangedNotification;
+use App\Services\SeoPrerenderService;
 use App\Support\CatalogTopics;
 use App\Support\ContentModeration;
 use App\Support\PublicImageVariants;
@@ -19,6 +20,7 @@ use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -915,7 +917,7 @@ class SveeveeApiTest extends TestCase
             ->assertDontSee('https://sveevee.co.il/ads/'.$adSlug, false);
     }
 
-    public function test_seo_prerender_generates_static_business_and_product_html(): void
+    public function test_seo_renders_record_html_on_request_and_exports_static_entry_pages(): void
     {
         config()->set('app.url', 'https://sveevee.co.il');
 
@@ -1021,13 +1023,29 @@ HTML);
                 'link' => 'https://seller.example/phone',
             ]);
 
+            $obsoletePath = 'he/business/old-record-999/index.html';
+            File::ensureDirectoryExists(dirname($dist.'/'.$obsoletePath));
+            File::put($dist.'/'.$obsoletePath, 'Obsolete record snapshot');
+            File::put($dist.'/.sveevee-prerender.json', json_encode([
+                'files' => [$obsoletePath],
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            DB::enableQueryLog();
+            DB::flushQueryLog();
             $this->artisan('seo:prerender-public-pages', ['--dist' => $dist])
                 ->assertExitCode(0);
+            $exportQueries = DB::getQueryLog();
+            DB::disableQueryLog();
+            $this->assertFalse(collect($exportQueries)->contains(fn (array $query): bool => preg_match('/from ["`]?pages["`]?\\s/i', $query['query']) === 1
+            ), 'Entry-page exports must never load the business catalog.');
+            $this->assertFileDoesNotExist($dist.'/'.$obsoletePath);
 
-            $businessHtml = File::get($dist.'/he/business/'.$page->public_slug.'/index.html');
-            $unclaimedBusinessHtml = File::get($dist.'/he/business/'.$unclaimedPage->public_slug.'/index.html');
-            $unclaimedCommunityHtml = File::get($dist.'/he/community/'.$unclaimedCommunityPage->public_slug.'/index.html');
-            $productHtml = File::get($dist.'/he/product/'.$product->public_slug.'/index.html');
+            $renderer = app(SeoPrerenderService::class);
+            $businessHtml = $renderer->renderPage($page, 'he', $dist);
+            $unclaimedBusinessHtml = $renderer->renderPage($unclaimedPage, 'he', $dist);
+            $unclaimedCommunityHtml = $renderer->renderPage($unclaimedCommunityPage, 'he', $dist);
+            $productHtml = $renderer->renderProduct($product, 'he', $dist);
+            $this->assertFileDoesNotExist($dist.'/he/business/'.$page->public_slug.'/index.html');
+            $this->assertFileDoesNotExist($dist.'/he/product/'.$product->public_slug.'/index.html');
             $businessCatalogHtml = File::get($dist.'/catalog/businesses/index.html');
             $productCatalogHtml = File::get($dist.'/catalog/products/index.html');
             $adsCatalogHtml = File::get($dist.'/catalog/ads/index.html');

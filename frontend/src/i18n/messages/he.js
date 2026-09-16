@@ -493,6 +493,17 @@ export default {
 		deleteFailed: 'לא ניתן למחוק את האירוע.'
 	},
 	chat: {
+		guestPageStorageUnavailable: 'הדפדפן שלך חוסם אחסון זמני. יש לאפשר אותו כדי לשמור את השיחה בעת ההרשמה. אפשר להמשיך להתכתב בחלון הזה.',
+		guestLabel: 'אורח',
+		guestKeepTitle: 'שמרו את השיחה',
+		guestKeepBody: 'אפשר לשוחח עם העסק בלי חשבון. השיחה נשמרת אצל העסק. הירשמו כדי לשמור אותה גם בחשבון שלכם ולהמשיך בה בהמשך.',
+		guestKeepAction: 'הרשמה ושמירת השיחה',
+		guestPageSessionExpired: 'הגישה לשיחת האורח כבר אינה זמינה. השיחה עדיין שמורה אצל העסק. אפשר להתחיל שיחה חדשה.',
+		guestPageUnavailable: 'הצ׳אט עם העסק אינו זמין כרגע.',
+		guestPageLoadFailed: 'לא ניתן לטעון את השיחה. נסו שוב.',
+		guestPageClaimPending: 'החשבון שלכם מוכן, אבל עדיין לא הצלחנו לקשר אליו את השיחה. נסו שוב כדי לשמור את ההודעות.',
+		guestPageClaimUnavailable: 'כבר אי אפשר לקשר את שיחת האורח לחשבון. אפשר להתחיל שיחה חדשה מהחשבון שלכם.',
+		guestPageClaimRetry: 'נסו שוב',
 		online: 'מחובר/ת עכשיו',
 		deleteChat: 'מחיקת הצ׳אט',
 		deleteTitle: 'למחוק את הצ׳אט?',

@@ -493,6 +493,17 @@ export default {
 		deleteFailed: 'Event could not be deleted.'
 	},
 	chat: {
+		guestPageStorageUnavailable: 'Your browser is blocking session storage. Allow it to keep this chat when you register. You can continue chatting in this popup.',
+		guestLabel: 'Guest',
+		guestKeepTitle: 'Keep this conversation',
+		guestKeepBody: 'You can chat with this business without an account. The business keeps the conversation. Register to save it in your own account and continue later.',
+		guestKeepAction: 'Register and keep this chat',
+		guestPageSessionExpired: 'This guest chat session is no longer available. The business still has the conversation. You can start a new chat.',
+		guestPageUnavailable: 'Chat with this business is currently unavailable.',
+		guestPageLoadFailed: 'The chat could not be loaded. Please try again.',
+		guestPageClaimPending: 'Your account is ready, but this chat could not be connected yet. Please try again to keep its messages.',
+		guestPageClaimUnavailable: 'This guest chat can no longer be connected. You can start a new conversation from your account.',
+		guestPageClaimRetry: 'Try again',
 		online: 'Online',
 		deleteChat: 'Delete chat',
 		deleteTitle: 'Delete this chat?',

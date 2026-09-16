@@ -13,6 +13,7 @@ class SitemapController extends Controller
         $directory = rtrim((string) config('sitemap.directory'), '/\\');
         $part = $request->query('part');
         $generation = $request->query('generation');
+        $isCurrentAlias = $generation === null;
         $headers = ['Content-Type' => 'application/xml; charset=UTF-8'];
 
         if ($generation === null) {
@@ -27,7 +28,12 @@ class SitemapController extends Controller
                 $response = response()->file($directory.'/generations/'.$generation.'/index.xml', $headers + [
                     'Cache-Control' => 'public, max-age=300',
                 ]);
-                $response->isNotModified($request);
+                $response->setEtag($generation.'-index');
+                // File modification times have only second precision. An older index
+                // must not produce a false 304 when two generations finish that second.
+                if ($request->headers->has('If-None-Match')) {
+                    $response->isNotModified($request);
+                }
 
                 return $response;
             }
@@ -61,7 +67,7 @@ class SitemapController extends Controller
             }
         }, 200, $headers + [
             'Content-Length' => (string) $entry['bytes'],
-            'Cache-Control' => 'public, max-age=3600',
+            'Cache-Control' => 'public, max-age='.($isCurrentAlias ? '300, must-revalidate' : '3600'),
         ]);
         $response->setEtag($generation.'-'.$part);
         $response->isNotModified($request);

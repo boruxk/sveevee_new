@@ -6,6 +6,7 @@
 	import { useAuthStore } from '@/stores/auth'
 	import { attachLeadsPage001 } from '@/services/api/businessLeads'
 	import { clearLeadsPage001Registration, readLeadsPage001Registration } from '@/utils/leadsPageCompletion'
+	import { completePendingGuestPageChatClaim, readPendingGuestPageChatClaim } from '@/utils/guestPageChatSession'
 
 	const route = useRoute()
 	const router = useRouter()
@@ -65,7 +66,15 @@
 
 		try {
 			await authStore.loginWithToken(token)
-			const leadPage = await attachLeadPage()
+			const guestChatIntent = readPendingGuestPageChatClaim()
+			if (guestChatIntent) {
+				clearLeadsPage001Registration()
+			}
+			const guestChat = await completePendingGuestPageChatClaim()
+			if (guestChat.status === 'pending' || guestChat.status === 'unavailable') {
+				$q.notify({ type: 'warning', message: t(guestChat.status === 'pending' ? 'chat.guestPageClaimPending' : 'chat.guestPageClaimUnavailable') })
+			}
+			const leadPage = guestChatIntent ? null : await attachLeadPage()
 
 			if (leadPage) {
 				router.replace({ name: 'business' })
@@ -73,7 +82,11 @@
 				return
 			}
 
-			router.replace(authStore.user?.profile_complete === false ? { name: 'profile', query: { complete: '1' } } : { name: 'home' })
+			if (authStore.user?.profile_complete === false) {
+				router.replace({ name: 'profile', query: { complete: '1', ...(guestChat.redirect ? { redirect: guestChat.redirect } : {}) } })
+			} else {
+				router.replace(guestChat.redirect || { name: 'home' })
+			}
 		} catch {
 			$q.notify({ type: 'negative', message: t('auth.googleLoginFailed') })
 			router.replace({ name: 'login' })

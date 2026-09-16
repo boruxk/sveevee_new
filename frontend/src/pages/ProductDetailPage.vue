@@ -17,6 +17,9 @@
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const product = ref(null)
 	const loading = ref(false)
+	const productUnavailable = ref(false)
+	let latestProductRequest = 0
+	let loadedProductRouteId = null
 
 	const routeLocale = computed(() => String(route.params.locale || ''))
 	const seller = computed(() => product.value?.page || null)
@@ -139,6 +142,7 @@
 	})
 
 	useSeo(computed(() => ({
+		pending: !product.value && !productUnavailable.value,
 		title: pageTitle.value,
 		description: pageDescription.value,
 		image: product.value?.image_url,
@@ -148,21 +152,35 @@
 		canonical: canonicalPath.value,
 		alternates: localizedAlternates.value,
 		type: 'product',
-		robots: product.value ? 'index,follow' : 'noindex,follow',
+		robots: productUnavailable.value ? 'noindex,follow' : 'index,follow',
 		jsonLd: jsonLd.value
 	})))
 
 	async function load() {
+		const requestId = ++latestProductRequest
+		const routeId = String(route.params.id || '')
 		loading.value = true
+		productUnavailable.value = false
+		if (loadedProductRouteId !== routeId) product.value = null
 		try {
 			if (routeLocale.value && routeLocale.value !== locale.value) {
 				await setLocale(routeLocale.value)
 			}
 
-			const { data } = await fetchProduct(route.params.id)
+			if (requestId !== latestProductRequest) return
+			const { data } = await fetchProduct(routeId)
+			if (requestId !== latestProductRequest || String(route.params.id || '') !== routeId) return
 			product.value = data.data
+			loadedProductRouteId = routeId
+		} catch (error) {
+			if (requestId !== latestProductRequest || String(route.params.id || '') !== routeId) return
+			if ([401, 403, 404, 410].includes(error.response?.status)) {
+				product.value = null
+				loadedProductRouteId = null
+				productUnavailable.value = true
+			}
 		} finally {
-			loading.value = false
+			if (requestId === latestProductRequest) loading.value = false
 		}
 	}
 

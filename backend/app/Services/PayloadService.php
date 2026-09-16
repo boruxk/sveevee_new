@@ -401,10 +401,10 @@ class PayloadService
         ];
     }
 
-    public function pageConversation(PageConversation $conversation, User $viewer, array $composerState, bool $withMessages = false): array
+    public function pageConversation(PageConversation $conversation, ?User $viewer, array $composerState, bool $withMessages = false): array
     {
         $conversation->loadMissing(['page', 'visitor.profile', 'messages.sender.profile']);
-        $viewerIsOwner = $conversation->page->user_id === $viewer->id;
+        $viewerIsOwner = $viewer && $conversation->page->user_id === $viewer->id;
         $latest = $conversation->messages
             ->sortBy(fn ($message): string => sprintf('%020s%020d', $message->created_at?->format('Uu') ?? '0', $message->id))
             ->last();
@@ -413,13 +413,14 @@ class PayloadService
             'id' => $conversation->id,
             'page' => $this->pageChatIdentity($conversation->page),
             'other_user' => $viewerIsOwner
-                ? $this->user($conversation->visitor, includePresence: true)
+                ? ($conversation->visitor ? $this->user($conversation->visitor, includePresence: true) : $this->guestPageChatIdentity())
                 : $this->pageChatIdentity($conversation->page, asChatUser: true),
             'is_page_chat' => true,
+            'is_guest' => $conversation->visitor_id === null,
             'last_message_at' => $conversation->last_message_at?->toISOString(),
             'latest_message' => $latest ? $this->pageChatMessage($latest, $conversation->page) : null,
             'unread_count' => $conversation->messages
-                ->where('sender_id', '!=', $viewer->id)
+                ->where('sender_as_page', ! $viewerIsOwner)
                 ->whereNull('read_at')
                 ->count(),
             'composer_state' => $composerState,
@@ -443,12 +444,26 @@ class PayloadService
             'conversation_id' => $message->page_conversation_id,
             'sender_id' => $message->sender_id,
             'sender_as_page' => (bool) $message->sender_as_page,
+            'is_guest' => ! $message->sender_as_page && $message->sender_id === null,
             'body' => $message->body,
             'read_at' => $message->read_at?->toISOString(),
             'created_at' => $message->created_at?->toISOString(),
             'sender' => $message->sender_as_page
                 ? $this->pageChatIdentity($page, asChatUser: true)
-                : ($message->relationLoaded('sender') ? $this->user($message->sender) : null),
+                : ($message->sender_id === null ? $this->guestPageChatIdentity()
+                    : ($message->relationLoaded('sender') && $message->sender ? $this->user($message->sender) : null)),
+        ];
+    }
+
+    private function guestPageChatIdentity(): array
+    {
+        return [
+            'id' => null,
+            'is_guest' => true,
+            'display_name' => 'Guest',
+            'name' => 'Guest',
+            'public_path' => null,
+            'profile' => ['photo_url' => null],
         ];
     }
 

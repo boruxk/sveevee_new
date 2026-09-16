@@ -21,16 +21,16 @@ final class SitemapPathStore
         $this->database->exec('PRAGMA synchronous = OFF');
         $this->database->exec('PRAGMA cache_size = -4096');
         $this->database->exec('PRAGMA temp_store = FILE');
-        $this->database->exec('CREATE TABLE paths (family TEXT NOT NULL, path TEXT NOT NULL, lastmod TEXT NOT NULL, PRIMARY KEY (family, path)) WITHOUT ROWID');
-        $this->upsert = $this->database->prepare('INSERT INTO paths (family, path, lastmod) VALUES (?, ?, ?) ON CONFLICT (family, path) DO UPDATE SET lastmod = MAX(paths.lastmod, excluded.lastmod)');
+        $this->database->exec('CREATE TABLE paths (family TEXT NOT NULL, path TEXT NOT NULL, lastmod TEXT, PRIMARY KEY (family, path)) WITHOUT ROWID');
+        $this->upsert = $this->database->prepare('INSERT INTO paths (family, path, lastmod) VALUES (?, ?, ?) ON CONFLICT (family, path) DO UPDATE SET lastmod = CASE WHEN excluded.lastmod IS NULL THEN paths.lastmod WHEN paths.lastmod IS NULL THEN excluded.lastmod ELSE MAX(paths.lastmod, excluded.lastmod) END');
     }
 
-    public function register(string $family, string $path, Carbon $lastModified): void
+    public function register(string $family, string $path, ?Carbon $lastModified): void
     {
         if (! $this->database->inTransaction()) {
             $this->database->beginTransaction();
         }
-        $this->upsert->execute([$family, $path, $lastModified->toDateString()]);
+        $this->upsert->execute([$family, $path, $lastModified?->toDateString()]);
     }
 
     public function entries(string $family): Generator

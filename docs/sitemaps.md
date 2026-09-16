@@ -4,7 +4,7 @@
 
 ## Addresses
 
-These stable aliases return the latest available part after deployment and initial generation:
+The sitemap index publishes these stable child URLs, which return the latest available part after deployment and initial generation:
 
 | Content | First part |
 | --- | --- |
@@ -16,7 +16,21 @@ These stable aliases return the latest available part after deployment and initi
 | Catalog topics and nonempty locations | `https://sveevee.co.il/sitemap.xml?part=catalog-0001` |
 | Nonempty localized market pages | `https://sveevee.co.il/sitemap.xml?part=market-0001` |
 
-Additional parts use `-0002`, `-0003`, etc. Empty families have no part and return 404. The index contains the exact complete list. Its links additionally carry a `generation` parameter so readers can finish the same complete snapshot even if the next generation is published meanwhile. A part without `generation` is a convenience alias for the current snapshot.
+Additional parts use `-0002`, `-0003`, etc. Empty families have no part and return 404. The index contains the exact complete list and does **not** add a `generation` parameter. Each stable URL follows the current completed snapshot, so the index's child links do not expire when old generation directories are cleaned up. If a family shrinks and a numbered part no longer exists, that part returns 404 and is omitted from the latest index.
+
+Older links with both `part` and `generation` remain supported while that generation is retained. They serve the specified historical snapshot; they can return 404 after retention cleanup and are not published in the current index. Separate requests to stable child URLs may cross a generation change, so stable URLs do not promise a single pinned snapshot across an entire crawl.
+
+## Caching and content dates
+
+| Response | Cache policy | Validator |
+| --- | --- | --- |
+| `/sitemap.xml` index | `public, max-age=300` | ETag identifies the current generation's index |
+| Stable child, for example `?part=pages-0001` | `public, max-age=300, must-revalidate` | ETag identifies the current generation and part |
+| Retained legacy `?part=pages-0001&generation=...` | `public, max-age=3600` | ETag identifies that fixed generation and part |
+
+`If-None-Match` returns 304 only when the requested response still has the same ETag. Publishing a new generation changes the index and current-child validators even when their URLs, XML text, or filesystem modification second happen to match. The index may send `Last-Modified`, but its conditional response decision deliberately requires `If-None-Match`; a timestamp alone must not hide a newly published snapshot. GET and HEAD expose the appropriate validators, while HEAD and 304 responses contain no body.
+
+URL-level `<lastmod>` comes from known content modification dates. Static entries without a reliable content date omit it; catalog/market location entries use the relevant records' dates. Regenerating the sitemap alone does not invent a newer content modification date.
 
 ## Generation and limits
 
@@ -47,7 +61,7 @@ Deploy only after the user's push and explicit live-update request.
    ```
 
 4. Verify the existing scheduler invokes `php artisan schedule:run` every minute as the backend user. `php artisan schedule:list` must include the hourly `sitemap:generate` command. If the scheduler is absent, install its minute trigger during the authorized deployment; declaring a Laravel schedule alone does not start it.
-5. Fetch `/sitemap.xml`, follow all its child links, and confirm HTTP 200, valid XML and both limits. Query-parameter children use the existing `/sitemap.xml` Nginx location, so no new XML path routing is required.
+5. Fetch `/sitemap.xml`, follow all its child links, and confirm HTTP 200, valid XML and both limits. Published child links must contain `part` without `generation`. Check the cache headers and ETags above; unchanged conditional requests should return 304, and requests with an older generation's ETag should return current content after regeneration. Query-parameter children use the existing `/sitemap.xml` Nginx location, so no new XML path routing is required.
 
 Before the first successful generation, `/sitemap.xml` deliberately returns 503 with `Retry-After: 300`, rather than attempting the previous memory-intensive request-time build. Generation failures keep the last successful index available.
 
@@ -61,6 +75,6 @@ References: [Google sitemap index guidance](https://developers.google.com/search
 php -d xdebug.mode=off vendor/bin/phpunit --filter Sitemap
 ```
 
-The tests cover count/byte boundaries, escaping and images, all language URLs, automatic inclusion on regeneration, visibility and deletion, old generations, failed-publication recovery, response streaming and malformed parameters.
+The tests cover count/byte boundaries, escaping and images, all language URLs, automatic inclusion on regeneration, visibility and deletion, stable child addresses after old-generation cleanup, retained legacy links, ETag revalidation even within the same filesystem second, truthful content dates, failed-publication recovery, response streaming and malformed parameters.
 
 An isolated SQLite scale check on 2026-09-10 generated all 681,048 localized URLs for 170,262 synthetic pages under `memory_limit=128M`. Generation took 91.75 seconds and peaked at 38 MB of PHP memory. The 14 page parts contained at most 50,000 URLs and 9,800,172 uncompressed bytes each. XMLReader verified every page/locale exactly once and checked each file's actual decoded byte count. This is a local synthetic benchmark, not a production timing guarantee.

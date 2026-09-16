@@ -12,12 +12,23 @@ class PageConversation extends Model
         'page_id',
         'visitor_id',
         'last_message_at',
+        'guest_token_hash',
+        'guest_claimed_by_user_id',
+        'guest_claimed_conversation_id',
+        'guest_claimed_at',
+    ];
+
+    protected $hidden = [
+        'guest_token_hash',
+        'guest_claimed_by_user_id',
+        'guest_claimed_conversation_id',
     ];
 
     protected function casts(): array
     {
         return [
             'last_message_at' => 'datetime',
+            'guest_claimed_at' => 'datetime',
         ];
     }
 
@@ -33,6 +44,6 @@ class PageConversation extends Model
 
     public function messages(): HasMany
     {
-        return $this->hasMany(PageChatMessage::class)->oldest();
+        return $this->hasMany(PageChatMessage::class)->oldest()->orderBy('id');
     }
 }
