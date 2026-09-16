@@ -1,4 +1,7 @@
+import importedCityLabels from './importedCityLabels.json'
+
 const HE_CITY_LABELS = {
+	...importedCityLabels,
 	Jerusalem: 'ירושלים',
 	'Tel Aviv': 'תל אביב',
 	Haifa: 'חיפה',

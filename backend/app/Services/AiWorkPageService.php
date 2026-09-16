@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\ExactPageDuplicateException;
+use App\Models\BusinessImportMatchReview;
 use App\Models\Page;
 use App\Models\User;
 use App\Rules\CleanContent;
@@ -238,6 +239,24 @@ class AiWorkPageService
 
             return $page;
         });
+    }
+
+    /** Only the explicit review-resolution command calls this inside its source-ID transaction. */
+    public function createApprovedFoursquareReview(User $worker, array $data, BusinessImportMatchReview $review): Page
+    {
+        if ($review->provider !== 'foursquare_places' || $review->status !== 'pending'
+            || $data['type'] !== Page::TYPE_BUSINESS || ! $worker->hasRole('ai_worker') || DB::transactionLevel() < 1) {
+            throw new \LogicException('Standalone review creation requires a pending Foursquare review and an import transaction.');
+        }
+        $page = new Page;
+        $page->user_id = $worker->id;
+        $page->created_by_user_id = $worker->id;
+        $page->type = Page::TYPE_BUSINESS;
+        $page->is_unclaimed = true;
+        $this->fill($page, $data);
+        $page->save();
+
+        return $page;
     }
 
     public function summary(Page $page): array

@@ -60,7 +60,8 @@ final class CatalogRepairService
             $condition = $provider === 'foursquare_places'
                 ? "b.status='failed' AND b.last_error_code='city' AND json_extract(b.payload_json,'$.source.provider')='foursquare_places'"
                 : "(COALESCE(json_extract(b.payload_json,'$.source.provider'),'')<>'overture_places' OR COALESCE(json_extract(b.payload_json,'$.source.url'),'')<>s.source_url{$cohort})";
-            $query = $this->database->prepare("SELECT s.id AS source_row_id,s.source_url,s.raw_json,s.raw_hash,b.* FROM business_sources s JOIN businesses b ON b.id=s.business_id WHERE s.adapter=? AND s.id>? AND {$condition} ORDER BY s.id LIMIT 100");
+            // Keep each chunk on the rowid range; the adapter/source_url index would re-sort the provider on every page.
+            $query = $this->database->prepare("SELECT s.id AS source_row_id,s.source_url,s.raw_json,s.raw_hash,b.* FROM business_sources s NOT INDEXED CROSS JOIN businesses b ON b.id=s.business_id WHERE s.adapter=? AND s.id>? AND {$condition} ORDER BY s.id LIMIT 100");
             $query->execute([$provider, $last]);
             $rows = $query->fetchAll(PDO::FETCH_ASSOC);
             $query->closeCursor();

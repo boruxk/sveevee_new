@@ -46,12 +46,13 @@ final class DatasetPreparer
         throw new RuntimeException('Foursquare did not supply its current snapshot timestamp.');
     }
 
-    public function prepare(string $duckdb, string $token, string $destination): array
+    public function prepare(string $duckdb, string $token, string $destination, ?array $snapshot = null): array
     {
         $this->directory(dirname($destination));
         $lock = new ProcessLock($destination.'.prepare.lock');
         $lock->acquire();
-        $snapshot = $this->snapshot($token);
+        $snapshot ??= $this->snapshot($token);
+        self::validateSnapshotId((string) ($snapshot['snapshot_id'] ?? ''));
         $prefix = $destination.'.download-'.bin2hex(random_bytes(8));
         try {
             $rows = $this->export($duckdb, $token, $snapshot['snapshot_id'], $prefix);

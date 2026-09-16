@@ -98,13 +98,15 @@ final class ResearchService
                     $report->source($source->name());
                     $sourceUrl = $this->sourceUrl($raw);
                     if ($sourceUrl !== null
-                        && ! $this->repository->shouldProcessUrl(
-                            $source->name(),
-                            $sourceUrl,
-                            $source->refreshAfterDays(),
-                            SourceFingerprint::hash($raw),
-                            reconsiderLegacySource: $target->isFullSource(),
-                        )) {
+                        && ! ($target->isFullSource() && in_array($source->name(), ['overture_places', 'foursquare_places'], true)
+                            ? $this->repository->shouldProcessSnapshotRow($source->name(), $sourceUrl, $raw)
+                            : $this->repository->shouldProcessUrl(
+                                $source->name(),
+                                $sourceUrl,
+                                $source->refreshAfterDays(),
+                                SourceFingerprint::hash($raw),
+                                reconsiderLegacySource: $target->isFullSource(),
+                            ))) {
                         $report->increment('duplicates');
                         if ($source instanceof CursorSourceInterface) {
                             $source->acknowledge($raw);

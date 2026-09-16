@@ -10,7 +10,6 @@ use Sveevee\Worker\Config\ResearchTarget;
 use Sveevee\Worker\Research\CursorSourceInterface;
 use Sveevee\Worker\Storage\WorkerRepository;
 use Sveevee\Worker\Support\Json;
-use Sveevee\Worker\Support\SourceFingerprint;
 
 /** Offline Israel snapshot reader. Every accepted row is durably acknowledged before advancing. */
 final class PlacesSource implements CursorSourceInterface
@@ -64,7 +63,7 @@ final class PlacesSource implements CursorSourceInterface
 
                     continue;
                 }
-                if (! $this->repository->shouldProcessUrl($this->name(), $business['source_url'], $this->refreshAfterDays(), SourceFingerprint::hash($business))) {
+                if (! $this->repository->shouldProcessSnapshotRow($this->name(), $business['source_url'], $business)) {
                     $this->acknowledge($business);
 
                     continue;

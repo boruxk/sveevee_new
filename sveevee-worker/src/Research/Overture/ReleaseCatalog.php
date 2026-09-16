@@ -16,6 +16,14 @@ final class ReleaseCatalog
     public function latest(): string
     {
         $catalog = $this->fetch('https://stac.overturemaps.org/catalog.json');
+        if (isset($catalog['latest'])) {
+            if (! is_string($catalog['latest'])) {
+                throw new RuntimeException('The official Overture latest release value is invalid.');
+            }
+            self::validateRelease($catalog['latest']);
+
+            return $catalog['latest'];
+        }
         $releases = [];
         foreach ($catalog['links'] ?? [] as $link) {
             if (in_array($link['rel'] ?? '', ['self', 'root', 'latest-version', 'child'], true)

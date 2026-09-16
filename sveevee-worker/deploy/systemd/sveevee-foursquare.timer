@@ -1,8 +1,8 @@
 [Unit]
-Description=Run the Sveevee Foursquare Places worker every hour
+Description=Check the latest Foursquare Places snapshot once monthly
 
 [Timer]
-OnCalendar=*-*-* *:15:00 Asia/Jerusalem
+OnCalendar=*-*-02 02:40:00 Asia/Jerusalem
 RandomizedDelaySec=0
 AccuracySec=1s
 Persistent=true

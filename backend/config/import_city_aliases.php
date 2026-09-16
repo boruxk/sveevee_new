@@ -3,7 +3,7 @@
 // Explicit aliases from sveevee-worker/config/worker.foursquare.json city_names,
 // also used by the Overture/Gov profiles; Tel Aviv-Yafo is the mapper default.
 // Only targets present in locations.cities are accepted. Never infer new aliases.
-return [
+$aliases = [
     'Jerusalem' => ['ירושלים'],
     'Tel Aviv' => ['תל אביב - יפו', 'תל אביב', 'תל  אביב', 'תל אביב יפו', 'Tel Aviv-Yafo'],
     'Haifa' => ['חיפה'],
@@ -88,3 +88,14 @@ return [
     'Shoeva' => ['שואבה'],
     'Shoham' => ['שוהם'],
 ];
+
+// Official CBS 2024 names plus individually audited observed spellings, not fuzzy matches.
+// Only residential localities and existing catalog names are eligible; see docs/import-city-catalog.md.
+$reviewed = json_decode(file_get_contents(__DIR__.'/../resources/data/import-city-catalog.json'), true, 512, JSON_THROW_ON_ERROR);
+foreach ($reviewed['cities'] as $city) {
+    $aliases[$city['name']] = array_values(array_unique([
+        ...($aliases[$city['name']] ?? []), ...$city['aliases'],
+    ]));
+}
+
+return $aliases;

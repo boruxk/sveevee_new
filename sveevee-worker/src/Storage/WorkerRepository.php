@@ -21,6 +21,8 @@ final class WorkerRepository
 {
     private readonly PDO $pdo;
 
+    private ?\PDOStatement $snapshotLookup = null;
+
     public function __construct(
         Database $database,
         private readonly BusinessNormalizer $normalizer,
@@ -264,6 +266,51 @@ SQL)->fetchAll(PDO::FETCH_KEY_PAIR);
         return ['pending' => (int) ($counts['pending'] ?? 0) + (int) ($counts['queued'] ?? 0),
             'failed' => $unmapped + (int) ($counts['failed'] ?? 0) + (int) ($counts['invalid'] ?? 0) + (int) ($counts['not_found'] ?? 0),
             'review' => (int) ($counts['review'] ?? 0)];
+    }
+
+    /** Full snapshots compare retained source facts; age alone must not re-import unchanged rows. */
+    public function shouldProcessSnapshotRow(string $adapter, string $url, array $raw): bool
+    {
+        if (! in_array($adapter, ['overture_places', 'foursquare_places'], true)) {
+            throw new RuntimeException('Snapshot comparison requires Overture or Foursquare.');
+        }
+        $this->snapshotLookup ??= $this->pdo->prepare(<<<'SQL'
+SELECT r.status AS research_status, r.business_id, s.raw_json, b.status AS business_status,
+       CASE WHEN b.status IN ('failed', 'invalid', 'not_found')
+            THEN json_extract(b.payload_json, '$.source.provider') END AS business_provider
+FROM researched_urls r
+LEFT JOIN businesses b ON b.id = r.business_id
+LEFT JOIN business_sources s ON s.business_id = r.business_id AND s.adapter = r.adapter AND s.source_url = :url
+WHERE r.adapter = :adapter AND r.url_hash = :url_hash
+LIMIT 1
+SQL);
+        $this->snapshotLookup->execute(['url' => $url, 'adapter' => $adapter, 'url_hash' => hash('sha256', $url)]);
+        $row = $this->snapshotLookup->fetch();
+        $this->snapshotLookup->closeCursor();
+        if ($row === false) {
+            return true;
+        }
+        if (in_array($row['business_status'], ['closed', 'claimed'], true)) {
+            return false;
+        }
+        // Preserve the full-mode retry for legacy Overture rows that previously lacked provenance.
+        if ($adapter === 'overture_places' && in_array($row['business_status'], ['failed', 'invalid', 'not_found'], true)
+            && $row['business_provider'] !== $adapter) {
+            return true;
+        }
+        if ($row['research_status'] !== 'success' || ! is_string($row['raw_json'])) {
+            return true;
+        }
+        try {
+            $previous = Json::decode($row['raw_json']);
+        } catch (\JsonException) {
+            return true;
+        }
+        if (! is_array($previous)) {
+            return true;
+        }
+
+        return ! hash_equals(SourceFingerprint::snapshotHash($previous, $adapter), SourceFingerprint::snapshotHash($raw, $adapter));
     }
 
     public function shouldProcessUrl(

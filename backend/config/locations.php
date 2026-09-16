@@ -1,6 +1,6 @@
 <?php
 
-return [
+$locations = [
     'cities' => [
         [
             'name' => 'Jerusalem',
@@ -588,3 +588,14 @@ return [
         ['name' => 'Shoham', 'neighborhoods' => ['City Center', 'Tzipor', 'Hadekel']],
     ],
 ];
+
+// CBS locality codes verify the imported names; existing names/neighborhoods stay stable.
+// See docs/import-city-catalog.md for the complete observation audit and exclusions.
+$imported = json_decode(file_get_contents(__DIR__.'/../resources/data/import-city-catalog.json'), true, 512, JSON_THROW_ON_ERROR);
+foreach ($imported['cities'] as $city) {
+    if ($city['added']) {
+        $locations['cities'][] = ['name' => $city['name'], 'neighborhoods' => []];
+    }
+}
+
+return $locations;

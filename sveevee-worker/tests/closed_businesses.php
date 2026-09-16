@@ -254,7 +254,8 @@ $tests['CLI requires explicit apply and monthly service refresh must succeed bef
     $assert($options['apply'] === true, 'Explicit apply must be recognized.');
     $throws(static fn () => $parse->invoke($app, ['worker', 'remove-closed-businesses', '--apply', '--dry-run']), 'Conflicting mutation modes must fail.');
     $throws(static fn () => $parse->invoke($app, ['worker', 'run', '--apply']), 'The closure flag must not change ordinary import behavior.');
-    $throws(static fn () => $parse->invoke($app, ['worker', 'run', '--refresh']), 'Refresh is limited to the closure command.');
+    [, $refreshOptions] = $parse->invoke($app, ['worker', 'run', '--refresh']);
+    $assert($refreshOptions['refresh'] === true, 'Dedicated full-source imports may request a version-aware refresh.');
     $throws(static fn () => $parse->invoke($app, ['worker', 'remove-closed-businesses', '--duckdb=fixture']), 'DuckDB has no effect without an explicit refresh.');
     $throws(static fn () => $parse->invoke($app, ['worker', 'remove-closed-businesses', '--limit=1']), 'Monthly checks must not silently stop at the ordinary10/9000 import cap.');
     $service = file_get_contents(dirname(__DIR__).'/deploy/systemd/sveevee-closed-businesses.service');

@@ -179,14 +179,14 @@ try {
     $foursquareService = (string) file_get_contents($root.'/deploy/systemd/sveevee-foursquare.service');
     $installer = (string) file_get_contents($root.'/deploy/install.sh');
     $assert(str_contains($governmentTimer, '*:00,10,20,30,40,50:00 Asia/Jerusalem'), 'Government schedule must remain every ten minutes.');
-    $assert(str_contains($overtureTimer, '*:00,30:00 Asia/Jerusalem') && str_contains($overtureTimer, 'Unit=sveevee-overture.service'), 'Overture needs its separate half-hour timer.');
+    $assert(str_contains($overtureTimer, '*-*-01 02:10:00 Asia/Jerusalem') && str_contains($overtureTimer, 'Unit=sveevee-overture.service'), 'Overture checks the latest release once monthly.');
     $assert(str_contains($overtureService, 'Type=oneshot') && str_contains($overtureService, '--config=/etc/sveevee-worker/worker.overture.json') && str_contains($overtureService, 'EnvironmentFile=/etc/sveevee-worker/worker.env'), 'Overture must use a separate oneshot job with shared credentials.');
     preg_match_all('/^OnCalendar=(.+)$/m', $telTimer, $telSchedule);
     $assert(array_map('trim', $telSchedule[1]) === ['*-*-* 03:05:00 Asia/Jerusalem'] && str_contains($telTimer, 'Unit=sveevee-tel-aviv.service'), 'Tel Aviv must run independently once daily at 03:05 Israel time.');
     $assert(str_contains($telService, 'Type=oneshot') && str_contains($telService, '--config=/etc/sveevee-worker/worker.tel-aviv.json') && str_contains($telService, 'EnvironmentFile=/etc/sveevee-worker/worker.env'), 'Tel Aviv must use a separate oneshot job with shared credentials.');
     $assert(str_contains($telService, 'StateDirectory=sveevee-worker/tel-aviv') && str_contains($telService, 'ReadWritePaths=/var/lib/sveevee-worker/tel-aviv'), 'Tel Aviv service must write to its own state directory.');
     preg_match_all('/^OnCalendar=(.+)$/m', $foursquareTimer, $foursquareSchedule);
-    $assert(array_map('trim', $foursquareSchedule[1]) === ['*-*-* *:15:00 Asia/Jerusalem'] && str_contains($foursquareTimer, 'Unit=sveevee-foursquare.service'), 'Foursquare must use its own hourly timer at minute fifteen.');
+    $assert(array_map('trim', $foursquareSchedule[1]) === ['*-*-02 02:40:00 Asia/Jerusalem'] && str_contains($foursquareTimer, 'Unit=sveevee-foursquare.service'), 'Foursquare checks its current Iceberg snapshot once monthly.');
     $assert(str_contains($foursquareService, 'Type=oneshot') && str_contains($foursquareService, '--config=/etc/sveevee-worker/worker.foursquare.json') && str_contains($foursquareService, 'EnvironmentFile=/etc/sveevee-worker/worker.env'), 'Foursquare must use its own oneshot job with existing shared API credentials.');
     $assert(str_contains($foursquareService, 'StateDirectory=sveevee-worker/foursquare') && str_contains($foursquareService, 'ReadWritePaths=/var/lib/sveevee-worker/foursquare'), 'Foursquare service must write to its own state directory.');
     foreach (['sveevee-worker', 'sveevee-tel-aviv', 'sveevee-overture', 'sveevee-foursquare'] as $job) {

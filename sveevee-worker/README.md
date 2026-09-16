@@ -20,7 +20,7 @@ Neue Funktionen und Systemd-Vorlagen werden lokal vorbereitet. Erst nach Push un
 - Separater Overture-Job: alle Israel-Places der vorbereiteten Ausgabe fortlaufend nach GERS-ID, hoechstens 9000 erfolgreiche Neuanlagen oder Aktualisierungen pro Lauf
 - Separater Foursquare-Job: alle Israel-Datensaetze der vorbereiteten Ausgabe fortlaufend nach FSQ-ID, hoechstens 9000 erfolgreiche Neuanlagen oder Aktualisierungen pro Lauf; geschlossene Orte und unklare Ueberschneidungen werden separat gezaehlt
 - Unveraenderte Dubletten und unbrauchbare Kandidaten verbrauchen keine erfolgreichen Schreibplaetze; ihre Quellabfragen zaehlen zum HTTP-Budget
-- Gov alle zehn Minuten, Tel Aviv einmal taeglich um 03:05 Uhr israelischer Zeit; Overture weiterhin alle 30 Minuten und Foursquare stuendlich, jeweils ohne Tageslimit
+- Gov alle zehn Minuten, Tel Aviv einmal taeglich um 03:05 Uhr israelischer Zeit; Overture/Foursquare monatliche Quellpruefung mit bedingter stuendlicher Fortsetzung bis zum Abschluss, jeweils ohne Tageslimit
 - Getrennte Import-Batches pro Job: maximal 10 Eintraege bei Gov/Tel und 100 bei Overture/Foursquare
 - Idempotente Batch-Retries mit vor dem Request gespeicherter `client_import_id`
 - Einzelne Fehler stoppen die restlichen Batch-Eintraege nicht
@@ -84,7 +84,7 @@ Die Vorbereitung pinnt einen offiziellen Snapshot und exportiert ausschliesslich
 
 Der vorbereitete Snapshot liegt unter dem von Git ausgeschlossenen `var`-Verzeichnis. Ein Push uebertraegt ihn deshalb nicht. Beim freigegebenen Deployment muss die vollstaendige Datei gesondert uebertragen und fuer `sveevee-worker` lesbar gemacht werden; der Download-Token wird dafuer nicht auf dem Server benoetigt. Vor dem ersten Foursquare-Lauf die Backend-Migrationen ausfuehren, damit Quellen-Aliasse und die Dubletten-Prueftabelle vorhanden sind.
 
-Der einmalige Download kann trotz Israel-Filter grosse Teile der globalen Parquet-Dateien lesen. Er darf bis zu 60 Minuten dauern; seine lokale JSONL-Ausgabe ist auf 1 GiB begrenzt. Diese Vorbereitungsgrenzen sind unabhaengig vom stuendlichen Import-Timer, der ausschliesslich den fertigen lokalen Snapshot liest.
+Ein Download kann trotz Israel-Filter grosse Teile der globalen Parquet-Dateien lesen. Er darf bis zu 60 Minuten dauern; seine lokale JSONL-Ausgabe ist auf 1 GiB begrenzt. Der Monatslauf vergleicht zuerst die aktuelle Quellversion und laedt nur bei Aenderung. Bedingte stuendliche Folgelaeufe arbeiten den vorbereiteten Stand ab. [Monatspruefung, Delta-Abgleich und Betrieb](docs/monthly-imports.md).
 
 Alle Originaldaten bleiben in den Quellenmetadaten, darunter FSQ-ID, Datumsfelder, Koordinaten, Originalstadt, Kategorien und Qualitaetsmeldungen. Bekannte Kategorien werden konservativ zugeordnet; unbekannte Kategorien und Orte bleiben fuer die Katalogpruefung erhalten. Fehlende Adresse oder Kategorie schliesst einen Ort nicht aus. `date_closed` markierte Orte bleiben im Snapshot, werden aber nicht veroeffentlicht. Ihr Cursor wird bestaetigt und sie erscheinen separat unter `foursquare_progress.closed`. Unbestaetigte `unresolved_flags` werden unveraendert dokumentiert und fuehren nicht automatisch zum Ausschluss.
 
@@ -99,7 +99,7 @@ php deploy/configure-rotation.php --add-foursquare
 php deploy/configure-rotation.php --add-foursquare --apply
 ```
 
-Dabei bleiben bereits vorhandene Gov-, Tel-Aviv-, Overture- und Foursquare-Konfigurationen bytegleich. Nur eine fehlende Foursquare-Konfiguration wird erzeugt. `--foursquare-config` und `--foursquare-profile` erlauben abweichende Pfade. Die Ergaenzung setzt keinen Cursor zurueck und startet keine Timer. Der Installer installiert die neue Unit ebenfalls ohne Aktivierung. Nach einem spaeter ausdruecklich freigegebenen Deployment kann `sveevee-foursquare.timer` aktiviert werden; der Zeitplan lautet jede Stunde zur Minute 15 in `Asia/Jerusalem`, mit maximal 9000 Erfolgen und 100er-Batches. Pro Job verhindern systemd und die Prozesssperre parallele Instanzen.
+Dabei bleiben bereits vorhandene Gov-, Tel-Aviv-, Overture- und Foursquare-Konfigurationen bytegleich. Nur eine fehlende Foursquare-Konfiguration wird erzeugt. `--foursquare-config` und `--foursquare-profile` erlauben abweichende Pfade. Die Ergaenzung setzt keinen Cursor zurueck und startet keine Timer. Foursquare prueft am zweiten Monatstag um 02:40 Uhr (`Asia/Jerusalem`) auf einen neuen Snapshot. Nur offener Restbestand aktiviert seine stuendlichen Fortsetzungen, mit maximal 9000 Erfolgen je Lauf und hoechstens einem automatischen Importstart je Kalenderstunde. Jede neue oder geaenderte Zeile kann sofort verarbeitet werden; 9000 ist keine Mindestmenge. Der Installer aktiviert keine Units.
 
 Die gemeinsame Sveevee-API begrenzt alle Jobs zusammen. 9000 ist eine Obergrenze, keine garantierte Menge pro Stunde: Antwortzeiten, Dubletten, Reviews und Rate Limits beeinflussen die Laufzeit. Bei einem voruebergehenden API-Ausfall bleiben Kandidaten und Batches fuer den naechsten Lauf erhalten. Die vorhandenen Overture-, Gov- und Tel-Aviv-Einstellungen werden durch die neue Quelle nicht angepasst.
 
@@ -127,7 +127,7 @@ php bin/prepare-overture.php --config=config/worker.overture.json \
   --duckdb=/path/to/duckdb --output=/path/to/overture.sqlite
 ```
 
-Fuer eine neue monatliche Ausgabe kann derselbe Befehl mit `--release=latest` oder einer expliziten Versionsnummer ausgefuehrt werden. Die Quelldatei wird getrennt von den halbstuendlichen Imports erneuert; der Import selbst loest keinen erneuten Download aus. Der Vorbereitungsbefehl importiert keine Seiten und startet keinen Timer.
+Fuer eine manuelle neue Ausgabe kann derselbe Befehl mit `--release=latest` oder einer expliziten Versionsnummer ausgefuehrt werden. Der automatische Monatslauf am ersten Monatstag um 02:10 Uhr verwendet `worker run --refresh` und prueft den offiziellen neuesten Stand. Gleiche Versionen bleiben unveraendert; ein neuer vollstaendiger Snapshot wird atomar bereitgestellt. Ein laufender alter Bestand wird vorher abgeschlossen. Der eigenstaendige Vorbereitungsbefehl importiert keine Seiten und startet keinen Timer.
 
 Der Export ist auf 768 MB DuckDB-Arbeitsspeicher, 300000 Israel-Zeilen, 1 GiB JSONL und 30 Minuten begrenzt. Die `httpfs`-Erweiterung wird bei einem Download im Ausgabeordner installiert. Eine neue SQLite-Datei wird vollstaendig aufgebaut, auf Zeilenzahl und Integritaet geprueft und erst dann atomar veroeffentlicht. Im Vollmodus muessen `read` und `accepted` exakt uebereinstimmen und `skipped` leer sein; schon eine unerwartet verworfene Zeile verhindert die Veroeffentlichung. Leere, abgeschnittene, doppelte oder fehlerhafte Exporte ersetzen keinen bestehenden Datenstand. Auch ein aelterer Stand, ein Rueckgang um mehr als die Haelfte oder ein versehentlicher Wechsel von Vollsnapshot zu gefiltertem Katalog wird abgewiesen und kann zunaechst unter einem anderen `--output` untersucht werden.
 
@@ -340,7 +340,7 @@ cd /var/www/sveevee
 sudo bash sveevee-worker/deploy/install.sh
 ```
 
-Der Installer kopiert den Worker nach `/var/www/sveevee-worker`, erstellt den Systemnutzer und installiert die vier Services mit ihren vier Timern sowie die getrennten Datenverzeichnisse. Er verweigert ein Update, solange einer der Jobs oder Timer aktiv ist, und startet oder aktiviert nichts automatisch. Die optionale Foursquare-Konfiguration wird separat mit `--add-foursquare` erzeugt.
+Der Installer kopiert den Worker nach `/var/www/sveevee-worker`, erstellt den Systemnutzer und installiert die vier Hauptjobs sowie die beiden bedingten Overture-/Foursquare-Fortsetzungsjobs mit ihren Timern. Er verweigert ein Update, solange einer der Jobs oder Timer aktiv ist, und startet oder aktiviert nichts automatisch. Fuer bestehende versionierte Live-Runtimes die gesonderten [Deploymenthinweise](docs/monthly-imports.md) beachten; vorhandene runtime.conf-Drop-ins haben Vorrang vor Basis-Units. Die optionale Foursquare-Konfiguration wird separat mit `--add-foursquare` erzeugt.
 
 Der Installer sichert ein vorhandenes `/etc/systemd/system/sveevee-worker.timer.d/schedule.conf` unter `/var/backups/sveevee` und ersetzt es durch den Zehn-Minuten-Zeitplan. Damit bleiben alte taegliche oder stuendliche Overrides nicht versehentlich wirksam.
 
@@ -441,10 +441,10 @@ sudo systemctl restart sveevee-worker.timer sveevee-tel-aviv.timer
 systemctl list-timers sveevee-worker.timer sveevee-tel-aviv.timer sveevee-overture.timer
 ```
 
-Overture behaelt seinen bisherigen Zeitplan und seine Freigabe. Bei einer erstmaligen Installation oder wenn sein Timer fuer das gemeinsame Code-Update angehalten wurde, den bereits geprueften Overture-Job danach wieder aktivieren:
+Overture und Foursquare verwenden die neue Monatspruefung und bedingte Fortsetzung. Aktivierung erst nach Pruefung von DuckDB, Downloadzugang und effektiven Runtime-Units sowie ausdruecklicher Freigabe; siehe [Betriebsablauf](docs/monthly-imports.md). Beispiel fuer den freigegebenen Overture-Job:
 
 ```bash
-sudo systemctl enable --now sveevee-overture.timer
+sudo systemctl enable --now sveevee-overture.timer sveevee-overture-continue.timer
 ```
 
 Manueller systemd-Lauf und Kontrolle:
@@ -468,6 +468,15 @@ Gov-SQLite, Logs und Reports liegen unter `/var/lib/sveevee-worker`, Tel Aviv un
 
 Gezielte Reparaturen fehlender Orts-/Kategorie-Metadaten: [Audit und Vorschau-/Importablauf](../docs/import-catalog-repair.md). `bin/repair-catalog.php` startet standardmaessig eine Datenbank-Lesevorschau; `--apply` merkt nur lokale Kandidaten vor.
 
+Nach einer ausdruecklich genehmigten separaten Anlage von Foursquare-Prueffaellen exportiert der Backend-Befehl `business-import:import-foursquare-reviews --decisions=/geschuetzter/pfad/decisions.json` bestaetigte Quellen-/Seitenzuordnungen. Nur dieses aus der vertrauenswuerdigen Backend-Instanz uebernommene Manifest darf lokal abgeglichen werden:
+
+```bash
+php bin/reconcile-foursquare-reviews.php --config=/etc/sveevee-worker/worker.foursquare.json --env-file=/etc/sveevee-worker/worker.env --manifest=/geschuetzter/pfad/decisions.json --limit=9000
+# Nach Pruefung derselbe Aufruf mit --apply.
+```
+
+Die Vorschau oeffnet die Worker-Datenbank schreibgeschuetzt. `--apply` uebernimmt hoechstens 9000 bestaetigte PageIDs je Aufruf ausschliesslich fuer passende lokale `review`-Datensaetze; unveraenderte Quellenmetadaten muessen den SHA256 des Backend-Receipts bestaetigen. Bereits bestaetigte Entscheidungen werden uebersprungen, sodass derselbe begrenzte Aufruf fortgesetzt werden kann. Offene Batches, abweichende Zuordnungen sowie `closed`/`claimed` bleiben geschuetzt. Das Journal `foursquare_review_reconciliations` enthaelt Entscheidung und lokalen Vorzustand fuer kontrollierte Wiederholungen beziehungsweise einen geprueften Rollback. Der Befehl importiert nichts, setzt keine Reviewfaelle auf `pending` und aendert weder Payloads, Quellencursor, bisherige Batches noch alte Laufberichte. Er nutzt dieselbe Prozesssperre wie der Foursquare-Worker. `0` bedeutet abgeschlossene Auswertung (auch mit separat gemeldeten `blocked`/`waiting`); `1` meldet ungueltige Optionen/Manifeste oder einen Speicherfehler. Ein schreibender Live-Abgleich ist ein eigener freizugebender Schritt.
+
 ## Tests
 
 ```bash
@@ -480,6 +489,9 @@ php -d xdebug.mode=off tests/source_pagination.php
 php -d xdebug.mode=off tests/source_records.php
 php -d xdebug.mode=off tests/source_catalog_metadata.php
 php -d xdebug.mode=off tests/catalog_repair.php
+php -d xdebug.mode=off tests/foursquare_reconciliation.php
+php -d xdebug.mode=off tests/monthly_refresh.php
+php -d xdebug.mode=off tests/snapshot_delta.php
 php -d xdebug.mode=off tests/government_pipeline.php
 php -d xdebug.mode=off tests/tel_aviv_all_records.php
 php -d xdebug.mode=off tests/tel_aviv_source.php

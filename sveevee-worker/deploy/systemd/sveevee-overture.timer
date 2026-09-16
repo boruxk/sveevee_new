@@ -1,8 +1,8 @@
 [Unit]
-Description=Run the Sveevee Overture Places worker every thirty minutes
+Description=Check the latest Overture Places release once monthly
 
 [Timer]
-OnCalendar=*-*-* *:00,30:00 Asia/Jerusalem
+OnCalendar=*-*-01 02:10:00 Asia/Jerusalem
 RandomizedDelaySec=0
 AccuracySec=1s
 Persistent=true

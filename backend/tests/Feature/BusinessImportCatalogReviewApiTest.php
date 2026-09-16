@@ -65,7 +65,7 @@ class BusinessImportCatalogReviewApiTest extends TestCase
                 ->assertJsonPath('data.catalog_city', null)
                 ->assertJsonCount(2, 'data.source_categories')
                 ->assertJsonPath('data.source_categories.0', ['provider' => $provider, 'key' => 'unknown_source_type', 'label' => 'Original category label'])
-                ->assertJsonPath('data.category_key', $payload['category_key'] ?? null);
+                ->assertJsonPath('data.category_key', 'food_catering.cafes');
         }
         $this->assertDatabaseCount('business_import_cities', 3);
         $this->assertDatabaseCount('business_import_categories', 6);

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\BusinessImportException;
 use App\Exceptions\BusinessImportReviewException;
 use App\Exceptions\ExactPageDuplicateException;
+use App\Models\BusinessImportMatchReview;
 use App\Models\BusinessImportPage;
 use App\Models\BusinessImportSource;
 use App\Models\Page;
@@ -145,6 +146,7 @@ class BusinessImportService
         if ($source !== null) {
             $this->closures->assertSourceOpen($source);
             $input = $this->withoutInvalidSourceWebsite($input);
+            $input = $this->sourceCatalog->normalizeInput($input, $source);
         }
         $prepared = [
             ...$input,
@@ -530,6 +532,7 @@ class BusinessImportService
         }
         $this->assertBusinessType($input);
         $input = $this->withoutInvalidSourceWebsite($input);
+        $input = $this->sourceCatalog->normalizeInput($input, $source);
         if ($this->enrichesExisting($source)) {
             Validator::make($input, [
                 'name' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -624,6 +627,104 @@ class BusinessImportService
         return ['review_id' => $review->id, 'reason' => $review->reason];
     }
 
+    /** Explicit local/operator approval of a stored review; never changes a candidate page or alias. */
+    public function importApprovedFoursquareReview(int $reviewId, bool $dryRun = true): array
+    {
+        $candidate = BusinessImportMatchReview::whereKey($reviewId)->where('provider', 'foursquare_places')->first();
+        if ($candidate === null) {
+            return ['status' => 'skipped'];
+        }
+        $process = function () use ($candidate, $dryRun): array {
+            $query = BusinessImportMatchReview::whereKey($candidate->id)->where('provider', 'foursquare_places');
+            $review = ($dryRun ? $query : $query->lockForUpdate())->first();
+            if ($review === null || ! in_array($review->status, ['pending', 'imported_separately'], true) || $review->source_id !== $candidate->source_id) {
+                return ['status' => 'skipped'];
+            }
+            if (! is_array($review->payload)) {
+                return ['status' => 'invalid'];
+            }
+            $input = $review->payload;
+            $this->assertKnownFields($input);
+            $this->assertBusinessType($input);
+            $source = $this->sourceDescriptor($input);
+            if ($source === null || $source['provider'] !== 'foursquare_places' || $source['id'] !== $review->source_id) {
+                return ['status' => 'invalid'];
+            }
+            $metadata = $source['metadata'];
+            $original = is_array($metadata['original_record'] ?? null) ? $metadata['original_record'] : [];
+            if (($metadata['country'] ?? $original['country'] ?? null) !== 'IL'
+                || (isset($original['country']) && $original['country'] !== 'IL')
+                || (isset($original['fsq_place_id']) && $original['fsq_place_id'] !== $source['id'])) {
+                return ['status' => 'invalid'];
+            }
+            if (filled($metadata['date_closed'] ?? null) || filled($original['date_closed'] ?? null)) {
+                return ['status' => 'closed'];
+            }
+            $this->closures->assertSourceOpen($source);
+            $mappingQuery = $this->sourceQuery($source);
+            $mapping = ($dryRun ? $mappingQuery : $mappingQuery->lockForUpdate())->first();
+            if ($mapping !== null) {
+                // A direct association is authoritative, even when its page is now claimed or deleted.
+                if (! $dryRun && $review->status === 'pending') {
+                    $review->forceFill(['status' => 'linked_existing'])->save();
+                }
+                $decision = $review->resolution;
+                $validDecision = $review->status === 'imported_separately' && is_array($decision)
+                    && ($decision['review_id'] ?? null) === $review->id && ($decision['source_id'] ?? null) === $source['id']
+                    && ($decision['page_id'] ?? null) === $mapping->page_id && ($decision['source_url'] ?? null) === $mapping->url
+                    && ($decision['operation'] ?? null) === 'created'
+                    && ($decision['source_metadata_hash'] ?? null) === $this->payloadHash($mapping->metadata)
+                    && $mapping->page_id !== null && Page::whereKey($mapping->page_id)->exists();
+
+                return ['status' => 'already_associated', 'page_id' => $mapping->page_id,
+                    ...($validDecision ? ['decision' => $decision] : [])];
+            }
+            if ($review->status !== 'pending') {
+                return ['status' => 'skipped'];
+            }
+            unset($input['id'], $input['source']);
+            $input['type'] = Page::TYPE_BUSINESS;
+            $input = $this->withoutInvalidSourceWebsite($input);
+            $input = $this->sourceCatalog->normalizeInput($input, $source);
+            $data = $this->pages->validate($input, allowSourcePlace: true);
+            $data['palette_key'] = $this->pages->automaticPalette($input, $input['palette_key'] ?? null);
+            $worker = $this->creator();
+            if ($dryRun) {
+                return ['status' => 'would_create'];
+            }
+            $page = $this->pages->createApprovedFoursquareReview($worker, $data, $review);
+            $decision = [
+                'review_id' => $review->id, 'source_id' => $source['id'], 'source_url' => $source['url'], 'page_id' => $page->id,
+                'operation' => 'created', 'decided_at' => now()->toIso8601String(), 'source_metadata_hash' => $this->payloadHash($source['metadata']),
+            ];
+            BusinessImportSource::create([
+                'provider' => $source['provider'], 'source_id' => $source['id'], 'page_id' => $page->id,
+                'url' => $source['url'], 'metadata' => $source['metadata'],
+            ]);
+            BusinessImportPage::create(['page_id' => $page->id, 'last_payload_hash' => $this->payloadHash($data)]);
+            $this->sourceCatalog->record($page, $source, $input);
+            $review->forceFill(['status' => 'imported_separately', 'resolution' => $decision])->save();
+
+            return ['status' => 'created', 'page_id' => $page->id, 'decision' => $decision];
+        };
+        try {
+            if ($dryRun) {
+                return $process();
+            }
+            $key = 'business-import-source:'.hash('sha256', 'foursquare_places|'.$candidate->source_id);
+
+            return Cache::lock($key, 60)->block(10, fn (): array => DB::transaction($process, 3));
+        } catch (ValidationException $error) {
+            return ['status' => 'invalid', 'fields' => array_keys($error->errors())];
+        } catch (BusinessImportException $error) {
+            if ($error->reason === 'source_closed') {
+                return ['status' => 'closed'];
+            }
+
+            throw $error;
+        }
+    }
+
     private function enrichesExisting(array $source): bool
     {
         return in_array($source['provider'], ['foursquare_places', 'osm_places'], true);
@@ -653,6 +754,14 @@ class BusinessImportService
                 if (! filled($current['address'][$field] ?? null) && filled($input['address'][$field] ?? null)) {
                     $patch['address'][$field] = $input['address'][$field];
                 }
+            }
+            $currentCity = $current['address']['city'] ?? null;
+            $incomingCity = $input['address']['city'] ?? null;
+            if (is_string($currentCity) && is_string($incomingCity)
+                && ($canonicalCity = $this->sourceCatalog->knownCity($currentCity)) !== null
+                && $canonicalCity === $this->sourceCatalog->knownCity($incomingCity)
+                && $currentCity !== $canonicalCity) {
+                $patch['address']['city'] = $canonicalCity;
             }
             if ($source['provider'] === 'osm_places' && empty($current['opening_hours']) && ! filled($page->setup['imported_opening_hours'] ?? null) && ! empty($input['opening_hours'])) {
                 $patch['opening_hours'] = $input['opening_hours'];

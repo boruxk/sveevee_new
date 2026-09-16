@@ -17,6 +17,7 @@ use Sveevee\Worker\Http\CurlHttpClient;
 use Sveevee\Worker\Http\SafeWebClient;
 use Sveevee\Worker\Http\UrlGuard;
 use Sveevee\Worker\Pipeline\ClosedBusinessRemovalService;
+use Sveevee\Worker\Pipeline\FullSnapshotRefresh;
 use Sveevee\Worker\Pipeline\ImportService;
 use Sveevee\Worker\Pipeline\ResearchService;
 use Sveevee\Worker\Pipeline\ResearchTargetScheduler;
@@ -63,6 +64,14 @@ final class Application
             $localOnlyRunLogs = $config->fullSourceProvider() === 'osm_places'
                 && ! $config->bool('sources.osm_places.allow_public_import', false);
             $paths = $this->paths($config);
+            if (($options['continue_snapshot'] ?? false) || (($options['refresh'] ?? false) && $command === 'run')) {
+                if (! in_array($config->fullSourceProvider(), ['overture_places', 'foursquare_places'], true)) {
+                    throw new RuntimeException('Import snapshot refresh/continuation requires full-source Overture or Foursquare.');
+                }
+            }
+            if (($options['continue_snapshot'] ?? false) && ! is_file(FullSnapshotRefresh::marker($paths))) {
+                return 0;
+            }
             $this->assertExtensions($config, $command);
             if ($command === 'remove-closed-businesses' && $config->fullSourceProvider() !== 'foursquare_places') {
                 throw new RuntimeException('Closed-business removal requires the dedicated Foursquare full-source config.');
@@ -96,6 +105,11 @@ final class Application
 
             $lock = new ProcessLock($paths['lock']);
             $lock->acquire();
+            if (($options['continue_snapshot'] ?? false) && ! (new FullSnapshotRefresh($config, $repository, $paths))->canStartImport()) {
+                $logger->info('Snapshot continuation is waiting for the next hourly import window.');
+
+                return 0;
+            }
             if ($command === 'retry-failed') {
                 $count = $repository->resetFailed($options['limit'] ?? 1000);
                 $logger->info('Failed businesses returned to the pending queue.', ['count' => $count]);
@@ -106,6 +120,9 @@ final class Application
             $dryRun = $command === 'remove-closed-businesses'
                 ? ! ($options['apply'] ?? false) : (bool) ($options['dry_run'] ?? false);
             $limit = max(1, (int) ($options['limit'] ?? $config->int('target_per_run', 1000)));
+            if (in_array($config->fullSourceProvider(), ['overture_places', 'foursquare_places'], true)) {
+                $limit = min(9000, $limit);
+            }
             $runId = Uuid::v4();
             $report = new RunReport($runId, $command, $dryRun);
             if (in_array('foursquare_places', $enabledSources, true)) {
@@ -127,6 +144,36 @@ final class Application
 
             try {
                 $research = null;
+                $snapshotRefresh = null;
+                $skipSnapshotImport = false;
+                if ($command === 'run' && (($options['refresh'] ?? false) || ($options['continue_snapshot'] ?? false))) {
+                    // Construction performs no HTTP; refresh failures can still publish their admin report.
+                    $api = $this->api($config);
+                    $snapshotRefresh = new FullSnapshotRefresh($config, $repository, $paths);
+                    if (($options['refresh'] ?? false) || $snapshotRefresh->deferredRefreshReady()) {
+                        $source = $config->fullSourceProvider();
+                        $report->source($source, 0);
+                        $duckdb = (string) ($options['duckdb'] ?? $config->source($source)['duckdb_binary'] ?? 'duckdb');
+                        if (! in_array($duckdb, ['duckdb', 'duckdb.exe'], true)) {
+                            $duckdb = $config->resolvePath($duckdb);
+                        }
+                        $refreshed = $snapshotRefresh->refresh($duckdb);
+                        $logger->info('Source snapshot version checked.', $refreshed);
+                        if ($refreshed['status'] === 'deferred') {
+                            $report->error('snapshot_refresh_deferred', 'A newer source version is waiting for the current snapshot to finish.', $refreshed);
+                        }
+                        if (! $dryRun) {
+                            $snapshotRefresh->updateContinuation($refreshed['status'] === 'deferred');
+                        }
+                    }
+                    $skipSnapshotImport = ! $snapshotRefresh->canStartImport();
+                    if (! $dryRun && ! $skipSnapshotImport) {
+                        $snapshotRefresh->markImportStarted();
+                    }
+                    if ($skipSnapshotImport) {
+                        $logger->info('Snapshot import is deferred until the next hourly import window.');
+                    }
+                }
                 if ($config->fullSourceProvider() === 'osm_places' && in_array($command, ['run', 'import'], true)
                     && ! $dryRun && ! $config->bool('sources.osm_places.allow_public_import', false)) {
                     throw new RuntimeException('OpenStreetMap is configured for preview only; use --dry-run.');
@@ -151,9 +198,9 @@ final class Application
                     (new ClosedBusinessRemovalService($api))->run($snapshot, $dryRun, $report);
                 }
                 // Scan the complete ordered schedule; empty combinations do not use a productive slot.
-                $selectedTargets = $command === 'remove-closed-businesses' ? []
+                $selectedTargets = $command === 'remove-closed-businesses' || $skipSnapshotImport ? []
                     : $targetScheduler->next($targets, max(1, count($targets)));
-                if (in_array($command, ['research', 'run'], true)) {
+                if (in_array($command, ['research', 'run'], true) && ! $skipSnapshotImport) {
                     [$sources, $enrichers] = $this->researchComponents(
                         $config, $repository, $normalizer, $merger, $openingHours, $report
                     );
@@ -169,7 +216,7 @@ final class Application
                     }
                 }
 
-                if (in_array($command, ['import', 'run'], true)) {
+                if (in_array($command, ['import', 'run'], true) && ! $skipSnapshotImport) {
                     $api = $this->api($config);
                     (new ImportService(
                         $api, $repository, $merger, $logger,
@@ -180,6 +227,9 @@ final class Application
                     );
                 }
                 $research?->reportProgress($report);
+                if ($snapshotRefresh !== null && ! $dryRun) {
+                    $snapshotRefresh->updateContinuation();
+                }
                 $written = $report->write($paths['reports']);
                 $repository->finishRun($runId, 'completed', $written['path'], $written['report']);
                 if (! $localOnlyRunLogs) {
@@ -414,12 +464,17 @@ final class Application
 
                 continue;
             }
-            if ($argument === '--refresh' && $command === 'remove-closed-businesses') {
+            if ($argument === '--refresh' && in_array($command, ['run', 'remove-closed-businesses'], true)) {
                 $options['refresh'] = true;
 
                 continue;
             }
-            foreach (['limit', 'config', 'env-file', ...($command === 'remove-closed-businesses' ? ['duckdb'] : [])] as $name) {
+            if ($argument === '--continue-snapshot' && $command === 'run') {
+                $options['continue_snapshot'] = true;
+
+                continue;
+            }
+            foreach (['limit', 'config', 'env-file', ...(in_array($command, ['run', 'remove-closed-businesses'], true) ? ['duckdb'] : [])] as $name) {
                 if ($argument === '--'.$name && isset($arguments[$index + 1])) {
                     $options[str_replace('-', '_', $name)] = $arguments[++$index];
 
@@ -442,8 +497,15 @@ final class Application
         if (isset($options['apply'], $options['dry_run'])) {
             throw new RuntimeException('Choose either --apply or --dry-run.');
         }
-        if (isset($options['duckdb']) && ! ($options['refresh'] ?? false)) {
-            throw new RuntimeException('--duckdb requires --refresh.');
+        if (isset($options['refresh'], $options['continue_snapshot'])) {
+            throw new RuntimeException('Choose --refresh or --continue-snapshot.');
+        }
+        if ($command === 'run' && ($options['dry_run'] ?? false)
+            && (($options['refresh'] ?? false) || ($options['continue_snapshot'] ?? false))) {
+            throw new RuntimeException('Automatic snapshot refresh/continuation changes local snapshots; use an isolated normal run instead of --dry-run.');
+        }
+        if (isset($options['duckdb']) && ! ($options['refresh'] ?? false) && ! ($options['continue_snapshot'] ?? false)) {
+            throw new RuntimeException('--duckdb requires --refresh or --continue-snapshot.');
         }
 
         return [$command, $options];
@@ -458,6 +520,8 @@ Usage:
   worker research [--limit=100] [--dry-run]
   worker import [--limit=100] [--dry-run]
   worker run [--limit=100] [--dry-run]
+  worker run --config=config/worker.overture.json --refresh [--duckdb=PATH]
+  worker run --config=config/worker.foursquare.json --continue-snapshot [--duckdb=PATH]
   worker status
   worker retry-failed [--limit=100]
   worker remove-closed-businesses --config=config/worker.foursquare.json [--refresh] [--apply]
@@ -468,8 +532,9 @@ Options:
   --limit=N        Maximum businesses for this work block
   --dry-run        Permit reads and local state, but no Sveevee writes
   --apply          Apply closed-business removals (that command otherwise defaults to dry-run)
-  --refresh        Download a fresh Foursquare snapshot before checking closures, under the same lock
-  --duckdb=PATH    DuckDB executable for a closure --refresh (default: source config)
+  --refresh        Check the latest OV/FSQ version before import, or refresh Foursquare closure evidence
+  --continue-snapshot  Continue only explicitly marked OV/FSQ backlog, without routine downloads
+  --duckdb=PATH    DuckDB executable for a snapshot refresh (default: source config)
 
 TEXT);
     }

@@ -67,6 +67,20 @@ final class CatalogRepairGateway implements SveeveeGateway
     }
 }
 
+final class CatalogRepairQueryDatabase extends PDO
+{
+    public array $cohortQueries = [];
+
+    public function prepare(string $query, array $options = []): PDOStatement|false
+    {
+        if (str_starts_with($query, 'SELECT s.id AS source_row_id,')) {
+            $this->cohortQueries[] = $query;
+        }
+
+        return parent::prepare($query, $options);
+    }
+}
+
 final class CatalogRepairFixture
 {
     public readonly Database $database;
@@ -191,6 +205,39 @@ $throws = static function (callable $action) use ($assert): void {
     $assert(false, 'Expected an unsafe repair to fail.');
 };
 $tests = [];
+$tests['read-only cohort pagination uses the rowid range without sorting the provider'] = static function () use ($fixture, $assert): void {
+    $f = $fixture(range(1, 205));
+    $assert((int) $f->database->pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='business_sources_lookup_idx'")->fetchColumn() === 1,
+        'The regression fixture must include the competing adapter/source_url index.');
+    $readonly = new CatalogRepairQueryDatabase('sqlite:'.$f->directory.'/worker.sqlite', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::SQLITE_ATTR_OPEN_FLAGS => PDO::SQLITE_OPEN_READONLY]);
+    $readonly->exec('PRAGMA query_only=ON');
+    foreach ([false, true] as $hasTracker) {
+        if ($hasTracker) {
+            $f->repair(true, 1);
+        }
+        $before = $f->database->pdo->query('SELECT * FROM businesses ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
+        foreach (['overture_places', 'foursquare_places'] as $provider) {
+            $readonly->cohortQueries = [];
+            $service = new CatalogRepairService($readonly, $f->normalizer, $f->merger, $f->source);
+            $summary = $service->run($provider, limit: 2);
+            if ($provider === 'overture_places' && ! $hasTracker) {
+                $assert($summary['examined'] === 205 && $summary['would_queue'] === 2 && $summary['beyond_limit'] === 203 && $summary['queued'] === 0,
+                    'Keyset pagination must retain all candidates across three chunks while limiting the proposed queue.');
+                $assert(count($readonly->cohortQueries) === 3, 'The cohort must be read in bounded 100-row chunks.');
+            }
+            $assert(count($readonly->cohortQueries) > 0, 'The service must execute its cohort query for each provider.');
+            foreach ([0, 100] as $last) {
+                $query = $readonly->prepare('EXPLAIN QUERY PLAN '.$readonly->cohortQueries[0]);
+                $query->execute([$provider, $last]);
+                $details = implode(' | ', $query->fetchAll(PDO::FETCH_COLUMN, 3));
+                $assert(str_contains($details, 'SEARCH s USING INTEGER PRIMARY KEY (rowid>?)') && ! str_contains($details, 'USE TEMP B-TREE'),
+                    'Each actual cohort query must scan the source primary-key range without a temporary sort: '.$details);
+            }
+        }
+        $assert($before === $f->database->pdo->query('SELECT * FROM businesses ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
+            'Read-only query-plan validation and preview must not stage any business.');
+    }
+};
 $tests['preview is read-only and staging preserves source history, cursors and completed batches'] = static function () use ($fixture, $assert): void {
     $f = $fixture([1, 2, 3]);
     $history = $f->history();

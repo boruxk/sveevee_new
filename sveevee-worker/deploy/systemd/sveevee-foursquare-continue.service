@@ -1,7 +1,8 @@
 [Unit]
-Description=Sveevee Foursquare Places import worker
+Description=Continue the current Foursquare snapshot, at most 9000 successful imports
 Wants=network-online.target
-After=network-online.target
+After=network-online.target sveevee-foursquare.service
+ConditionPathExists=/var/lib/sveevee-worker/foursquare/snapshot-import.pending.json
 
 [Service]
 Type=oneshot
@@ -10,7 +11,7 @@ Group=sveevee-worker
 WorkingDirectory=/var/www/sveevee-worker
 EnvironmentFile=/etc/sveevee-worker/worker.env
 EnvironmentFile=/etc/sveevee-worker/foursquare-download.env
-ExecStart=/usr/bin/php /var/www/sveevee-worker/bin/worker run --config=/etc/sveevee-worker/worker.foursquare.json --refresh --duckdb=/usr/local/bin/duckdb --limit=9000
+ExecStart=/usr/bin/php /var/www/sveevee-worker/bin/worker run --config=/etc/sveevee-worker/worker.foursquare.json --continue-snapshot --duckdb=/usr/local/bin/duckdb --limit=9000
 StateDirectory=sveevee-worker/foursquare
 UMask=0077
 Nice=10

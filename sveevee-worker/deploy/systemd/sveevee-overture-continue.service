@@ -1,7 +1,8 @@
 [Unit]
-Description=Sveevee Overture Places import worker
+Description=Continue the current Overture snapshot, at most 9000 successful imports
 Wants=network-online.target
-After=network-online.target
+After=network-online.target sveevee-overture.service
+ConditionPathExists=/var/lib/sveevee-worker/overture/snapshot-import.pending.json
 
 [Service]
 Type=oneshot
@@ -9,7 +10,7 @@ User=sveevee-worker
 Group=sveevee-worker
 WorkingDirectory=/var/www/sveevee-worker
 EnvironmentFile=/etc/sveevee-worker/worker.env
-ExecStart=/usr/bin/php /var/www/sveevee-worker/bin/worker run --config=/etc/sveevee-worker/worker.overture.json --refresh --duckdb=/usr/local/bin/duckdb --limit=9000
+ExecStart=/usr/bin/php /var/www/sveevee-worker/bin/worker run --config=/etc/sveevee-worker/worker.overture.json --continue-snapshot --duckdb=/usr/local/bin/duckdb --limit=9000
 StateDirectory=sveevee-worker/overture
 UMask=0077
 Nice=10

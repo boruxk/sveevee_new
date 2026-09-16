@@ -121,7 +121,7 @@ final class OverturePlacesSource implements CursorSourceInterface
                 if ($business === null) {
                     throw new RuntimeException('The full Overture snapshot contains an invalid row; rebuild it.');
                 }
-                if (! $this->repository->shouldProcessUrl($this->name(), $business['source_url'], $this->refreshAfterDays(), SourceFingerprint::hash($business), reconsiderLegacyOverture: true)) {
+                if (! $this->repository->shouldProcessSnapshotRow($this->name(), $business['source_url'], $business)) {
                     $this->acknowledge($business);
 
                     continue;

@@ -16,6 +16,8 @@ class ImportSourceCatalogService
 
     private array $cityAliases = [];
 
+    private array $resolvedCategories = [];
+
     /** Called inside the successful source import transaction, after ownership checks. */
     public function record(Page $page, array $source, array $input = []): void
     {
@@ -109,9 +111,9 @@ class ImportSourceCatalogService
             if (! is_array($descriptor)) {
                 continue;
             }
-            foreach (['catalog_key', 'key'] as $field) {
+            foreach (['key', 'catalog_key'] as $field) {
                 $key = $this->text($descriptor[$field] ?? null, 120);
-                if ($key !== null && ($mapped = CatalogTopics::canonicalKeyForScope($key, CatalogTopics::SCOPE_BUSINESS_PAGES)) !== null) {
+                if ($key !== null && ($mapped = $this->knownCategory($source['provider'], $key)) !== null) {
                     $category ??= $mapped;
                 }
             }
@@ -125,6 +127,40 @@ class ImportSourceCatalogService
             'number' => $this->text($address['number'] ?? $original['house_number'] ?? null, 40),
             'neighborhood' => $this->text($address['neighborhood'] ?? $original['neighborhood'] ?? null, 120),
         ]];
+    }
+
+    /** Apply reviewed catalog aliases without replacing the original source evidence. */
+    public function normalizeInput(array $input, array $source): array
+    {
+        $city = $input['address']['city'] ?? null;
+        if (is_string($city) && ($known = $this->knownCity($city)) !== null) {
+            $input['address']['city'] = $known;
+        }
+        if (! filled($input['category_key'] ?? null)) {
+            $category = $this->metadataInput($source)['category_key'];
+            if ($category !== null) {
+                $input['category_key'] = $category;
+            }
+        }
+
+        return $input;
+    }
+
+    /** Only source-specific, reviewed aliases can promote a raw source category. */
+    public function knownCategory(string $provider, ?string $key): ?string
+    {
+        $key = $this->text($key, 255);
+        if ($key === null) {
+            return null;
+        }
+        $cacheKey = $provider.'|'.$key;
+        if (! array_key_exists($cacheKey, $this->resolvedCategories)) {
+            $target = config('import_category_aliases', [])[$provider][$key] ?? $key;
+            $this->resolvedCategories[$cacheKey] = is_string($target)
+                ? CatalogTopics::canonicalKeyForScope($target, CatalogTopics::SCOPE_BUSINESS_PAGES) : null;
+        }
+
+        return $this->resolvedCategories[$cacheKey];
     }
 
     /** Resolve only current catalog names and explicitly documented import aliases. */
@@ -170,11 +206,11 @@ class ImportSourceCatalogService
         $categories = [];
         foreach ($this->descriptors($metadata, $provider) as $descriptor) {
             if (! is_array($descriptor) || ($key = $this->text($descriptor['key'] ?? null, 255)) === null
-                || CatalogTopics::canonicalKeyForScope($key, CatalogTopics::SCOPE_BUSINESS_PAGES) !== null) {
+                || $this->knownCategory($provider, $key) !== null) {
                 continue;
             }
             $mappedKey = $this->text($descriptor['catalog_key'] ?? null, 120);
-            if ($mappedKey !== null && CatalogTopics::canonicalKeyForScope($mappedKey, CatalogTopics::SCOPE_BUSINESS_PAGES) !== null) {
+            if ($mappedKey !== null && $this->knownCategory($provider, $mappedKey) !== null) {
                 continue;
             }
             $categories[$this->valueHash($key)] ??= [

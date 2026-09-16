@@ -14,7 +14,7 @@ for command in php rsync systemctl; do
     fi
 done
 
-for unit in sveevee-worker.timer sveevee-worker.service sveevee-tel-aviv.timer sveevee-tel-aviv.service sveevee-overture.timer sveevee-overture.service sveevee-foursquare.timer sveevee-foursquare.service; do
+for unit in sveevee-worker.timer sveevee-worker.service sveevee-tel-aviv.timer sveevee-tel-aviv.service sveevee-overture.timer sveevee-overture.service sveevee-foursquare.timer sveevee-foursquare.service sveevee-overture-continue.timer sveevee-overture-continue.service sveevee-foursquare-continue.timer sveevee-foursquare-continue.service; do
     state="$(systemctl show --property=ActiveState --value "${unit}" 2>/dev/null || true)"
     case "${state}" in
         active|activating|deactivating|reloading)
@@ -60,7 +60,7 @@ if [[ ! -f "${CONFIG_DIR}/worker.env" ]]; then
         "${SOURCE_DIR}/.env.example" "${CONFIG_DIR}/worker.env"
 fi
 
-for unit in sveevee-worker.service sveevee-worker.timer sveevee-tel-aviv.service sveevee-tel-aviv.timer sveevee-overture.service sveevee-overture.timer sveevee-foursquare.service sveevee-foursquare.timer; do
+for unit in sveevee-worker.service sveevee-worker.timer sveevee-tel-aviv.service sveevee-tel-aviv.timer sveevee-overture.service sveevee-overture.timer sveevee-foursquare.service sveevee-foursquare.timer sveevee-overture-continue.service sveevee-overture-continue.timer sveevee-foursquare-continue.service sveevee-foursquare-continue.timer; do
     if [[ -f "/etc/systemd/system/${unit}" ]]; then
         install -d -m 0700 /var/backups/sveevee
         cp -p "/etc/systemd/system/${unit}" "/var/backups/sveevee/${unit}-$(date -u +%Y%m%dT%H%M%SZ)-$$"
@@ -84,3 +84,5 @@ echo "Configure ${CONFIG_DIR}/worker.env and ${CONFIG_DIR}/worker.json before te
 echo "Preview then apply deploy/configure-rotation.php to create/update the three job configurations."
 echo "Use deploy/configure-rotation.php --add-foursquare to add Foursquare without changing existing jobs."
 echo "Existing schedule.conf overrides were backed up and replaced with the ten-minute schedule."
+echo "Overture/Foursquare check monthly; their conditional continuation timers process marked backlog hourly."
+echo "Verify DuckDB, Foursquare download credentials and any existing runtime.conf ExecStart overrides before enabling jobs."
