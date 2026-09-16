@@ -8,6 +8,7 @@
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { saveMyPage } from '@/services/api/pages'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { pageSaveResult } from '@/utils/pageSaveResult'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
 	import BusinessDetailsFields from '@/components/pages/BusinessDetailsFields.vue'
@@ -39,6 +40,7 @@
 	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const saving = ref(false)
+	const pendingClaimReview = ref(false)
 	const formRef = ref(null)
 	const businessDetailsRef = ref(null)
 	const citySelectOptions = ref([])
@@ -90,6 +92,7 @@
 	}
 
 	function resetForm() {
+		pendingClaimReview.value = false
 		form.name = ''
 		form.public_description = ''
 		form.contact_email = authStore.user?.email || ''
@@ -152,12 +155,18 @@
 
 		saving.value = true
 		try {
-			const { data } = await saveMyPage(props.type, pagePayload())
+			const result = pageSaveResult(await saveMyPage(props.type, pagePayload()))
+			if (result.outcome === 'claim_conflict') {
+				pendingClaimReview.value = true
+				$q.notify({ type: 'info', message: t('pages.claimConflictPending') })
+				return
+			}
+			pendingClaimReview.value = false
 			rememberLocation(form.address.city, form.address.neighborhood)
 			await authStore.refreshUser()
-			$q.notify({ type: 'positive', message: t('pages.saved') })
+			$q.notify({ type: 'positive', message: t(result.outcome === 'adopted' ? 'pages.adopted' : 'pages.saved') })
 			dialogOpen.value = false
-			emit('created', data.data)
+			emit('created', result.page)
 		} catch (error) {
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('pages.saveFailed')) })
 		} finally {
@@ -220,6 +229,10 @@
 			</q-card-section>
 
 			<q-card-section class="page-create-dialog__body">
+				<q-banner v-if="pendingClaimReview" rounded class="bg-blue-1 text-dark q-mb-md" role="status" aria-live="polite">
+					<strong>{{ t('pages.claimConflictTitle') }}</strong>
+					<div>{{ t('pages.claimConflictPending') }}</div>
+				</q-banner>
 				<q-form ref="formRef" greedy class="page-create-form" @submit.prevent="submit()">
 					<q-input v-model="form.name" outlined :label="requiredLabel('pages.name')" :rules="[requiredRule]" />
 					<q-input

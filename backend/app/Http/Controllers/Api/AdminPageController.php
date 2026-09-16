@@ -9,6 +9,7 @@ use App\Models\PageClaimRequest;
 use App\Models\User;
 use App\Services\AccountNotificationService;
 use App\Services\ApiResponseService;
+use App\Services\BusinessPageClaimConflictService;
 use App\Services\PageClaimService;
 use App\Services\PageDeletionService;
 use App\Support\AccountNotificationType;
@@ -23,6 +24,7 @@ class AdminPageController extends Controller
         private readonly PageClaimService $claims,
         private readonly PageDeletionService $deletions,
         private readonly AccountNotificationService $notifications,
+        private readonly BusinessPageClaimConflictService $conflicts,
     ) {}
 
     public function index(Request $request)
@@ -155,6 +157,7 @@ class AdminPageController extends Controller
                     'claimed_at' => null,
                 ])->save();
                 $lockedPage->ads()->update(['user_id' => $worker->id]);
+                $this->resolvePendingClaims($lockedPage, null, $request->user());
 
                 if ($previousOwner?->hasRole('user')) {
                     $this->notifications->create($previousOwner, AccountNotificationType::PAGE_DETACHED, [
@@ -242,18 +245,25 @@ class AdminPageController extends Controller
         return ApiResponseService::success(null, 'Page permanently deleted.');
     }
 
-    private function resolvePendingClaims(Page $page, User $targetUser, User $admin): bool
+    private function resolvePendingClaims(Page $page, ?User $targetUser, User $admin): bool
     {
         $pendingClaims = PageClaimRequest::query()
             ->with(['conversation', 'user'])
             ->where('page_id', $page->id)
+            ->when($targetUser === null, fn ($query) => $query->where('kind', PageClaimRequest::KIND_CONFLICT))
             ->where('status', PageClaimRequest::STATUS_PENDING)
             ->lockForUpdate()
             ->get();
         $matchingClaimApproved = false;
 
         foreach ($pendingClaims as $claim) {
-            $approved = $claim->user_id === $targetUser->id;
+            $conflict = $claim->kind === PageClaimRequest::KIND_CONFLICT;
+            // A direct assignment does not apply the staged proposal. Cancel stale
+            // ownership evidence; unchanged ownership still needs explicit review.
+            if ($conflict && $this->conflicts->ownershipUnchanged($claim, $page)) {
+                continue;
+            }
+            $approved = ! $conflict && $claim->user_id === $targetUser?->id;
             $matchingClaimApproved = $matchingClaimApproved || $approved;
             $claim->setRelation('page', $page);
             $claim->forceFill([
@@ -276,7 +286,7 @@ class AdminPageController extends Controller
                 [
                     'page' => $this->notifications->pageSnapshot($page),
                     'claim_id' => $claim->id,
-                    ...($approved ? [] : ['reason' => 'claimed_by_another']),
+                    ...($approved ? [] : ['reason' => $conflict ? 'ownership_changed' : 'claimed_by_another']),
                     'action_path' => $approved ? '/'.$page->type : $page->public_path,
                 ],
             );

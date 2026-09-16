@@ -18,6 +18,7 @@
 	import { CATALOG_SCOPES, publicPagePath } from '@/constants/catalogTopics'
 	import { absoluteUrl } from '@/composables/useSeo'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { pageSaveResult } from '@/utils/pageSaveResult'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import AdCard from '@/components/AdCard.vue'
 	import AdComposer from '@/components/AdComposer.vue'
@@ -53,6 +54,7 @@
 	const authStore = useAuthStore()
 	const loading = ref(false)
 	const saving = ref(false)
+	const pendingClaimReview = ref(false)
 	const deleting = ref(false)
 	const logoUploading = ref(false)
 	const bannerUploading = ref(false)
@@ -366,6 +368,9 @@
 	}
 
 	function hydrate(value) {
+		if (value?.id) {
+			pendingClaimReview.value = false
+		}
 		const setup = value?.setup || {}
 		const contact = value?.contact || setup.contact || {}
 		const address = value?.address_details || setup.address || {}
@@ -480,12 +485,17 @@
 
 		saving.value = true
 		try {
-			const { data } = await saveMyPage(type.value, pagePayload())
-			hydrate(data.data)
+			const result = pageSaveResult(await saveMyPage(type.value, pagePayload()))
+			if (result.outcome === 'claim_conflict') {
+				pendingClaimReview.value = true
+				$q.notify({ type: 'info', message: t('pages.claimConflictPending') })
+				return false
+			}
+			hydrate(result.page)
 			rememberLocation(form.address.city, form.address.neighborhood)
 			await authStore.refreshUser()
 			if (notify) {
-				$q.notify({ type: 'positive', message: t('pages.saved') })
+				$q.notify({ type: 'positive', message: t(result.outcome === 'adopted' ? 'pages.adopted' : 'pages.saved') })
 			}
 			return true
 		} catch (error) {
@@ -909,7 +919,10 @@
 		}
 	}
 
-	watch(type, load)
+	watch(type, () => {
+		pendingClaimReview.value = false
+		load()
+	})
 	watch(pageTabs, (tabs) => {
 		if (!tabs.some((tab) => tab.name === activeTab.value)) {
 			activeTab.value = 'settings'
@@ -971,6 +984,11 @@
 					<h1 class="soz-page-title">{{ title }}</h1>
 				</div>
 			</section>
+
+			<q-banner v-if="pendingClaimReview" rounded class="bg-blue-1 text-dark q-mt-md" role="status" aria-live="polite">
+				<strong>{{ t('pages.claimConflictTitle') }}</strong>
+				<div>{{ t('pages.claimConflictPending') }}</div>
+			</q-banner>
 
 			<q-tabs
 				v-model="activeTab"

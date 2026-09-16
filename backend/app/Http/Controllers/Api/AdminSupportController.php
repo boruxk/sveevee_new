@@ -199,7 +199,7 @@ class AdminSupportController extends Controller
         );
 
         $claimRequests = $conversation->claimRequests
-            ->map(fn ($claim): array => $this->pageClaims->requestPayload($claim))
+            ->map(fn ($claim): array => $this->pageClaims->requestPayload($claim, forAdmin: true))
             ->values()
             ->all();
 

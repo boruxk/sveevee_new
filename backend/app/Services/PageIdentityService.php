@@ -26,6 +26,20 @@ class PageIdentityService
             ->chunkById(100, fn (Collection $pages) => $pages->each(fn (Page $page) => $this->sync($page)));
     }
 
+    public function ensurePage(int $pageId): void
+    {
+        // Worker lookups already know the page ID. The unique page_id index is enough;
+        // checking every page for missing keys costs a full scan even when none are missing.
+        if (PageIdentityKey::query()->where('page_id', $pageId)->exists()) {
+            return;
+        }
+
+        $page = Page::query()->find($pageId);
+        if ($page !== null) {
+            $this->sync($page);
+        }
+    }
+
     public function fromPage(Page $page): array
     {
         $setup = is_array($page->setup) ? $page->setup : [];

@@ -6,12 +6,21 @@ use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Models\PageClaimRequest;
+use App\Models\User;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
+use App\Services\BusinessPageClaimConflictService;
+use App\Services\BusinessPageMatchService;
+use App\Services\PageClaimService;
 use App\Services\PageDeletionService;
+use App\Services\PageFormDataService;
+use App\Services\PageIdentityService;
 use App\Services\PayloadService;
 use App\Support\CatalogTopics;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class PageController extends Controller
@@ -31,6 +40,11 @@ class PageController extends Controller
     public function __construct(
         private readonly PayloadService $payloads,
         private readonly PageDeletionService $deletions,
+        private readonly BusinessPageMatchService $businessMatches,
+        private readonly BusinessPageClaimConflictService $conflicts,
+        private readonly PageClaimService $claims,
+        private readonly PageFormDataService $forms,
+        private readonly PageIdentityService $identities,
     ) {}
 
     public function mine(Request $request, string $type)
@@ -94,12 +108,7 @@ class PageController extends Controller
         $contact = $setup['contact'] ?? [];
         $addressDetails = $setup['address'] ?? [];
 
-        $page = Page::query()->firstOrNew([
-            'user_id' => $request->user()->id,
-            'type' => $type,
-        ]);
-
-        $page->fill([
+        $proposed = [
             'name' => $data['name'],
             'public_description' => $data['public_description'] ?? null,
             'contact_email' => $data['contact_email'] ?? $contact['email'] ?? $request->user()->email,
@@ -108,39 +117,93 @@ class PageController extends Controller
             'category_key' => $data['category_key'],
             'palette_key' => $data['palette_key'] ?? 'amber-dawn',
             'setup' => $setup,
-        ]);
+        ];
+        // An account-email fallback is not a business detail supplied for matching.
+        $matchingData = [...$proposed, 'contact_email' => $data['contact_email'] ?? $contact['email'] ?? null];
+        $uploads = [];
 
-        if ($request->boolean('logo_remove') || $request->hasFile('logo')) {
-            $this->deletePublicUpload($page->logo_path);
-            $page->logo_path = null;
-            $page->logo_original_name = null;
+        try {
+            foreach (['logo' => 'pages/logos', 'banner' => 'pages/banners'] as $field => $directory) {
+                if ($request->boolean($field.'_remove') || $request->hasFile($field)) {
+                    $proposed[$field.'_path'] = null;
+                    $proposed[$field.'_original_name'] = null;
+                }
+                if ($request->hasFile($field)) {
+                    $file = $request->file($field);
+                    $path = $this->storePublicWebp($file, $directory, $field);
+                    $uploads[] = $path;
+                    $proposed[$field.'_path'] = $path;
+                    $proposed[$field.'_original_name'] = $this->originalUploadName($request, $field, $file);
+                }
+            }
+
+            $save = fn (): array => DB::transaction(function () use ($request, $type, $proposed, $matchingData, $addressDetails): array {
+                // Serialize new-page creation and conflict approval for the same requester.
+                $user = User::query()->lockForUpdate()->findOrFail($request->user()->id);
+                $page = Page::query()->where('user_id', $user->id)->where('type', $type)->lockForUpdate()->first();
+                $outcome = $page ? 'updated' : 'created';
+
+                if ($page === null && $type === Page::TYPE_BUSINESS) {
+                    $matches = $this->businessMatches->matches($matchingData);
+                    $this->conflicts->cancelObsoleteSubmissions($user, $matches->pluck('page.id')->all());
+                    if ($matches->count() > 1 || ($matches->count() === 1 && ! $matches->first()['page']->is_unclaimed)) {
+                        $groupId = (string) Str::uuid();
+                        $requests = $matches->map(fn (array $match): array => $this->claims->requestPayload(
+                            $this->conflicts->submit($user, $match['page'], $proposed, $match['matched_on'], $groupId)
+                        ))->all();
+
+                        return ['save_outcome' => 'claim_conflict', 'claim_requests' => $requests, 'pending_claim' => true];
+                    }
+                    if ($matches->count() === 1) {
+                        $page = $matches->first()['page'];
+                        $page->forceFill(['user_id' => $user->id, 'is_unclaimed' => false, 'claimed_at' => now()]);
+                        $outcome = 'adopted';
+                    }
+                }
+
+                $page ??= new Page(['user_id' => $user->id, 'type' => $type]);
+                $obsolete = $this->forms->fill($page, $proposed);
+                $page->save();
+                $page->ads()->update([
+                    ...($outcome === 'adopted' ? ['user_id' => $user->id] : []),
+                    'city' => $addressDetails['city'] ?? null,
+                    'neighborhood' => $addressDetails['neighborhood'] ?? null,
+                ]);
+                if ($outcome === 'adopted') {
+                    $this->claims->cancelCompetingRequests($page, $user);
+                }
+
+                return ['save_outcome' => $outcome, 'page' => $page, 'obsolete_media' => $obsolete];
+            }, attempts: 3);
+
+            // The name is mandatory for every match, including category-only second signals.
+            // This lock also covers two users concurrently creating the same business.
+            $result = $type === Page::TYPE_BUSINESS
+                ? Cache::lock('business-page-save:'.hash('sha256', $this->identities->text($data['name'])), 60)->block(10,
+                    fn (): array => $this->identities->withDuplicateLocks([
+                        ...$matchingData, 'type' => $type, 'address' => $addressDetails, 'website' => $setup['website'],
+                    ], $save))
+                : $save();
+        } catch (\Throwable $exception) {
+            foreach ($uploads as $path) {
+                $this->deletePublicUpload($path);
+            }
+            throw $exception;
         }
 
-        if ($request->hasFile('logo')) {
-            $logo = $request->file('logo');
-            $page->logo_path = $this->storePublicWebp($logo, 'pages/logos', 'logo');
-            $page->logo_original_name = $this->originalUploadName($request, 'logo', $logo);
+        if ($result['save_outcome'] === 'claim_conflict') {
+            return ApiResponseService::success($result, 'Claim conflict sent to the administrator for review.', 202);
         }
 
-        if ($request->boolean('banner_remove') || $request->hasFile('banner')) {
-            $this->deletePublicUpload($page->banner_path);
-            $page->banner_path = null;
-            $page->banner_original_name = null;
-        }
+        // A rollback must never leave the original page pointing at deleted images.
+        $this->deletions->deleteMedia($result['obsolete_media']);
+        $page = $result['page']->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'prices', 'products', 'services', 'events'])
+            ->loadCount('ratings')->loadAvg('ratings', 'rating');
 
-        if ($request->hasFile('banner')) {
-            $banner = $request->file('banner');
-            $page->banner_path = $this->storePublicWebp($banner, 'pages/banners', 'banner');
-            $page->banner_original_name = $this->originalUploadName($request, 'banner', $banner);
-        }
-
-        $page->save();
-        $page->ads()->update([
-            'city' => $addressDetails['city'] ?? null,
-            'neighborhood' => $addressDetails['neighborhood'] ?? null,
-        ]);
-
-        return ApiResponseService::success($this->payloads->page($page->fresh(['user.profile', 'ads.user.profile', 'ads.page', 'prices', 'products', 'services', 'events'])->loadCount('ratings')->loadAvg('ratings', 'rating'), withAds: true), 'Page saved.');
+        return ApiResponseService::success([
+            ...$this->payloads->page($page, withAds: true),
+            'save_outcome' => $result['save_outcome'],
+        ], 'Page saved.');
     }
 
     public function updateFeatures(Request $request, string $type)

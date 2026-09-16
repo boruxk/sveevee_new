@@ -87,7 +87,11 @@ class BusinessImportService
             $filters['city'] ?? null,
             $filters['neighborhood'] ?? null
         );
-        $this->identities->ensureAll();
+        if (filled($filters['id'] ?? null)) {
+            $this->identities->ensurePage((int) $filters['id']);
+        } else {
+            $this->identities->ensureAll();
+        }
 
         $query = Page::query()
             ->where('type', Page::TYPE_BUSINESS)

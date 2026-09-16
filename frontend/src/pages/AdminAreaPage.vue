@@ -35,6 +35,7 @@
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { locationLabel } from '@/utils/locationLabels'
 	import DeleteIcon from '@/components/icons/DeleteIcon.vue'
+	import ClaimConflictDetails from '@/components/pages/ClaimConflictDetails.vue'
 
 	const defaultSettings = () => ({
 		ads: {
@@ -186,6 +187,15 @@
 	])
 	const supportMessages = computed(() => activeSupportConversation.value?.messages || [])
 	const activeClaimRequests = computed(() => activeSupportConversation.value?.claim_requests || [])
+	const pendingClaimGroupCounts = computed(() => {
+		const counts = new Map()
+		for (const claim of activeClaimRequests.value) {
+			if (claim.kind === 'claim_conflict' && claim.status === 'pending' && claim.conflict_group_id) {
+				counts.set(claim.conflict_group_id, (counts.get(claim.conflict_group_id) || 0) + 1)
+			}
+		}
+		return counts
+	})
 	const selectedSupportConversation = computed(() =>
 		supportConversations.value.find((conversation) => conversation.support_key === selectedSupportKey.value) || activeSupportConversation.value || null
 	)
@@ -1042,7 +1052,7 @@
 			await openSupportConversation(activeSupportConversation.value)
 			$q.notify({
 				type: 'positive',
-				message: t(action === 'approve' ? 'admin.claimApproved' : 'admin.claimCancelled')
+				message: t(action === 'approve' ? 'admin.claimApproved' : claim.kind === 'claim_conflict' ? 'admin.claimConflictKept' : 'admin.claimCancelled')
 			})
 		} catch (error) {
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('admin.claimReviewFailed')) })
@@ -1343,7 +1353,7 @@
 									<article v-for="claim in activeClaimRequests" :key="claim.id" class="claim-review-card">
 										<header>
 											<div>
-												<span class="claim-review-card__eyebrow">{{ t('admin.claimRequest') }} #{{ claim.id }}</span>
+												<span class="claim-review-card__eyebrow">{{ t(claim.kind === 'claim_conflict' ? 'admin.claimConflict' : 'admin.claimRequest') }} #{{ claim.id }}</span>
 												<strong>{{ claim.page?.name }}</strong>
 											</div>
 											<q-badge :color="claim.status === 'pending' ? 'warning' : claim.status === 'approved' ? 'positive' : 'grey-7'" rounded>
@@ -1351,6 +1361,7 @@
 											</q-badge>
 										</header>
 										<p>{{ claim.message }}</p>
+										<ClaimConflictDetails v-if="claim.kind === 'claim_conflict'" :claim="claim" :topics="catalogTopics" :pending-group-count="pendingClaimGroupCounts.get(claim.conflict_group_id) || 0" />
 										<div class="claim-review-card__footer">
 											<q-btn v-if="claim.page?.public_path"
 												flat
@@ -1366,7 +1377,8 @@
 													color="negative"
 													icon="close"
 													:loading="reviewingClaimId === claim.id"
-													:label="t('admin.claimCancel')"
+													:disable="Boolean(reviewingClaimId)"
+													:label="t(claim.kind === 'claim_conflict' ? claim.current_owner ? 'admin.claimKeepOwner' : 'admin.claimRejectMatch' : 'admin.claimCancel')"
 													@click="reviewPageClaim(claim, 'cancel')"
 												/>
 												<q-btn rounded
@@ -1374,7 +1386,8 @@
 													color="positive"
 													icon="check"
 													:loading="reviewingClaimId === claim.id"
-													:label="t('admin.claimApprove')"
+													:disable="Boolean(reviewingClaimId)"
+													:label="t(claim.kind === 'claim_conflict' ? 'admin.claimAssignRequester' : 'admin.claimApprove')"
 													@click="reviewPageClaim(claim, 'approve')"
 												/>
 											</div>
@@ -3443,7 +3456,7 @@
 .claim-review-list {
   display: grid;
   gap: 10px;
-  max-height: 280px;
+  max-height: min(70vh, 720px);
   overflow-y: auto;
   padding: 14px 2px 2px;
 }
