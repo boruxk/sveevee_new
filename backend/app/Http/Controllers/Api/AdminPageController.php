@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\HandlesUploadedImages;
 use App\Http\Controllers\Controller;
 use App\Models\BusinessPageLead;
 use App\Models\Page;
@@ -12,7 +13,10 @@ use App\Services\ApiResponseService;
 use App\Services\BusinessPageClaimConflictService;
 use App\Services\PageClaimService;
 use App\Services\PageDeletionService;
+use App\Services\PageFormDataService;
+use App\Services\PayloadService;
 use App\Support\AccountNotificationType;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -20,6 +24,8 @@ use Illuminate\Validation\ValidationException;
 
 class AdminPageController extends Controller
 {
+    use HandlesUploadedImages;
+
     public function __construct(
         private readonly PageClaimService $claims,
         private readonly PageDeletionService $deletions,
@@ -91,6 +97,8 @@ class AdminPageController extends Controller
         $users = User::query()
             ->where('role', 'user')
             ->whereNull('banned_at')
+            ->when($request->boolean('without_business_page'), fn ($query) => $query->whereDoesntHave('pages',
+                fn ($pages) => $pages->where('type', Page::TYPE_BUSINESS)->where('is_unclaimed', false)))
             ->with([
                 'profile',
                 'pages' => fn ($query) => $query
@@ -123,6 +131,78 @@ class AdminPageController extends Controller
             ->values();
 
         return ApiResponseService::success(['items' => $users]);
+    }
+
+    public function store(Request $request, PageFormDataService $forms, PayloadService $payloads)
+    {
+        $ownership = $request->validate([
+            'type' => ['sometimes', Rule::in([Page::TYPE_BUSINESS])],
+            'user_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+        $targetUserId = isset($ownership['user_id']) ? (int) $ownership['user_id'] : null;
+        // An administrator's account details are never business contact defaults.
+        $proposed = $forms->validate($request, Page::TYPE_BUSINESS, adminCreation: true)['proposed'];
+        $uploads = [];
+        try {
+            foreach (['logo' => 'pages/logos', 'banner' => 'pages/banners'] as $field => $directory) {
+                if ($request->hasFile($field)) {
+                    $file = $request->file($field);
+                    $path = $this->storePublicWebp($file, $directory, $field);
+                    $uploads[] = $path;
+                    $proposed[$field.'_path'] = $path;
+                    $proposed[$field.'_original_name'] = $this->originalUploadName($request, $field, $file);
+                }
+            }
+            $page = DB::transaction(function () use ($request, $forms, $proposed, $targetUserId): Page {
+                if ($targetUserId !== null) {
+                    // The same user lock serializes normal creation and claim approval.
+                    $holder = User::query()->lockForUpdate()->find($targetUserId);
+                    if (! $holder || ! $holder->hasRole('user') || $holder->banned_at !== null) {
+                        throw ValidationException::withMessages(['user_id' => ['Pages can only be assigned to active regular users.']]);
+                    }
+                    if ($holder->pages()->where('type', Page::TYPE_BUSINESS)->where('is_unclaimed', false)->exists()) {
+                        throw new HttpResponseException(ApiResponseService::error(
+                            'This user already manages a business page. Choose another owner.',
+                            ['user_id' => ['This user already manages a business page.']], 409
+                        ));
+                    }
+                } else {
+                    $holder = User::query()->where('role', 'ai_worker')->whereNull('banned_at')
+                        ->orderBy('id')->lockForUpdate()->first();
+                    if (! $holder) {
+                        throw new HttpResponseException(ApiResponseService::error(
+                            'The unclaimed-page account is not available.', status: 503
+                        ));
+                    }
+                }
+                // This is an explicit admin creation, not an upsert or ownership match.
+                $page = new Page([
+                    'user_id' => $holder->id, 'created_by_user_id' => $request->user()->id,
+                    'type' => Page::TYPE_BUSINESS, 'is_unclaimed' => $targetUserId === null,
+                    'claimed_at' => $targetUserId === null ? null : now(),
+                ]);
+                $forms->fill($page, $proposed);
+                $page->save(); // PageObserver maintains the identity index.
+                if ($targetUserId !== null) {
+                    $this->notifications->create($holder, AccountNotificationType::PAGE_ASSIGNED, [
+                        'page' => $this->notifications->pageSnapshot($page), 'action_path' => '/business',
+                    ]);
+                }
+
+                return $page;
+            }, attempts: 3);
+        } catch (\Throwable $error) {
+            foreach ($uploads as $path) {
+                $this->deletePublicUpload($path);
+            }
+            throw $error;
+        }
+
+        $page->load('user.profile')->loadCount('ratings')->loadAvg('ratings', 'rating');
+
+        return ApiResponseService::success([
+            ...$payloads->page($page, withAds: true), 'save_outcome' => 'created',
+        ], 'Business page created.', 201);
     }
 
     public function updateOwner(Request $request, Page $page)

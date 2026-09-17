@@ -151,7 +151,7 @@ class PayloadService
             'catalog_city' => $catalogCity,
             'catalog_neighborhood' => CatalogTopics::resolveNeighborhoodSlug($catalogCity, CatalogTopics::locationSlug($addressDetails['neighborhood'] ?? null)),
             'socials' => $socials,
-            'opening_hours' => $isUnclaimed && empty($setup['opening_hours'])
+            'opening_hours' => ($setup['opening_hours'] ?? null) === [] || ($isUnclaimed && empty($setup['opening_hours']))
                 ? []
                 : $this->normalizedOpeningHours($setup['opening_hours'] ?? []),
             'opening_hours_raw' => is_string($setup['imported_opening_hours'] ?? null) && trim($setup['imported_opening_hours']) !== ''

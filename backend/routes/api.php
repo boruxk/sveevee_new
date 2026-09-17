@@ -234,6 +234,7 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::post('/page-claims/{claimRequest}/approve', [AdminPageClaimController::class, 'approve']);
         Route::post('/page-claims/{claimRequest}/cancel', [AdminPageClaimController::class, 'cancel']);
         Route::get('/pages', [AdminPageController::class, 'index']);
+        Route::post('/pages', [AdminPageController::class, 'store']);
         Route::get('/logs', [AdminSystemLogController::class, 'index']);
         Route::get('/page-owner-options', [AdminPageController::class, 'ownerOptions']);
         Route::patch('/pages/{page}/owner', [AdminPageController::class, 'updateOwner']);

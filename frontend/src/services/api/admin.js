@@ -1,4 +1,5 @@
 import apiClient from '@/services/api/client'
+import { toPageFormData } from '@/services/api/pages'
 
 export function fetchAdminUsers(params = {}) {
 	return apiClient.get('/admin/users', { params })
@@ -10,6 +11,12 @@ export function fetchAdminUserTable(params = {}, options = {}) {
 
 export function fetchAdminPages(params = {}) {
 	return apiClient.get('/admin/pages', { params: { per_page: 50, ...params } })
+}
+
+export async function createAdminPage(payload) {
+	const formData = await toPageFormData(payload)
+	formData.append('user_id', payload.user_id ?? '')
+	return apiClient.post('/admin/pages', formData)
 }
 
 export function fetchAdminLeadPages(params = {}) {

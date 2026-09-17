@@ -9,7 +9,7 @@ function addressLine(address) {
 	return [address.street, address.number, address.neighborhood, address.city].filter(Boolean).join(', ')
 }
 
-async function toPageFormData(payload) {
+export async function toPageFormData(payload) {
 	const formData = new FormData()
 	formData.append('name', payload.name || '')
 	formData.append('public_description', payload.public_description || '')

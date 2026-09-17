@@ -849,6 +849,12 @@ export default {
 		noUserPages: 'Cet utilisateur n’a aucune page.',
 		pageContentCounts: '{products} produits, {services} services, {events} événements, {ads} annonces',
 		pages: {
+			createNew: 'Nouvelle page',
+			createTitle: 'Nouvelle page professionnelle',
+			createSubmit: 'Créer la page',
+			createSuccess: 'Page créée.',
+			createFailed: 'La page n’a pas pu être créée.',
+			createOwnerHint: 'Choisissez un utilisateur sans page professionnelle, ou laissez ce champ vide pour créer une page sans propriétaire.',
 			title: 'Pages',
 			name: 'Page',
 			type: 'Type',

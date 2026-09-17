@@ -849,6 +849,12 @@ export default {
 		noUserPages: 'У этого пользователя нет страниц.',
 		pageContentCounts: '{products} товаров, {services} услуг, {events} событий, {ads} объявлений',
 		pages: {
+			createNew: 'Новая страница',
+			createTitle: 'Новая бизнес-страница',
+			createSubmit: 'Создать страницу',
+			createSuccess: 'Страница создана.',
+			createFailed: 'Не удалось создать страницу.',
+			createOwnerHint: 'Можно выбрать пользователя без бизнес-страницы. Если никого не выбрать, страница останется без владельца.',
 			title: 'Страницы',
 			name: 'Страница',
 			type: 'Тип',

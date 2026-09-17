@@ -849,6 +849,12 @@ export default {
 		noUserPages: 'למשתמש הזה אין עמודים.',
 		pageContentCounts: '{products} מוצרים, {services} שירותים, {events} אירועים, {ads} מודעות',
 		pages: {
+			createNew: 'דף חדש',
+			createTitle: 'דף עסקי חדש',
+			createSubmit: 'יצירת דף',
+			createSuccess: 'הדף נוצר.',
+			createFailed: 'לא ניתן ליצור את הדף.',
+			createOwnerHint: 'אפשר לבחור משתמש שאין בבעלותו דף עסקי. ללא בחירה, הדף יישאר ללא בעלים.',
 			title: 'עמודים',
 			name: 'עמוד',
 			type: 'סוג',

@@ -849,6 +849,12 @@ export default {
 		noUserPages: 'This user has no pages.',
 		pageContentCounts: '{products} products, {services} services, {events} events, {ads} ads',
 		pages: {
+			createNew: 'New page',
+			createTitle: 'New business page',
+			createSubmit: 'Create page',
+			createSuccess: 'Page created.',
+			createFailed: 'Page could not be created.',
+			createOwnerHint: 'Choose a user without a business page, or leave empty to create an unclaimed page.',
 			title: 'Pages',
 			name: 'Page',
 			type: 'Type',

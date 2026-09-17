@@ -36,6 +36,7 @@
 	import { locationLabel } from '@/utils/locationLabels'
 	import DeleteIcon from '@/components/icons/DeleteIcon.vue'
 	import ClaimConflictDetails from '@/components/pages/ClaimConflictDetails.vue'
+	import PageCreateDialog from '@/components/pages/PageCreateDialog.vue'
 
 	const defaultSettings = () => ({
 		ads: {
@@ -104,6 +105,7 @@
 	const appliedPageSearch = ref('')
 	const pageTypeFilter = ref('')
 	const pageOwnershipFilter = ref('')
+	const pageCreateDialogOpen = ref(false)
 	const pageOwnerDialogOpen = ref(false)
 	const selectedAdminPage = ref(null)
 	const selectedPageOwnerId = ref(null)
@@ -659,6 +661,14 @@
 		} finally {
 			pagesLoading.value = false
 		}
+	}
+
+	async function onAdminPageCreated() {
+		pageSearch.value = ''
+		appliedPageSearch.value = ''
+		pageTypeFilter.value = ''
+		pageOwnershipFilter.value = ''
+		await Promise.all([loadPageTable(1), loadUserTable(tablePagination.value.page)])
 	}
 
 	async function applyPageSearch() {
@@ -1608,6 +1618,14 @@
 								class="page-filter"
 								@update:model-value="loadPageTable(1)"
 							/>
+							<q-btn
+								unelevated
+								rounded
+								color="primary"
+								class="page-create-button"
+								:label="t('admin.pages.createNew')"
+								@click="pageCreateDialogOpen = true"
+							/>
 							<div class="user-total page-total" aria-live="polite">
 								<strong>{{ totalPages.toLocaleString(intlLocale) }}</strong>
 								<span>{{ t('admin.pages.total') }}</span>
@@ -2536,6 +2554,13 @@
 				</q-card>
 			</q-dialog>
 
+			<PageCreateDialog
+				v-model="pageCreateDialogOpen"
+				type="business"
+				admin-mode
+				@created="onAdminPageCreated"
+			/>
+
 			<q-dialog v-model="pageOwnerDialogOpen">
 				<q-card class="page-owner-dialog">
 					<header class="user-detail-head">
@@ -2718,7 +2743,7 @@
 
 .page-table-tools {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(150px, 190px) minmax(150px, 190px) auto;
+  grid-template-columns: minmax(200px, 1fr) minmax(130px, 170px) minmax(130px, 170px) auto auto;
   gap: 12px;
   align-items: center;
 }
