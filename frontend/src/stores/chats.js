@@ -97,18 +97,21 @@ export const useChatsStore = defineStore('chats', {
 			await this.loadConversations()
 			return this.activeConversation
 		},
-		async refreshActiveConversation() {
+		async refreshActiveConversation(shouldApply = () => true) {
 			if (!this.activeConversation?.id) {
 				return this.activeConversation
 			}
 
-			try {
-				const response = this.activeConversation.is_page_chat ? await fetchPageConversation(this.activeConversation.id) : await fetchChat(this.activeConversation.id)
+			const requested = this.activeConversation
+			const stillActive = () => shouldApply() && this.activeConversation === requested
 
-				this.activeConversation = response.data.data
+			try {
+				const response = requested.is_page_chat ? await fetchPageConversation(requested.id) : await fetchChat(requested.id)
+
+				if (stillActive()) this.activeConversation = response.data.data
 				return this.activeConversation
 			} catch (error) {
-				if (error.response?.status === 404) {
+				if (stillActive() && error.response?.status === 404) {
 					this.activeConversation = null
 					return null
 				}

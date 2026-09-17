@@ -494,6 +494,8 @@ export default {
 		deleteFailed: 'Event could not be deleted.'
 	},
 	chat: {
+		messageSent: 'Sent',
+		messageRead: 'Read',
 		guestPageStorageUnavailable: 'Your browser is blocking session storage. Allow it to keep this chat when you register. You can continue chatting in this popup.',
 		guestLabel: 'Guest',
 		guestKeepTitle: 'Keep this conversation',

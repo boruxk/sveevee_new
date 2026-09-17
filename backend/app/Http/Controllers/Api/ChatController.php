@@ -85,6 +85,7 @@ class ChatController extends Controller
         }
 
         $conversation = $this->conversationFor($request->user(), $user);
+        $this->markRead($request->user(), $conversation);
         $conversation->load(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
 
         return ApiResponseService::success($this->payloads->conversation(
@@ -215,8 +216,8 @@ class ChatController extends Controller
                 return;
             }
 
-            $this->markRead($user, $conversation);
             $conversation->clearFor($user);
+            $this->clearUnreadEmailState($user, $conversation);
         });
 
         return ApiResponseService::success([
@@ -359,12 +360,20 @@ class ChatController extends Controller
 
     private function markRead(User $user, Conversation $conversation): void
     {
+        $clearedMessageId = $conversation->clearedMessageIdFor($user);
+
         ChatMessage::query()
             ->where('conversation_id', $conversation->id)
             ->where('sender_id', '!=', $user->id)
+            ->when($clearedMessageId !== null, fn ($query) => $query->where('id', '>', $clearedMessageId))
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
+        $this->clearUnreadEmailState($user, $conversation);
+    }
+
+    private function clearUnreadEmailState(User $user, Conversation $conversation): void
+    {
         ChatEmailNotificationState::query()
             ->where('conversation_id', $conversation->id)
             ->where('recipient_id', $user->id)

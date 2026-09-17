@@ -37,6 +37,8 @@
 	import DeleteIcon from '@/components/icons/DeleteIcon.vue'
 	import ClaimConflictDetails from '@/components/pages/ClaimConflictDetails.vue'
 	import PageCreateDialog from '@/components/pages/PageCreateDialog.vue'
+	import ChatMessageBody from '@/components/ChatMessageBody.vue'
+	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
 
 	const defaultSettings = () => ({
 		ads: {
@@ -141,6 +143,8 @@
 	const newBlockedTerm = ref({ term: '', locale: 'all', active: true })
 	let adminPresenceTimer = null
 	let refreshingAdminPresence = false
+	let supportDetailTimer = null
+	let refreshingSupportDetail = false
 	const tablePagination = ref({
 		page: 1,
 		rowsPerPage: 50,
@@ -330,24 +334,6 @@
 		settings: t('admin.settings.title')
 	}[activeTab.value] || t('admin.users')))
 
-	function formatMessageTime(value) {
-		if (!value) {
-			return ''
-		}
-
-		const date = new Date(value)
-
-		if (Number.isNaN(date.getTime())) {
-			return ''
-		}
-
-		return new Intl.DateTimeFormat(intlLocale.value, {
-			hour: 'numeric',
-			minute: '2-digit',
-			hour12: false
-		}).format(date)
-	}
-
 	function formatDateTime(value) {
 		if (!value) {
 			return '-'
@@ -495,6 +481,7 @@
 	}
 
 	function isOwn(message) {
+		if (activeSupportConversation.value?.is_guest) return message.sender_type === 'admin'
 		return message.sender_id === authStore.user?.id
 	}
 
@@ -511,6 +498,10 @@
 	}
 
 	async function openSupportConversation(conversation, { refresh = true } = {}) {
+		if (activeTab.value !== 'communication' || document.visibilityState !== 'visible') {
+			return
+		}
+
 		if (!conversation?.id) {
 			activeSupportConversation.value = null
 			selectedSupportKey.value = null
@@ -518,8 +509,12 @@
 		}
 
 		const source = conversation.source || 'account'
-		selectedSupportKey.value = conversation.support_key || `${source}:${conversation.id}`
+		const key = conversation.support_key || `${source}:${conversation.id}`
+		selectedSupportKey.value = key
 		const { data } = await fetchAdminSupportChat(source, conversation.id)
+		if (selectedSupportKey.value !== key || activeTab.value !== 'communication' || document.visibilityState !== 'visible') {
+			return
+		}
 		activeSupportConversation.value = data.data
 
 		if (refresh) {
@@ -527,6 +522,31 @@
 		}
 
 		await scrollToBottom()
+	}
+
+	async function refreshSupportDetail() {
+		if (refreshingSupportDetail || supportLoading.value || activeTab.value !== 'communication' || document.visibilityState !== 'visible') {
+			return
+		}
+		const conversation = activeSupportConversation.value
+		if (!conversation?.id) return
+		const source = conversation.source || 'account'
+		const key = conversation.support_key || `${source}:${conversation.id}`
+		if (key !== selectedSupportKey.value) return
+
+		refreshingSupportDetail = true
+		try {
+			const { data } = await fetchAdminSupportChat(source, conversation.id)
+			if (activeSupportConversation.value !== conversation || selectedSupportKey.value !== key || activeTab.value !== 'communication' || document.visibilityState !== 'visible') return
+			const newMessage = supportMessages.value.at(-1)?.id !== data.data.messages?.at(-1)?.id
+			const nearBottom = !messagesEl.value || messagesEl.value.scrollHeight - messagesEl.value.scrollTop - messagesEl.value.clientHeight < 80
+			activeSupportConversation.value = data.data
+			if (newMessage && nearBottom) await scrollToBottom()
+		} catch {
+			// Retry while the conversation remains visible.
+		} finally {
+			refreshingSupportDetail = false
+		}
 	}
 
 	async function loadSupportConversations() {
@@ -1257,6 +1277,7 @@
 		}
 		loadSettings()
 		adminPresenceTimer = window.setInterval(refreshAdminPresence, 30_000)
+		supportDetailTimer = window.setInterval(refreshSupportDetail, 6000)
 	})
 	onBeforeUnmount(() => {
 		cancelUserTableRequest()
@@ -1264,6 +1285,9 @@
 		window.removeEventListener(accountNotificationEventName, handleAccountNotification)
 		if (adminPresenceTimer) {
 			window.clearInterval(adminPresenceTimer)
+		}
+		if (supportDetailTimer) {
+			window.clearInterval(supportDetailTimer)
 		}
 	})
 </script>
@@ -1417,9 +1441,9 @@
 											<div class="support-message__bubble">
 												<small class="support-message__meta">
 													{{ chatMessage.sender?.display_name || activeSupportUser?.display_name || '-' }}
-													<span>{{ formatMessageTime(chatMessage.created_at) }}</span>
 												</small>
-												{{ chatMessage.body }}
+												<ChatMessageBody :body="chatMessage.body" />
+												<ChatMessageMeta :created-at="chatMessage.created_at" :read-at="chatMessage.read_at" :own="isOwn(chatMessage)" />
 											</div>
 										</div>
 									</template>
@@ -3548,7 +3572,6 @@
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 8px 18px rgba(17, 34, 45, 0.06);
   overflow-wrap: anywhere;
-  white-space: pre-line;
   word-break: break-word;
 }
 

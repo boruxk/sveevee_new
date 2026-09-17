@@ -494,6 +494,8 @@ export default {
 		deleteFailed: 'Не удалось удалить событие.'
 	},
 	chat: {
+		messageSent: 'Отправлено',
+		messageRead: 'Прочитано',
 		guestPageStorageUnavailable: 'Ваш браузер блокирует хранилище сеанса. Разрешите его, чтобы сохранить чат при регистрации. Вы можете продолжить общение в этом окне.',
 		guestLabel: 'Гость',
 		guestKeepTitle: 'Сохраните переписку',

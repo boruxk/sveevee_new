@@ -51,6 +51,7 @@ class SendUnreadChatEmail implements ShouldQueue
         $unreadMessage = ChatMessage::query()
             ->where('conversation_id', $conversation->id)
             ->where('sender_id', '!=', $recipient->id)
+            ->visibleTo($recipient)
             ->whereNull('read_at')
             ->latest()
             ->first();

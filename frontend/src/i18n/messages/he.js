@@ -494,6 +494,8 @@ export default {
 		deleteFailed: 'לא ניתן למחוק את האירוע.'
 	},
 	chat: {
+		messageSent: 'נשלחה',
+		messageRead: 'נקראה',
 		guestPageStorageUnavailable: 'הדפדפן שלך חוסם אחסון זמני. יש לאפשר אותו כדי לשמור את השיחה בעת ההרשמה. אפשר להמשיך להתכתב בחלון הזה.',
 		guestLabel: 'אורח',
 		guestKeepTitle: 'שמרו את השיחה',

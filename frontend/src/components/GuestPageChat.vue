@@ -9,6 +9,8 @@
 	import { clearLeadsPage001Registration } from '@/utils/leadsPageCompletion'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import ChatMessageBody from '@/components/ChatMessageBody.vue'
+	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
 
 	const props = defineProps({
 		pageId: { type: [Number, String], required: true },
@@ -37,13 +39,6 @@
 		return t('chat.placeholder')
 	})
 	const composerHint = computed(() => characterLimitHint(draft.value, CHAT_MAX_LENGTH, t))
-	const intlLocale = computed(() => ({ he: 'he-IL', en: 'en-US', ru: 'ru-RU', fr: 'fr-FR' }[locale.value] || locale.value))
-
-	function formatTime(value) {
-		const date = new Date(value)
-		if (!value || Number.isNaN(date.getTime())) return ''
-		return new Intl.DateTimeFormat(intlLocale.value, { hour: 'numeric', minute: '2-digit', hour12: false }).format(date)
-	}
 
 	async function scrollToBottom() {
 		await nextTick()
@@ -153,6 +148,10 @@
 		await router.push({ name: 'register', query: { redirect: intent.redirect } })
 	}
 
+	function refreshVisibleChat() {
+		if (document.visibilityState === 'visible' && !unavailable.value) loadChat({ silent: true })
+	}
+
 	onMounted(async() => {
 		const pendingStart = pendingGuestPageChatStart(props.pageId)
 		if (pendingStart) {
@@ -174,12 +173,14 @@
 		await loadChat()
 		await scrollToBottom()
 		if (disposed) return
-		refreshTimer = window.setInterval(() => {
-			if (document.visibilityState === 'visible' && !unavailable.value) loadChat({ silent: true })
-		}, 6000)
+		refreshTimer = window.setInterval(refreshVisibleChat, 6000)
+		document.addEventListener('visibilitychange', refreshVisibleChat)
+		window.addEventListener('focus', refreshVisibleChat)
 	})
 	onBeforeUnmount(() => {
 		disposed = true
+		document.removeEventListener('visibilitychange', refreshVisibleChat)
+		window.removeEventListener('focus', refreshVisibleChat)
 		if (refreshTimer) window.clearInterval(refreshTimer)
 	})
 </script>
@@ -212,8 +213,8 @@
 					:class="{ 'guest-page-chat__message--own': !message.sender_as_page }"
 				>
 					<div class="guest-page-chat__bubble">
-						<div>{{ message.body }}</div>
-						<time :datetime="message.created_at">{{ formatTime(message.created_at) }}</time>
+						<ChatMessageBody :body="message.body" />
+						<ChatMessageMeta :created-at="message.created_at" :read-at="message.read_at" :own="!message.sender_as_page" />
 					</div>
 				</div>
 			</div>
@@ -317,14 +318,6 @@
 
 .guest-page-chat__message--own .guest-page-chat__bubble {
   background: rgba(123, 63, 242, 0.16);
-}
-
-.guest-page-chat__bubble time {
-  display: block;
-  margin-top: 4px;
-  text-align: end;
-  color: var(--soz-muted);
-  font-size: 11px;
 }
 
 .guest-page-chat__compose {

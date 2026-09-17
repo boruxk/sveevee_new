@@ -139,7 +139,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return ChatMessage::query()
             ->whereNull('read_at')
             ->where('sender_id', '!=', $this->id)
-            ->whereHas('conversation', fn ($query) => $query->forParticipant($this));
+            ->visibleTo($this);
     }
 
     public function hasRole(string $role): bool

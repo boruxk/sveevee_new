@@ -15,6 +15,8 @@
 	} from '@/services/api/chats'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import ChatMessageBody from '@/components/ChatMessageBody.vue'
+	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
 
 	const { locale, t } = useI18n()
 	const $q = useQuasar()
@@ -33,18 +35,14 @@
 	const guestToken = ref(localStorage.getItem(guestSupportTokenStorageKey) || '')
 	const messagesEl = ref(null)
 	let refreshTimer = null
+	let refreshing = false
+	let loadRequestId = 0
 
 	const visible = computed(() => authStore.initialized && !authStore.isAdmin)
 	const messages = computed(() => conversation.value?.messages || [])
 	const isGuest = computed(() => !authStore.isAuthenticated)
 	const needsGuestStart = computed(() => isGuest.value && !guestToken.value && !conversation.value)
 	const composerHint = computed(() => characterLimitHint(draft.value, CHAT_MAX_LENGTH, t))
-	const intlLocale = computed(() => ({
-		he: 'he-IL',
-		en: 'en-US',
-		ru: 'ru-RU',
-		fr: 'fr-FR'
-	}[locale.value] || locale.value))
 
 	function isOwn(message) {
 		if (conversation.value?.is_guest) {
@@ -52,24 +50,6 @@
 		}
 
 		return message.sender_id === authStore.user?.id
-	}
-
-	function formatMessageTime(value) {
-		if (!value) {
-			return ''
-		}
-
-		const date = new Date(value)
-
-		if (Number.isNaN(date.getTime())) {
-			return ''
-		}
-
-		return new Intl.DateTimeFormat(intlLocale.value, {
-			hour: 'numeric',
-			minute: '2-digit',
-			hour12: false
-		}).format(date)
 	}
 
 	async function scrollToBottom() {
@@ -86,16 +66,32 @@
 	}
 
 	async function loadSupportChat({ silent = false } = {}) {
-		if (isGuest.value && !guestToken.value) {
+		if (!panelOpen.value || document.visibilityState !== 'visible' || (silent && refreshing) || (isGuest.value && !guestToken.value)) {
 			return
 		}
 
+		const requestId = ++loadRequestId
+		const previousConversation = conversation.value
+		const requestedGuest = isGuest.value
+		const requestedToken = guestToken.value
+		const requestedUserId = authStore.user?.id
+		refreshing = true
+		const previousLastMessageId = messages.value.at(-1)?.id
+		const nearBottom = !messagesEl.value || messagesEl.value.scrollHeight - messagesEl.value.scrollTop - messagesEl.value.clientHeight < 80
 		if (!silent) {
 			loading.value = true
 		}
 
 		try {
-			const response = isGuest.value ? await fetchGuestSupportChat(guestToken.value) : await fetchSupportChat()
+			const response = requestedGuest ? await fetchGuestSupportChat(requestedToken) : await fetchSupportChat()
+			if (
+				requestId !== loadRequestId ||
+				conversation.value !== previousConversation ||
+				requestedGuest !== isGuest.value ||
+				requestedToken !== guestToken.value ||
+				requestedUserId !== authStore.user?.id ||
+				!panelOpen.value || document.visibilityState !== 'visible'
+			) return
 
 			conversation.value = response.data.data
 
@@ -103,8 +99,11 @@
 				await chatsStore.loadConversations()
 			}
 
-			await scrollToBottom()
+			if (!silent || (nearBottom && messages.value.at(-1)?.id !== previousLastMessageId)) {
+				await scrollToBottom()
+			}
 		} catch (error) {
+			if (requestId !== loadRequestId || conversation.value !== previousConversation || requestedGuest !== isGuest.value || requestedToken !== guestToken.value || requestedUserId !== authStore.user?.id) return
 			if (isGuest.value && [404, 410].includes(error.response?.status)) {
 				clearGuestToken()
 				conversation.value = null
@@ -120,8 +119,9 @@
 				$q.notify({ type: 'negative', message: t('chat.supportUnavailable') })
 			}
 		} finally {
-			if (!silent) {
-				loading.value = false
+			if (requestId === loadRequestId) {
+				refreshing = false
+				if (!silent) loading.value = false
 			}
 		}
 	}
@@ -370,8 +370,8 @@
 
 					<div v-for="message in messages" :key="message.id" class="support-widget__message" :class="{ 'support-widget__message--own': isOwn(message) }">
 						<div class="support-widget__bubble">
-							{{ message.body }}
-							<span>{{ formatMessageTime(message.created_at) }}</span>
+							<ChatMessageBody :body="message.body" />
+							<ChatMessageMeta :created-at="message.created_at" :read-at="message.read_at" :own="isOwn(message)" />
 						</div>
 					</div>
 				</template>
@@ -591,20 +591,11 @@
   color: var(--soz-ink);
   box-shadow: 0 8px 18px rgba(17, 34, 45, 0.08);
   overflow-wrap: anywhere;
-  white-space: pre-line;
   word-break: break-word;
 }
 
 .support-widget__message--own .support-widget__bubble {
   background: linear-gradient(135deg, rgba(255, 116, 38, 0.2), rgba(245, 66, 145, 0.2));
-}
-
-.support-widget__bubble span {
-  display: block;
-  margin-top: 4px;
-  color: rgba(17, 34, 45, 0.5);
-  font-size: 11px;
-  text-align: end;
 }
 
 .support-widget__compose {

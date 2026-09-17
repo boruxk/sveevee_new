@@ -494,6 +494,8 @@ export default {
 		deleteFailed: 'L’événement n’a pas pu être supprimé.'
 	},
 	chat: {
+		messageSent: 'Envoyé',
+		messageRead: 'Lu',
 		guestPageStorageUnavailable: 'Votre navigateur bloque le stockage de session. Autorisez-le pour conserver cette conversation lors de votre inscription. Vous pouvez continuer à discuter dans cette fenêtre.',
 		guestLabel: 'Invité',
 		guestKeepTitle: 'Conservez cette conversation',

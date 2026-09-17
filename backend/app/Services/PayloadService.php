@@ -424,6 +424,7 @@ class PayloadService
                 ? ($conversation->visitor ? $this->user($conversation->visitor, includePresence: true) : $this->guestPageChatIdentity())
                 : $this->pageChatIdentity($conversation->page, asChatUser: true),
             'is_page_chat' => true,
+            'viewer_as_page' => (bool) $viewerIsOwner,
             'is_guest' => $conversation->visitor_id === null,
             'last_message_at' => $conversation->last_message_at?->toISOString(),
             'latest_message' => $latest ? $this->pageChatMessage($latest, $conversation->page) : null,

@@ -13,6 +13,8 @@
 	} from '@/services/api/pageChats'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import DeleteIcon from '@/components/icons/DeleteIcon.vue'
+	import ChatMessageBody from '@/components/ChatMessageBody.vue'
+	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
 	const MESSAGE_BATCH_SIZE = 10
@@ -44,7 +46,7 @@
 		}
 	})
 
-	const { locale, t } = useI18n()
+	const { t } = useI18n()
 	const $q = useQuasar()
 	const authStore = useAuthStore()
 	const chatsStore = useChatsStore()
@@ -59,6 +61,8 @@
 	const deletingChat = ref(false)
 	let chatRefreshTimer = null
 	let refreshingChat = false
+	let disposed = false
+	let lastConversationListRefresh = 0
 
 	const isPageChat = computed(() => Boolean(props.pageId))
 	const conversations = computed(() => (isPageChat.value ? pageConversations.value : chatsStore.conversations))
@@ -114,12 +118,6 @@
 		page_pending_reply: 'chat.pagePendingReply',
 		daily_limit: 'chat.dailyLimit'
 	}
-	const intlLocale = computed(() => ({
-		he: 'he-IL',
-		en: 'en-US',
-		ru: 'ru-RU',
-		fr: 'fr-FR'
-	}[locale.value] || locale.value))
 
 	function localizedChatLimit(reason) {
 		const key = chatLimitMessageKeys[reason]
@@ -127,25 +125,11 @@
 		return key ? t(key) : ''
 	}
 
-	function formatMessageTime(value) {
-		if (!value) {
-			return ''
-		}
-
-		const date = new Date(value)
-
-		if (Number.isNaN(date.getTime())) {
-			return ''
-		}
-
-		return new Intl.DateTimeFormat(intlLocale.value, {
-			hour: 'numeric',
-			minute: '2-digit',
-			hour12: false
-		}).format(date)
-	}
-
 	function isOwn(message) {
+		if (active.value?.is_page_chat) {
+			const viewerAsPage = active.value.viewer_as_page ?? props.pageOwner
+			return Boolean(message.sender_as_page) === Boolean(viewerAsPage)
+		}
 		return message.sender_id === authStore.user?.id
 	}
 
@@ -347,31 +331,34 @@
 	}
 
 	async function refreshVisibleChat() {
-		if (refreshingChat || (typeof document !== 'undefined' && document.visibilityState !== 'visible')) {
+		if (disposed || refreshingChat || chatSending.value || (typeof document !== 'undefined' && document.visibilityState !== 'visible')) {
 			return
 		}
 
 		refreshingChat = true
 		const previousMessageCount = messages.value.length
+		const refreshList = Date.now() - lastConversationListRefresh >= 30_000
 
 		try {
 			if (isPageChat.value) {
-				if (props.pageOwner) {
+				if (props.pageOwner && refreshList) {
 					await refreshPageConversations()
 				}
 
-				if (active.value?.id && threadIsVisible.value) {
-					const { data } = await fetchPageConversation(active.value.id)
-					pageActiveConversation.value = data.data
+				if (!disposed && document.visibilityState === 'visible' && active.value?.id && threadIsVisible.value) {
+					const requested = active.value
+					const { data } = await fetchPageConversation(requested.id)
+					if (!disposed && active.value === requested) pageActiveConversation.value = data.data
 				}
 			} else {
-				await chatsStore.loadConversations()
-				if (threadIsVisible.value) {
-					await chatsStore.refreshActiveConversation()
+				if (refreshList) await chatsStore.loadConversations()
+				if (!disposed && document.visibilityState === 'visible' && threadIsVisible.value) {
+					await chatsStore.refreshActiveConversation(() => !disposed)
 				}
 			}
 
-			if (messages.value.length > previousMessageCount) {
+			if (refreshList) lastConversationListRefresh = Date.now()
+			if (!disposed && messages.value.length > previousMessageCount) {
 				await scrollToBottom()
 			}
 		} catch {
@@ -383,9 +370,15 @@
 
 	onMounted(async() => {
 		await load()
-		chatRefreshTimer = window.setInterval(refreshVisibleChat, 30_000)
+		if (disposed) return
+		chatRefreshTimer = window.setInterval(refreshVisibleChat, 6000)
+		document.addEventListener('visibilitychange', refreshVisibleChat)
+		window.addEventListener('focus', refreshVisibleChat)
 	})
 	onBeforeUnmount(() => {
+		disposed = true
+		document.removeEventListener('visibilitychange', refreshVisibleChat)
+		window.removeEventListener('focus', refreshVisibleChat)
 		if (chatRefreshTimer) {
 			window.clearInterval(chatRefreshTimer)
 		}
@@ -519,8 +512,8 @@
 									:class="{ 'chat-message--own': isOwn(message) }"
 								>
 									<div class="chat-message__bubble">
-										{{ message.body }}
-										<span>{{ formatMessageTime(message.created_at) }}</span>
+										<ChatMessageBody :body="message.body" />
+										<ChatMessageMeta :created-at="message.created_at" :read-at="message.read_at" :own="isOwn(message)" />
 									</div>
 								</div>
 							</template>
@@ -650,8 +643,8 @@
 									:class="{ 'chat-message--own': isOwn(message) }"
 								>
 									<div class="chat-message__bubble">
-										{{ message.body }}
-										<span>{{ formatMessageTime(message.created_at) }}</span>
+										<ChatMessageBody :body="message.body" />
+										<ChatMessageMeta :created-at="message.created_at" :read-at="message.read_at" :own="isOwn(message)" />
 									</div>
 								</div>
 							</template>
@@ -1029,14 +1022,6 @@
 
 .chat-message--own .chat-message__bubble {
   background: rgba(123, 63, 242, 0.16);
-}
-
-.chat-message__bubble span {
-  display: block;
-  margin-top: 4px;
-  color: rgba(17, 34, 45, 0.48);
-  font-size: 11px;
-  text-align: end;
 }
 
 .chat-compose {
