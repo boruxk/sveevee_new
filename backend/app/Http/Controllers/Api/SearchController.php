@@ -135,7 +135,7 @@ class SearchController extends Controller
                 });
             })
             ->when($neighborhood, function (Builder $query, string $neighborhood): void {
-                $query->where('setup->address->neighborhood', $neighborhood);
+                $this->inPageNeighborhood($query, $neighborhood);
             })
             ->latest()
             ->orderByDesc('id')
@@ -234,6 +234,7 @@ class SearchController extends Controller
                     ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at')),
                 'candidates' => $this->searchablePages(),
                 'location' => fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inPageLocation($query, $tierCity, $tierNeighborhood),
+                'exclude_location' => fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->excludePageLocation($query, $tierCity, $tierNeighborhood),
             ],
             'products' => [
                 'query' => PageProduct::query()
@@ -364,7 +365,35 @@ class SearchController extends Controller
                         ->orWhere('address', 'like', '%'.$city.'%');
                 });
             })
-            ->when($neighborhood, fn (Builder $query, string $neighborhood) => $query->where('setup->address->neighborhood', $neighborhood));
+            ->when($neighborhood, fn (Builder $query, string $neighborhood) => $this->inPageNeighborhood($query, $neighborhood));
+    }
+
+    private function inPageNeighborhood(Builder $query, string $neighborhood): Builder
+    {
+        // The generated prefix is indexed and follows every setup update. Keep
+        // the complete original comparison for long names and prefix collisions.
+        return $query->where('search_neighborhood_prefix', mb_substr($neighborhood, 0, 191))
+            ->where('setup->address->neighborhood', $neighborhood);
+    }
+
+    private function excludePageLocation(Builder $query, ?string $city, ?string $neighborhood): Builder
+    {
+        $grammar = $query->getQuery()->getGrammar();
+        $column = fn (string $name): string => $grammar->wrap($query->getModel()->qualifyColumn($name));
+        $conditions = [];
+        $bindings = [];
+        if ($city !== null) {
+            $conditions[] = '('.$column('setup->address->city').' = ? or '.$column('address').' like ?)';
+            array_push($bindings, $city, '%'.$city.'%');
+        }
+        if ($neighborhood !== null) {
+            $conditions[] = $column('setup->address->neighborhood').' = ?';
+            $bindings[] = $neighborhood;
+        }
+
+        // Missing location values belong to the fallback tier; plain SQL NOT
+        // would lose them because comparisons with NULL are neither true nor false.
+        return $query->whereRaw('not coalesce(('.implode(' and ', $conditions).'), false)', $bindings);
     }
 
     private function inRelatedPageLocation(Builder $query, ?string $city, ?string $neighborhood): Builder

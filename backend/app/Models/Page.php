@@ -37,6 +37,14 @@ class Page extends Model
         'claimed_at',
     ];
 
+    protected $hidden = ['search_neighborhood_prefix'];
+
+    public function replicate(?array $except = null): static
+    {
+        // Generated search values must be recalculated from the new page's setup.
+        return parent::replicate([...($except ?? []), 'search_neighborhood_prefix']);
+    }
+
     protected function casts(): array
     {
         return [

@@ -242,6 +242,123 @@ class SearchPaginationPerformanceTest extends TestCase
         $this->assertSame([], $this->ids($response, 'products'));
     }
 
+    public function test_missing_preferred_neighborhood_keeps_null_empty_and_legacy_city_results_without_materializing_page_exclusions(): void
+    {
+        $city = $this->pages(24, city: 'Jerusalem', timestamp: '2026-09-15 12:00:00');
+        DB::table('pages')->where('id', $city[0])->update([
+            'setup' => json_encode(['address' => ['city' => 'Jerusalem']], JSON_THROW_ON_ERROR),
+        ]);
+        DB::table('pages')->where('id', $city[1])->update([
+            'setup' => json_encode(['address' => ['city' => 'Jerusalem', 'neighborhood' => '']], JSON_THROW_ON_ERROR),
+        ]);
+        DB::table('pages')->where('id', $city[2])->update([
+            'setup' => '{}', 'address' => 'Legacy street, Jerusalem',
+        ]);
+        $elsewhere = $this->pages(10, city: 'Haifa', neighborhood: 'Ramot');
+        $this->pages(2, city: 'Jerusalem', neighborhood: 'Ramot', owner: User::factory()->create(['banned_at' => now()]));
+        $preferences = ['preferred_city' => 'Jerusalem', 'preferred_neighborhood' => 'Ramot'];
+        $queries = [];
+        $recording = true;
+        DB::listen(function (QueryExecuted $query) use (&$queries, &$recording): void {
+            if ($recording) {
+                $queries[] = ['sql' => $query->sql, 'bindings' => $query->bindings];
+            }
+        });
+        try {
+            $first = $this->discover($preferences)->assertOk()->assertJsonPath('data.pagination.total', 34);
+            $second = $this->next($first, $preferences)->assertOk()->assertJsonPath('data.pagination.has_more', false);
+            $legacy = $this->discover([...$preferences, 'page' => 2])->assertOk();
+        } finally {
+            $recording = false;
+        }
+        $expected = [...array_reverse($city), ...array_reverse($elsewhere)];
+        $this->assertSame(array_slice($expected, 0, 20), $this->ids($first, 'pages'));
+        $this->assertSame(array_slice($expected, 20), $this->ids($second, 'pages'));
+        $this->assertSame($this->ids($second, 'pages'), $this->ids($legacy, 'pages'));
+        foreach ($queries as $query) {
+            $this->assertDoesNotMatchRegularExpression('/\bnot\s+in\s*\(\s*select\b[^)]*\bfrom\s+["`]?pages["`]?/is', $query['sql']);
+        }
+        $preferred = array_values(array_filter($queries, static fn (array $query): bool => str_contains($query['sql'], 'search_neighborhood_prefix')
+            && str_contains(strtolower($query['sql']), 'order by')
+            && ! str_contains(strtolower($query['sql']), 'union')));
+        $this->assertNotEmpty($preferred, 'Rare neighborhood lookups must constrain the indexed prefix.');
+        $plan = DB::select('EXPLAIN QUERY PLAN '.$preferred[0]['sql'], $preferred[0]['bindings']);
+        $details = implode("\n", array_map(static fn ($row): string => $row->detail, $plan));
+        $this->assertMatchesRegularExpression('/SEARCH pages USING INDEX [^\n]+search_neighborhood_prefix/i', $details);
+    }
+
+    public function test_few_preferred_results_fill_from_city_tier_then_continue_without_duplicates(): void
+    {
+        $local = $this->pages(2, city: 'Jerusalem', neighborhood: 'Ramot', timestamp: '2026-09-10 12:00:00');
+        DB::table('pages')->where('id', $local[0])->update([
+            'setup' => json_encode(['address' => ['neighborhood' => 'Ramot']], JSON_THROW_ON_ERROR),
+            'address' => 'Legacy address in Jerusalem',
+        ]);
+        $city = $this->pages(23, city: 'Jerusalem', neighborhood: 'Gilo', timestamp: '2026-09-11 12:00:00');
+        $elsewhere = $this->pages(10, city: 'Haifa', timestamp: '2026-09-12 12:00:00');
+        $preferences = ['preferred_city' => 'Jerusalem', 'preferred_neighborhood' => 'Ramot'];
+        $first = $this->discover($preferences)->assertOk()->assertJsonPath('data.pagination.total', 35);
+        $second = $this->next($first, $preferences)->assertOk()->assertJsonPath('data.pagination.has_more', false);
+        $legacy = $this->discover([...$preferences, 'page' => 2])->assertOk();
+        $expected = [...array_reverse($local), ...array_reverse($city), ...array_reverse($elsewhere)];
+        $this->assertSame(array_slice($expected, 0, 20), $this->ids($first, 'pages'));
+        $this->assertSame(array_slice($expected, 20), $this->ids($second, 'pages'));
+        $this->assertSame($this->ids($second, 'pages'), $this->ids($legacy, 'pages'));
+    }
+
+    public function test_same_generated_prefix_does_not_merge_distinct_full_neighborhood_names(): void
+    {
+        $prefix = str_repeat('ר', 191);
+        $exactName = $prefix.'-א';
+        $otherName = $prefix.'-ב';
+        $exact = $this->pages(2, city: 'Jerusalem', neighborhood: $exactName, timestamp: '2026-09-10 12:00:00');
+        $collision = $this->pages(2, city: 'Jerusalem', neighborhood: $otherName, timestamp: '2026-09-17 12:00:00');
+        $city = $this->pages(23, city: 'Jerusalem', neighborhood: 'Gilo', timestamp: '2026-09-16 12:00:00');
+        $this->assertSame($prefix, DB::table('pages')->where('id', $exact[0])->value('search_neighborhood_prefix'));
+        $this->assertSame($prefix, DB::table('pages')->where('id', $collision[0])->value('search_neighborhood_prefix'));
+        $preferences = ['preferred_city' => 'Jerusalem', 'preferred_neighborhood' => $exactName];
+        $first = $this->discover($preferences)->assertOk()->assertJsonPath('data.pagination.total', 27);
+        $second = $this->next($first, $preferences)->assertOk();
+        $legacy = $this->discover([...$preferences, 'page' => 2])->assertOk();
+        $expected = [...array_reverse($exact), ...array_reverse($collision), ...array_reverse($city)];
+        $this->assertSame(array_slice($expected, 0, 20), $this->ids($first, 'pages'));
+        $this->assertSame(array_slice($expected, 20), $this->ids($second, 'pages'));
+        $this->assertSame($this->ids($second, 'pages'), $this->ids($legacy, 'pages'));
+        $filtered = $this->getJson('/api/v1/search?'.http_build_query([
+            'scope' => 'pages', 'city' => 'Jerusalem', 'neighborhood' => $exactName,
+        ]))->assertOk();
+        $this->assertSame(array_reverse($exact), $this->ids($filtered, 'pages'));
+    }
+
+    public function test_setup_update_recomputes_neighborhood_prefix_and_moves_results_between_preference_tiers(): void
+    {
+        $formerLocal = $this->pages(1, city: 'Jerusalem', neighborhood: 'Ramot', timestamp: '2026-09-10 12:00:00')[0];
+        $newLocal = $this->pages(1, city: 'Jerusalem', neighborhood: 'Gilo', timestamp: '2026-09-11 12:00:00')[0];
+        $city = $this->pages(20, city: 'Jerusalem', neighborhood: 'Gilo', timestamp: '2026-09-16 12:00:00');
+        $preferences = ['preferred_city' => 'Jerusalem', 'preferred_neighborhood' => 'Ramot'];
+        $this->discover($preferences)->assertOk()->assertJsonPath('data.pages.0.id', $formerLocal);
+        foreach ([$formerLocal => 'Gilo', $newLocal => 'Ramot'] as $id => $neighborhood) {
+            DB::table('pages')->where('id', $id)->update([
+                'setup' => json_encode(['address' => ['city' => 'Jerusalem', 'neighborhood' => $neighborhood]], JSON_THROW_ON_ERROR),
+            ]);
+            $this->assertSame($neighborhood, DB::table('pages')->where('id', $id)->value('search_neighborhood_prefix'));
+        }
+        $first = $this->discover($preferences)->assertOk()->assertJsonPath('data.pages.0.id', $newLocal);
+        $second = $this->next($first, $preferences)->assertOk()->assertJsonPath('data.pagination.has_more', false);
+        $legacy = $this->discover([...$preferences, 'page' => 2])->assertOk();
+        $expected = [$newLocal, ...array_reverse($city), $formerLocal];
+        $this->assertSame(array_slice($expected, 0, 20), $this->ids($first, 'pages'));
+        $this->assertSame(array_slice($expected, 20), $this->ids($second, 'pages'));
+        $this->assertSame($this->ids($second, 'pages'), $this->ids($legacy, 'pages'));
+
+        $source = Page::findOrFail($newLocal);
+        $this->assertArrayNotHasKey('search_neighborhood_prefix', $source->toArray());
+        $copy = $source->replicate();
+        $copy->setup = ['address' => ['city' => 'Jerusalem', 'neighborhood' => 'Gilo']];
+        $copy->save();
+        $this->assertSame('Gilo', $copy->fresh()->getAttribute('search_neighborhood_prefix'));
+    }
+
     private function discover(array $query = []): TestResponse
     {
         return $this->getJson('/api/v1/search?'.http_build_query(['discover' => 1, ...$query]));

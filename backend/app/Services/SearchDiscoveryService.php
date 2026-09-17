@@ -116,11 +116,17 @@ class SearchDiscoveryService
             ($definition['location'])($query, $city, $neighborhood);
         }
         if ($priority > 0) {
-            // Each preceding tier contains all higher-priority tiers. NOT IN also
-            // keeps records with missing/null location fields in the final tier.
-            $excluded = (clone $definition['query'])->withoutEagerLoads()->reorder()->select($id);
-            ($definition['location'])($excluded, ...$tiers[$priority - 1]);
-            $query->whereNotIn($id, $excluded->toBase());
+            if (isset($definition['exclude_location'])) {
+                // Pages can negate the location on the current row instead of
+                // materializing every page in the previous tier again.
+                ($definition['exclude_location'])($query, ...$tiers[$priority - 1]);
+            } else {
+                // The preceding tier includes all higher-priority tiers. NOT IN
+                // also retains records with missing/null locations.
+                $excluded = (clone $definition['query'])->withoutEagerLoads()->reorder()->select($id);
+                ($definition['location'])($excluded, ...$tiers[$priority - 1]);
+                $query->whereNotIn($id, $excluded->toBase());
+            }
         }
 
         return $query->select([$id.' as id', $createdAt.' as created_at'])
