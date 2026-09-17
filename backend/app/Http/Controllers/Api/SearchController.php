@@ -11,15 +11,13 @@ use App\Models\PageService;
 use App\Models\User;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Services\SearchDiscoveryService;
 use App\Support\CatalogTopics;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 
 class SearchController extends Controller
 {
-    private const DISCOVERY_LIMIT = 20;
-
     private const RESULT_SCOPES = ['users', 'pages', 'products', 'services', 'events', 'ads'];
 
     private const TOPIC_SCOPES_BY_RESULT = [
@@ -31,7 +29,10 @@ class SearchController extends Controller
         'ads' => [CatalogTopics::SCOPE_ADS],
     ];
 
-    public function __construct(private readonly PayloadService $payloads) {}
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly SearchDiscoveryService $discoverySearch,
+    ) {}
 
     public function index(Request $request)
     {
@@ -69,7 +70,7 @@ class SearchController extends Controller
 
             $page = max(1, $request->integer('page', 1));
 
-            return $this->discovery($preferredCity, $preferredNeighborhood, $page);
+            return $this->discovery($preferredCity, $preferredNeighborhood, $page, $this->nullableString($request->query('cursor')));
         }
 
         if (! $hasSearchCriteria) {
@@ -117,9 +118,7 @@ class SearchController extends Controller
             ->map(fn (User $user) => $this->payloads->user($user))
             ->values() : collect();
 
-        $pages = $this->shouldSearch('pages', $resultScope) ? Page::query()
-            ->with(['user.profile'])
-            ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
+        $pageIds = $this->shouldSearch('pages', $resultScope) ? $this->searchablePages()
             ->when($topicKey, fn (Builder $query) => $query->whereIn('category_key', $topicKeys))
             ->when($term !== '', function (Builder $query) use ($like): void {
                 $query->where(function (Builder $query) use ($like): void {
@@ -139,10 +138,13 @@ class SearchController extends Controller
                 $query->where('setup->address->neighborhood', $neighborhood);
             })
             ->latest()
+            ->orderByDesc('id')
             ->limit(20)
-            ->get()
-            ->map(fn (Page $page) => $this->compactPage($page))
-            ->values() : collect();
+            ->pluck('id') : collect();
+        $pageModels = $pageIds->isEmpty() ? collect() : Page::query()->whereKey($pageIds->all())
+            ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))->get()->keyBy('id');
+        $pages = $pageIds->map(fn ($id) => $pageModels->get($id))->filter()
+            ->map(fn (Page $page) => $this->compactPage($page))->values();
 
         $products = $this->shouldSearch('products', $resultScope) ? PageProduct::query()
             ->with([
@@ -224,120 +226,49 @@ class SearchController extends Controller
         ]);
     }
 
-    private function discovery(?string $city, ?string $neighborhood, int $page)
+    private function discovery(?string $city, ?string $neighborhood, int $page, ?string $cursor)
     {
-        $candidateLimit = $page * self::DISCOVERY_LIMIT;
-        $pageResults = $this->prioritizedDiscoveryScope(
-            Page::query()
-                ->with(['user.profile'])
-                ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at')),
-            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inPageLocation($query, $tierCity, $tierNeighborhood),
-            $city,
-            $neighborhood,
-            $candidateLimit
-        );
-
-        $productResults = $this->prioritizedDiscoveryScope(
-            PageProduct::query()
-                ->with([
-                    'page' => fn ($page) => $page
-                        ->with('user.profile')
-                        ->withCount('ratings')
-                        ->withAvg('ratings', 'rating'),
-                ])
-                ->whereHas('page', fn (Builder $page) => $page
-                    ->managed()
-                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))),
-            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
-            $city,
-            $neighborhood,
-            $candidateLimit
-        );
-
-        $serviceResults = $this->prioritizedDiscoveryScope(
-            PageService::query()
-                ->with(['page.user.profile'])
-                ->whereHas('page', fn (Builder $page) => $page
-                    ->managed()
-                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))),
-            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
-            $city,
-            $neighborhood,
-            $candidateLimit
-        );
-
-        $eventResults = $this->prioritizedDiscoveryScope(
-            $this->publicEventsQuery()
-                ->whereDate('event_date', '>=', today()),
-            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $query->inOwnerLocation($tierCity, $tierNeighborhood),
-            $city,
-            $neighborhood,
-            $candidateLimit
-        );
-
-        $adResults = $this->prioritizedDiscoveryScope(
-            Ad::query()
-                ->with(['user.profile', 'page'])
-                ->active()
-                ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at')),
-            fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $query->inLocation($tierCity, $tierNeighborhood),
-            $city,
-            $neighborhood,
-            $candidateLimit
-        );
-
-        $scopeResults = [
-            'pages' => $pageResults,
-            'products' => $productResults,
-            'services' => $serviceResults,
-            'events' => $eventResults,
-            'ads' => $adResults,
+        $scopes = [
+            'pages' => [
+                'query' => Page::query()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at')),
+                'candidates' => $this->searchablePages(),
+                'location' => fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inPageLocation($query, $tierCity, $tierNeighborhood),
+            ],
+            'products' => [
+                'query' => PageProduct::query()
+                    ->with(['page' => fn ($page) => $page->withCount('ratings')->withAvg('ratings', 'rating')])
+                    ->whereHas('page', fn (Builder $page) => $page->managed()
+                        ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))),
+                'location' => fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
+            ],
+            'services' => [
+                'query' => PageService::query()->with('page')
+                    ->whereHas('page', fn (Builder $page) => $page->managed()
+                        ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at'))),
+                'location' => fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $this->inRelatedPageLocation($query, $tierCity, $tierNeighborhood),
+            ],
+            'events' => [
+                'query' => $this->publicEventsQuery()->whereDate('event_date', '>=', today()),
+                'location' => fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $query->inOwnerLocation($tierCity, $tierNeighborhood),
+            ],
+            'ads' => [
+                'query' => Ad::query()->with(['user.profile', 'page'])->active()
+                    ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at')),
+                'location' => fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $query->inLocation($tierCity, $tierNeighborhood),
+            ],
         ];
-        $scopeTotals = collect($scopeResults)->map(fn (array $result): int => $result['total'])->all();
-        $total = array_sum($scopeTotals);
-        $lastPage = max(1, (int) ceil($total / self::DISCOVERY_LIMIT));
-        $offset = ($page - 1) * self::DISCOVERY_LIMIT;
-        $candidates = collect();
-
-        foreach ($scopeResults as $scope => $result) {
-            $kind = rtrim($scope, 's');
-
-            foreach ($result['items'] as $model) {
-                $candidates->push($this->discoveryCandidate($kind, $model, $city, $neighborhood));
+        $result = $this->discoverySearch->paginate($scopes, $city, $neighborhood, $page, $cursor);
+        $grouped = array_fill_keys(array_keys($scopes), []);
+        foreach ($result['candidates']->groupBy('kind') as $kind => $candidates) {
+            $scope = $kind.'s';
+            // Only the final cards load full records and their display relations.
+            $models = (clone $scopes[$scope]['query'])->whereKey($candidates->pluck('id')->all())->get()->keyBy('id');
+            foreach ($candidates as $candidate) {
+                if ($model = $models->get($candidate['id'])) {
+                    $grouped[$scope][] = $this->discoveryValue($kind, $model);
+                }
             }
-        }
-
-        $batch = $candidates
-            ->sort(function (array $left, array $right): int {
-                $priority = $left['priority'] <=> $right['priority'];
-                if ($priority !== 0) {
-                    return $priority;
-                }
-
-                $createdAt = $right['created_at'] <=> $left['created_at'];
-                if ($createdAt !== 0) {
-                    return $createdAt;
-                }
-
-                $kind = strcmp($right['kind'], $left['kind']);
-
-                return $kind !== 0
-                    ? $kind
-                    : (int) $right['model']->getKey() <=> (int) $left['model']->getKey();
-            })
-            ->values()
-            ->slice($offset, self::DISCOVERY_LIMIT)
-            ->values();
-        $grouped = [
-            'pages' => [],
-            'products' => [],
-            'services' => [],
-            'events' => [],
-            'ads' => [],
-        ];
-
-        foreach ($batch as $candidate) {
-            $grouped[$candidate['kind'].'s'][] = $this->discoveryValue($candidate['kind'], $candidate['model']);
         }
 
         return ApiResponseService::success([
@@ -346,75 +277,17 @@ class SearchController extends Controller
             'topic' => null,
             'scope' => null,
             'mode' => 'discovery',
-            'preferred_location' => [
-                'city' => $city,
-                'neighborhood' => $neighborhood,
-            ],
-            'pagination' => [
-                'current_page' => $page,
-                'per_page' => self::DISCOVERY_LIMIT,
-                'total' => $total,
-                'scope_totals' => $scopeTotals,
-                'last_page' => $lastPage,
-                'has_more' => $page < $lastPage,
-                'next_page' => $page < $lastPage ? $page + 1 : null,
-            ],
+            'preferred_location' => ['city' => $city, 'neighborhood' => $neighborhood],
+            'pagination' => $result['pagination'],
         ]);
     }
 
-    private function prioritizedDiscoveryScope(
-        Builder $query,
-        callable $applyLocation,
-        ?string $city,
-        ?string $neighborhood,
-        int $limit
-    ): array {
-        $total = (clone $query)->count();
-        $items = $total === 0
-            ? collect()
-            : $this->prioritizedDiscoveryItems($query, $applyLocation, $city, $neighborhood, min($total, $limit));
-
-        return ['items' => $items, 'total' => $total];
-    }
-
-    private function discoveryCandidate(string $kind, $model, ?string $city, ?string $neighborhood): array
+    private function searchablePages(): Builder
     {
-        return [
-            'kind' => $kind,
-            'model' => $model,
-            'priority' => $this->discoveryPriority($kind, $model, $city, $neighborhood),
-            'created_at' => $model->created_at?->getTimestamp() ?? 0,
-        ];
-    }
-
-    private function discoveryPriority(string $kind, $model, ?string $city, ?string $neighborhood): int
-    {
-        if (! $city) {
-            return 0;
-        }
-
-        if ($kind === 'ad') {
-            $itemCity = $this->nullableString($model->city);
-            $itemNeighborhood = $this->nullableString($model->neighborhood);
-            $matchesCity = $itemCity === $city;
-        } elseif ($kind === 'event' && $model->user_id) {
-            $itemCity = $this->nullableString($model->user?->profile?->city);
-            $itemNeighborhood = $this->nullableString($model->user?->profile?->neighborhood);
-            $matchesCity = $itemCity === $city;
-        } else {
-            $page = $kind === 'page' ? $model : $model->page;
-            $address = is_array($page?->setup['address'] ?? null) ? $page->setup['address'] : [];
-            $itemCity = $this->nullableString($address['city'] ?? null);
-            $itemNeighborhood = $this->nullableString($address['neighborhood'] ?? null);
-            $matchesCity = $itemCity === $city
-                || ($page && mb_stripos((string) $page->address, $city) !== false);
-        }
-
-        if (! $matchesCity) {
-            return $neighborhood ? 2 : 1;
-        }
-
-        return $neighborhood && $itemNeighborhood !== $neighborhood ? 1 : 0;
+        // A scalar lookup keeps the ordered page index usable. MariaDB can turn
+        // EXISTS into an owner-first join, sorting every imported page for LIMIT 20.
+        return Page::query()->where(User::query()->selectRaw('1')
+            ->whereColumn('users.id', 'pages.user_id')->whereNull('banned_at'), '=', 1);
     }
 
     private function discoveryValue(string $kind, $model): array
@@ -426,64 +299,6 @@ class SearchController extends Controller
             'event' => $this->withCompactPage($this->payloads->event($model), $model->page),
             'ad' => $this->payloads->ad($model),
         };
-    }
-
-    private function prioritizedDiscoveryItems(
-        Builder $query,
-        callable $applyLocation,
-        ?string $city,
-        ?string $neighborhood,
-        int $limit
-    ): Collection {
-        $items = collect();
-
-        if ($city && $neighborhood) {
-            $this->appendDiscoveryTier($items, $query, $applyLocation, $city, $neighborhood, $limit);
-        }
-
-        if ($city) {
-            $this->appendDiscoveryTier($items, $query, $applyLocation, $city, null, $limit);
-        }
-
-        $this->appendDiscoveryTier($items, $query, $applyLocation, null, null, $limit);
-
-        return $items;
-    }
-
-    private function appendDiscoveryTier(
-        Collection $items,
-        Builder $query,
-        callable $applyLocation,
-        ?string $city,
-        ?string $neighborhood,
-        int $limit
-    ): void {
-        $remaining = $limit - $items->count();
-
-        if ($remaining <= 0) {
-            return;
-        }
-
-        $tier = clone $query;
-
-        if ($city || $neighborhood) {
-            $applyLocation($tier, $city, $neighborhood);
-        }
-
-        $existingIds = $items->pluck('id')->filter()->values()->all();
-        if ($existingIds !== []) {
-            $tier->whereNotIn($tier->getModel()->getQualifiedKeyName(), $existingIds);
-        }
-
-        $models = $tier
-            ->latest()
-            ->orderByDesc($tier->getModel()->getQualifiedKeyName())
-            ->limit($remaining)
-            ->get();
-
-        foreach ($models as $model) {
-            $items->push($model);
-        }
     }
 
     private function topicFromQuery(mixed $value): ?array

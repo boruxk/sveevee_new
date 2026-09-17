@@ -1,8 +1,9 @@
 <script setup>
-	import { computed, onMounted, reactive, ref, toRef, watch } from 'vue'
+	import { computed, onMounted, onBeforeUnmount, reactive, ref, toRef, watch } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute, useRouter } from 'vue-router'
 	import { searchEverything } from '@/services/api/search'
+	import { createLatestRequest } from '@/utils/latestRequest'
 	import { useAuthStore } from '@/stores/auth'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { useLocationOptions } from '@/composables/useLocationOptions'
@@ -21,6 +22,9 @@
 	const authStore = useAuthStore()
 	const loading = ref(false)
 	const loadingMore = ref(false)
+	const searchFailed = ref(false)
+	const searchRequest = createLatestRequest()
+	let discoveryRequestLocation = null
 	const hasSearched = ref(false)
 	const discoveryMode = ref(false)
 	const q = ref(queryValue(route.query.q))
@@ -32,7 +36,7 @@
 		category: queryValue(route.query.category)
 	})
 	const discoveryLocation = reactive({ city: '', neighborhood: '' })
-	const discoveryPagination = reactive({ current_page: 1, last_page: 1, total: 0, has_more: false, next_page: null })
+	const discoveryPagination = reactive({ current_page: 1, last_page: 1, total: 0, has_more: false, next_page: null, next_cursor: null })
 	const advancedOpen = ref(false)
 	const results = reactive({ users: [], pages: [], products: [], services: [], events: [], ads: [] })
 	const searchResults = computed(() => [
@@ -108,7 +112,8 @@
 			last_page: 1,
 			total: 0,
 			has_more: false,
-			next_page: null
+			next_page: null,
+			next_cursor: null
 		}, payload)
 	}
 
@@ -169,46 +174,64 @@
 		return Number(right.value.id || 0) - Number(left.value.id || 0)
 	}
 
-	async function loadDiscovery({ page = 1, append = false } = {}) {
+	function preferredDiscoveryLocation() {
 		const profile = authStore.user?.profile || {}
-		const preferredCity = profile.city || ''
+		const city = profile.city || ''
 
-		if (append) {
-			loadingMore.value = true
-		} else {
-			loading.value = true
-		}
-		try {
-			const { data } = await searchEverything({
-				discover: 1,
-				page,
-				preferred_city: preferredCity,
-				preferred_neighborhood: preferredCity ? profile.neighborhood || '' : ''
-			})
-			applyResults(data.data, { append })
-			applyDiscoveryPagination(data.data?.pagination)
-			discoveryLocation.city = data.data?.preferred_location?.city || ''
-			discoveryLocation.neighborhood = data.data?.preferred_location?.neighborhood || ''
-			discoveryMode.value = true
-			hasSearched.value = false
-		} finally {
-			if (append) {
-				loadingMore.value = false
-			} else {
+		return { preferred_city: city, preferred_neighborhood: city ? profile.neighborhood || '' : '' }
+	}
+
+	function requestResults(params, { append = false, discovery = false, routeTarget = null } = {}) {
+		return searchRequest.run(JSON.stringify({ params, append, discovery }), {
+			onStart() {
+				loading.value = !append
+				loadingMore.value = append
+				searchFailed.value = false
+			},
+			async request(signal) {
+				if (routeTarget) await router.replace(routeTarget)
+				signal.throwIfAborted()
+
+				return searchEverything(params, { signal })
+			},
+			onResult({ data }) {
+				applyResults(data.data, { append })
+				applyDiscoveryPagination(discovery ? data.data?.pagination : undefined)
+				discoveryLocation.city = discovery ? data.data?.preferred_location?.city || '' : ''
+				discoveryLocation.neighborhood = discovery ? data.data?.preferred_location?.neighborhood || '' : ''
+				discoveryRequestLocation = discovery ? { preferred_city: params.preferred_city, preferred_neighborhood: params.preferred_neighborhood } : null
+				discoveryMode.value = discovery
+				hasSearched.value = !discovery
+			},
+			onError() {
+				searchFailed.value = true
+			},
+			onSettled() {
 				loading.value = false
+				loadingMore.value = false
 			}
+		})
+	}
+
+	function loadDiscovery({ page = 1, append = false, routeTarget = null } = {}) {
+		const location = preferredDiscoveryLocation()
+		// Cursors belong to the location used for the first page, never to a changed profile.
+		if (append && JSON.stringify(location) !== JSON.stringify(discoveryRequestLocation)) {
+			return loadDiscovery()
 		}
+		const params = { discover: 1, page, ...location }
+		if (append && discoveryPagination.next_cursor) params.cursor = discoveryPagination.next_cursor
+
+		return requestResults(params, { append, discovery: true, routeTarget })
 	}
 
 	function loadMoreDiscovery() {
-		if (!discoveryMode.value || loadingMore.value || !discoveryPagination.has_more) {
-			return
-		}
+		if (!discoveryMode.value || loading.value || loadingMore.value || !discoveryPagination.has_more) return
 
 		return loadDiscovery({ page: discoveryPagination.next_page, append: true })
 	}
 
-	async function submit() {
+	function submit() {
 		const params = {
 			q: q.value.trim(),
 			city: filters.city,
@@ -218,27 +241,15 @@
 		}
 
 		if (!hasSearchCriteria(params)) {
-			await router.replace({ name: 'search' })
-			await loadDiscovery()
-			return
+			return loadDiscovery({ routeTarget: { name: 'search' } })
 		}
 
-		loading.value = true
-		try {
-			await router.replace({
+		return requestResults(params, {
+			routeTarget: {
 				name: 'search',
 				query: Object.fromEntries(Object.entries(params).filter(([, value]) => value))
-			})
-			const { data } = await searchEverything(params)
-			applyResults(data.data)
-			applyDiscoveryPagination()
-			discoveryLocation.city = ''
-			discoveryLocation.neighborhood = ''
-			discoveryMode.value = false
-			hasSearched.value = true
-		} finally {
-			loading.value = false
-		}
+			}
+		})
 	}
 
 	function removeExpiredAd(adId) {
@@ -293,24 +304,18 @@
 	})
 
 	watch(() => filters.scope, () => {
-		if (!filters.scope || (filters.category && !selectedCategoryMatchesActiveScope())) {
+		if (!filters.scope || (filters.category && catalogGroups.value.length > 0 && !selectedCategoryMatchesActiveScope())) {
 			filters.category = ''
 		}
 	})
 
-	onMounted(async() => {
-		await Promise.all([loadLocationOptions(), loadCatalogTopics()])
-		citySelectOptions.value = cityOptions.value
-		neighborhoodSelectOptions.value = neighborhoodOptions.value
-		if (!filters.scope || (filters.category && !selectedCategoryMatchesActiveScope())) {
-			filters.category = ''
-		}
-		if (q.value || filters.city || filters.neighborhood || filters.scope || filters.category) {
-			await submit()
-		} else {
-			await loadDiscovery()
-		}
+	onMounted(() => {
+		// Options enhance the form; they must not delay results or block search on failure.
+		Promise.allSettled([loadLocationOptions(), loadCatalogTopics()])
+		submit()
 	})
+
+	onBeforeUnmount(() => searchRequest.dispose())
 </script>
 
 <template>
@@ -413,6 +418,8 @@
 				</div>
 			</section>
 
+			<p v-if="searchFailed" class="search-error" role="alert">{{ t('search.loadFailed') }}</p>
+
 			<section v-if="discoveryMode || hasSearched || combinedResults.length > 0" class="result-section">
 				<div v-if="!loading && combinedResults.length === 0" class="empty-state">{{ t('search.empty') }}</div>
 				<div v-else class="result-list">
@@ -431,6 +438,7 @@
 						no-caps
 						color="primary"
 						:loading="loadingMore"
+						:disable="loading"
 						@click="loadMoreDiscovery"
 					>
 						<span class="discovery-load-more__content">
@@ -454,6 +462,11 @@
 .page-shell {
   max-width: 1280px;
   margin: 0 auto;
+}
+
+.search-error {
+  color: var(--q-negative);
+  margin-block: 18px;
 }
 
 .search-panel {

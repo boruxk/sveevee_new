@@ -1144,6 +1144,7 @@ export default {
 		hideAdvanced: 'Masquer la recherche avancée',
 		chooseType: 'Que voulez-vous rechercher ?',
 		loadMore: 'Charger plus de résultats',
+		loadFailed: 'Impossible de charger les résultats. Réessayez.',
 		empty: 'Aucun résultat.'
 	},
 	catalog: {

@@ -1144,6 +1144,7 @@ export default {
 		hideAdvanced: 'הסתר חיפוש מתקדם',
 		chooseType: 'מה לחפש?',
 		loadMore: 'טעינת תוצאות נוספות',
+		loadFailed: 'לא ניתן לטעון את התוצאות. נסו שוב.',
 		empty: 'אין תוצאות.'
 	},
 	catalog: {

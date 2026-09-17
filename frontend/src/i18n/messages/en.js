@@ -1144,6 +1144,7 @@ export default {
 		hideAdvanced: 'Hide advanced search',
 		chooseType: 'What do you want to search?',
 		loadMore: 'Load more results',
+		loadFailed: 'Results could not be loaded. Please try again.',
 		empty: 'No results.'
 	},
 	catalog: {
