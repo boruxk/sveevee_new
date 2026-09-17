@@ -75,6 +75,13 @@ class GuestSupportService
             ],
         ];
 
+        if (! $forAdmin) {
+            $supportAdmin = $this->supportAdmin();
+            $payload['support_presence'] = $supportAdmin && ! $supportAdmin->banned_at
+                ? $this->payloads->presence($supportAdmin)
+                : null;
+        }
+
         if ($withMessages) {
             $payload['messages'] = $conversation->messages
                 ->map(fn (GuestSupportMessage $message): array => $this->messagePayload($message, $conversation))

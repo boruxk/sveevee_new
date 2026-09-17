@@ -64,16 +64,18 @@ class PayloadService
         }
 
         if ($includePrivate || $includePresence) {
-            $payload['presence'] = [
-                'is_online' => $user->isOnline(),
-            ];
-
-            if ($includePrivate) {
-                $payload['presence']['last_seen_at'] = $user->last_seen_at?->toISOString();
-            }
+            $payload['presence'] = $this->presence($user);
         }
 
         return $payload;
+    }
+
+    public function presence(User $user): array
+    {
+        return [
+            'is_online' => $user->isOnline(),
+            'last_seen_at' => $user->last_seen_at?->toISOString(),
+        ];
     }
 
     public function profile(?UserProfile $profile, ?User $user = null, bool $includePrivate = false): array
@@ -422,7 +424,7 @@ class PayloadService
             'page' => $this->pageChatIdentity($conversation->page),
             'other_user' => $viewerIsOwner
                 ? ($conversation->visitor ? $this->user($conversation->visitor, includePresence: true) : $this->guestPageChatIdentity())
-                : $this->pageChatIdentity($conversation->page, asChatUser: true),
+                : $this->pageChatIdentity($conversation->page, asChatUser: true, includePresence: true),
             'is_page_chat' => true,
             'viewer_as_page' => (bool) $viewerIsOwner,
             'is_guest' => $conversation->visitor_id === null,
@@ -476,7 +478,7 @@ class PayloadService
         ];
     }
 
-    private function pageChatIdentity(Page $page, bool $asChatUser = false): array
+    private function pageChatIdentity(Page $page, bool $asChatUser = false, bool $includePresence = false): array
     {
         $identity = [
             'id' => $asChatUser ? 'page-'.$page->id : $page->id,
@@ -500,6 +502,11 @@ class PayloadService
                 'photo_webp_srcset' => $identity['logo_webp_srcset'],
                 'photo_avif_srcset' => $identity['logo_avif_srcset'],
             ];
+        }
+
+        if ($includePresence) {
+            $page->loadMissing('user');
+            $identity['presence'] = $page->user ? $this->presence($page->user) : null;
         }
 
         return $identity;

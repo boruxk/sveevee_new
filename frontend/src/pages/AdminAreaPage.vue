@@ -39,6 +39,7 @@
 	import PageCreateDialog from '@/components/pages/PageCreateDialog.vue'
 	import ChatMessageBody from '@/components/ChatMessageBody.vue'
 	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
+	import UserPresenceStatus from '@/components/UserPresenceStatus.vue'
 
 	const defaultSettings = () => ({
 		ads: {
@@ -241,6 +242,14 @@
 			label: t('admin.registeredAt'),
 			align: 'left',
 			field: 'created_at',
+			format: (value) => formatDateTime(value),
+			sortable: false
+		},
+		{
+			name: 'last_seen_at',
+			label: t('admin.lastSeen'),
+			align: 'left',
+			field: (user) => user.presence?.last_seen_at,
 			format: (value) => formatDateTime(value),
 			sortable: false
 		},
@@ -1374,9 +1383,7 @@
 								<header class="support-detail__head">
 									<div>
 										<h2>{{ activeSupportUser?.display_name }}</h2>
-										<div v-if="activeSupportUser?.presence?.is_online" class="admin-online-label">
-											<span />{{ t('chat.online') }}
-										</div>
+										<UserPresenceStatus :presence="activeSupportUser?.presence" class="admin-presence-status" />
 										<p v-if="activeSupportUser?.email">{{ activeSupportUser.email }}</p>
 										<p v-if="!activeSupportConversation.is_guest">{{ localizedLocation(activeSupportUser?.profile?.city, 'city') || '-' }} / {{ localizedLocation(activeSupportUser?.profile?.neighborhood, 'neighborhood') || '-' }}</p>
 									</div>
@@ -3485,21 +3492,8 @@
   overflow-wrap: anywhere;
 }
 
-.admin-online-label {
-  display: flex;
-  gap: 6px;
-  align-items: center;
+.admin-presence-status {
   margin: 2px 0 5px;
-  color: #15803d;
-  font-size: 12px;
-  font-weight: 750;
-}
-
-.admin-online-label span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #16a34a;
 }
 
 .claim-review-list {

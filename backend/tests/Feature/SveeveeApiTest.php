@@ -438,7 +438,7 @@ class SveeveeApiTest extends TestCase
         $this->getJson('/api/v1/chats')
             ->assertOk()
             ->assertJsonPath('data.conversations.0.other_user.presence.is_online', true)
-            ->assertJsonMissingPath('data.conversations.0.other_user.presence.last_seen_at');
+            ->assertJsonPath('data.conversations.0.other_user.presence.last_seen_at', $recipient->fresh()->last_seen_at->toISOString());
 
         Sanctum::actingAs($admin);
         $this->getJson('/api/v1/admin/users?paginated=1&q=online-recipient%40example.test')

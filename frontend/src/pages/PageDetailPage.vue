@@ -23,6 +23,7 @@
 	import PageReviewDialog from '@/components/ratings/PageReviewDialog.vue'
 	import ChatBlock from '@/components/ChatBlock.vue'
 	import GuestPageChat from '@/components/GuestPageChat.vue'
+	import UserPresenceStatus from '@/components/UserPresenceStatus.vue'
 	import { completePendingGuestPageChatClaim, readPendingGuestPageChatClaim } from '@/utils/guestPageChatSession'
 
 	const route = useRoute()
@@ -49,6 +50,7 @@
 	const ratingsDialogOpen = ref(false)
 	const reviewDialogOpen = ref(false)
 	const pageChatDialogOpen = ref(false)
+	const guestChatPresence = ref(null)
 	const pageChatClaimState = ref('idle')
 	let claimingGuestChat = false
 	const claimDialogOpen = ref(false)
@@ -764,6 +766,7 @@
 						<div>
 							<strong>{{ page.name }}</strong>
 							<span>{{ t('chat.title') }}</span>
+							<UserPresenceStatus v-if="!authStore.isAuthenticated" :presence="guestChatPresence" />
 						</div>
 						<q-btn
 							flat
@@ -779,6 +782,7 @@
 						:key="page.id"
 						:page-id="page.id"
 						:return-to="pageChatReturnTo"
+						@presence="guestChatPresence = $event"
 					/>
 					<div v-else-if="pageChatClaimState !== 'idle'" class="page-chat-claim-status" role="status">
 						<q-spinner v-if="pageChatClaimState === 'loading'" color="primary" size="32px" />

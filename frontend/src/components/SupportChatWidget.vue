@@ -17,6 +17,7 @@
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import ChatMessageBody from '@/components/ChatMessageBody.vue'
 	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
+	import UserPresenceStatus from '@/components/UserPresenceStatus.vue'
 
 	const { locale, t } = useI18n()
 	const $q = useQuasar()
@@ -330,6 +331,7 @@
 				<div>
 					<strong>{{ t('chat.humanSupport') }}</strong>
 					<span>{{ t('chat.supportIntro') }}</span>
+					<UserPresenceStatus :presence="conversation?.support_presence ?? conversation?.other_user?.presence" />
 				</div>
 				<q-btn flat
 					round
@@ -496,7 +498,7 @@
   border-bottom: 1px solid rgba(245, 66, 145, 0.16);
 }
 
-.support-widget__header div {
+.support-widget__header > div {
   display: grid;
   gap: 4px;
   min-width: 0;
@@ -508,7 +510,7 @@
   font-weight: 900;
 }
 
-.support-widget__header span {
+.support-widget__header > div > span {
   color: rgba(17, 34, 45, 0.62);
   font-size: 0.9rem;
   font-weight: 700;

@@ -15,6 +15,7 @@
 	import DeleteIcon from '@/components/icons/DeleteIcon.vue'
 	import ChatMessageBody from '@/components/ChatMessageBody.vue'
 	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
+	import UserPresenceStatus from '@/components/UserPresenceStatus.vue'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 
 	const MESSAGE_BATCH_SIZE = 10
@@ -107,7 +108,6 @@
 	})
 	const hiddenMessageCount = computed(() => Math.max(messages.value.length - visibleMessages.value.length, 0))
 	const olderMessageBatchCount = computed(() => Math.min(MESSAGE_BATCH_SIZE, hiddenMessageCount.value))
-	const activeIsOnline = computed(() => Boolean(active.value?.other_user?.presence?.is_online))
 	const canDeleteActive = computed(() => Boolean(
 		active.value?.id && !active.value?.is_page_chat && !active.value?.is_support
 	))
@@ -473,10 +473,7 @@
 							</q-btn>
 							<div class="chat-main__identity">
 								<div class="text-h6">{{ participantName(active?.other_user) || t('chat.empty') }}</div>
-								<div v-if="activeIsOnline" class="chat-online-label">
-									<span class="chat-online-label__dot" />
-									{{ t('chat.online') }}
-								</div>
+								<UserPresenceStatus :presence="active?.other_user?.presence" />
 							</div>
 							<q-btn v-if="canDeleteActive"
 								flat
@@ -604,10 +601,7 @@
 							</q-btn>
 							<div class="chat-main__identity">
 								<div class="text-h6">{{ participantName(active?.other_user) || t('chat.empty') }}</div>
-								<div v-if="activeIsOnline" class="chat-online-label">
-									<span class="chat-online-label__dot" />
-									{{ t('chat.online') }}
-								</div>
+								<UserPresenceStatus :presence="active?.other_user?.presence" />
 							</div>
 							<q-btn v-if="canDeleteActive"
 								flat
@@ -871,23 +865,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.chat-online-label {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin-top: 2px;
-  color: #15803d;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.chat-online-label__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #16a34a;
 }
 
 .chat-delete-btn {

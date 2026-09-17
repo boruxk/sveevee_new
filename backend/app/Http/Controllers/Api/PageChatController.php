@@ -30,7 +30,7 @@ class PageChatController extends Controller
         $conversations = PageConversation::query()
             ->where('page_id', $page->id)
             ->whereNotNull('last_message_at')
-            ->with(['page', 'visitor.profile', 'messages.sender.profile'])
+            ->with(['page.user', 'visitor.profile', 'messages.sender.profile'])
             ->orderByDesc('last_message_at')
             ->orderByDesc('updated_at')
             ->get()
@@ -52,7 +52,7 @@ class PageChatController extends Controller
             ->whereNotNull('last_message_at')
             ->whereHas('page', fn ($query) => $query->where('is_unclaimed', false))
             ->whereHas('page.user', fn ($query) => $query->whereNull('banned_at'))
-            ->with(['page', 'visitor.profile', 'messages.sender.profile'])
+            ->with(['page.user', 'visitor.profile', 'messages.sender.profile'])
             ->orderByDesc('last_message_at')
             ->orderByDesc('updated_at')
             ->get()
@@ -250,6 +250,6 @@ class PageChatController extends Controller
 
     private function loadConversation(PageConversation $conversation): void
     {
-        $conversation->load(['page', 'visitor.profile', 'messages.sender.profile']);
+        $conversation->load(['page.user', 'visitor.profile', 'messages.sender.profile']);
     }
 }

@@ -1,5 +1,5 @@
 <script setup>
-	import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+	import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 	import { useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
@@ -16,6 +16,7 @@
 		pageId: { type: [Number, String], required: true },
 		returnTo: { type: String, required: true }
 	})
+	const emit = defineEmits(['presence'])
 	const { t, locale } = useI18n()
 	const $q = useQuasar()
 	const router = useRouter()
@@ -30,6 +31,10 @@
 	let disposed = false
 	let refreshing = false
 	let refreshTimer = null
+
+	watch(() => conversation.value?.other_user?.presence, (presence) => {
+		emit('presence', presence || null)
+	}, { immediate: true })
 
 	const messages = computed(() => conversation.value?.messages || [])
 	const composerBlocked = computed(() => unavailable.value || loadError.value || conversation.value?.composer_state?.can_send === false)
