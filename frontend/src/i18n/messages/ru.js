@@ -366,6 +366,7 @@ export default {
 				party_rentals: 'Аренда для вечеринок'
 			},
 			shopping_retail: {
+				toys: 'Игрушки',
 				household_goods: 'Товары для дома',
 				furniture: 'Мебель',
 				kitchen: 'Кухня',

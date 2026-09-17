@@ -366,6 +366,7 @@ export default {
 				party_rentals: 'Party Rentals'
 			},
 			shopping_retail: {
+				toys: 'Toys',
 				household_goods: 'Household Goods',
 				furniture: 'Furniture',
 				kitchen: 'Kitchen',

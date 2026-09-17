@@ -716,6 +716,7 @@ class CatalogTopics
                 self::topic('shopping_retail.appliances', 'appliance-stores'),
                 self::topic('shopping_retail.books_stationery', 'books-stationery', ['shopping_retail.school_supplies', 'school-supplies']),
                 self::topic('shopping_retail.baby_kids', 'baby-kids-stores'),
+                self::topic('shopping_retail.toys', 'toy-stores'),
                 self::topic('shopping_retail.sports_outdoor', 'sports-outdoor-stores'),
                 self::topic('shopping_retail.pet_stores', 'pet-stores'),
                 self::topic('shopping_retail.sales_special_offers', 'special-offers'),

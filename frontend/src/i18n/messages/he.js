@@ -366,6 +366,7 @@ export default {
 				party_rentals: 'השכרת ציוד למסיבות'
 			},
 			shopping_retail: {
+				toys: 'צעצועים',
 				household_goods: 'מוצרים לבית',
 				furniture: 'רהיטים',
 				kitchen: 'מטבח',

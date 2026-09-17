@@ -159,6 +159,7 @@ final class CatalogTopicTranslations
         'shopping_retail.appliances' => ['he' => 'מוצרי חשמל', 'en' => 'Appliances', 'ru' => 'Бытовая техника', 'fr' => 'Électroménager'],
         'shopping_retail.books_stationery' => ['he' => 'ספרים וציוד משרדי', 'en' => 'Books & stationery', 'ru' => 'Книги и канцтовары', 'fr' => 'Livres et papeterie'],
         'shopping_retail.baby_kids' => ['he' => 'תינוקות וילדים', 'en' => 'Baby & kids', 'ru' => 'Товары для детей и малышей', 'fr' => 'Bébés et enfants'],
+        'shopping_retail.toys' => ['he' => 'צעצועים', 'en' => 'Toys', 'ru' => 'Игрушки', 'fr' => 'Jouets'],
         'shopping_retail.sports_outdoor' => ['he' => 'ספורט ופנאי', 'en' => 'Sports & outdoor', 'ru' => 'Спорт и отдых на природе', 'fr' => 'Sport et plein air'],
         'shopping_retail.pet_stores' => ['he' => 'חנויות לחיות', 'en' => 'Pet stores', 'ru' => 'Зоомагазины', 'fr' => 'Animaleries'],
         'shopping_retail.sales_special_offers' => ['he' => 'מבצעים והטבות', 'en' => 'Sales & special offers', 'ru' => 'Распродажи и специальные предложения', 'fr' => 'Promotions et offres spéciales'],
