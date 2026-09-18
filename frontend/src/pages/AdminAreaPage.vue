@@ -269,7 +269,7 @@
 		}
 	])
 	const pageColumns = computed(() => [
-		{ name: 'name', label: t('admin.pages.name'), align: 'left', field: 'name', sortable: false },
+		{ name: 'name', label: t('admin.pages.name'), align: 'left', field: 'name', sortable: false, headerClasses: 'page-name-column' },
 		{ name: 'type', label: t('admin.pages.type'), align: 'left', field: 'type', sortable: false },
 		{ name: 'location', label: t('admin.pages.location'), align: 'left', field: 'city', sortable: false },
 		{ name: 'owner', label: t('admin.pages.owner'), align: 'left', field: (page) => page.owner?.display_name || '', sortable: false },
@@ -1679,7 +1679,12 @@
 								<q-td :props="props" class="page-name-cell" :class="`page-name-cell--${props.row.type}`">
 									<div class="page-name-content">
 										<div class="table-name">
-											<strong>{{ props.row.name || '-' }}</strong>
+											<strong class="page-name-text">
+												{{ props.row.name || '-' }}
+												<q-tooltip class="admin-page-name-tooltip" max-width="min(360px, calc(100vw - 32px))">
+													<span dir="auto">{{ props.row.name || '-' }}</span>
+												</q-tooltip>
+											</strong>
 											<small>#{{ props.row.id }}</small>
 										</div>
 										<q-btn flat
@@ -2805,6 +2810,43 @@
   align-items: center;
   justify-content: space-between;
   min-width: 190px;
+}
+
+.page-management-table .page-name-content {
+  width: 244px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.page-management-table :deep(.page-name-column),
+.page-management-table .page-name-cell {
+  width: 280px;
+  min-width: 280px;
+  max-width: 280px;
+}
+
+.page-management-table .page-name-content .table-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-management-table .page-name-content > .q-btn {
+  flex-shrink: 0;
+}
+
+.page-name-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.admin-page-name-tooltip) {
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .admin-page-type {

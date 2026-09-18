@@ -320,7 +320,7 @@
 			rounded
 			unelevated
 			icon="support_agent"
-			:label="t('chat.humanSupport')"
+			:label="t('chat.supportWidgetTitle')"
 			class="support-widget__trigger"
 			:aria-label="t('chat.supportOpen')"
 			@click="openPanel"
@@ -329,7 +329,7 @@
 		<q-card v-else class="support-widget__panel">
 			<header class="support-widget__header">
 				<div>
-					<strong>{{ t('chat.humanSupport') }}</strong>
+					<strong>{{ t('chat.supportWidgetTitle') }}</strong>
 					<span>{{ t('chat.supportIntro') }}</span>
 					<UserPresenceStatus :presence="conversation?.support_presence ?? conversation?.other_user?.presence" />
 				</div>

@@ -63,7 +63,7 @@
   }
 }
 
-.q-field--outlined:not(.q-textarea) {
+.q-field--outlined:not(.q-textarea, .q-select) {
   .q-field__control {
     height: var(--form-field-height);
     min-height: var(--form-field-height);
@@ -94,7 +94,7 @@
   }
 }
 
-.q-field--outlined.q-field--dense:not(.q-textarea) {
+.q-field--outlined.q-field--dense:not(.q-textarea, .q-select) {
   .q-field__control,
   .q-field__control-container,
   .q-field__marginal,
@@ -141,37 +141,66 @@
 
 .q-select.q-field--outlined {
   .q-field__control {
+    height: auto;
+    min-height: var(--form-field-height);
     padding-inline-end: 8px;
   }
 
   .q-field__control-container {
     display: flex;
     align-items: center;
+    height: auto;
+    min-height: var(--form-field-height);
+    padding-top: 0;
+    padding-inline-start: var(--form-field-text-inset);
+  }
+
+  .q-field__marginal {
+    height: var(--form-field-height);
   }
 
   .q-field__native {
     align-items: center;
-    padding-bottom: 7px;
+    height: auto;
+    min-height: var(--form-field-height);
+    padding-top: 11px;
+    padding-bottom: 11px;
+    font-size: var(--form-field-font-size);
+    line-height: 24px;
   }
 
   .q-field__input {
-    display: flex;
-    align-items: center;
-    padding-bottom: 4px;
+    height: 24px;
+    min-height: 24px;
+    padding-top: 0;
+    padding-bottom: 0;
     font-size: var(--form-field-font-size);
-    line-height: 1.2;
+    line-height: 24px;
   }
 
-  &:not(.q-field--auto-height) {
-    .q-field__native {
-      padding-top: 11px;
-      padding-bottom: 11px;
+  .q-field__label {
+    top: 15px;
+    inset-inline-start: var(--form-field-text-inset);
+    font-size: var(--form-field-font-size);
+    line-height: 20px;
+  }
+
+  // A label gets its own row; nested searchable inputs must not inherit the
+  // outer field's height. Dense and regular selectors use the same geometry.
+  &.q-field--labeled {
+    .q-field__control-container {
+      padding-top: 20px;
     }
 
-    .q-field__input {
-      padding-top: 7px;
-      padding-bottom: 1px;
+    .q-field__native {
+      min-height: calc(var(--form-field-height) - 20px);
+      padding-top: 0;
+      padding-bottom: 4px;
     }
+  }
+
+  &.q-field--float .q-field__label {
+    transform: translateY(-55%) scale(0.75);
   }
 }
 
@@ -265,4 +294,3 @@
 
 // Category controls and their teleported dropdowns share this entry point.
 @include meta.load-css('category-select');
-
