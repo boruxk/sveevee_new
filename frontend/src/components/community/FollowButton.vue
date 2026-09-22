@@ -12,7 +12,8 @@
 		categoryKey: { type: String, default: '' },
 		neighborhood: { type: String, default: '' },
 		initialState: { type: Object, default: null },
-		iconOnly: { type: Boolean, default: false }
+		iconOnly: { type: Boolean, default: false },
+		filled: { type: Boolean, default: false }
 	})
 	const emit = defineEmits(['change'])
 	const { t } = useI18n()
@@ -26,13 +27,20 @@
 	let version = 0
 	const params = computed(() => props.pageId ? { page_id: props.pageId } : { city: props.city, category_key: props.categoryKey, neighborhood: props.neighborhood || undefined })
 	const validTarget = computed(() => Boolean(props.pageId || (props.city && props.categoryKey)))
-	watch(() => [JSON.stringify(params.value), auth.user?.id, props.initialState], async(values, previous) => {
+	// Compare stable values so profile/unread-count refreshes do not reload the status.
+	watch([
+		() => JSON.stringify(params.value),
+		() => auth.isAuthenticated ? auth.user?.id : null,
+		() => auth.token,
+		() => props.initialState
+	], async(values, previous) => {
 		const request = ++version
 		state.value = { subscribed: false, subscription: null }
 		loading.value = false
 		saving.value = false
 		if (!auth.isAuthenticated || !validTarget.value) return
-		if (props.initialState && (!previous || values[1] === previous[1])) { state.value = props.initialState; return }
+		const sameSession = !previous?.length || (values[1] === previous[1] && values[2] === previous[2])
+		if (props.initialState && sameSession) { state.value = props.initialState; return }
 		loading.value = true
 		try {
 			const { data } = await fetchSubscriptionStatus(params.value)
@@ -70,8 +78,8 @@
 </script>
 
 <template>
-	<q-btn :outline="!iconOnly"
-		:unelevated="iconOnly"
+	<q-btn :outline="!iconOnly && !filled"
+		:unelevated="iconOnly || filled"
 		:round="iconOnly"
 		:rounded="!iconOnly"
 		no-caps

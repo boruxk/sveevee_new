@@ -648,7 +648,7 @@
 				@chat="openChat"
 			>
 				<template #headerActions>
-					<FollowButton v-if="page.id" :page-id="page.id" icon-only class="page-preview__action-button" />
+					<FollowButton v-if="page.id" :page-id="page.id" filled class="page-preview__action-button page-preview__action-button--label" />
 				</template>
 				<template v-if="isUnclaimed && showBannerClaimAction && !isLeadCompletionVisit" #heroAction>
 					<div class="banner-claim-panel">

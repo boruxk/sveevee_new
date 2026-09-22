@@ -395,10 +395,11 @@
 			<div v-if="shareTargetUrl || canChat || $slots.headerActions" class="page-preview__hero-actions">
 				<q-btn
 					v-if="canChat"
-					round
+					rounded
+					no-caps
 					unelevated
 					color="primary"
-					class="page-preview__chat-button page-preview__action-button"
+					class="page-preview__chat-button page-preview__action-button page-preview__action-button--label"
 					:aria-label="t('pages.sections.contact')"
 					@click="emit('chat')"
 				>
@@ -406,7 +407,7 @@
 						<path d="M5.2 5.2h13.6v10.4H10l-4.8 3.2v-3.2Z" />
 						<path d="M8.2 9.2h7.6M8.2 12.2h5.2" />
 					</svg>
-					<q-tooltip>{{ t('pages.sections.contact') }}</q-tooltip>
+					<span>{{ t('pages.sections.contact') }}</span>
 				</q-btn>
 				<slot name="headerActions" />
 				<div v-if="shareTargetUrl" class="page-preview__share">
@@ -722,13 +723,15 @@
 }
 
 .page-preview__hero-actions {
-  position: absolute;
-  inset-inline-end: 24px;
-  bottom: 24px;
+  position: relative;
   z-index: 2;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 10px;
   align-items: center;
+  margin: -64px 24px 0;
+  padding-bottom: 24px;
 }
 
 .page-preview--has-actions .page-preview__intro { padding-bottom: 80px; }
@@ -772,6 +775,20 @@
 .page-preview__hero-actions :deep(.page-preview__action-button svg) {
   width: 20px;
   height: 20px;
+  flex-shrink: 0;
+}
+
+.page-preview__hero-actions :deep(.page-preview__action-button--label.q-btn) {
+  width: auto;
+  padding-inline: 12px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.page-preview__hero-actions :deep(.page-preview__action-button--label .q-btn__content) {
+  flex-wrap: nowrap;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .page-share-icon {
@@ -1341,8 +1358,8 @@
   .page-preview--has-actions .page-preview__intro { padding-bottom: 72px; }
 
   .page-preview__hero-actions {
-    inset-inline-end: 16px;
-    bottom: 16px;
+    margin: -52px 16px 0;
+    padding-bottom: 16px;
     gap: 8px;
   }
 
@@ -1351,6 +1368,12 @@
     min-width: 36px;
     height: 36px;
     min-height: 36px;
+  }
+
+  .page-preview__hero-actions :deep(.page-preview__action-button--label.q-btn) {
+    width: auto;
+    padding-inline: 10px;
+    font-size: 12px;
   }
 
   .page-preview__hero-action {

@@ -164,9 +164,9 @@
 
 <style scoped>
 .question-detail-page { padding: 0 20px 36px; }
-.question-detail { display: grid; gap: 20px; width: 100%; max-width: 880px; margin: 0 auto; }
+.question-detail { display: grid; gap: 20px; width: 100%; max-width: 1280px; min-width: 0; margin: 0 auto; }
 .question-detail__discussion { padding: 28px; }
 
 .question-detail__status { padding: 32px; text-align: center; color: var(--soz-muted); }
-@media (max-width: 600px) { .question-detail-page { padding-inline: 14px; } .question-detail__discussion { padding: 16px; } }
+@media (max-width: 700px) { .question-detail-page { padding-inline: 10px; } .question-detail__discussion { padding: 16px; } }
 </style>

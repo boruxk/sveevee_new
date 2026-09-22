@@ -548,13 +548,18 @@
   z-index: 3000;
 }
 
-.support-widget__trigger {
-  min-height: 56px;
-  padding-inline: 22px;
+.support-widget .support-widget__trigger {
+  min-height: 48px;
+  padding-inline: 16px;
+  font-size: 0.82rem;
   background: linear-gradient(135deg, #7b3ff2 0%, #5f28c6 100%);
   color: #fff;
   font-weight: 800;
   box-shadow: 0 12px 24px rgba(66, 20, 143, 0.2);
+}
+
+.support-widget__trigger :deep(.q-icon) {
+  font-size: 20px;
 }
 
 .support-widget__panel {
@@ -742,10 +747,10 @@
     bottom: 12px;
   }
 
-  .support-widget__trigger {
-    min-height: 48px;
-    padding-inline: 16px;
-    font-size: 0.82rem;
+  .support-widget .support-widget__trigger {
+    min-height: 44px;
+    padding-inline: 14px;
+    font-size: 0.78rem;
   }
 
   .support-widget__panel {
