@@ -14,6 +14,8 @@
 	import PriceListIcon from '@/components/icons/PriceListIcon.vue'
 	import ServiceCard from '@/components/services/ServiceCard.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
+	import BusinessInteractionsExample from '@/components/pages/BusinessInteractionsExample.vue'
+	import { businessExampleInteractions } from '@/constants/businessExampleInteractions'
 	import BusinessDetailsFields from '@/components/pages/BusinessDetailsFields.vue'
 	import { imageObjectForJsonLd, versionedPublicImage } from '@/utils/responsiveImages'
 	import { locationOption } from '@/utils/locationLabels'
@@ -22,6 +24,8 @@
 	const route = useRoute()
 	const { catalogGroups, scopedCatalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const activeTab = ref('preview')
+	const demoFollowing = ref(false)
+	const interactionsCopy = computed(() => businessExampleInteractions[locale.value] || businessExampleInteractions.en)
 	const exampleType = computed(() => (route.meta.exampleType === 'community' ? 'community' : 'business'))
 	const isCommunityExample = computed(() => exampleType.value === 'community')
 	const palette = computed(() => findPresencePalette('orange-violet'))
@@ -323,7 +327,14 @@
 	}
 
 	const copy = computed(() => copyByLocale[locale.value] || copyByLocale.en)
-	const typedCopy = computed(() => typedCopyByLocale[locale.value]?.[exampleType.value] || typedCopyByLocale.en[exampleType.value])
+	const typedCopy = computed(() => {
+		const base = typedCopyByLocale[locale.value]?.[exampleType.value] || typedCopyByLocale.en[exampleType.value]
+		return isCommunityExample.value ? base : {
+			...base,
+			subtitle: interactionsCopy.value.subtitle,
+			seoDescription: interactionsCopy.value.seoDescription
+		}
+	})
 	const bannerImage = computed(() => versionedPublicImage(`/assets/landing/example-${exampleType.value}-banner`, {
 		widths: [480, 768, 960, 1440],
 		fallbackWidth: 960,
@@ -577,6 +588,7 @@
 
 	watch(exampleType, () => {
 		activeTab.value = 'preview'
+		demoFollowing.value = false
 	})
 
 	useSeo(computed(() => ({
@@ -653,6 +665,7 @@
 				<q-tab-panel name="preview" class="setup-panel">
 					<section class="soz-section-card panel">
 						<PagePreview
+							:id="isCommunityExample ? undefined : 'business-example-banner'"
 							:page="previewPage"
 							:palette="palette"
 							:has-after-info="true"
@@ -661,6 +674,20 @@
 							title-tag="h1"
 							@chat="openTab('chat')"
 						>
+							<template v-if="!isCommunityExample" #headerActions>
+								<q-btn
+									rounded
+									unelevated
+									no-caps
+									color="primary"
+									class="page-preview__action-button page-preview__action-button--label example-follow"
+									:aria-pressed="demoFollowing"
+									@click="demoFollowing = !demoFollowing"
+								>
+									<svg viewBox="0 0 24 24" aria-hidden="true"><path :d="demoFollowing ? 'm5 12 4 4L19 6' : 'M12 5v14M5 12h14'" /></svg>
+									<span>{{ t(demoFollowing ? 'community.following' : 'community.follow') }}</span>
+								</q-btn>
+							</template>
 							<template #afterInfo>
 								<div class="preview-placeholder-list">
 									<div
@@ -697,6 +724,14 @@
 							</template>
 						</PagePreview>
 					</section>
+					<BusinessInteractionsExample
+						v-if="!isCommunityExample"
+						:page-name="typedCopy.pageName"
+						:product-name="products[0]?.name || ''"
+						:service-name="services[0]?.name || ''"
+						:ad-title="ads[0]?.title || ''"
+						:following="demoFollowing"
+					/>
 				</q-tab-panel>
 
 				<q-tab-panel name="settings" class="setup-panel">
@@ -1021,14 +1056,19 @@
 						</div>
 						<div class="example-chat" aria-disabled="true">
 							<aside class="example-chat__list">
-								<button v-for="index in 3" :key="index" type="button" disabled class="example-chat__person">
+								<button v-for="index in (isCommunityExample ? 3 : 1)" :key="index" type="button" disabled class="example-chat__person">
 									<q-avatar color="primary" text-color="white" size="40px">{{ index }}</q-avatar>
-									<span><strong>{{ typedCopy.pageName }}</strong><small>{{ t('chat.noMessages') }}</small></span>
+									<span><strong>{{ isCommunityExample ? typedCopy.pageName : interactionsCopy.visitor }}</strong><small>{{ isCommunityExample ? t('chat.noMessages') : interactionsCopy.guestQuestion }}</small></span>
 								</button>
 							</aside>
 							<div class="example-chat__thread">
 								<div class="example-chat__messages">
-									<div class="example-chat__bubble">{{ typedCopy.pageDescription }}</div>
+									<div v-if="isCommunityExample" class="example-chat__bubble">{{ typedCopy.pageDescription }}</div>
+									<template v-else>
+										<p class="example-chat__hint">{{ interactionsCopy.guestChatHint }}</p>
+										<div class="example-chat__bubble example-chat__bubble--guest"><strong>{{ interactionsCopy.visitor }}</strong>{{ interactionsCopy.guestQuestion }}</div>
+										<div class="example-chat__bubble"><strong>{{ typedCopy.pageName }}</strong>{{ interactionsCopy.businessReply }}</div>
+									</template>
 								</div>
 								<div class="example-chat__composer">
 									<q-input outlined disable :label="t('chat.placeholder')" />
@@ -1494,6 +1534,9 @@
 
 .example-chat__messages {
   display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 14px;
   align-items: flex-end;
   padding: 22px;
 }
@@ -1504,6 +1547,37 @@
   border-radius: 18px 18px 4px 18px;
   background: rgba(123, 63, 242, 0.11);
   color: var(--soz-ink);
+}
+
+.example-chat__hint {
+  align-self: stretch;
+  margin: 0 auto auto;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 124, 44, 0.08);
+  color: var(--soz-muted);
+  font-size: 0.88rem;
+}
+
+.example-chat__bubble strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.8rem;
+}
+
+.example-chat__bubble--guest {
+  align-self: flex-start;
+  background: rgba(17, 34, 45, 0.05);
+}
+
+.example-follow svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .example-chat__composer {
