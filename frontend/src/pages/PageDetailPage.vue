@@ -20,6 +20,7 @@
 	import ServiceCard from '@/components/services/ServiceCard.vue'
 	import PagePreview from '@/components/pages/PagePreview.vue'
 	import PageRatingsDialog from '@/components/ratings/PageRatingsDialog.vue'
+	import FollowButton from '@/components/community/FollowButton.vue'
 	import PageReviewDialog from '@/components/ratings/PageReviewDialog.vue'
 	import ChatBlock from '@/components/ChatBlock.vue'
 	import GuestPageChat from '@/components/GuestPageChat.vue'
@@ -543,6 +544,9 @@
 	}
 
 	watch(() => route.fullPath, load)
+	watch([canRate, () => route.query.rate, () => page.value?.id], ([allowed, requested]) => {
+		if (allowed && requested === '1' && page.value?.id) reviewDialogOpen.value = true
+	})
 	watch(() => authStore.user?.id, (userId, previousUserId) => {
 		if (userId !== previousUserId && page.value) {
 			load()
@@ -643,6 +647,9 @@
 				@rate="reviewDialogOpen = true"
 				@chat="openChat"
 			>
+				<template #headerActions>
+					<FollowButton v-if="page.id" :page-id="page.id" icon-only class="page-preview__action-button" />
+				</template>
 				<template v-if="isUnclaimed && showBannerClaimAction && !isLeadCompletionVisit" #heroAction>
 					<div class="banner-claim-panel">
 						<p class="banner-claim-panel__title">

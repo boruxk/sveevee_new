@@ -8,6 +8,7 @@ use App\Models\Page;
 use App\Models\PageProduct;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
+use App\Services\CommunityContentService;
 use App\Services\PayloadService;
 use App\Services\SystemSettingsService;
 use App\Support\CatalogTopics;
@@ -24,7 +25,7 @@ class PageProductController extends Controller
         private readonly SystemSettingsService $settings,
     ) {}
 
-    public function show(PageProduct $product)
+    public function show(Request $request, PageProduct $product)
     {
         $product->loadMissing(['page.user.profile']);
         $product->page?->loadCount('ratings')->loadAvg('ratings', 'rating');
@@ -32,7 +33,8 @@ class PageProductController extends Controller
         if (
             $product->page?->type !== Page::TYPE_BUSINESS
             || $product->page?->is_unclaimed
-            || $product->page?->user?->banned_at
+            || ! $product->page?->user
+            || $product->page->user->banned_at
         ) {
             return ApiResponseService::error('Resource not found.', status: 404);
         }
@@ -42,6 +44,7 @@ class PageProductController extends Controller
         return ApiResponseService::success([
             ...$this->payloads->product($product),
             'page' => $this->payloads->page($product->page),
+            'social' => app(CommunityContentService::class)->stateMap([['product', $product->id]], $request->user('sanctum'))['product:'.$product->id],
         ]);
     }
 
@@ -180,7 +183,8 @@ class PageProductController extends Controller
         if (
             $product->page?->type !== Page::TYPE_BUSINESS
             || $product->page?->is_unclaimed
-            || $product->page?->user?->banned_at
+            || ! $product->page?->user
+            || $product->page->user->banned_at
         ) {
             return ApiResponseService::error('Resource not found.', status: 404);
         }

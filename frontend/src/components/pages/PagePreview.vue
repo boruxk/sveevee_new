@@ -346,7 +346,7 @@
 <template>
 	<article
 		class="page-preview"
-		:class="[previewClasses, { 'page-preview--has-hero-action': Boolean($slots.heroAction) }]"
+		:class="[previewClasses, { 'page-preview--has-hero-action': Boolean($slots.heroAction), 'page-preview--has-actions': Boolean(shareTargetUrl || canChat || $slots.headerActions) }]"
 		:style="previewStyle"
 	>
 		<div class="page-preview__hero">
@@ -392,13 +392,29 @@
 				</div>
 			</div>
 
-			<div v-if="shareTargetUrl || canChat" class="page-preview__hero-actions">
+			<div v-if="shareTargetUrl || canChat || $slots.headerActions" class="page-preview__hero-actions">
+				<q-btn
+					v-if="canChat"
+					round
+					unelevated
+					color="primary"
+					class="page-preview__chat-button page-preview__action-button"
+					:aria-label="t('pages.sections.contact')"
+					@click="emit('chat')"
+				>
+					<svg class="page-chat-icon" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M5.2 5.2h13.6v10.4H10l-4.8 3.2v-3.2Z" />
+						<path d="M8.2 9.2h7.6M8.2 12.2h5.2" />
+					</svg>
+					<q-tooltip>{{ t('pages.sections.contact') }}</q-tooltip>
+				</q-btn>
+				<slot name="headerActions" />
 				<div v-if="shareTargetUrl" class="page-preview__share">
 					<q-btn
 						round
 						unelevated
 						color="primary"
-						class="page-preview__share-button"
+						class="page-preview__share-button page-preview__action-button"
 						:aria-label="t('share.title')"
 					>
 						<svg class="page-share-icon page-share-icon--share" viewBox="0 0 24 24" aria-hidden="true">
@@ -493,21 +509,7 @@
 						</q-menu>
 					</q-btn>
 				</div>
-				<q-btn
-					v-if="canChat"
-					round
-					unelevated
-					color="primary"
-					class="page-preview__chat-button"
-					:aria-label="t('chat.title')"
-					@click="emit('chat')"
-				>
-					<svg class="page-chat-icon" viewBox="0 0 24 24" aria-hidden="true">
-						<path d="M5.2 5.2h13.6v10.4H10l-4.8 3.2v-3.2Z" />
-						<path d="M8.2 9.2h7.6M8.2 12.2h5.2" />
-					</svg>
-					<q-tooltip>{{ t('chat.title') }}</q-tooltip>
-				</q-btn>
+
 			</div>
 		</div>
 
@@ -721,13 +723,15 @@
 
 .page-preview__hero-actions {
   position: absolute;
-  right: 24px;
+  inset-inline-end: 24px;
   bottom: 24px;
   z-index: 2;
   display: flex;
   gap: 10px;
   align-items: center;
 }
+
+.page-preview--has-actions .page-preview__intro { padding-bottom: 80px; }
 
 .page-preview__hero-action {
   position: absolute;
@@ -745,26 +749,29 @@
   padding-top: 200px;
 }
 
-:global([dir="rtl"]) .page-preview__hero-actions {
-  right: auto;
-  left: 24px;
-}
-
 .page-preview--rtl .page-preview__hero-action,
-:global([dir="rtl"]) .page-preview__hero-action {
+.page-preview__hero-action:dir(rtl) {
   right: auto;
   left: 24px;
 }
 
-.page-preview--rtl .page-preview__hero-actions {
-  right: auto;
-  left: 24px;
-}
-
-.page-preview__share-button.q-btn.bg-primary,
-.page-preview__chat-button.q-btn.bg-primary {
+.page-preview__hero-actions :deep(.page-preview__action-button.q-btn.bg-primary) {
   background: var(--soz-action-gradient) !important;
   box-shadow: 0 16px 34px rgba(245, 66, 145, 0.28) !important;
+}
+
+.page-preview__hero-actions :deep(.page-preview__action-button.q-btn) {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.page-preview__hero-actions :deep(.page-preview__action-button svg) {
+  width: 20px;
+  height: 20px;
 }
 
 .page-share-icon {
@@ -1055,16 +1062,18 @@
   min-width: 0;
 }
 
-:global([dir="rtl"]) .page-preview__body--with-content .page-preview__info {
-  order: 1;
-}
+@media (min-width: 901px) {
+  .page-preview__body--with-content:dir(rtl) .page-preview__info {
+    order: 1;
+  }
 
-:global([dir="rtl"]) .page-preview__body--with-content {
-  grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr);
-}
+  .page-preview__body--with-content:dir(rtl) {
+    grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr);
+  }
 
-:global([dir="rtl"]) .page-preview__body--with-content .page-preview__content {
-  order: 2;
+  .page-preview__body--with-content:dir(rtl) .page-preview__content {
+    order: 2;
+  }
 }
 
 .page-preview__section-title {
@@ -1329,9 +1338,19 @@
     padding: 20px;
   }
 
+  .page-preview--has-actions .page-preview__intro { padding-bottom: 72px; }
+
   .page-preview__hero-actions {
-    right: 16px;
+    inset-inline-end: 16px;
     bottom: 16px;
+    gap: 8px;
+  }
+
+  .page-preview__hero-actions :deep(.page-preview__action-button.q-btn) {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
   }
 
   .page-preview__hero-action {
@@ -1344,18 +1363,8 @@
     padding-top: 190px;
   }
 
-  :global([dir="rtl"]) .page-preview__hero-actions {
-    right: auto;
-    left: 16px;
-  }
-
   .page-preview--rtl .page-preview__hero-action,
-  :global([dir="rtl"]) .page-preview__hero-action {
-    right: auto;
-    left: 16px;
-  }
-
-  .page-preview--rtl .page-preview__hero-actions {
+  .page-preview__hero-action:dir(rtl) {
     right: auto;
     left: 16px;
   }

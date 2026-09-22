@@ -3,8 +3,12 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
+	import { eventRoute } from '@/constants/catalogTopics'
+	import CommunityActions from '@/components/community/CommunityActions.vue'
 
 	const props = defineProps({
+		social: { type: Object, default: null },
+		socialEnabled: { type: Boolean, default: true },
 		event: {
 			type: Object,
 			required: true
@@ -23,6 +27,7 @@
 	const { locale, t } = useI18n()
 	const $q = useQuasar()
 	const detailOpen = ref(false)
+	const detailRoute = computed(() => props.socialEnabled && Number(props.event.id) > 0 ? eventRoute(props.event) : undefined)
 	const compactActionButtons = computed(() => $q.screen.width <= 700)
 	const eventImageAlt = computed(() => props.event?.image_alt || props.event?.name || '')
 	const eventImageSizes = computed(() => props.event?.image_sizes || '(max-width: 700px) calc(100vw - 36px), 340px')
@@ -155,6 +160,13 @@
 					</div>
 				</div>
 				<div class="event-card__actions">
+					<CommunityActions v-if="socialEnabled && Number(event.id) > 0"
+						class="event-card__social"
+						target-type="event"
+						:target-id="event.id"
+						:social="social || event.social || null"
+						:to="{ name: 'event-detail', params: { id: event.id }, hash: '#discussion' }"
+					/>
 					<q-btn
 						class="event-card__view-btn"
 						:round="compactActionButtons"
@@ -164,7 +176,8 @@
 						icon="visibility"
 						:aria-label="t('events.open')"
 						:label="compactActionButtons ? undefined : t('events.open')"
-						@click="detailOpen = true"
+						:to="detailRoute"
+						@click="detailOpen = !detailRoute"
 					/>
 					<q-btn v-if="editable"
 						class="event-card__icon-btn"
@@ -227,6 +240,7 @@
 					<q-btn flat round icon="close" class="event-detail-dialog__close" v-close-popup />
 				</div>
 				<p class="event-detail-dialog__description">{{ event.description }}</p>
+				<CommunityActions v-if="socialEnabled && Number(event.id) > 0" target-type="event" :target-id="event.id" :social="social || event.social || null" :to="{ name: 'event-detail', params: { id: event.id }, hash: '#discussion' }" />
 			</q-card-section>
 		</q-card>
 	</q-dialog>
@@ -236,7 +250,7 @@
 .event-card {
   display: flex;
   flex-direction: column;
-  max-height: 450px;
+  max-height: 540px;
   overflow: hidden;
   border: 1px solid var(--presence-border, rgba(17, 34, 45, 0.1));
   border-radius: 8px;
@@ -330,6 +344,8 @@
   justify-content: flex-end;
   gap: 10px;
 }
+
+.event-card__social { width: 100%; }
 
 .event-card__icon-btn {
   aspect-ratio: 1;

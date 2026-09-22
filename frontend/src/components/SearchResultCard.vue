@@ -2,7 +2,7 @@
 	import { computed } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { localizedAdCategoryMeta } from '@/constants/adCategories'
-	import { adRoute, catalogLabel, catalogTopicByKey, pageRoute, productRoute, userRoute } from '@/constants/catalogTopics'
+	import { adRoute, catalogLabel, catalogTopicByKey, eventRoute, pageRoute, productRoute, serviceRoute, userRoute } from '@/constants/catalogTopics'
 	import { findPresencePalette } from '@/constants/presencePalettes'
 	import AdExpiryTimer from '@/components/AdExpiryTimer.vue'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
@@ -35,9 +35,8 @@
 			return pageRoute(value.value)
 		}
 
-		if (props.item.kind === 'event' && !value.value.page && value.value.user) {
-			return userRoute(value.value.user)
-		}
+		if (props.item.kind === 'event') return eventRoute(value.value)
+		if (props.item.kind === 'service') return serviceRoute(value.value)
 
 		return props.item.kind === 'product' ? productRoute(value.value) : pageRoute(value.value.page)
 	})

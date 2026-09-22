@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HidesCommunityContent;
 use App\Support\PublicSlug;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\Storage;
 
 class PageProduct extends Model
 {
+    use HidesCommunityContent;
+
     protected $touches = ['page'];
 
     protected $fillable = [

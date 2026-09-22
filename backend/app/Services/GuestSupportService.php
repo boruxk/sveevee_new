@@ -11,9 +11,10 @@ class GuestSupportService
 {
     public const TOKEN_HEADER = 'X-Guest-Support-Token';
 
-    public function __construct(private readonly PayloadService $payloads)
-    {
-    }
+    public function __construct(
+        private readonly PayloadService $payloads,
+        private readonly SupportReplyLimitService $replyLimits,
+    ) {}
 
     public function issueToken(): array
     {
@@ -22,7 +23,7 @@ class GuestSupportService
         return [$token, $this->hashToken($token)];
     }
 
-    public function fromRequest(Request $request, bool $includeClaimed = false): ?GuestSupportConversation
+    public function fromRequest(Request $request, bool $includeClaimed = false, bool $lockForUpdate = false): ?GuestSupportConversation
     {
         $token = trim((string) $request->header(self::TOKEN_HEADER, ''));
 
@@ -33,7 +34,24 @@ class GuestSupportService
         return GuestSupportConversation::query()
             ->where('token_hash', $this->hashToken($token))
             ->when(! $includeClaimed, fn ($query) => $query->whereNull('claimed_at'))
+            ->when($lockForUpdate, fn ($query) => $query->lockForUpdate())
             ->first();
+    }
+
+    public function composerState(GuestSupportConversation $conversation): array
+    {
+        $conversation->loadMissing('messages');
+        $unanswered = $conversation->messages
+            ->reject(fn (GuestSupportMessage $message): bool => $message->is_automatic)
+            ->sortByDesc(fn (GuestSupportMessage $message): string => sprintf(
+                '%020s%020d',
+                $message->created_at?->format('Uu') ?? '0',
+                $message->id
+            ))
+            ->takeWhile(fn (GuestSupportMessage $message): bool => $message->sender_type === GuestSupportMessage::SENDER_GUEST)
+            ->count();
+
+        return $this->replyLimits->composerState($unanswered);
     }
 
     public function payload(
@@ -68,11 +86,9 @@ class GuestSupportService
                 ->where('sender_type', $unreadSender)
                 ->whereNull('read_at')
                 ->count(),
-            'composer_state' => [
-                'can_send' => true,
-                'reason' => null,
-                'message' => null,
-            ],
+            'composer_state' => $forAdmin
+                ? ['can_send' => true, 'reason' => null, 'message' => null]
+                : $this->composerState($conversation),
         ];
 
         if (! $forAdmin) {
@@ -139,6 +155,7 @@ class GuestSupportService
             'sender_id' => $message->sender_user_id,
             'sender_type' => $message->sender_type,
             'body' => $message->body,
+            'is_automatic' => (bool) $message->is_automatic,
             'read_at' => $message->read_at?->toISOString(),
             'created_at' => $message->created_at?->toISOString(),
             'sender' => $guestSender

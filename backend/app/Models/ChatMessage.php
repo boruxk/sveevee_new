@@ -13,12 +13,16 @@ class ChatMessage extends Model
         'sender_id',
         'body',
         'read_at',
+        'is_automatic',
     ];
+
+    protected $attributes = ['is_automatic' => false];
 
     protected function casts(): array
     {
         return [
             'read_at' => 'datetime',
+            'is_automatic' => 'boolean',
         ];
     }
 

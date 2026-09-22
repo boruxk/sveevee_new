@@ -1,5 +1,5 @@
 <script setup>
-	import { computed, onMounted, ref, watch } from 'vue'
+	import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 	import { useRoute } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { setLocale } from '@/i18n'
@@ -7,6 +7,7 @@
 	import { fetchProduct, recordProductContact } from '@/services/api/products'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import ProductLabels from '@/components/products/ProductLabels.vue'
+	import CommunityDiscussion from '@/components/community/CommunityDiscussion.vue'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
 	import { catalogLabel, catalogPath, catalogTopicByKey, productPath, publicPagePath } from '@/constants/catalogTopics'
 	import { locationLabel } from '@/utils/locationLabels'
@@ -18,6 +19,7 @@
 	const product = ref(null)
 	const loading = ref(false)
 	const productUnavailable = ref(false)
+	const loadFailed = ref(false)
 	let latestProductRequest = 0
 	let loadedProductRouteId = null
 
@@ -161,6 +163,7 @@
 		const routeId = String(route.params.id || '')
 		loading.value = true
 		productUnavailable.value = false
+		loadFailed.value = false
 		if (loadedProductRouteId !== routeId) product.value = null
 		try {
 			if (routeLocale.value && routeLocale.value !== locale.value) {
@@ -174,6 +177,7 @@
 			loadedProductRouteId = routeId
 		} catch (error) {
 			if (requestId !== latestProductRequest || String(route.params.id || '') !== routeId) return
+			loadFailed.value = true
 			if ([401, 403, 404, 410].includes(error.response?.status)) {
 				product.value = null
 				loadedProductRouteId = null
@@ -204,10 +208,17 @@
 		}
 	}
 
-	watch(() => route.fullPath, load)
-	onMounted(async() => {
-		await Promise.all([load(), loadCatalogTopics()])
+	watch([() => route.params.id, () => route.params.locale], load)
+	watch(() => [product.value?.id, loading.value, route.hash], async() => {
+		if (loading.value || !product.value || route.hash !== '#discussion') return
+		await nextTick()
+		document.getElementById('discussion')?.scrollIntoView()
 	})
+	onMounted(() => {
+		load()
+		loadCatalogTopics().catch(() => {})
+	})
+	onBeforeUnmount(() => { latestProductRequest++ })
 </script>
 
 <template>
@@ -289,14 +300,33 @@
 
 				<p class="product-detail__description">{{ product.description }}</p>
 			</section>
+			<CommunityDiscussion :key="product.id"
+				class="product-detail-discussion"
+				questions
+				target-type="product"
+				:target-id="product.id"
+				:initial-count="Number(product.social?.comments_count || 0)"
+			/>
 		</div>
 		<div v-else-if="loading" class="row justify-center q-pa-xl">
 			<q-spinner color="primary" />
+		</div>
+		<div v-else-if="loadFailed" class="product-detail-shell soz-section-card q-pa-lg" role="alert">
+			<p>{{ t(productUnavailable ? 'community.itemUnavailable' : 'community.loadFailed') }}</p>
+			<q-btn v-if="!productUnavailable" outline color="primary" :label="t('community.retry')" @click="load" />
 		</div>
 	</q-page>
 </template>
 
 <style scoped lang="scss">
+.product-detail-discussion {
+  margin-top: 24px;
+  padding: clamp(18px, 4vw, 32px);
+  border: 1px solid rgba(17, 34, 45, 0.08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
 .product-detail-page {
   padding: 0 20px 36px;
 }

@@ -40,6 +40,7 @@
 	import ChatMessageBody from '@/components/ChatMessageBody.vue'
 	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
 	import UserPresenceStatus from '@/components/UserPresenceStatus.vue'
+	import CommunityReportsPanel from '@/components/community/CommunityReportsPanel.vue'
 
 	const defaultSettings = () => ({
 		ads: {
@@ -58,6 +59,7 @@
 		chat: {
 			new_recipients_per_day: 10,
 			messages_per_minute: 30,
+			support_messages_before_reply: 5,
 			guest_retention_days: 90
 		},
 		moderation: {
@@ -85,7 +87,7 @@
 	const userTableRequestedPage = ref(1)
 	let userTableRequest = null
 	const pagesLoading = ref(false)
-	const adminTabNames = ['communication', 'users', 'pages', 'landing-pages', 'statistics', 'logs', 'settings']
+	const adminTabNames = ['communication', 'community-reports', 'users', 'pages', 'landing-pages', 'statistics', 'logs', 'settings']
 	const activeTab = ref(adminTabNames.includes(String(route.query.tab || '')) ? String(route.query.tab) : 'communication')
 	const supportConversations = ref([])
 	const userRows = ref([])
@@ -335,6 +337,7 @@
 	})))
 	const adminPageTitle = computed(() => ({
 		communication: t('admin.communication'),
+		'community-reports': t('community.moderation'),
 		users: t('admin.userTable'),
 		pages: t('admin.pages.title'),
 		'landing-pages': t('admin.landingPages'),
@@ -490,6 +493,7 @@
 	}
 
 	function isOwn(message) {
+		if (message.is_automatic) return true
 		if (activeSupportConversation.value?.is_guest) return message.sender_type === 'admin'
 		return message.sender_id === authStore.user?.id
 	}
@@ -1322,6 +1326,7 @@
 				outside-arrows
 			>
 				<q-tab name="communication" icon="forum" :label="t('admin.communication')" />
+				<q-tab name="community-reports" icon="M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6L12 2Zm-1 5h2v6h-2V7Zm0 8h2v2h-2v-2Z" :label="t('community.moderation')" />
 				<q-tab name="users" icon="manage_accounts" :label="t('admin.userTable')" />
 				<q-tab name="pages" :icon="pagesTabIcon" :label="t('admin.pages.title')" />
 				<q-tab name="landing-pages" icon="dashboard" :label="t('admin.landingPages')" />
@@ -1364,7 +1369,7 @@
 								<span class="support-row__copy">
 									<strong>
 										{{ conversation.participant?.display_name }}
-										<q-badge v-if="conversation.is_guest" color="secondary" rounded>{{ t('admin.guest') }}</q-badge>
+										<q-badge v-if="conversation.is_guest" class="support-guest-badge" rounded>{{ t('admin.guest') }}</q-badge>
 										<q-badge v-if="conversation.pending_claim_count" color="warning" rounded>{{ conversation.pending_claim_count }} · {{ t('admin.claimRequest') }}</q-badge>
 									</strong>
 									<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
@@ -1387,7 +1392,8 @@
 										<p v-if="activeSupportUser?.email">{{ activeSupportUser.email }}</p>
 										<p v-if="!activeSupportConversation.is_guest">{{ localizedLocation(activeSupportUser?.profile?.city, 'city') || '-' }} / {{ localizedLocation(activeSupportUser?.profile?.neighborhood, 'neighborhood') || '-' }}</p>
 									</div>
-									<q-chip color="primary" text-color="white">{{ activeSupportConversation.is_guest ? t('admin.guest') : t('admin.supportInbox') }}</q-chip>
+									<q-badge v-if="activeSupportConversation.is_guest" class="support-guest-badge" rounded>{{ t('admin.guest') }}</q-badge>
+									<q-chip v-else color="primary" text-color="white">{{ t('admin.supportInbox') }}</q-chip>
 								</header>
 
 								<div v-if="activeClaimRequests.length" class="claim-review-list">
@@ -1447,10 +1453,10 @@
 										>
 											<div class="support-message__bubble">
 												<small class="support-message__meta">
-													{{ chatMessage.sender?.display_name || activeSupportUser?.display_name || '-' }}
+													{{ chatMessage.is_automatic ? t('chat.supportWidgetTitle') : (chatMessage.sender?.display_name || activeSupportUser?.display_name || '-') }}
 												</small>
 												<ChatMessageBody :body="chatMessage.body" />
-												<ChatMessageMeta :created-at="chatMessage.created_at" :read-at="chatMessage.read_at" :own="isOwn(chatMessage)" />
+												<ChatMessageMeta :created-at="chatMessage.created_at" :read-at="chatMessage.read_at" :own="isOwn(chatMessage)" :automatic="Boolean(chatMessage.is_automatic)" />
 											</div>
 										</div>
 									</template>
@@ -1487,6 +1493,10 @@
 							</div>
 						</section>
 					</div>
+				</q-tab-panel>
+
+				<q-tab-panel name="community-reports" class="admin-panel">
+					<CommunityReportsPanel />
 				</q-tab-panel>
 
 				<q-tab-panel name="users" class="admin-panel">
@@ -2186,6 +2196,15 @@
 								:suffix="t('admin.settings.perMinute')"
 								min="1"
 								max="1000"
+							/>
+							<q-input v-model.number="settingsForms.chat.support_messages_before_reply"
+								outlined
+								type="number"
+								:label="t('admin.settings.supportMessagesBeforeReply')"
+								:hint="t('admin.settings.supportMessagesBeforeReplyHint')"
+								min="1"
+								max="100"
+								step="1"
 							/>
 							<q-input v-model.number="settingsForms.chat.guest_retention_days"
 								outlined
@@ -3484,6 +3503,16 @@
   border-radius: 50%;
   background: #16a34a;
   box-shadow: 0 2px 6px rgba(22, 163, 74, 0.28);
+}
+
+.support-guest-badge {
+  padding: 2px 6px;
+  background: #f1f3f4;
+  color: #5d6870;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  vertical-align: middle;
 }
 
 .support-row__copy {

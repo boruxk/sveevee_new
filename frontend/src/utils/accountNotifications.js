@@ -14,12 +14,26 @@ export function notificationParameters(notification) {
 		reviewer: data.reviewer_name || '',
 		rating: data.rating || '',
 		replacedPage: data.replaced_page_name || '',
-		lead: data.lead_name || ''
+		lead: data.lead_name || '',
+		actor: data.actor_name || '',
+		title: data.title || ''
 	}
 }
 
 export function notificationTranslationKeys(notification) {
 	const type = notification?.type || 'unknown'
+	const communityTypes = {
+		community_reply: 'Reply',
+		community_helpful: 'Helpful',
+		community_like: 'Like',
+		community_activity: 'Activity'
+	}
+	if (communityTypes[type]) {
+		return {
+			title: `community.notification${communityTypes[type]}Title`,
+			body: `community.notification${communityTypes[type]}Body`
+		}
+	}
 	let body = `notifications.types.${type}.body`
 
 	if (type === 'page_claim_approved' && notification?.data?.replaced_page_name) {
@@ -39,5 +53,5 @@ export function notificationTranslationKeys(notification) {
 export function notificationActionPath(notification) {
 	const path = String(notification?.data?.action_path || '')
 
-	return path.startsWith('/') ? path : '/me'
+	return path.startsWith('/') && !path.startsWith('//') && !path.includes('\\') && ![...path].some((character) => character.charCodeAt(0) < 32) ? path : '/me'
 }

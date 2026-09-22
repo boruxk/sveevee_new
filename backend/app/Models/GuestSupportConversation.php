@@ -29,7 +29,7 @@ class GuestSupportConversation extends Model
 
     public function messages(): HasMany
     {
-        return $this->hasMany(GuestSupportMessage::class)->oldest();
+        return $this->hasMany(GuestSupportMessage::class)->oldest()->orderBy('id');
     }
 
     public function claimedBy(): BelongsTo

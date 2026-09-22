@@ -36,6 +36,7 @@ final class AccountNotificationType
     ];
 
     public const ALL = [
+        'community_reply', 'community_helpful', 'community_like', 'community_activity',
         ...self::EMAIL_TYPES,
         self::PAGE_RATING_RECEIVED,
         self::PAGE_CLAIM_SUBMITTED,

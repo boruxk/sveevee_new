@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Storage;
 
 class PageEvent extends Model
 {
+    use \App\Models\Concerns\HidesCommunityContent;
+
     protected $fillable = [
         'page_id',
         'user_id',

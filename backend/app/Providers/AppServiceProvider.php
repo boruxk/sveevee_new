@@ -33,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
     {
         Page::observe(PageObserver::class);
         ChatMessage::observe(ChatMessageObserver::class);
+        \App\Models\LocalQuestion::observe(\App\Observers\CommunityActivityObserver::class);
+        \App\Models\Ad::observe(\App\Observers\CommunityActivityObserver::class);
+        \App\Models\PageEvent::observe(\App\Observers\CommunityActivityObserver::class);
 
         Passport::tokensCan([
             BusinessImportClient::SCOPE_READ => 'Search businesses and check duplicates.',
@@ -68,6 +71,11 @@ class AppServiceProvider extends ServiceProvider
                 strtolower((string) $request->input('email')).'|'.$request->ip()
             );
         });
+
+        RateLimiter::for('community-write', fn (Request $request) => [
+            Limit::perMinute(20)->by('community-minute|'.($request->user()?->id ?? $request->ip())),
+            Limit::perHour(150)->by('community-hour|'.($request->user()?->id ?? $request->ip())),
+        ]);
 
         RateLimiter::for('chat-send', function (Request $request) {
             $limit = app(SystemSettingsService::class)->integer('chat.messages_per_minute', 30);

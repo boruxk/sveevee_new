@@ -6,11 +6,14 @@
 	import { localizedAdCategoryMeta } from '@/constants/adCategories'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import AdExpiryTimer from '@/components/AdExpiryTimer.vue'
+	import CommunityActions from '@/components/community/CommunityActions.vue'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { adRoute, catalogHubPath, catalogLabel, catalogPath, catalogTopicForAdCategory, pageRoute, userRoute } from '@/constants/catalogTopics'
 	import { locationLabel as localizedLocationLabel } from '@/utils/locationLabels'
 
 	const props = defineProps({
+		social: { type: Object, default: null },
+		socialEnabled: { type: Boolean, default: true },
 		ad: {
 			type: Object,
 			required: true
@@ -257,6 +260,7 @@
 				<p ref="textRef" class="listing-card__text">{{ ad.text }}</p>
 			</div>
 			<AdExpiryTimer :expires-at="ad.expires_at || ''" @expired="handleExpired" />
+			<CommunityActions v-if="socialEnabled && Number(ad.id) > 0" target-type="ad" :target-id="ad.id" :social="social || ad.social || null" :to="{ ...adRoute(ad), hash: '#discussion' }" />
 			<div v-if="hasOverflow || editable" class="listing-card__footer">
 				<q-btn v-if="hasOverflow && !isExpanded"
 					flat

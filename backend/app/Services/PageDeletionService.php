@@ -23,10 +23,10 @@ final class PageDeletionService
             throw new \LogicException('Page deletion must run inside a database transaction.');
         }
 
-        $page->loadMissing(['ads', 'products', 'services', 'events']);
+        $page->load(['products' => fn ($q) => $q->withoutGlobalScope('community_visibility'), 'services' => fn ($q) => $q->withoutGlobalScope('community_visibility'), 'ads' => fn ($q) => $q->withoutGlobalScope('community_visibility'), 'events' => fn ($q) => $q->withoutGlobalScope('community_visibility')]);
         $mediaPaths = $this->mediaPaths($page);
 
-        $page->ads()->delete();
+        $page->ads()->withoutGlobalScope('community_visibility')->delete();
         $page->delete();
 
         return $mediaPaths;

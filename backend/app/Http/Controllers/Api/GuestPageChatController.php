@@ -7,6 +7,7 @@ use App\Models\Page;
 use App\Models\PageChatMessage;
 use App\Models\PageConversation;
 use App\Rules\CleanContent;
+use App\Rules\NoGuestChatLinks;
 use App\Services\ApiResponseService;
 use App\Services\PageChatService;
 use App\Services\PayloadService;
@@ -201,7 +202,7 @@ class GuestPageChatController extends Controller
         $request->merge(['body' => is_string($request->input('body')) ? trim($request->input('body')) : $request->input('body')]);
 
         return $request->validate([
-            'body' => ['required', 'string', 'max:5000', new CleanContent],
+            'body' => ['bail', 'required', 'string', 'max:5000', new CleanContent, new NoGuestChatLinks],
             'locale' => ['sometimes', 'string', Rule::in(['he', 'en', 'ru', 'fr'])],
         ]);
     }

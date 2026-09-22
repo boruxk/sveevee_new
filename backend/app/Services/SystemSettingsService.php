@@ -36,6 +36,7 @@ class SystemSettingsService
                 'new_recipients_per_day' => 10,
                 'messages_per_minute' => 30,
                 'guest_retention_days' => 90,
+                'support_messages_before_reply' => 5,
             ],
             'moderation' => [
                 'products_per_business_page' => 100,
@@ -56,7 +57,7 @@ class SystemSettingsService
 
     public function all(): array
     {
-        return Cache::rememberForever(self::CACHE_KEY, function (): array {
+        $settings = Cache::rememberForever(self::CACHE_KEY, function (): array {
             $settings = $this->defaults();
 
             if (! Schema::hasTable('system_settings')) {
@@ -82,6 +83,11 @@ class SystemSettingsService
 
             return $settings;
         });
+
+        // Older cached settings must expose the new support setting too.
+        $settings['chat']['support_messages_before_reply'] ??= $this->defaults()['chat']['support_messages_before_reply'];
+
+        return $settings;
     }
 
     public function section(string $section): array
@@ -107,6 +113,10 @@ class SystemSettingsService
     {
         if (! in_array($section, self::SECTIONS, true)) {
             throw new InvalidArgumentException("Unknown settings section: {$section}");
+        }
+
+        if ($section === 'chat' && ! array_key_exists('support_messages_before_reply', $values)) {
+            $values['support_messages_before_reply'] = $this->integer('chat.support_messages_before_reply', 5);
         }
 
         $value = array_replace_recursive($this->defaults()[$section], $values);

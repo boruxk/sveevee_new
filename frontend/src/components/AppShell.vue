@@ -37,6 +37,8 @@
 	const logoSrc = '/assets/landing/sveevee-logo-320.v1.webp'
 	const SupportChatWidget = defineAsyncComponent(() => import('@/components/SupportChatWidget.vue'))
 	let presenceTimer = null
+	let disposed = false
+	let shellLoadVersion = 0
 
 	const toneClass = computed(() => `shell--${props.tone}`)
 	const currentYear = new Date().getFullYear()
@@ -59,8 +61,9 @@
 		return `${givenName.slice(0, 1)}${familyName.slice(0, 1)}`.trim().toUpperCase() || 'S'
 	})
 	const navLinks = computed(() => [
-		{ label: t('nav.home'), name: homeRouteName.value, icon: 'home', visible: !isAiWorker.value },
+		{ label: t('nav.home'), name: homeRouteName.value, icon: 'home', visible: !authStore.isAuthenticated },
 		{ label: t('nav.search'), name: 'search', icon: 'search', visible: true },
+		{ label: t('community.nearby'), name: 'nearby', icon: 'M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Zm0 10a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z', visible: !isAiWorker.value },
 		{ label: t('nav.me'), name: 'me', icon: 'forum', visible: authStore.isAuthenticated && !isPrivilegedAccount.value, badge: unreadCount.value },
 		{ label: t('nav.business'), name: 'business', icon: 'storefront', visible: authStore.isAuthenticated && !isPrivilegedAccount.value && hasBusinessPage.value },
 		{ label: t('nav.community'), name: 'community', icon: 'diversity_3', visible: authStore.isAuthenticated && !isPrivilegedAccount.value && hasCommunityPage.value }
@@ -153,20 +156,23 @@
 	}
 
 	async function loadShellState() {
+		const version = ++shellLoadVersion
 		await refreshShellUser()
+		if (disposed || version !== shellLoadVersion) return
 
 		if (authStore.isAuthenticated) {
 			await Promise.all([
-				loadChatBadge(),
+				loadChatBadge().catch(() => {}),
 				notificationsStore.initialize(authStore.user.id)
 			])
 		} else {
+			chatsStore.reset()
 			notificationsStore.reset()
 		}
 	}
 
 	async function heartbeat() {
-		if (!authStore.isAuthenticated || (typeof document !== 'undefined' && document.visibilityState !== 'visible')) {
+		if (disposed || !authStore.isAuthenticated || (typeof document !== 'undefined' && document.visibilityState !== 'visible')) {
 			return
 		}
 
@@ -185,6 +191,7 @@
 	}
 
 	function startPresenceTracking() {
+		if (disposed || presenceTimer !== null) return
 		heartbeat()
 		presenceTimer = window.setInterval(heartbeat, 60_000)
 		window.addEventListener('focus', heartbeat)
@@ -249,11 +256,14 @@
 		startPresenceTracking()
 	})
 	onBeforeUnmount(() => {
+		disposed = true
+		shellLoadVersion++
 		stopPresenceTracking()
 		window.removeEventListener(accountNotificationEventName, handleAccountNotification)
 		notificationsStore.reset()
 	})
 	watch(() => authStore.token, async() => {
+		chatsStore.reset()
 		await loadShellState()
 		await heartbeat()
 	})
@@ -614,6 +624,19 @@
   transition:
     transform 0.16s ease,
     box-shadow 0.16s ease;
+}
+
+.shell-nav--desktop .shell-link {
+  flex: 0 0 auto;
+}
+
+.shell-nav--desktop .shell-link :deep(.q-btn__content) {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.shell-nav--desktop .shell-link :deep(.q-icon.on-left) {
+  margin: 0;
 }
 
 .shell-link__badge {

@@ -3,6 +3,7 @@
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
+	import { matNotificationsNone } from '@quasar/extras/material-icons'
 	import { useAuthStore } from '@/stores/auth'
 	import { useChatsStore } from '@/stores/chats'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
@@ -16,6 +17,8 @@
 	import ChevronForwardIcon from '@/components/icons/ChevronForwardIcon.vue'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import PageCreateDialog from '@/components/pages/PageCreateDialog.vue'
+	import MyQuestions from '@/components/community/MyQuestions.vue'
+	import SubscriptionsPanel from '@/components/community/SubscriptionsPanel.vue'
 	import { adRoute } from '@/constants/catalogTopics'
 	import { locationLabel } from '@/utils/locationLabels'
 
@@ -53,8 +56,10 @@
 	const meTabs = computed(() => [
 		{ name: 'overview', label: t('mePage.overview'), icon: 'dashboard' },
 		{ name: 'ads', label: t('mePage.ads'), icon: 'campaign' },
+		{ name: 'questions', label: t('community.myQuestions'), icon: 'M4 3h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H8l-6 3V5a2 2 0 0 1 2-2Zm2 5v2h12V8H6Zm0 4v2h8v-2H6Z' },
 		{ name: 'events', label: t('mePage.events'), icon: 'event' },
-		{ name: 'messages', label: t('mePage.messages'), icon: 'forum' }
+		{ name: 'messages', label: t('mePage.messages'), icon: 'forum' },
+		{ name: 'subscriptions', label: t('community.subscriptions'), icon: matNotificationsNone }
 	])
 
 	function latestAdRoute(ad) {
@@ -502,6 +507,14 @@
 							/>
 						</div>
 					</section>
+				</q-tab-panel>
+
+				<q-tab-panel name="questions" class="me-panel">
+					<MyQuestions />
+				</q-tab-panel>
+
+				<q-tab-panel name="subscriptions" class="me-panel">
+					<section class="soz-section-card panel"><SubscriptionsPanel /></section>
 				</q-tab-panel>
 
 				<q-tab-panel name="events" class="me-panel">

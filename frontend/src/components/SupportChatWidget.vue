@@ -15,6 +15,8 @@
 	} from '@/services/api/chats'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { containsGuestChatLink } from '@/utils/guestChatLinks'
+	import { isGuestChatLinkError } from '@/utils/guestChatPolicy'
 	import ChatMessageBody from '@/components/ChatMessageBody.vue'
 	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
 	import UserPresenceStatus from '@/components/UserPresenceStatus.vue'
@@ -33,19 +35,66 @@
 	const draft = ref('')
 	const guestName = ref('')
 	const guestEmail = ref('')
+	const rejectedLinkDraft = ref(null)
+	const rejectedLinkName = ref(null)
 	const guestToken = ref(localStorage.getItem(guestSupportTokenStorageKey) || '')
 	const messagesEl = ref(null)
 	let refreshTimer = null
 	let refreshing = false
 	let loadRequestId = 0
+	let actionRequestId = 0
+	let disposed = false
 
 	const visible = computed(() => authStore.initialized && !authStore.isAdmin)
 	const messages = computed(() => conversation.value?.messages || [])
 	const isGuest = computed(() => !authStore.isAuthenticated)
 	const needsGuestStart = computed(() => isGuest.value && !guestToken.value && !conversation.value)
-	const composerHint = computed(() => characterLimitHint(draft.value, CHAT_MAX_LENGTH, t))
+	const guestMessageMode = computed(() => isGuest.value || Boolean(conversation.value?.is_guest))
+	const draftContainsLink = computed(() => guestMessageMode.value && (containsGuestChatLink(draft.value) || rejectedLinkDraft.value === draft.value))
+	const guestNameContainsLink = computed(() => containsGuestChatLink(guestName.value) || rejectedLinkName.value === guestName.value)
+	const composerBlocked = computed(() => conversation.value?.composer_state?.can_send === false)
+	const composerHint = computed(() => {
+		if (composerBlocked.value) return t('chat.supportPendingReply')
+		const limitHint = characterLimitHint(draft.value, CHAT_MAX_LENGTH, t)
+		return guestMessageMode.value ? `${t('chat.guestLinksHint')} ${limitHint}` : limitHint
+	})
+
+	function beginSupportAction() {
+		const requestId = ++actionRequestId
+		const userId = authStore.user?.id
+		const authToken = authStore.token
+		const sessionToken = guestToken.value
+		// An older poll must not replace the messages returned by this mutation.
+		loadRequestId++
+		refreshing = false
+		loading.value = false
+		return {
+			isCurrent: () => !disposed && requestId === actionRequestId && authStore.user?.id === userId && authStore.token === authToken && guestToken.value === sessionToken,
+			isLatest: () => !disposed && requestId === actionRequestId
+		}
+	}
+
+	function invalidateSupportRequests() {
+		loadRequestId++
+		actionRequestId++
+		refreshing = false
+		loading.value = false
+		sending.value = false
+		claiming.value = false
+	}
+
+	function handleLinkError(error) {
+		const bodyRejected = isGuestChatLinkError(error)
+		const nameRejected = isGuestChatLinkError(error, 'name')
+		if (!bodyRejected && !nameRejected) return false
+		if (bodyRejected) rejectedLinkDraft.value = draft.value
+		if (nameRejected) rejectedLinkName.value = guestName.value
+		$q.notify({ type: 'warning', message: t('chat.guestLinksNotAllowed') })
+		return true
+	}
 
 	function isOwn(message) {
+		if (message.is_automatic) return false
 		if (conversation.value?.is_guest) {
 			return message.sender_type === 'guest'
 		}
@@ -97,7 +146,7 @@
 			conversation.value = response.data.data
 
 			if (authStore.isAuthenticated) {
-				await chatsStore.loadConversations()
+				await chatsStore.loadConversations({ force: true })
 			}
 
 			if (!silent || (nearBottom && messages.value.at(-1)?.id !== previousLastMessageId)) {
@@ -175,7 +224,12 @@
 			$q.notify({ type: 'warning', message: t('validation.requiredFields') })
 			return
 		}
+		if (draftContainsLink.value || guestNameContainsLink.value) {
+			$q.notify({ type: 'warning', message: t('chat.guestLinksNotAllowed') })
+			return
+		}
 
+		const action = beginSupportAction()
 		sending.value = true
 
 		try {
@@ -186,40 +240,55 @@
 				body
 			})
 
+			if (!action.isCurrent()) return
 			guestToken.value = data.data.token
 			localStorage.setItem(guestSupportTokenStorageKey, guestToken.value)
 			conversation.value = data.data.conversation
 			draft.value = ''
 			await scrollToBottom()
 		} catch (error) {
-			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('chat.sendFailed')) })
+			if (!action.isCurrent()) return
+			if (!handleLinkError(error)) $q.notify({ type: 'negative', message: apiErrorMessage(error, t('chat.sendFailed')) })
 		} finally {
-			sending.value = false
+			if (action.isLatest()) sending.value = false
 		}
 	}
 
 	async function send() {
 		const body = draft.value.trim()
 
-		if (!body || sending.value) {
+		if (!body || sending.value || loading.value || composerBlocked.value) {
+			return
+		}
+		if (draftContainsLink.value) {
+			$q.notify({ type: 'warning', message: t('chat.guestLinksNotAllowed') })
 			return
 		}
 
+		const action = beginSupportAction()
 		sending.value = true
 
 		try {
 			const response = conversation.value?.is_guest ? await sendGuestSupportMessage(guestToken.value, body) : await sendSupportChatMessage(body)
 
+			if (!action.isCurrent()) return
 			conversation.value = response.data.data
 			draft.value = ''
-
-			if (authStore.isAuthenticated) {
-				await chatsStore.loadConversations()
-			}
-
 			await scrollToBottom()
+			if (action.isCurrent() && authStore.isAuthenticated) {
+				chatsStore.loadConversations({ force: true }).catch(() => {})
+			}
 		} catch (error) {
-			if (conversation.value?.is_guest && [404, 410].includes(error.response?.status)) {
+			if (!action.isCurrent()) return
+			const reason = error.response?.data?.errors?.reason
+			if (handleLinkError(error)) return
+			if (reason === 'support_pending_reply' && conversation.value) {
+				conversation.value = {
+					...conversation.value,
+					composer_state: { ...conversation.value.composer_state, can_send: false, reason }
+				}
+				$q.notify({ type: 'info', message: t('chat.supportPendingReply') })
+			} else if (conversation.value?.is_guest && [404, 410].includes(error.response?.status)) {
 				clearGuestToken()
 				conversation.value = null
 				$q.notify({ type: 'info', message: t('chat.guestSessionExpired') })
@@ -227,7 +296,7 @@
 				$q.notify({ type: 'negative', message: apiErrorMessage(error, t('chat.sendFailed')) })
 			}
 		} finally {
-			sending.value = false
+			if (action.isLatest()) sending.value = false
 		}
 	}
 
@@ -236,18 +305,21 @@
 			return
 		}
 
+		const action = beginSupportAction()
 		claiming.value = true
 
 		try {
 			const { data } = await claimGuestSupportChat(guestToken.value)
+			if (!action.isCurrent()) return
 			conversation.value = data.data
 			clearGuestToken()
 			claimPrompt.value = false
 			claimDismissed.value = false
-			await chatsStore.loadConversations()
 			await scrollToBottom()
+			chatsStore.loadConversations({ force: true }).catch(() => {})
 			$q.notify({ type: 'positive', message: t('chat.claimSuccess') })
 		} catch (error) {
+			if (!action.isCurrent()) return
 			if ([404, 409, 410].includes(error.response?.status)) {
 				clearGuestToken()
 				claimPrompt.value = false
@@ -256,7 +328,7 @@
 
 			$q.notify({ type: 'negative', message: apiErrorMessage(error, t('chat.claimFailed')) })
 		} finally {
-			claiming.value = false
+			if (action.isLatest()) claiming.value = false
 		}
 	}
 
@@ -268,6 +340,7 @@
 
 	watch(visible, (isVisible) => {
 		if (!isVisible) {
+			invalidateSupportRequests()
 			panelOpen.value = false
 			conversation.value = null
 			draft.value = ''
@@ -276,11 +349,8 @@
 		}
 	})
 
-	watch(() => authStore.isAuthenticated, async(isAuthenticated, wasAuthenticated) => {
-		if (isAuthenticated === wasAuthenticated) {
-			return
-		}
-
+	watch([() => authStore.isAuthenticated, () => authStore.user?.id, () => authStore.token], async([isAuthenticated]) => {
+		invalidateSupportRequests()
 		conversation.value = null
 		claimPrompt.value = false
 		claimDismissed.value = false
@@ -310,7 +380,11 @@
 		}
 	})
 
-	onBeforeUnmount(stopRefreshTimer)
+	onBeforeUnmount(() => {
+		disposed = true
+		invalidateSupportRequests()
+		stopRefreshTimer()
+	})
 </script>
 
 <template>
@@ -373,7 +447,7 @@
 					<div v-for="message in messages" :key="message.id" class="support-widget__message" :class="{ 'support-widget__message--own': isOwn(message) }">
 						<div class="support-widget__bubble">
 							<ChatMessageBody :body="message.body" />
-							<ChatMessageMeta :created-at="message.created_at" :read-at="message.read_at" :own="isOwn(message)" />
+							<ChatMessageMeta :created-at="message.created_at" :read-at="message.read_at" :own="isOwn(message)" :automatic="Boolean(message.is_automatic)" />
 						</div>
 					</div>
 				</template>
@@ -385,6 +459,8 @@
 						outlined
 						dense
 						:label="t('chat.guestName')"
+						:error="guestNameContainsLink"
+						:error-message="t('chat.guestLinksNotAllowed')"
 						maxlength="100"
 						:disable="sending"
 					/>
@@ -407,6 +483,8 @@
 						:disable="sending"
 						:maxlength="CHAT_MAX_LENGTH"
 						:hint="composerHint"
+						:error="draftContainsLink"
+						:error-message="t('chat.guestLinksNotAllowed')"
 						counter
 						persistent-hint
 						class="support-widget__input"
@@ -417,7 +495,7 @@
 						color="primary"
 						icon="send"
 						:loading="sending"
-						:disable="!guestName.trim() || !draft.trim()"
+						:disable="!guestName.trim() || !draft.trim() || guestNameContainsLink || draftContainsLink"
 						@click="startGuestConversation"
 					>
 						<q-tooltip>{{ t('chat.startSupport') }}</q-tooltip>
@@ -435,10 +513,13 @@
 					outlined
 					type="textarea"
 					autogrow
-					:placeholder="t('chat.placeholder')"
+					:placeholder="composerBlocked ? t('chat.supportPendingReply') : t('chat.placeholder')"
+					:readonly="composerBlocked"
 					:disable="loading || sending"
 					:maxlength="CHAT_MAX_LENGTH"
 					:hint="composerHint"
+					:error="draftContainsLink"
+					:error-message="t('chat.guestLinksNotAllowed')"
 					counter
 					persistent-hint
 					class="support-widget__input"
@@ -449,7 +530,7 @@
 					color="primary"
 					icon="send"
 					:loading="sending"
-					:disable="loading || !draft.trim()"
+					:disable="loading || composerBlocked || draftContainsLink || !draft.trim()"
 					@click="send"
 				>
 					<q-tooltip>{{ t('actions.send') }}</q-tooltip>

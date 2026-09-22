@@ -49,7 +49,7 @@ class GuestSupportApiTest extends TestCase
         $this->postJson('/api/v1/guest-support/messages', [
             'body' => 'Here is another detail.',
         ])->assertCreated()
-            ->assertJsonCount(2, 'data.messages');
+            ->assertJsonCount(3, 'data.messages');
 
         $supportAdmin = User::query()
             ->where('email', config('sveevee.support_admin_email'))
@@ -69,11 +69,11 @@ class GuestSupportApiTest extends TestCase
         $this->postJson("/api/v1/admin/support-chats/guest/{$conversationId}/messages", [
             'body' => 'A human support reply.',
         ])->assertCreated()
-            ->assertJsonPath('data.messages.2.sender_type', 'admin');
+            ->assertJsonPath('data.messages.3.sender_type', 'admin');
 
         $this->getJson('/api/v1/guest-support')
             ->assertOk()
-            ->assertJsonPath('data.messages.2.body', 'A human support reply.')
+            ->assertJsonPath('data.messages.3.body', 'A human support reply.')
             ->assertJsonPath('data.unread_count', 0);
     }
 
@@ -128,7 +128,7 @@ class GuestSupportApiTest extends TestCase
         $claimed = $this->postJson('/api/v1/guest-support/claim')
             ->assertOk()
             ->assertJsonPath('data.is_support', true)
-            ->assertJsonCount(2, 'data.messages');
+            ->assertJsonCount(3, 'data.messages');
 
         $conversationId = $claimed->json('data.id');
         $this->assertDatabaseHas('guest_support_conversations', [
@@ -136,12 +136,12 @@ class GuestSupportApiTest extends TestCase
             'claimed_by_user_id' => $user->id,
             'claimed_conversation_id' => $conversationId,
         ]);
-        $this->assertSame(2, ChatMessage::query()->where('conversation_id', $conversationId)->count());
+        $this->assertSame(2, ChatMessage::query()->where('conversation_id', $conversationId)->where('is_automatic', false)->count());
 
         $this->postJson('/api/v1/guest-support/claim')
             ->assertOk()
             ->assertJsonPath('data.id', $conversationId);
-        $this->assertSame(2, ChatMessage::query()->where('conversation_id', $conversationId)->count());
+        $this->assertSame(2, ChatMessage::query()->where('conversation_id', $conversationId)->where('is_automatic', false)->count());
 
         $this->getJson('/api/v1/guest-support')->assertNotFound();
         $this->getJson('/api/v1/chats')

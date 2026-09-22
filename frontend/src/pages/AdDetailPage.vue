@@ -1,5 +1,5 @@
 <script setup>
-	import { computed, onMounted, ref } from 'vue'
+	import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
@@ -9,6 +9,7 @@
 	import { locationLabel as localizedLocationLabel } from '@/utils/locationLabels'
 	import { absoluteUrl, cleanText, truncateText, useSeo } from '@/composables/useSeo'
 	import AdCard from '@/components/AdCard.vue'
+	import CommunityDiscussion from '@/components/community/CommunityDiscussion.vue'
 
 	const route = useRoute()
 	const router = useRouter()
@@ -17,6 +18,8 @@
 	const { catalogGroups, loadCatalogTopics } = useCatalogTopics()
 	const ad = ref(null)
 	const loading = ref(false)
+	const failed = ref(false)
+	let loadVersion = 0
 	const ownerName = computed(() => ad.value?.page?.name || ad.value?.user?.display_name || '')
 	const locationLabel = computed(() => [
 		localizedLocationLabel(ad.value?.city, 'city', locale.value),
@@ -79,12 +82,20 @@
 	})))
 
 	async function load() {
+		const version = ++loadVersion
 		loading.value = true
+		failed.value = false
+		ad.value = null
 		try {
 			const { data } = await fetchAd(route.params.id)
+			if (version !== loadVersion) return
 			ad.value = data.data
+			await nextTick()
+			if (route.hash === '#discussion') document.getElementById('discussion')?.scrollIntoView()
+		} catch {
+			if (version === loadVersion) failed.value = true
 		} finally {
-			loading.value = false
+			if (version === loadVersion) loading.value = false
 		}
 	}
 
@@ -94,9 +105,9 @@
 		router.replace({ name: 'catalog-ads' })
 	}
 
-	onMounted(async() => {
-		await Promise.all([load(), loadCatalogTopics()])
-	})
+	watch(() => route.params.id, load, { immediate: true })
+	onMounted(loadCatalogTopics)
+	onBeforeUnmount(() => { loadVersion++ })
 </script>
 
 <template>
@@ -109,6 +120,10 @@
 					</router-link>
 				</nav>
 				<AdCard :ad="ad" :detail-links="false" @expired="handleExpired" />
+				<CommunityDiscussion :key="ad.id" target-type="ad" :target-id="ad.id" />
+			</div>
+			<div v-else-if="failed" class="soz-section-card q-pa-lg" role="alert">
+				<p>{{ t('community.loadFailed') }}</p><q-btn outline :label="t('community.retry')" @click="load" />
 			</div>
 			<div v-else-if="loading" class="row justify-center q-pa-xl">
 				<q-spinner color="primary" />

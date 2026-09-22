@@ -982,6 +982,7 @@
 								v-for="service in services"
 								:key="service.id"
 								:service="service"
+								:detail-links="false"
 								:palette="palette"
 								editable
 							/>
@@ -1002,7 +1003,7 @@
 							/>
 						</div>
 						<div class="event-grid example-disabled-zone" aria-disabled="true">
-							<EventCard
+							<EventCard :social-enabled="false"
 								v-for="event in events"
 								:key="event.id"
 								:event="event"
@@ -1062,6 +1063,7 @@
 								:key="ad.id"
 								:ad="ad"
 								:detail-links="false"
+								:social-enabled="false"
 								editable
 							/>
 						</div>

@@ -8,9 +8,12 @@ use App\Models\Conversation;
 use App\Models\GuestSupportConversation;
 use App\Models\GuestSupportMessage;
 use App\Rules\CleanContent;
+use App\Rules\NoGuestChatLinks;
 use App\Services\ApiResponseService;
 use App\Services\GuestSupportService;
 use App\Services\PayloadService;
+use App\Services\SupportAcknowledgementService;
+use App\Services\SupportReplyLimitService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -20,8 +23,9 @@ class GuestSupportController extends Controller
     public function __construct(
         private readonly GuestSupportService $guestSupport,
         private readonly PayloadService $payloads,
-    ) {
-    }
+        private readonly SupportReplyLimitService $replyLimits,
+        private readonly SupportAcknowledgementService $acknowledgements,
+    ) {}
 
     public function store(Request $request)
     {
@@ -32,15 +36,15 @@ class GuestSupportController extends Controller
         }
 
         $request->merge([
-            'name' => trim((string) $request->input('name')),
-            'body' => trim((string) $request->input('body')),
+            'name' => is_string($request->input('name')) ? trim($request->input('name')) : $request->input('name'),
+            'body' => is_string($request->input('body')) ? trim($request->input('body')) : $request->input('body'),
         ]);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:100', new CleanContent()],
+            'name' => ['bail', 'required', 'string', 'max:100', new CleanContent, new NoGuestChatLinks],
             'email' => ['nullable', 'email:rfc', 'max:254'],
             'locale' => ['required', 'string', Rule::in(['he', 'en', 'ru', 'fr'])],
-            'body' => ['required', 'string', 'max:5000', new CleanContent()],
+            'body' => ['bail', 'required', 'string', 'max:5000', new CleanContent, new NoGuestChatLinks],
         ]);
 
         [$token, $tokenHash] = $this->guestSupport->issueToken();
@@ -58,7 +62,8 @@ class GuestSupportController extends Controller
                 'body' => $data['body'],
             ]);
 
-            $conversation->forceFill(['last_message_at' => $message->created_at])->save();
+            $acknowledgement = $this->acknowledgements->guest($conversation);
+            $conversation->forceFill(['last_message_at' => ($acknowledgement ?? $message)->created_at])->save();
 
             return $conversation;
         });
@@ -89,30 +94,40 @@ class GuestSupportController extends Controller
 
     public function send(Request $request)
     {
-        $conversation = $this->guestSupport->fromRequest($request);
+        return DB::transaction(function () use ($request) {
+            // Serialize guest sends, admin replies and claiming on the same row.
+            // Recheck token and claim state after acquiring the current row lock.
+            $conversation = $this->guestSupport->fromRequest($request, lockForUpdate: true);
 
-        if (! $conversation) {
-            return ApiResponseService::error('Guest support session not found.', status: 404);
-        }
+            if (! $conversation) {
+                return ApiResponseService::error('Guest support session not found.', status: 404);
+            }
 
-        $request->merge(['body' => trim((string) $request->input('body'))]);
-        $data = $request->validate([
-            'body' => ['required', 'string', 'max:5000', new CleanContent()],
-        ]);
+            $state = $this->guestSupport->composerState($conversation);
+            if (! $state['can_send']) {
+                return ApiResponseService::error($state['message'], ['reason' => $state['reason']], 409);
+            }
 
-        $message = $conversation->messages()->create([
-            'sender_type' => GuestSupportMessage::SENDER_GUEST,
-            'body' => $data['body'],
-        ]);
+            $request->merge(['body' => is_string($request->input('body')) ? trim($request->input('body')) : $request->input('body')]);
+            $data = $request->validate([
+                'body' => ['bail', 'required', 'string', 'max:5000', new CleanContent, new NoGuestChatLinks],
+            ]);
 
-        $conversation->forceFill(['last_message_at' => $message->created_at])->save();
-        $conversation->load(['messages.sender.profile']);
+            $message = $conversation->messages()->create([
+                'sender_type' => GuestSupportMessage::SENDER_GUEST,
+                'body' => $data['body'],
+            ]);
 
-        return ApiResponseService::success(
-            $this->guestSupport->payload($conversation, withMessages: true),
-            'Message sent.',
-            201
-        );
+            $acknowledgement = $this->acknowledgements->guest($conversation);
+            $conversation->forceFill(['last_message_at' => ($acknowledgement ?? $message)->created_at])->save();
+            $conversation->load(['messages.sender.profile']);
+
+            return ApiResponseService::success(
+                $this->guestSupport->payload($conversation, withMessages: true),
+                'Message sent.',
+                201
+            );
+        }, 3);
     }
 
     public function claim(Request $request)
@@ -161,6 +176,8 @@ class GuestSupportController extends Controller
                 ['started_by_user_id' => $user->id]
             );
 
+            // Match the account-support send lock before merging guest history.
+            $conversation = Conversation::query()->lockForUpdate()->findOrFail($conversation->id);
             $guest->load('messages');
 
             foreach ($guest->messages as $guestMessage) {
@@ -170,6 +187,7 @@ class GuestSupportController extends Controller
                         ? $user->id
                         : $supportAdmin->id,
                     'body' => $guestMessage->body,
+                    'is_automatic' => $guestMessage->is_automatic,
                     'read_at' => $guestMessage->read_at,
                 ]);
                 $message->created_at = $guestMessage->created_at;
@@ -207,7 +225,7 @@ class GuestSupportController extends Controller
         return ApiResponseService::success($this->payloads->conversation(
             $conversation,
             $user,
-            ['can_send' => true, 'reason' => null, 'message' => null],
+            $this->replyLimits->accountComposerState($user, $conversation),
             withMessages: true
         ), 'Support conversation connected.');
     }

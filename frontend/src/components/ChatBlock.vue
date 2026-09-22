@@ -116,6 +116,7 @@
 	const chatLimitMessageKeys = {
 		pending_reply: 'chat.pendingReply',
 		page_pending_reply: 'chat.pagePendingReply',
+		support_pending_reply: 'chat.supportPendingReply',
 		daily_limit: 'chat.dailyLimit'
 	}
 
@@ -126,6 +127,7 @@
 	}
 
 	function isOwn(message) {
+		if (message.is_automatic) return false
 		if (active.value?.is_page_chat) {
 			const viewerAsPage = active.value.viewer_as_page ?? props.pageOwner
 			return Boolean(message.sender_as_page) === Boolean(viewerAsPage)
@@ -229,7 +231,7 @@
 			const { data } = await fetchPageChat(props.pageId)
 			pageActiveConversation.value = data.data
 			mobileThreadOpen.value = true
-			await chatsStore.loadConversations()
+			await chatsStore.loadConversations({ force: true })
 		}
 	}
 
@@ -272,6 +274,7 @@
 
 	async function send() {
 		const body = draft.value.trim()
+		const conversationId = active.value?.id
 
 		if (!body || composerBlocked.value) {
 			return
@@ -291,7 +294,7 @@
 				if (props.pageOwner) {
 					await refreshPageConversations()
 				} else {
-					await chatsStore.loadConversations()
+					await chatsStore.loadConversations({ force: true })
 				}
 			} else {
 				await chatsStore.send(body, props.targetUserId)
@@ -300,6 +303,9 @@
 			await scrollToBottom()
 		} catch (error) {
 			const reason = error.response?.data?.errors?.reason
+			if (reason === 'support_pending_reply' && active.value && active.value.id === conversationId) {
+				chatsStore.activeConversation = { ...active.value, composer_state: { ...composerState.value, can_send: false, reason } }
+			}
 			$q.notify({ type: 'negative', message: localizedChatLimit(reason) || t('chat.sendFailed') })
 		} finally {
 			pageSending.value = false
@@ -371,6 +377,7 @@
 	onMounted(async() => {
 		await load()
 		if (disposed) return
+		lastConversationListRefresh = Date.now()
 		chatRefreshTimer = window.setInterval(refreshVisibleChat, 6000)
 		document.addEventListener('visibilitychange', refreshVisibleChat)
 		window.addEventListener('focus', refreshVisibleChat)
@@ -386,6 +393,10 @@
 	watch(() => props.targetUserId, load)
 	watch(() => props.targetPageConversationId, load)
 	watch(() => [props.pageId, props.pageOwner], load)
+	watch(() => messages.value.at(-1)?.id, () => {
+		// The send response already includes any automatic reply; show it without waiting for the inbox refresh.
+		if (chatSending.value && threadIsVisible.value) scrollToBottom()
+	})
 	watch(() => active.value?.id, () => {
 		visibleMessageCount.value = MESSAGE_BATCH_SIZE
 	})
@@ -510,7 +521,7 @@
 								>
 									<div class="chat-message__bubble">
 										<ChatMessageBody :body="message.body" />
-										<ChatMessageMeta :created-at="message.created_at" :read-at="message.read_at" :own="isOwn(message)" />
+										<ChatMessageMeta :created-at="message.created_at" :read-at="message.read_at" :own="isOwn(message)" :automatic="Boolean(message.is_automatic)" />
 									</div>
 								</div>
 							</template>
@@ -638,7 +649,7 @@
 								>
 									<div class="chat-message__bubble">
 										<ChatMessageBody :body="message.body" />
-										<ChatMessageMeta :created-at="message.created_at" :read-at="message.read_at" :own="isOwn(message)" />
+										<ChatMessageMeta :created-at="message.created_at" :read-at="message.read_at" :own="isOwn(message)" :automatic="Boolean(message.is_automatic)" />
 									</div>
 								</div>
 							</template>

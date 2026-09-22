@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Storage;
 
 class Ad extends Model
 {
+    use \App\Models\Concerns\HidesCommunityContent;
+
     public const IMAGE_DIRECTORY = 'media/listings';
 
     public const TYPE_PRIVATE = 'private_ad';

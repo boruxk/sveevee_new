@@ -5,7 +5,8 @@
 	const props = defineProps({
 		createdAt: { type: String, default: '' },
 		readAt: { type: String, default: null },
-		own: { type: Boolean, default: false }
+		own: { type: Boolean, default: false },
+		automatic: { type: Boolean, default: false }
 	})
 	const { locale, t } = useI18n()
 	const dateTime = computed(() => {
@@ -27,8 +28,9 @@
 
 <template>
 	<div class="chat-message-meta">
+		<span v-if="automatic" class="chat-message-meta__automatic">{{ t('chat.automaticReply') }}</span>
 		<time v-if="dateTime" :datetime="createdAt">{{ dateTime }}</time>
-		<span v-if="own"
+		<span v-if="own && !automatic"
 			class="chat-message-meta__status"
 			:class="{ 'chat-message-meta__status--read': readAt }"
 			role="img"
@@ -46,6 +48,7 @@
 <style scoped>
 .chat-message-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
@@ -54,6 +57,13 @@
   font-size: 11px;
   line-height: 1.3;
   white-space: nowrap;
+}
+
+.chat-message-meta__automatic {
+  flex-basis: 100%;
+  font-weight: 700;
+  text-align: start;
+  white-space: normal;
 }
 
 .chat-message-meta time {

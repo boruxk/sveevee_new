@@ -303,6 +303,14 @@ export function productRoute(product) {
 	return { name: 'product-detail', params: { id: productRouteParam(product) } }
 }
 
+export function serviceRoute(service) {
+	return { name: 'service-detail', params: { id: service.id } }
+}
+
+export function eventRoute(event) {
+	return { name: 'event-detail', params: { id: event.id } }
+}
+
 export function userRouteParam(user) {
 	return user?.slug || user?.public_slug || user?.id
 }
@@ -340,9 +348,9 @@ export function catalogResultPath(kind, item) {
 		return adRoute(item)
 	}
 
-	if (kind === 'event' && !item?.page && item?.user) {
-		return userRoute(item.user)
-	}
+	if (kind === 'product') return productPath(item)
+	if (kind === 'service') return `/services/${encodeURIComponent(String(item.id))}`
+	if (kind === 'event') return `/events/${encodeURIComponent(String(item.id))}`
 
 	return pageRoute(item.page || item)
 }

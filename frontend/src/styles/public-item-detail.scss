@@ -1,0 +1,45 @@
+.public-item-page { padding: 0 20px 36px; }
+.public-item-shell { max-width: 1280px; min-width: 0; margin: 0 auto; }
+.public-item-detail, .public-item-discussion, .public-item-state {
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(17, 34, 45, 0.08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 20px 44px rgba(245, 66, 145, 0.1);
+}
+.public-item-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.78fr);
+  grid-template-areas: "media body" "description description";
+  overflow: hidden;
+}
+.public-item-detail--no-image { grid-template-columns: 1fr; grid-template-areas: "body" "description"; }
+.public-item-media { grid-area: media; min-width: 0; padding: 20px; }
+.public-item-image { max-height: 420px; width: 100%; overflow: hidden; border-radius: 24px; --responsive-image-fit: cover; --responsive-image-position: center; }
+.public-item-body { display: grid; grid-area: body; align-content: start; justify-items: start; min-width: 0; gap: 18px; padding: 34px; }
+.public-item-body h1 { margin: 0; font-size: clamp(28px, 4vw, 42px); font-weight: 850; line-height: 1.2; }
+.public-item-meta, .public-item-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.public-item-chip { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 8px 13px; color: var(--soz-primary-deep); background: var(--soz-primary-tint); border-radius: 999px; text-decoration: none; }
+.public-item-owner { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; color: var(--soz-primary-deep); font-weight: 750; text-decoration: none; }
+.public-item-owner:hover { text-decoration: underline; }
+.public-item-facts { display: grid; gap: 14px; margin: 0; }
+.public-item-facts dt { color: var(--soz-muted); font-size: 13px; margin-bottom: 3px; }
+.public-item-facts dd { margin: 0; font-size: 16px; }
+.public-item-facts a { color: var(--soz-primary-deep); }
+.public-item-description { grid-area: description; margin: 0; padding: 0 34px 34px; font-size: 1.14rem; line-height: 1.7; white-space: pre-wrap; color: rgba(17, 34, 45, 0.76); }
+.public-item-discussion { margin-top: 24px; padding: clamp(18px, 4vw, 32px); }
+.public-item-state { padding: 28px; }
+@media (max-width: 860px) {
+  .public-item-detail { grid-template-columns: 1fr; grid-template-areas: "media" "body" "description"; }
+  .public-item-detail--no-image { grid-template-areas: "body" "description"; }
+  .public-item-media { padding: 16px; }
+  .public-item-image { max-height: 320px; border-radius: 22px; }
+  .public-item-body { padding: 22px; }
+  .public-item-description { padding: 0 22px 22px; }
+}
+@media (max-width: 700px) {
+  .public-item-page { padding-inline: 10px; }
+  .public-item-detail, .public-item-discussion, .public-item-state { border-radius: 24px; }
+  .public-item-body { gap: 16px; padding: 20px; }
+  .public-item-description { padding-inline: 20px; font-size: 1rem; }
+}

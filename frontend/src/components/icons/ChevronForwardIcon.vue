@@ -30,7 +30,7 @@
   flex: 0 0 auto;
 }
 
-:global([dir='rtl']) .chevron-forward-icon {
+.chevron-forward-icon:dir(rtl) {
   transform: scaleX(-1);
 }
 </style>

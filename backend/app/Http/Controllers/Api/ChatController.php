@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
 use App\Services\PayloadService;
+use App\Services\SupportAcknowledgementService;
+use App\Services\SupportReplyLimitService;
 use App\Services\SystemSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -21,6 +23,7 @@ class ChatController extends Controller
     public function __construct(
         private readonly PayloadService $payloads,
         private readonly SystemSettingsService $settings,
+        private readonly SupportAcknowledgementService $acknowledgements,
     ) {}
 
     public function index(Request $request)
@@ -175,7 +178,7 @@ class ChatController extends Controller
 
         $conversation = $this->conversationFor($request->user(), $supportAdmin, isSupport: true);
 
-        return $this->sendIntoConversation($request, $conversation, enforceLimits: false);
+        return $this->sendIntoConversation($request, $conversation, enforceLimits: true);
     }
 
     public function markAsRead(Request $request, Conversation $conversation)
@@ -244,29 +247,34 @@ class ChatController extends Controller
             'body' => ['required', 'string', 'max:5000', new CleanContent],
         ]);
 
-        if ($enforceLimits) {
-            $state = $this->composerState($request->user(), $conversation);
+        return DB::transaction(function () use ($request, $conversation, $data, $enforceLimits) {
+            $conversation = Conversation::query()->lockForUpdate()->findOrFail($conversation->id);
 
-            if (! $state['can_send']) {
-                return ApiResponseService::error($state['message'], ['reason' => $state['reason']], $state['reason'] === 'daily_limit' ? 429 : 409);
+            if ($enforceLimits) {
+                $state = $this->composerState($request->user(), $conversation);
+
+                if (! $state['can_send']) {
+                    return ApiResponseService::error($state['message'], ['reason' => $state['reason']], $state['reason'] === 'daily_limit' ? 429 : 409);
+                }
             }
-        }
 
-        $message = ChatMessage::query()->create([
-            'conversation_id' => $conversation->id,
-            'sender_id' => $request->user()->id,
-            'body' => trim($data['body']),
-        ]);
+            $message = ChatMessage::query()->create([
+                'conversation_id' => $conversation->id,
+                'sender_id' => $request->user()->id,
+                'body' => trim($data['body']),
+            ]);
 
-        $conversation->forceFill(['last_message_at' => $message->created_at])->save();
-        $conversation->load(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
+            $acknowledgement = $this->acknowledgements->account($conversation, $request->user());
+            $conversation->forceFill(['last_message_at' => ($acknowledgement ?? $message)->created_at])->save();
+            $conversation->load(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
 
-        return ApiResponseService::success($this->payloads->conversation(
-            $conversation,
-            $request->user(),
-            $this->composerState($request->user(), $conversation),
-            withMessages: true
-        ), 'Message sent.', 201);
+            return ApiResponseService::success($this->payloads->conversation(
+                $conversation,
+                $request->user(),
+                $this->composerState($request->user(), $conversation),
+                withMessages: true
+            ), 'Message sent.', 201);
+        }, 3);
     }
 
     private function composerState(User $user, Conversation $conversation): array
@@ -274,11 +282,7 @@ class ChatController extends Controller
         $conversation->loadMissing('messages');
 
         if ($this->isSupportConversation($conversation)) {
-            return [
-                'can_send' => true,
-                'reason' => null,
-                'message' => null,
-            ];
+            return app(SupportReplyLimitService::class)->accountComposerState($user, $conversation);
         }
 
         $ownMessages = $conversation->messages->where('sender_id', $user->id)->count();

@@ -389,7 +389,7 @@ class PayloadService
 
         if ($withMessages) {
             $payload['messages'] = $visibleMessages
-                ->sortBy('created_at')
+                ->sortBy(fn ($message): string => sprintf('%020s%020d', $message->created_at?->format('Uu') ?? '0', $message->id))
                 ->map(fn ($message) => $this->message($message))
                 ->values()
                 ->all();
@@ -405,6 +405,7 @@ class PayloadService
             'conversation_id' => $message->conversation_id,
             'sender_id' => $message->sender_id,
             'body' => $message->body,
+            'is_automatic' => (bool) $message->is_automatic,
             'read_at' => $message->read_at?->toISOString(),
             'created_at' => $message->created_at?->toISOString(),
             'sender' => $message->relationLoaded('sender') ? $this->user($message->sender) : null,

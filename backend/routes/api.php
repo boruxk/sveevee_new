@@ -51,6 +51,37 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         ->name('email-verification.verify')
         ->withoutMiddleware(['platform.available', 'recaptcha']);
     Route::get('/platform-status', PlatformStatusController::class)->withoutMiddleware('platform.available');
+
+    Route::get('/nearby', [\App\Http\Controllers\Api\CommunityController::class, 'feed']);
+    Route::get('/nearby/page-options', [\App\Http\Controllers\Api\CommunityController::class, 'pageOptions'])->middleware('throttle:60,1');
+    Route::get('/nearby/events/{id}', [\App\Http\Controllers\Api\CommunityController::class, 'event'])->whereNumber('id');
+    Route::get('/questions/{id}', [\App\Http\Controllers\Api\CommunityController::class, 'question'])->whereNumber('id');
+    Route::get('/discussions/{type}/{id}/comments', [\App\Http\Controllers\Api\CommunityController::class, 'comments'])->whereNumber('id');
+    Route::get('/social-state', [\App\Http\Controllers\Api\CommunityController::class, 'socialBatch'])->middleware('throttle:120,1');
+    Route::get('/social/{type}/{id}', [\App\Http\Controllers\Api\CommunityController::class, 'social'])->whereNumber('id');
+    Route::get('/subscriptions/status', [\App\Http\Controllers\Api\CommunitySubscriptionController::class, 'status']);
+    Route::middleware(['auth:sanctum', 'role:user,admin'])->group(function () {
+        Route::get('/questions', [\App\Http\Controllers\Api\CommunityController::class, 'myQuestions']);
+        Route::get('/subscriptions', [\App\Http\Controllers\Api\CommunitySubscriptionController::class, 'index']);
+    });
+    Route::middleware(['auth:sanctum', 'role:user,admin', 'throttle:community-write'])->group(function () {
+        Route::post('/questions', [\App\Http\Controllers\Api\CommunityController::class, 'createQuestion']);
+        Route::patch('/questions/{id}', [\App\Http\Controllers\Api\CommunityController::class, 'updateQuestion'])->whereNumber('id');
+        Route::delete('/questions/{id}', [\App\Http\Controllers\Api\CommunityController::class, 'deleteQuestion'])->whereNumber('id');
+        Route::post('/discussions/{type}/{id}/comments', [\App\Http\Controllers\Api\CommunityController::class, 'createComment'])->whereNumber('id');
+        Route::delete('/comments/{id}', [\App\Http\Controllers\Api\CommunityController::class, 'deleteComment'])->whereNumber('id');
+        Route::match(['PUT', 'DELETE'], '/questions/{id}/helpful/{commentId}', [\App\Http\Controllers\Api\CommunityController::class, 'helpful'])->whereNumber(['id', 'commentId']);
+        Route::match(['PUT', 'DELETE'], '/social/{type}/{id}/like', [\App\Http\Controllers\Api\CommunityController::class, 'like'])->whereNumber('id');
+        Route::post('/social/{type}/{id}/reports', [\App\Http\Controllers\Api\CommunityController::class, 'report'])->whereNumber('id');
+        Route::post('/subscriptions', [\App\Http\Controllers\Api\CommunitySubscriptionController::class, 'store']);
+        Route::patch('/subscriptions/{id}', [\App\Http\Controllers\Api\CommunitySubscriptionController::class, 'update'])->whereNumber('id');
+        Route::delete('/subscriptions/{id}', [\App\Http\Controllers\Api\CommunitySubscriptionController::class, 'destroy'])->whereNumber('id');
+    });
+    Route::middleware(['auth:sanctum', 'admin'])->prefix('admin/community-reports')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\AdminCommunityReportController::class, 'index']);
+        Route::patch('/{id}', [\App\Http\Controllers\Api\AdminCommunityReportController::class, 'update'])->whereNumber('id');
+    });
+
     Route::get('/catalog', [CatalogController::class, 'index']);
     Route::get('/catalog/{topicSlug}', [CatalogController::class, 'index']);
     Route::get('/catalog/{citySlug}/{topicSlug}', [CatalogController::class, 'indexForCity']);
@@ -62,6 +93,7 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
     Route::get('/users/{user}', [PublicUserController::class, 'show']);
     Route::get('/ads/{ad}', [AdController::class, 'show']);
     Route::get('/products/{product}', [PageProductController::class, 'show']);
+    Route::get('/services/{id}', [\App\Http\Controllers\Api\CommunityController::class, 'service'])->whereNumber('id');
     Route::post('/products/{product}/contact', [PageProductController::class, 'recordContact'])
         ->withoutMiddleware('recaptcha')
         ->middleware('throttle:120,1');

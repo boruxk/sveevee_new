@@ -158,13 +158,13 @@ class ChatReadReceiptsApiTest extends TestCase
         $this->getJson("/api/v1/admin/support-chats/account/{$id}")->assertOk()
             ->assertJsonPath('data.messages.0.read_at', fn ($value) => is_string($value));
         $this->postJson("/api/v1/admin/support-chats/account/{$id}/messages", ['body' => 'A support reply.'])->assertCreated()
-            ->assertJsonPath('data.messages.1.read_at', null);
+            ->assertJsonPath('data.messages.2.read_at', null);
         Sanctum::actingAs($member);
         $this->getJson('/api/v1/chats/support')->assertOk()
-            ->assertJsonPath('data.messages.1.read_at', fn ($value) => is_string($value));
+            ->assertJsonPath('data.messages.2.read_at', fn ($value) => is_string($value));
         Sanctum::actingAs($admin);
         $this->getJson("/api/v1/admin/support-chats/account/{$id}")->assertOk()
-            ->assertJsonPath('data.messages.1.read_at', fn ($value) => is_string($value));
+            ->assertJsonPath('data.messages.2.read_at', fn ($value) => is_string($value));
     }
 
     public function test_guest_support_receipts_are_refreshed_in_the_admin_and_guest_payloads(): void
@@ -179,11 +179,11 @@ class ChatReadReceiptsApiTest extends TestCase
         $this->getJson("/api/v1/admin/support-chats/guest/{$id}")->assertOk()
             ->assertJsonPath('data.messages.0.read_at', fn ($value) => is_string($value));
         $this->postJson("/api/v1/admin/support-chats/guest/{$id}/messages", ['body' => 'Guest support reply.'])->assertCreated()
-            ->assertJsonPath('data.messages.1.read_at', null);
+            ->assertJsonPath('data.messages.2.read_at', null);
         $this->getJson('/api/v1/guest-support')->assertOk()
             ->assertJsonPath('data.messages.0.read_at', fn ($value) => is_string($value))
-            ->assertJsonPath('data.messages.1.read_at', fn ($value) => is_string($value));
+            ->assertJsonPath('data.messages.2.read_at', fn ($value) => is_string($value));
         $this->getJson("/api/v1/admin/support-chats/guest/{$id}")->assertOk()
-            ->assertJsonPath('data.messages.1.read_at', fn ($value) => is_string($value));
+            ->assertJsonPath('data.messages.2.read_at', fn ($value) => is_string($value));
     }
 }

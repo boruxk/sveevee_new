@@ -3,8 +3,10 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
+	import { serviceRoute } from '@/constants/catalogTopics'
 
 	const props = defineProps({
+		detailLinks: { type: Boolean, default: true },
 		service: {
 			type: Object,
 			required: true
@@ -23,6 +25,7 @@
 	const { t } = useI18n()
 	const $q = useQuasar()
 	const detailOpen = ref(false)
+	const detailRoute = computed(() => props.detailLinks && Number(props.service.id) > 0 ? serviceRoute(props.service) : undefined)
 	const compactActionButtons = computed(() => $q.screen.width <= 700)
 	const serviceLink = computed(() => String(props.service.link || '').trim())
 	const serviceImageAlt = computed(() => props.service?.image_alt || props.service?.name || '')
@@ -71,7 +74,8 @@
 					icon="visibility"
 					:aria-label="t('businessServices.open')"
 					:label="compactActionButtons ? undefined : t('businessServices.open')"
-					@click="detailOpen = true"
+					:to="detailRoute"
+					@click="detailOpen = !detailRoute"
 				/>
 				<q-btn v-if="editable"
 					class="service-card__icon-btn"

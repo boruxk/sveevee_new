@@ -44,7 +44,7 @@ class Conversation extends Model
 
     public function messages(): HasMany
     {
-        return $this->hasMany(ChatMessage::class)->oldest();
+        return $this->hasMany(ChatMessage::class)->oldest()->orderBy('id');
     }
 
     public function claimRequests(): HasMany

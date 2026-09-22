@@ -14,6 +14,7 @@ use App\Services\GuestSupportService;
 use App\Services\PageClaimService;
 use App\Services\PayloadService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminSupportController extends Controller
 {
@@ -124,61 +125,70 @@ class AdminSupportController extends Controller
         ]);
 
         if ($source === 'account') {
-            $conversation = $this->accountConversation($request->user(), $id);
+            return DB::transaction(function () use ($request, $id, $data) {
+                $conversation = Conversation::query()
+                    ->forParticipant($request->user())
+                    ->where('is_support', true)
+                    ->lockForUpdate()
+                    ->find($id);
 
-            if (! $conversation) {
-                return ApiResponseService::error('Resource not found.', status: 404);
-            }
+                if (! $conversation) {
+                    return ApiResponseService::error('Resource not found.', status: 404);
+                }
 
-            $message = ChatMessage::query()->create([
-                'conversation_id' => $conversation->id,
-                'sender_id' => $request->user()->id,
-                'body' => $data['body'],
-            ]);
+                $message = ChatMessage::query()->create([
+                    'conversation_id' => $conversation->id,
+                    'sender_id' => $request->user()->id,
+                    'body' => $data['body'],
+                ]);
 
-            $conversation->forceFill(['last_message_at' => $message->created_at])->save();
-            $conversation->load([
-                'userOne.profile',
-                'userTwo.profile',
-                'messages.sender.profile',
-                'claimRequests.page',
-                'claimRequests.user.profile',
-                'claimRequests.reviewedBy.profile',
-            ]);
+                $conversation->forceFill(['last_message_at' => $message->created_at])->save();
+                $conversation->load([
+                    'userOne.profile',
+                    'userTwo.profile',
+                    'messages.sender.profile',
+                    'claimRequests.page',
+                    'claimRequests.user.profile',
+                    'claimRequests.reviewedBy.profile',
+                ]);
 
-            return ApiResponseService::success($this->accountPayload(
-                $conversation,
-                $request->user(),
-                withMessages: true
-            ), 'Message sent.', 201);
+                return ApiResponseService::success($this->accountPayload(
+                    $conversation,
+                    $request->user(),
+                    withMessages: true
+                ), 'Message sent.', 201);
+            }, 3);
         }
 
         if ($source !== 'guest') {
             return ApiResponseService::error('Resource not found.', status: 404);
         }
 
-        $conversation = GuestSupportConversation::query()
-            ->whereNull('claimed_at')
-            ->find($id);
+        return DB::transaction(function () use ($request, $id, $data) {
+            $conversation = GuestSupportConversation::query()
+                ->whereNull('claimed_at')
+                ->lockForUpdate()
+                ->find($id);
 
-        if (! $conversation) {
-            return ApiResponseService::error('Resource not found.', status: 404);
-        }
+            if (! $conversation) {
+                return ApiResponseService::error('Resource not found.', status: 404);
+            }
 
-        $message = $conversation->messages()->create([
-            'sender_type' => GuestSupportMessage::SENDER_ADMIN,
-            'sender_user_id' => $request->user()->id,
-            'body' => $data['body'],
-        ]);
+            $message = $conversation->messages()->create([
+                'sender_type' => GuestSupportMessage::SENDER_ADMIN,
+                'sender_user_id' => $request->user()->id,
+                'body' => $data['body'],
+            ]);
 
-        $conversation->forceFill(['last_message_at' => $message->created_at])->save();
-        $conversation->load(['messages.sender.profile']);
+            $conversation->forceFill(['last_message_at' => $message->created_at])->save();
+            $conversation->load(['messages.sender.profile']);
 
-        return ApiResponseService::success($this->guestSupport->payload(
-            $conversation,
-            withMessages: true,
-            forAdmin: true
-        ), 'Message sent.', 201);
+            return ApiResponseService::success($this->guestSupport->payload(
+                $conversation,
+                withMessages: true,
+                forAdmin: true
+            ), 'Message sent.', 201);
+        }, 3);
     }
 
     private function accountConversation(User $admin, int $id): ?Conversation

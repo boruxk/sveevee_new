@@ -13,11 +13,11 @@ final class UserDeletionService
     {
         $user->load([
             'profile',
-            'ads',
-            'events',
-            'pages.products',
-            'pages.services',
-            'pages.events',
+            'ads' => fn ($q) => $q->withoutGlobalScope('community_visibility'),
+            'events' => fn ($q) => $q->withoutGlobalScope('community_visibility'),
+            'pages.products' => fn ($q) => $q->withoutGlobalScope('community_visibility'),
+            'pages.services' => fn ($q) => $q->withoutGlobalScope('community_visibility'),
+            'pages.events' => fn ($q) => $q->withoutGlobalScope('community_visibility'),
         ]);
 
         $mediaPaths = $this->mediaPaths($user);

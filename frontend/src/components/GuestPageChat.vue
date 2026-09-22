@@ -9,6 +9,8 @@
 	import { clearLeadsPage001Registration } from '@/utils/leadsPageCompletion'
 	import { CHAT_MAX_LENGTH, characterLimitHint } from '@/constants/textLimits'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { containsGuestChatLink } from '@/utils/guestChatLinks'
+	import { isGuestChatLinkError } from '@/utils/guestChatPolicy'
 	import ChatMessageBody from '@/components/ChatMessageBody.vue'
 	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
 
@@ -23,6 +25,7 @@
 	const token = ref(readGuestPageChatToken(props.pageId))
 	const conversation = ref(null)
 	const draft = ref('')
+	const rejectedLinkDraft = ref(null)
 	const loading = ref(Boolean(pendingGuestPageChatStart(props.pageId)))
 	const sending = ref(false)
 	const loadError = ref(false)
@@ -43,7 +46,8 @@
 		if (conversation.value?.composer_state?.reason === 'page_pending_reply') return t('chat.pagePendingReply')
 		return t('chat.placeholder')
 	})
-	const composerHint = computed(() => characterLimitHint(draft.value, CHAT_MAX_LENGTH, t))
+	const draftContainsLink = computed(() => containsGuestChatLink(draft.value) || rejectedLinkDraft.value === draft.value)
+	const composerHint = computed(() => `${t('chat.guestLinksHint')} ${characterLimitHint(draft.value, CHAT_MAX_LENGTH, t)}`)
 
 	async function scrollToBottom() {
 		await nextTick()
@@ -67,16 +71,18 @@
 
 	async function loadChat({ silent = false } = {}) {
 		if (!token.value || refreshing || sending.value || disposed) return
+		const previousConversation = conversation.value
+		const requestedToken = token.value
 		refreshing = true
 		if (!silent) loading.value = true
 		try {
 			const { data } = await fetchGuestPageChat(props.pageId, token.value)
-			if (disposed) return
+			if (disposed || conversation.value !== previousConversation || token.value !== requestedToken) return
 			loadError.value = false
 			unavailable.value = false
 			await applyConversation(data.data, !silent)
 		} catch (error) {
-			if (disposed) return
+			if (disposed || conversation.value !== previousConversation || token.value !== requestedToken) return
 			if ([404, 410].includes(error.response?.status)) {
 				resetExpiredSession()
 			} else if (error.response?.status === 409) {
@@ -93,6 +99,10 @@
 	async function send() {
 		const body = draft.value.trim()
 		if (!body || sending.value || loading.value || composerBlocked.value) return
+		if (draftContainsLink.value) {
+			$q.notify({ type: 'warning', message: t('chat.guestLinksNotAllowed') })
+			return
+		}
 		sending.value = true
 		try {
 			token.value = token.value || readGuestPageChatToken(props.pageId)
@@ -118,12 +128,17 @@
 			await applyConversation(nextConversation, true)
 		} catch (error) {
 			if (disposed) return
+			if (isGuestChatLinkError(error)) {
+				rejectedLinkDraft.value = draft.value
+				$q.notify({ type: 'warning', message: t('chat.guestLinksNotAllowed') })
+				return
+			}
 			const reason = error.response?.data?.errors?.reason
 			if (token.value && [404, 410].includes(error.response?.status)) {
 				resetExpiredSession()
 			} else {
 				if (reason === 'page_pending_reply' && conversation.value) {
-					conversation.value.composer_state = { can_send: false, reason }
+					conversation.value = { ...conversation.value, composer_state: { can_send: false, reason } }
 				} else if (error.response?.status === 409) {
 					unavailable.value = true
 				}
@@ -167,7 +182,7 @@
 				token.value = data.data.token
 				await applyConversation(data.data.conversation, true)
 			} catch (error) {
-				if (!disposed) $q.notify({ type: 'negative', message: apiErrorMessage(error, t('chat.sendFailed')) })
+				if (!disposed) $q.notify({ type: 'negative', message: isGuestChatLinkError(error) ? t('chat.guestLinksNotAllowed') : apiErrorMessage(error, t('chat.sendFailed')) })
 			} finally {
 				loading.value = false
 			}
@@ -236,6 +251,8 @@
 				:aria-label="t('chat.placeholder')"
 				:maxlength="CHAT_MAX_LENGTH"
 				:hint="composerBlocked ? composerMessage : composerHint"
+				:error="draftContainsLink"
+				:error-message="t('chat.guestLinksNotAllowed')"
 				persistent-hint
 				@keydown.enter.exact.prevent="send"
 			/>
@@ -247,7 +264,7 @@
 				type="submit"
 				:aria-label="t('actions.send')"
 				:loading="sending"
-				:disable="loading || composerBlocked || !draft.trim()"
+				:disable="loading || composerBlocked || draftContainsLink || !draft.trim()"
 			/>
 		</form>
 	</section>

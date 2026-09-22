@@ -19,6 +19,10 @@ async function toServiceFormData(payload) {
 	return formData
 }
 
+export function fetchService(id, config = {}) {
+	return apiClient.get(`/services/${encodeURIComponent(String(id))}`, config)
+}
+
 export async function createService(pageId, payload) {
 	return apiClient.post(`/pages/${pageId}/services`, await toServiceFormData(payload))
 }
