@@ -73,11 +73,13 @@ class AdminSupportController extends Controller
                 return ApiResponseService::error('Resource not found.', status: 404);
             }
 
-            ChatMessage::query()
-                ->where('conversation_id', $conversation->id)
-                ->where('sender_id', '!=', $request->user()->id)
-                ->whereNull('read_at')
-                ->update(['read_at' => now()]);
+            if ($request->boolean('mark_read', true)) {
+                ChatMessage::query()
+                    ->where('conversation_id', $conversation->id)
+                    ->where('sender_id', '!=', $request->user()->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
 
             $conversation->load([
                 'userOne.profile',
@@ -107,7 +109,9 @@ class AdminSupportController extends Controller
             return ApiResponseService::error('Resource not found.', status: 404);
         }
 
-        $this->guestSupport->markReadByAdmin($conversation);
+        if ($request->boolean('mark_read', true)) {
+            $this->guestSupport->markReadByAdmin($conversation);
+        }
         $conversation->load(['messages.sender.profile']);
 
         return ApiResponseService::success($this->guestSupport->payload(

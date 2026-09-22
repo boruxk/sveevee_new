@@ -20,6 +20,8 @@
 	import { apiErrorMessage } from '@/utils/apiErrors'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import PasswordInput from '@/components/PasswordInput.vue'
+	import BusinessProPanel from '@/components/businessPro/BusinessProPanel.vue'
+	import { canPreviewBusinessPro } from '@/utils/businessPro'
 	import LocaleFlag from '@/components/icons/LocaleFlag.vue'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
@@ -31,7 +33,9 @@
 	const router = useRouter()
 	const authStore = useAuthStore()
 	const appStore = useAppStore()
-	const loading = ref(false)
+	const loading = ref(true)
+	const businessProSection = ref(null)
+	const showBusinessPro = computed(() => canPreviewBusinessPro(authStore))
 	const saving = ref(false)
 	const passwordSaving = ref(false)
 	const verificationSending = ref(false)
@@ -288,6 +292,12 @@
 		}
 	})
 
+	watch([() => route.hash, loading, showBusinessPro], async([hash, isLoading, visible]) => {
+		if (hash !== '#business-pro' || isLoading || !visible) return
+		await nextTick()
+		businessProSection.value?.scrollIntoView({ block: 'start' })
+	}, { flush: 'post' })
+
 	onMounted(async() => {
 		await Promise.all([load(), loadLocationOptions(), loadCatalogTopics()])
 		citySelectOptions.value = cityOptions.value
@@ -484,6 +494,15 @@
 				<q-spinner v-if="loading" color="primary" />
 			</section>
 
+			<section
+				v-if="!loading && showBusinessPro"
+				id="business-pro"
+				ref="businessProSection"
+				class="soz-section-card profile-pro-panel q-mt-lg"
+			>
+				<BusinessProPanel compact />
+			</section>
+
 			<section v-if="!loading" class="soz-section-card profile-notifications-panel q-mt-lg">
 				<div class="profile-section-intro">
 					<h2>{{ t('profile.notificationsTitle') }}</h2>
@@ -579,9 +598,14 @@
 
 .page-head,
 .profile-panel,
+.profile-pro-panel,
 .profile-notifications-panel,
 .profile-password-panel {
   padding: 28px;
+}
+
+.profile-pro-panel {
+  scroll-margin-top: 110px;
 }
 
 .page-head h1 {
@@ -737,6 +761,7 @@
 
   .page-head,
   .profile-panel,
+  .profile-pro-panel,
   .profile-notifications-panel,
   .profile-password-panel {
     padding: 20px;

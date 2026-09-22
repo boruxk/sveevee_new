@@ -293,3 +293,146 @@ test('late detail and mutation responses cannot recreate conversations after log
 		assert.equal(privateRequests.length, 1, operation)
 	}
 })
+
+
+test('visible detail refresh clears only that partner badge and preserves unread totals from other chat areas', async () => {
+	const { store, finish } = setup({ fetchChat: async id => response(conversation(id, { latest_message: { id: 12 }, unread_count: 0 })) })
+	const initial = store.loadConversations()
+	finish(0, [conversation(1, { latest_message: { id: 12 }, unread_count: 2 })], [conversation(1, { is_page_chat: true, unread_count: 3 })], 9)
+	await initial
+	store.activeConversation = conversation(1)
+	await store.refreshActiveConversation()
+	assert.equal(store.conversations.find(row => !row.is_page_chat).unread_count, 0)
+	assert.equal(store.conversations.find(row => row.is_page_chat).unread_count, 3)
+	assert.equal(store.unreadCount, 7, 'Unread messages in owned page/support areas remain counted')
+})
+
+test('an older detail response cannot clear a newer incoming message shown by the list', async () => {
+	const late = deferred()
+	const { store, finish } = setup({ fetchChat: () => late.promise })
+	const initial = store.loadConversations()
+	finish(0, [conversation(1, { latest_message: { id: 10 }, unread_count: 1 })], [], 1)
+	await initial
+	store.activeConversation = conversation(1)
+	const pending = store.refreshActiveConversation()
+	store.conversations[0] = conversation(1, { latest_message: { id: 11 }, unread_count: 2 })
+	store.syncUnread(2)
+	late.resolve(response(conversation(1, { latest_message: { id: 10 }, unread_count: 0 })))
+	await pending
+	assert.equal(store.conversations[0].unread_count, 2)
+	assert.equal(store.unreadCount, 2)
+})
+
+test('list metadata refresh does not discard a completed visible detail read', async () => {
+	const late = deferred()
+	const { store, finish } = setup({ fetchChat: () => late.promise })
+	const initial = store.loadConversations()
+	finish(0, [conversation(1, { latest_message: { id: 10 }, unread_count: 1 })], [], 1)
+	await initial
+	store.activeConversation = conversation(1)
+	const pending = store.refreshActiveConversation()
+	const refresh = store.loadConversations({ force: true })
+	finish(1, [conversation(1, { latest_message: { id: 10 }, unread_count: 1 })], [], 1)
+	await refresh
+	late.resolve(response(conversation(1, { latest_message: { id: 10 }, unread_count: 0, messages: [{ id: 10, body: 'Visible incoming' }] })))
+	await pending
+	assert.equal(store.activeMessages[0].body, 'Visible incoming')
+	assert.equal(store.conversations[0].unread_count, 0)
+	assert.equal(store.unreadCount, 0)
+})
+
+test('an in-flight list from before a read is superseded rather than restoring an unread badge', async () => {
+	const { store, finish, privateRequests } = setup({ fetchChat: async id => response(conversation(id, { latest_message: { id: 10 }, unread_count: 0 })) })
+	const initial = store.loadConversations()
+	finish(0, [conversation(1, { latest_message: { id: 10 }, unread_count: 1 })], [], 1)
+	await initial
+	store.activeConversation = conversation(1)
+	const oldList = store.loadConversations({ force: true })
+	await store.refreshActiveConversation()
+	assert.equal(store.conversations[0].unread_count, 0)
+	finish(1, [conversation(1, { latest_message: { id: 10 }, unread_count: 1 })], [], 1)
+	await oldList
+	await tick()
+	assert.equal(store.conversations[0].unread_count, 0)
+	assert.equal(privateRequests.length, 3)
+	finish(2, [conversation(1, { latest_message: { id: 10 }, unread_count: 0 })])
+	await tick()
+})
+
+test('hidden document and hidden thread refreshes do not mark messages read', async () => {
+	const previousDocument = globalThis.document
+	try {
+		globalThis.document = { visibilityState: 'hidden' }
+		const { store, finish, mutations } = setup()
+		const initial = store.loadConversations()
+		finish(0, [conversation(1, { unread_count: 1 })], [], 1)
+		await initial
+		store.activeConversation = conversation(1)
+		await store.refreshActiveConversation()
+		assert.deepEqual(mutations, [])
+		globalThis.document.visibilityState = 'visible'
+		await store.refreshActiveConversation(() => false)
+		assert.deepEqual(mutations, [])
+		assert.equal(store.unreadCount, 1)
+	} finally {
+		if (previousDocument === undefined) delete globalThis.document
+		else globalThis.document = previousDocument
+	}
+})
+
+test('string page conversation IDs use the page read endpoint', async () => {
+	const { store, finish, mutations } = setup()
+	const initial = store.loadConversations()
+	finish(0, [], [conversation(1, { is_page_chat: true, unread_count: 1 })], 1)
+	await initial
+	store.activeConversation = conversation(1, { is_page_chat: true })
+	const pending = store.markRead('1')
+	await tick()
+	finish(1)
+	await pending
+	assert.deepEqual(mutations, ['markPageChatRead'])
+})
+
+
+test('polls started before or during a send cannot replace the sent message with older history', async () => {
+	for (const startsDuringSend of [false, true]) {
+		const latePoll = deferred()
+		const sendResult = deferred()
+		const latest = conversation(1, { latest_message: { id: 11 }, messages: [{ id: 10 }, { id: 11, body: 'Newly sent' }] })
+		const { store, finish } = setup({ fetchChat: () => latePoll.promise, sendChatMessage: () => sendResult.promise })
+		const initial = store.loadConversations()
+		finish(0, [conversation(1, { latest_message: { id: 10 } })])
+		await initial
+		store.activeConversation = conversation(1, { messages: [{ id: 10 }] })
+		let poll
+		if (!startsDuringSend) poll = store.refreshActiveConversation()
+		const sending = store.send('Newly sent')
+		if (startsDuringSend) poll = store.refreshActiveConversation()
+		sendResult.resolve(response(latest))
+		await tick()
+		finish(1, [latest])
+		await sending
+		latePoll.resolve(response(conversation(1, { latest_message: { id: 10 }, messages: [{ id: 10 }] })))
+		await poll
+		assert.equal(store.activeMessages.at(-1).body, 'Newly sent', startsDuringSend ? 'poll during send' : 'poll before send')
+		assert.equal(store.conversations[0].latest_message.id, 11)
+	}
+})
+
+test('late send response does not reopen a conversation after the user navigates elsewhere', async () => {
+	const lateSend = deferred()
+	const { store, finish } = setup({ sendChatMessage: () => lateSend.promise })
+	const initial = store.loadConversations()
+	finish(0, [conversation(1), conversation(2)])
+	await initial
+	store.activeConversation = conversation(1)
+	const sending = store.send('Message for first partner')
+	store.clearActive()
+	store.activeConversation = conversation(2, { messages: [{ id: 20, body: 'Other partner' }] })
+	lateSend.resolve(response(conversation(1, { messages: [{ id: 11, body: 'Message for first partner' }] })))
+	await tick()
+	finish(1, [conversation(1), conversation(2)])
+	await sending
+	assert.equal(store.activeConversation.id, 2)
+	assert.equal(store.activeMessages[0].body, 'Other partner')
+})

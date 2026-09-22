@@ -25,7 +25,9 @@
 	import ChatBlock from '@/components/ChatBlock.vue'
 	import GuestPageChat from '@/components/GuestPageChat.vue'
 	import UserPresenceStatus from '@/components/UserPresenceStatus.vue'
-	import { completePendingGuestPageChatClaim, readPendingGuestPageChatClaim } from '@/utils/guestPageChatSession'
+	import { completePendingGuestPageChatClaim, readPendingGuestPageChatClaim, readGuestPageChatToken } from '@/utils/guestPageChatSession'
+	import { fetchGuestPageChat } from '@/services/api/guestPageChats'
+	import { useChatUnreadPreview } from '@/composables/useChatUnreadPreview'
 
 	const route = useRoute()
 	const router = useRouter()
@@ -100,6 +102,15 @@
 	const routeLocale = computed(() => String(route.params.locale || ''))
 	const isBusinessPage = computed(() => page.value?.type === 'business')
 	const showBannerClaimAction = computed(() => !authStore.isAuthenticated || canRequestClaim.value)
+	const guestUnreadSession = computed(() => {
+		if (authStore.isAuthenticated || !isBusinessPage.value || !showChatAction.value || pageChatDialogOpen.value) return ''
+		const token = readGuestPageChatToken(page.value.id)
+		return token ? JSON.stringify({ pageId: page.value.id, token }) : ''
+	})
+	const { unreadCount: guestChatUnreadCount } = useChatUnreadPreview(guestUnreadSession, (session) => {
+		const { pageId, token } = JSON.parse(session)
+		return fetchGuestPageChat(pageId, token, { markRead: false })
+	})
 	const claimUnlockFeatures = computed(() => [
 		...(isBusinessPage.value ? [
 			{ key: 'store', icon: 'storefront', labelKey: 'businessFeatures.store' },
@@ -637,6 +648,7 @@
 				:palette="selectedPalette"
 				:can-rate="canRate"
 				:can-chat="showChatAction"
+				:chat-unread-count="guestChatUnreadCount"
 				:show-ratings="!isUnclaimed"
 				:show-empty-details="isUnclaimed"
 				:has-after-info="hasPreviewContent"

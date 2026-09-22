@@ -285,3 +285,5 @@ Route::prefix('v1')->middleware(['platform.available', 'recaptcha'])->group(func
         Route::post('/users/{user}/message', [ChatController::class, 'adminSend'])->middleware('throttle:chat-send');
     });
 });
+
+require __DIR__.'/business-pro.php';

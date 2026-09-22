@@ -76,7 +76,9 @@ class PageChatController extends Controller
         }
 
         $conversation = $this->conversationFor($page, $request->user());
-        $this->markRead($request->user(), $conversation);
+        if ($request->boolean('mark_read', true)) {
+            $this->markRead($request->user(), $conversation);
+        }
         $this->loadConversation($conversation);
 
         return ApiResponseService::success($this->payloads->pageConversation(
@@ -93,7 +95,9 @@ class PageChatController extends Controller
             return ApiResponseService::error('This action is unauthorized.', status: 403);
         }
 
-        $this->markRead($request->user(), $pageConversation);
+        if ($request->boolean('mark_read', true)) {
+            $this->markRead($request->user(), $pageConversation);
+        }
         $this->loadConversation($pageConversation);
 
         return ApiResponseService::success($this->payloads->pageConversation(
@@ -130,7 +134,9 @@ class PageChatController extends Controller
 
         $this->markRead($request->user(), $pageConversation);
 
-        return ApiResponseService::success(null);
+        return ApiResponseService::success([
+            'unread_count' => $this->payloads->unreadMessageCount($request->user()),
+        ]);
     }
 
     private function sendIntoConversation(Request $request, PageConversation $conversation)

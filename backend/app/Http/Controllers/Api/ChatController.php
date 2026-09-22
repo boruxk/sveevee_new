@@ -88,7 +88,9 @@ class ChatController extends Controller
         }
 
         $conversation = $this->conversationFor($request->user(), $user);
-        $this->markRead($request->user(), $conversation);
+        if ($request->boolean('mark_read', true)) {
+            $this->markRead($request->user(), $conversation);
+        }
         $conversation->load(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
 
         return ApiResponseService::success($this->payloads->conversation(
@@ -112,7 +114,9 @@ class ChatController extends Controller
         }
 
         $conversation = $this->conversationFor($request->user(), $supportAdmin, isSupport: true);
-        $this->markRead($request->user(), $conversation);
+        if ($request->boolean('mark_read', true)) {
+            $this->markRead($request->user(), $conversation);
+        }
         $conversation->load(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
 
         return ApiResponseService::success($this->payloads->conversation(
@@ -129,7 +133,9 @@ class ChatController extends Controller
             return ApiResponseService::error('This action is unauthorized.', status: 403);
         }
 
-        $this->markRead($request->user(), $conversation);
+        if ($request->boolean('mark_read', true)) {
+            $this->markRead($request->user(), $conversation);
+        }
         $conversation->load(['userOne.profile', 'userTwo.profile', 'messages.sender.profile']);
 
         return ApiResponseService::success($this->payloads->conversation(

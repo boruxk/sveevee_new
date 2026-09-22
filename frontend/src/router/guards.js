@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/stores/auth'
 import { usePlatformStore } from '@/stores/platform'
+import { canPreviewBusinessPro } from '@/utils/businessPro'
 
 export async function authGuard(to) {
 	const authStore = useAuthStore()
@@ -48,6 +49,10 @@ export async function authGuard(to) {
 			name: 'login',
 			query: { redirect: to.fullPath }
 		}
+	}
+
+	if (to.meta.businessProPreview && !canPreviewBusinessPro(authStore)) {
+		return { name: 'home' }
 	}
 
 	if (to.meta.roles && !authStore.canAccess(to.meta.roles)) {

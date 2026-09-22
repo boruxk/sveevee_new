@@ -20,6 +20,8 @@
 	import ChatMessageBody from '@/components/ChatMessageBody.vue'
 	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
 	import UserPresenceStatus from '@/components/UserPresenceStatus.vue'
+	import ChatUnreadBadge from '@/components/ChatUnreadBadge.vue'
+	import { useChatUnreadPreview } from '@/composables/useChatUnreadPreview'
 
 	const { locale, t } = useI18n()
 	const $q = useQuasar()
@@ -48,6 +50,14 @@
 	const visible = computed(() => authStore.initialized && !authStore.isAdmin)
 	const messages = computed(() => conversation.value?.messages || [])
 	const isGuest = computed(() => !authStore.isAuthenticated)
+	const listedSupportConversation = computed(() => chatsStore.conversations.find((entry) => entry.is_support && !entry.is_page_chat))
+	const unreadPreviewSession = computed(() => {
+		if (!visible.value || panelOpen.value) return ''
+		if (isGuest.value) return guestToken.value ? `guest:${guestToken.value}` : ''
+		return listedSupportConversation.value?.id || conversation.value?.id ? `account:${authStore.user?.id}:${authStore.token}` : ''
+	})
+	const { unreadCount: previewUnreadCount } = useChatUnreadPreview(unreadPreviewSession, (session) => session.startsWith('guest:') ? fetchGuestSupportChat(session.slice(6), { markRead: false }) : fetchSupportChat({ markRead: false }))
+	const supportUnreadCount = computed(() => Math.max(previewUnreadCount.value, isGuest.value ? 0 : Number(listedSupportConversation.value?.unread_count || 0)))
 	const needsGuestStart = computed(() => isGuest.value && !guestToken.value && !conversation.value)
 	const guestMessageMode = computed(() => isGuest.value || Boolean(conversation.value?.is_guest))
 	const draftContainsLink = computed(() => guestMessageMode.value && (containsGuestChatLink(draft.value) || rejectedLinkDraft.value === draft.value))
@@ -396,9 +406,12 @@
 			icon="support_agent"
 			:label="t('chat.supportWidgetTitle')"
 			class="support-widget__trigger"
-			:aria-label="t('chat.supportOpen')"
+			:class="{ 'support-widget__trigger--unread': supportUnreadCount > 0 }"
+			:aria-label="supportUnreadCount ? `${t('chat.supportOpen')}, ${t('notifications.unread', { count: supportUnreadCount })}` : t('chat.supportOpen')"
 			@click="openPanel"
-		/>
+		>
+			<ChatUnreadBadge :count="supportUnreadCount" class="support-widget__unread" />
+		</q-btn>
 
 		<q-card v-else class="support-widget__panel">
 			<header class="support-widget__header">
@@ -556,6 +569,17 @@
   color: #fff;
   font-weight: 800;
   box-shadow: 0 12px 24px rgba(66, 20, 143, 0.2);
+}
+
+.support-widget .support-widget__trigger--unread {
+  outline: 3px solid rgba(255, 116, 38, 0.48);
+  outline-offset: 3px;
+}
+
+.support-widget__unread {
+  margin-inline-start: 8px;
+  background: #fff;
+  color: var(--soz-primary-deep);
 }
 
 .support-widget__trigger :deep(.q-icon) {

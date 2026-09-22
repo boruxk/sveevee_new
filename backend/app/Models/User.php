@@ -41,6 +41,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'business_pro_tester',
     ];
 
     protected $appends = [
@@ -54,6 +55,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'consented' => 'boolean',
+            'business_pro_tester' => 'boolean',
             'banned_at' => 'datetime',
             'last_seen_at' => 'datetime',
         ];

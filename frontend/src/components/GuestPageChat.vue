@@ -76,7 +76,7 @@
 		refreshing = true
 		if (!silent) loading.value = true
 		try {
-			const { data } = await fetchGuestPageChat(props.pageId, token.value)
+			const { data } = await fetchGuestPageChat(props.pageId, token.value, { markRead: document.visibilityState === 'visible' })
 			if (disposed || conversation.value !== previousConversation || token.value !== requestedToken) return
 			loadError.value = false
 			unavailable.value = false

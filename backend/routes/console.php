@@ -125,3 +125,5 @@ Artisan::command('ai-works:prune-page-imports', function () {
 })->purpose('Delete expired AI page import summaries');
 
 Schedule::command('ai-works:prune-page-imports')->daily();
+
+Schedule::command('business-pro:bill')->everyFiveMinutes()->withoutOverlapping(120);

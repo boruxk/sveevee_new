@@ -14,8 +14,8 @@ export function createGuestPageChat(pageId, payload) {
 	})
 }
 
-export function fetchGuestPageChat(pageId, token) {
-	return apiClient.get(`/pages/${pageId}/guest-chat`, { headers: guestHeaders(token), skipAuth: true })
+export function fetchGuestPageChat(pageId, token, { markRead = true } = {}) {
+	return apiClient.get(`/pages/${pageId}/guest-chat`, { headers: guestHeaders(token), skipAuth: true, params: { mark_read: markRead ? 1 : 0 } })
 }
 
 export function sendGuestPageChatMessage(pageId, token, payload) {

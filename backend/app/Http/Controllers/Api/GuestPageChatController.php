@@ -52,8 +52,10 @@ class GuestPageChatController extends Controller
         return DB::transaction(function () use ($request, $page): JsonResponse {
             $page = $this->lockAvailablePage($page);
             $conversation = $this->fromToken($request, $page);
-            $conversation->messages()->where('sender_as_page', true)->whereNull('read_at')
-                ->update(['read_at' => now()]);
+            if ($request->boolean('mark_read', true)) {
+                $conversation->messages()->where('sender_as_page', true)->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
 
             return ApiResponseService::success($this->payload($conversation))
                 ->header('Cache-Control', 'private, no-store');

@@ -3,6 +3,7 @@
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import RatingStars from '@/components/ratings/RatingStars.vue'
+	import ChatUnreadBadge from '@/components/ChatUnreadBadge.vue'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import { useAppStore } from '@/stores/app'
 	import { qrSvg } from '@/utils/qrCode'
@@ -37,6 +38,7 @@
 			type: String,
 			default: ''
 		},
+		chatUnreadCount: { type: Number, default: 0 },
 		canChat: {
 			type: Boolean,
 			default: false
@@ -400,7 +402,7 @@
 					unelevated
 					color="primary"
 					class="page-preview__chat-button page-preview__action-button page-preview__action-button--label"
-					:aria-label="t('pages.sections.contact')"
+					:aria-label="chatUnreadCount ? `${t('pages.sections.contact')}, ${t('notifications.unread', { count: chatUnreadCount })}` : t('pages.sections.contact')"
 					@click="emit('chat')"
 				>
 					<svg class="page-chat-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -408,6 +410,7 @@
 						<path d="M8.2 9.2h7.6M8.2 12.2h5.2" />
 					</svg>
 					<span>{{ t('pages.sections.contact') }}</span>
+					<ChatUnreadBadge :count="chatUnreadCount" />
 				</q-btn>
 				<slot name="headerActions" />
 				<div v-if="shareTargetUrl" class="page-preview__share">

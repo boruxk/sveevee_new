@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureBusinessProFeature;
 use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Middleware\EnsureOwnBroadcastChannel;
 use App\Http\Middleware\EnsurePlatformIsAvailable;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
             'admin' => EnsureUserIsAdmin::class,
+            'business-pro.feature' => EnsureBusinessProFeature::class,
             'platform.available' => EnsurePlatformIsAvailable::class,
             'recaptcha' => VerifyRecaptcha::class,
             'email.verified' => EnsureEmailIsVerified::class,

@@ -84,7 +84,9 @@ class GuestSupportController extends Controller
             return ApiResponseService::error('Guest support session not found.', status: 404);
         }
 
-        $this->guestSupport->markReadByGuest($conversation);
+        if ($request->boolean('mark_read', true)) {
+            $this->guestSupport->markReadByGuest($conversation);
+        }
         $conversation->load(['messages.sender.profile']);
 
         return ApiResponseService::success(

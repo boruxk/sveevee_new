@@ -1,5 +1,6 @@
 <script setup>
 	import { computed, onMounted, ref, watch } from 'vue'
+	import ChatUnreadBadge from '@/components/ChatUnreadBadge.vue'
 	import { useRoute, useRouter } from 'vue-router'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
@@ -367,6 +368,7 @@
 									:key="conversationKey(conversation)"
 									type="button"
 									class="overview-list__item"
+									:class="{ 'chat-row--unread': Number(conversation.unread_count) > 0 }"
 									@click="openRecentConversation(conversation)"
 								>
 									<q-avatar size="42px" color="primary" text-color="white">
@@ -387,7 +389,7 @@
 										<strong>{{ conversation.other_user?.display_name }}</strong>
 										<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
 									</span>
-									<q-badge v-if="conversation.unread_count" color="negative" rounded>{{ conversation.unread_count }}</q-badge>
+									<ChatUnreadBadge :count="conversation.unread_count" />
 								</button>
 							</div>
 						</section>

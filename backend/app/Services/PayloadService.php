@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Ad;
 use App\Models\Conversation;
+use App\Models\GuestSupportMessage;
 use App\Models\Page;
 use App\Models\PageChatMessage;
 use App\Models\PageConversation;
@@ -61,6 +62,9 @@ class PayloadService
             $payload['missing_profile_fields'] = $this->missingProfileFields($user);
             $payload['banned_at'] = $user->banned_at?->toISOString();
             $payload['unread_messages_count'] = $this->unreadMessageCount($user);
+            if (app(BusinessProEntitlementService::class)->isVisible($user)) {
+                $payload['business_pro_preview'] = true;
+            }
         }
 
         if ($includePrivate || $includePresence) {
@@ -517,16 +521,24 @@ class PayloadService
     {
         $privateUnread = $user->receivedUnreadMessages()->count();
         $pageUnread = PageChatMessage::query()
-            ->whereHas('conversation', fn ($query) => $query
-                ->where('visitor_id', $user->id)
-                ->whereHas('page', fn ($pageQuery) => $pageQuery
-                    ->managed()
-                    ->whereHas('user', fn ($ownerQuery) => $ownerQuery->whereNull('banned_at'))))
-            ->where('sender_as_page', true)
+            ->whereHas('conversation.page', fn ($pageQuery) => $pageQuery
+                ->managed()->whereHas('user', fn ($ownerQuery) => $ownerQuery->whereNull('banned_at')))
+            ->where(function ($incoming) use ($user): void {
+                $incoming->where(fn ($visitor) => $visitor
+                    ->where('sender_as_page', true)
+                    ->whereHas('conversation', fn ($conversation) => $conversation->where('visitor_id', $user->id)))
+                    ->orWhere(fn ($owner) => $owner
+                        ->where('sender_as_page', false)
+                        ->whereHas('conversation.page', fn ($page) => $page->where('user_id', $user->id)));
+            })
             ->whereNull('read_at')
             ->count();
+        $guestSupportUnread = $user->hasRole('admin')
+            ? GuestSupportMessage::query()->where('sender_type', GuestSupportMessage::SENDER_GUEST)
+                ->whereNull('read_at')->whereHas('conversation', fn ($query) => $query->whereNull('claimed_at'))->count()
+            : 0;
 
-        return $privateUnread + $pageUnread;
+        return $privateUnread + $pageUnread + $guestSupportUnread;
     }
 
     private function firstPageOfType(User $user, string $type): ?array

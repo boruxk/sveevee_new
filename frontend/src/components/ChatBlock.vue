@@ -1,5 +1,6 @@
 <script setup>
 	import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+	import ChatUnreadBadge from '@/components/ChatUnreadBadge.vue'
 	import { useI18n } from 'vue-i18n'
 	import { useQuasar } from 'quasar'
 	import { useAuthStore } from '@/stores/auth'
@@ -192,12 +193,17 @@
 		scrollToBottom()
 	}
 
+	function applyPageConversation(detail) {
+		pageActiveConversation.value = detail
+		pageConversations.value = pageConversations.value.map((conversation) => String(conversation.id) === String(detail?.id) ? { ...conversation, unread_count: detail.unread_count ?? conversation.unread_count, latest_message: detail.latest_message ?? conversation.latest_message } : conversation)
+	}
+
 	async function openConversation(conversation) {
 		const id = conversation?.id ?? conversation
 
 		if (isPageChat.value) {
-			const { data } = await fetchPageConversation(id)
-			pageActiveConversation.value = data.data
+			const { data } = await fetchPageConversation(id, { markRead: document.visibilityState === 'visible' })
+			applyPageConversation(data.data)
 			if (props.pageOwner) {
 				await refreshPageConversations()
 			}
@@ -228,8 +234,8 @@
 				await openConversation(pageConversations.value[0].id)
 			}
 		} else {
-			const { data } = await fetchPageChat(props.pageId)
-			pageActiveConversation.value = data.data
+			const { data } = await fetchPageChat(props.pageId, { markRead: document.visibilityState === 'visible' })
+			applyPageConversation(data.data)
 			mobileThreadOpen.value = true
 			await chatsStore.loadConversations({ force: true })
 		}
@@ -290,7 +296,7 @@
 					response = await sendPageChatMessageToPage(props.pageId, body)
 				}
 				const { data } = response
-				pageActiveConversation.value = data.data
+				applyPageConversation(data.data)
 				if (props.pageOwner) {
 					await refreshPageConversations()
 				} else {
@@ -354,7 +360,7 @@
 				if (!disposed && document.visibilityState === 'visible' && active.value?.id && threadIsVisible.value) {
 					const requested = active.value
 					const { data } = await fetchPageConversation(requested.id)
-					if (!disposed && active.value === requested) pageActiveConversation.value = data.data
+					if (!disposed && active.value === requested) applyPageConversation(data.data)
 				}
 			} else {
 				if (refreshList) await chatsStore.loadConversations()
@@ -437,7 +443,7 @@
 						:key="conversationKey(conversation)"
 						type="button"
 						class="chat-list__item"
-						:class="{ 'chat-list__item--active': isActiveConversation(conversation) }"
+						:class="{ 'chat-list__item--active': isActiveConversation(conversation), 'chat-row--unread': Number(conversation.unread_count) > 0 }"
 						@click="openConversation(conversation)"
 					>
 						<div class="chat-avatar-wrap">
@@ -463,7 +469,7 @@
 							<strong>{{ participantName(conversation.other_user) }}</strong>
 							<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
 						</span>
-						<q-badge v-if="conversation.unread_count" color="negative" rounded>{{ conversation.unread_count }}</q-badge>
+						<ChatUnreadBadge :count="conversation.unread_count" />
 					</button>
 				</aside>
 			</q-tab-panel>
@@ -566,7 +572,7 @@
 					:key="conversationKey(conversation)"
 					type="button"
 					class="chat-list__item"
-					:class="{ 'chat-list__item--active': isActiveConversation(conversation) }"
+					:class="{ 'chat-list__item--active': isActiveConversation(conversation), 'chat-row--unread': Number(conversation.unread_count) > 0 }"
 					@click="openConversation(conversation)"
 				>
 					<div class="chat-avatar-wrap">
@@ -592,7 +598,7 @@
 						<strong>{{ participantName(conversation.other_user) }}</strong>
 						<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
 					</span>
-					<q-badge v-if="conversation.unread_count" color="negative" rounded>{{ conversation.unread_count }}</q-badge>
+					<ChatUnreadBadge :count="conversation.unread_count" />
 				</button>
 			</aside>
 

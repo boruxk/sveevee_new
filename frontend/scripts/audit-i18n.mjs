@@ -28,6 +28,7 @@ const visibleAttributeNames = new Set([
 ])
 
 const sharedTerms = new Set([
+	'Business Pro',
 	'Facebook',
 	'Google',
 	'HH:MM',

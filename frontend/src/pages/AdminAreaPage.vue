@@ -1,5 +1,6 @@
 <script setup>
 	import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+	import ChatUnreadBadge from '@/components/ChatUnreadBadge.vue'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute } from 'vue-router'
 	import { useQuasar } from 'quasar'
@@ -41,6 +42,7 @@
 	import ChatMessageMeta from '@/components/ChatMessageMeta.vue'
 	import UserPresenceStatus from '@/components/UserPresenceStatus.vue'
 	import CommunityReportsPanel from '@/components/community/CommunityReportsPanel.vue'
+	import AdminBusinessProPanel from '@/components/businessPro/AdminBusinessProPanel.vue'
 
 	const defaultSettings = () => ({
 		ads: {
@@ -87,7 +89,7 @@
 	const userTableRequestedPage = ref(1)
 	let userTableRequest = null
 	const pagesLoading = ref(false)
-	const adminTabNames = ['communication', 'community-reports', 'users', 'pages', 'landing-pages', 'statistics', 'logs', 'settings']
+	const adminTabNames = ['communication', 'community-reports', 'business-pro', 'users', 'pages', 'landing-pages', 'statistics', 'logs', 'settings']
 	const activeTab = ref(adminTabNames.includes(String(route.query.tab || '')) ? String(route.query.tab) : 'communication')
 	const supportConversations = ref([])
 	const userRows = ref([])
@@ -338,6 +340,7 @@
 	const adminPageTitle = computed(() => ({
 		communication: t('admin.communication'),
 		'community-reports': t('community.moderation'),
+		'business-pro': t('businessPro.title'),
 		users: t('admin.userTable'),
 		pages: t('admin.pages.title'),
 		'landing-pages': t('admin.landingPages'),
@@ -510,6 +513,12 @@
 		supportConversations.value = data.data?.conversations || []
 	}
 
+	function applySupportConversation(detail) {
+		activeSupportConversation.value = detail
+		const key = detail.support_key || `${detail.source || 'account'}:${detail.id}`
+		supportConversations.value = supportConversations.value.map((conversation) => conversation.support_key === key ? { ...conversation, unread_count: detail.unread_count ?? conversation.unread_count, latest_message: detail.latest_message ?? conversation.latest_message } : conversation)
+	}
+
 	async function openSupportConversation(conversation, { refresh = true } = {}) {
 		if (activeTab.value !== 'communication' || document.visibilityState !== 'visible') {
 			return
@@ -528,7 +537,7 @@
 		if (selectedSupportKey.value !== key || activeTab.value !== 'communication' || document.visibilityState !== 'visible') {
 			return
 		}
-		activeSupportConversation.value = data.data
+		applySupportConversation(data.data)
 
 		if (refresh) {
 			await refreshSupportConversations()
@@ -553,7 +562,7 @@
 			if (activeSupportConversation.value !== conversation || selectedSupportKey.value !== key || activeTab.value !== 'communication' || document.visibilityState !== 'visible') return
 			const newMessage = supportMessages.value.at(-1)?.id !== data.data.messages?.at(-1)?.id
 			const nearBottom = !messagesEl.value || messagesEl.value.scrollHeight - messagesEl.value.scrollTop - messagesEl.value.clientHeight < 80
-			activeSupportConversation.value = data.data
+			applySupportConversation(data.data)
 			if (newMessage && nearBottom) await scrollToBottom()
 		} catch {
 			// Retry while the conversation remains visible.
@@ -1069,7 +1078,7 @@
 				activeSupportConversation.value.id,
 				body
 			)
-			activeSupportConversation.value = data.data
+			applySupportConversation(data.data)
 			supportMessage.value = ''
 			await refreshSupportConversations()
 			await scrollToBottom()
@@ -1322,11 +1331,11 @@
 				align="left"
 				no-caps
 				inline-label
-				mobile-arrows
-				outside-arrows
+				:breakpoint="0"
 			>
 				<q-tab name="communication" icon="forum" :label="t('admin.communication')" />
 				<q-tab name="community-reports" icon="M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6L12 2Zm-1 5h2v6h-2V7Zm0 8h2v2h-2v-2Z" :label="t('community.moderation')" />
+				<q-tab name="business-pro" icon="verified" :label="t('businessPro.title')" />
 				<q-tab name="users" icon="manage_accounts" :label="t('admin.userTable')" />
 				<q-tab name="pages" :icon="pagesTabIcon" :label="t('admin.pages.title')" />
 				<q-tab name="landing-pages" icon="dashboard" :label="t('admin.landingPages')" />
@@ -1344,7 +1353,7 @@
 								:key="conversation.support_key"
 								type="button"
 								class="support-row"
-								:class="{ 'support-row--active': selectedSupportKey === conversation.support_key }"
+								:class="{ 'support-row--active': selectedSupportKey === conversation.support_key, 'support-row--unread': Number(conversation.unread_count) > 0, 'chat-row--unread': Number(conversation.unread_count) > 0 }"
 								@click="openSupportConversation(conversation)"
 							>
 								<div class="support-avatar-wrap">
@@ -1374,7 +1383,7 @@
 									</strong>
 									<small>{{ conversation.latest_message?.body || t('chat.noMessages') }}</small>
 								</span>
-								<q-badge v-if="conversation.unread_count" color="negative" rounded>{{ conversation.unread_count }}</q-badge>
+								<ChatUnreadBadge :count="conversation.unread_count" />
 							</button>
 							<div v-if="!supportLoading && supportConversations.length === 0" class="support-empty">
 								<q-icon name="forum" size="28px" />
@@ -1499,6 +1508,7 @@
 					<CommunityReportsPanel />
 				</q-tab-panel>
 
+				<q-tab-panel name="business-pro" class="admin-panel"><AdminBusinessProPanel /></q-tab-panel>
 				<q-tab-panel name="users" class="admin-panel">
 					<section class="soz-section-card table-panel">
 						<div class="user-table-tools">
@@ -2710,7 +2720,14 @@
 }
 
 .admin-tabs :deep(.q-tabs__content) {
-  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px 18px;
+  overflow: visible;
+}
+
+.admin-tabs :deep(.q-tabs__arrow) {
+  display: none;
 }
 
 .admin-tabs :deep(.q-tabs__indicator),
@@ -2719,6 +2736,8 @@
 }
 
 .admin-tabs :deep(.q-tab) {
+  flex: 0 1 auto;
+  max-width: 100%;
   min-height: 54px;
   padding: 0 20px;
   border-radius: 999px;
@@ -2752,6 +2771,7 @@
 }
 
 .admin-tabs :deep(.q-tab__label) {
+  white-space: normal;
   font-size: 1.08rem;
   font-weight: 760;
 }
@@ -3871,7 +3891,7 @@
 
   .admin-tabs {
     border-radius: 22px;
-    padding: 6px 38px;
+    padding: 6px;
   }
 
   .admin-tabs :deep(.q-tabs__content) {
@@ -3890,21 +3910,6 @@
   .admin-tabs :deep(.q-tab__label) {
     font-size: 0.82rem;
     font-weight: 700;
-  }
-
-  .admin-tabs :deep(.q-tabs__arrow) {
-    z-index: 2;
-    min-width: 30px;
-    color: var(--soz-ink);
-    text-shadow: none;
-  }
-
-  .admin-tabs :deep(.q-tabs__arrow--left) {
-    inset-inline-start: 4px;
-  }
-
-  .admin-tabs :deep(.q-tabs__arrow--right) {
-    inset-inline-end: 4px;
   }
 
   .support-row {

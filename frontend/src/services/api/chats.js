@@ -10,16 +10,16 @@ export function fetchChats() {
 	return apiClient.get('/chats')
 }
 
-export function startChat(userId) {
-	return apiClient.get(`/chats/users/${userId}`)
+export function startChat(userId, { markRead = true } = {}) {
+	return apiClient.get(`/chats/users/${userId}`, { params: { mark_read: markRead ? 1 : 0 } })
 }
 
-export function fetchChat(conversationId) {
-	return apiClient.get(`/chats/${conversationId}`)
+export function fetchChat(conversationId, { markRead = true } = {}) {
+	return apiClient.get(`/chats/${conversationId}`, { params: { mark_read: markRead ? 1 : 0 } })
 }
 
-export function fetchSupportChat() {
-	return apiClient.get('/chats/support')
+export function fetchSupportChat({ markRead = true } = {}) {
+	return apiClient.get('/chats/support', { params: { mark_read: markRead ? 1 : 0 } })
 }
 
 export function sendChatMessage(conversationId, body) {
@@ -34,8 +34,8 @@ export function startGuestSupportChat(payload) {
 	return apiClient.post('/guest-support', payload, { skipAuth: true })
 }
 
-export function fetchGuestSupportChat(token) {
-	return apiClient.get('/guest-support', { headers: guestSupportHeaders(token), skipAuth: true })
+export function fetchGuestSupportChat(token, { markRead = true } = {}) {
+	return apiClient.get('/guest-support', { headers: guestSupportHeaders(token), skipAuth: true, params: { mark_read: markRead ? 1 : 0 } })
 }
 
 export function sendGuestSupportMessage(token, body) {

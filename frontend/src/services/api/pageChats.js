@@ -1,7 +1,7 @@
 import apiClient from '@/services/api/client'
 
-export function fetchPageChat(pageId) {
-	return apiClient.get(`/pages/${pageId}/chat`)
+export function fetchPageChat(pageId, { markRead = true } = {}) {
+	return apiClient.get(`/pages/${pageId}/chat`, { params: { mark_read: markRead ? 1 : 0 } })
 }
 
 export function fetchPageChats(pageId) {
@@ -12,8 +12,8 @@ export function fetchVisitorPageChats() {
 	return apiClient.get('/page-chats')
 }
 
-export function fetchPageConversation(conversationId) {
-	return apiClient.get(`/page-chats/${conversationId}`)
+export function fetchPageConversation(conversationId, { markRead = true } = {}) {
+	return apiClient.get(`/page-chats/${conversationId}`, { params: { mark_read: markRead ? 1 : 0 } })
 }
 
 export function sendPageChatMessage(conversationId, body) {

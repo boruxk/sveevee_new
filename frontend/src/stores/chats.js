@@ -28,7 +28,7 @@ function currentSession(store) {
 
 	if (!session || session.token !== token || session.userId !== userId) {
 		store.reset()
-		session = { token, userId, pending: null, queued: null, loadedAt: null, activeVersion: 0 }
+		session = { token, userId, pending: null, queued: null, loadedAt: null, activeVersion: 0, detailVersion: 0 }
 		sessions.set(toRaw(store), session)
 	}
 	return session
@@ -86,6 +86,35 @@ function fetchConversationList(store, session) {
 	return pending
 }
 
+function documentCanReadMessages() {
+	return typeof document === 'undefined' || document.visibilityState === 'visible'
+}
+
+function sameConversation(left, right) {
+	return String(left?.id) === String(right?.id) && Boolean(left?.is_page_chat) === Boolean(right?.is_page_chat)
+}
+
+function applyDetailUnread(store, detail, session) {
+	const listed = store.conversations.find((entry) => sameConversation(entry, detail))
+	if (!listed || !Number.isFinite(Number(detail?.unread_count))) return
+	// A newer list snapshot can contain a message that arrived after this detail
+	// request. Keep its unread badge until that message is actually fetched/read.
+	const listedTime = conversationTimestamp(listed)
+	const detailTime = conversationTimestamp(detail)
+	if (listedTime > detailTime || (listedTime === detailTime && Number(listed.latest_message?.id || 0) > Number(detail.latest_message?.id || 0))) return
+	const previousUnread = Number(listed.unread_count) || 0
+	const unread = Math.max(0, Number(detail.unread_count))
+	Object.assign(listed, {
+		unread_count: unread,
+		other_user: detail.other_user,
+		latest_message: detail.latest_message,
+		last_message_at: detail.last_message_at
+	})
+	store.syncUnread(Math.max(0, store.unreadCount + unread - previousUnread))
+	// Do not let an older in-flight list request restore the badge we just read.
+	if (session.pending) store.loadConversations({ force: true }).catch(() => {})
+}
+
 function conversationTimestamp(conversation) {
 	const timestamp = new Date(conversation?.last_message_at || 0).getTime()
 
@@ -141,11 +170,13 @@ export const useChatsStore = defineStore('chats', {
 				(kind === 'page' ? conversation.is_page_chat : !conversation.is_page_chat)
 			))
 			const opensPageChat = kind === 'page' || Boolean(listedConversation?.is_page_chat)
-			const response = opensPageChat ? await fetchPageConversation(id) : await fetchChat(id)
+			const options = { markRead: documentCanReadMessages() }
+			const response = opensPageChat ? await fetchPageConversation(id, options) : await fetchChat(id, options)
 			const { data } = response
 
 			if (!sessionIsCurrent(this, session) || session.activeVersion !== activeVersion) return null
 			this.activeConversation = data.data
+			applyDetailUnread(this, data.data, session)
 			await this.loadConversations({ force: true })
 			return sessionIsCurrent(this, session) ? this.activeConversation : null
 		},
@@ -153,25 +184,31 @@ export const useChatsStore = defineStore('chats', {
 			const session = currentSession(this)
 			if (!session.token || !session.userId) return null
 			const activeVersion = ++session.activeVersion
-			const { data } = await startChat(userId)
+			const { data } = await startChat(userId, { markRead: documentCanReadMessages() })
 			if (!sessionIsCurrent(this, session) || session.activeVersion !== activeVersion) return null
 			this.activeConversation = data.data
+			applyDetailUnread(this, data.data, session)
 			await this.loadConversations({ force: true })
 			return sessionIsCurrent(this, session) ? this.activeConversation : null
 		},
 		async refreshActiveConversation(shouldApply = () => true) {
 			const session = currentSession(this)
-			if (!this.activeConversation?.id) {
+			if (!this.activeConversation?.id || !documentCanReadMessages() || !shouldApply()) {
 				return this.activeConversation
 			}
 
 			const requested = this.activeConversation
-			const stillActive = () => sessionIsCurrent(this, session) && shouldApply() && this.activeConversation === requested
+			const activeVersion = session.activeVersion
+			const detailVersion = session.detailVersion
+			const stillActive = () => sessionIsCurrent(this, session) && session.activeVersion === activeVersion && session.detailVersion === detailVersion && shouldApply() && documentCanReadMessages() && sameConversation(this.activeConversation, requested)
 
 			try {
-				const response = requested.is_page_chat ? await fetchPageConversation(requested.id) : await fetchChat(requested.id)
+				const response = requested.is_page_chat ? await fetchPageConversation(requested.id, { markRead: true }) : await fetchChat(requested.id, { markRead: true })
 
-				if (stillActive()) this.activeConversation = response.data.data
+				if (stillActive()) {
+					this.activeConversation = response.data.data
+					applyDetailUnread(this, response.data.data, session)
+				}
 				return this.activeConversation
 			} catch (error) {
 				if (stillActive() && error.response?.status === 404) {
@@ -189,6 +226,9 @@ export const useChatsStore = defineStore('chats', {
 				return this.activeConversation
 			}
 
+			const requested = this.activeConversation
+			const activeVersion = session.activeVersion
+			session.detailVersion++
 			this.sending = true
 
 			try {
@@ -204,7 +244,12 @@ export const useChatsStore = defineStore('chats', {
 
 				const { data } = response
 				if (!sessionIsCurrent(this, session)) return null
-				this.activeConversation = data.data
+				// A poll started before or during this send must not remove the
+				// message returned by the mutation. Navigation still owns the thread.
+				session.detailVersion++
+				if (session.activeVersion === activeVersion && sameConversation(this.activeConversation, requested)) {
+					this.activeConversation = data.data
+				}
 				await this.loadConversations({ force: true })
 				return sessionIsCurrent(this, session) ? this.activeConversation : null
 			} finally {
@@ -214,20 +259,24 @@ export const useChatsStore = defineStore('chats', {
 		async markRead(id, kind = null) {
 			const session = currentSession(this)
 			if (!session.token || !session.userId) return
-			const pageChat = kind === 'page' || (this.activeConversation?.id === id && this.activeConversation?.is_page_chat)
+			const pageChat = kind === 'page' || (String(this.activeConversation?.id) === String(id) && this.activeConversation?.is_page_chat)
+			session.detailVersion++
 			const { data } = pageChat ? await markPageChatRead(id) : await markChatRead(id)
 
 			if (!sessionIsCurrent(this, session)) return
-			if (!pageChat) {
-				this.syncUnread(data.data?.unread_count || 0)
+			session.detailVersion++
+			if (Number.isFinite(Number(data.data?.unread_count))) {
+				this.syncUnread(Number(data.data.unread_count))
 			}
 			await this.loadConversations({ force: true })
 		},
 		async deleteConversation(id, mode) {
 			const session = currentSession(this)
 			if (!session.token || !session.userId) return null
+			session.detailVersion++
 			const { data } = await deleteChat(id, mode)
 			if (!sessionIsCurrent(this, session)) return null
+			session.detailVersion++
 			this.conversations = this.conversations.filter((conversation) => (
 				conversation.is_page_chat || String(conversation.id) !== String(id)
 			))
