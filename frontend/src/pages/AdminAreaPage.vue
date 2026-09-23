@@ -340,7 +340,7 @@
 	const adminPageTitle = computed(() => ({
 		communication: t('admin.communication'),
 		'community-reports': t('community.moderation'),
-		'business-pro': t('businessPro.title'),
+		'business-pro': t('businessPro.plansTitle'),
 		users: t('admin.userTable'),
 		pages: t('admin.pages.title'),
 		'landing-pages': t('admin.landingPages'),
@@ -1335,7 +1335,7 @@
 			>
 				<q-tab name="communication" icon="forum" :label="t('admin.communication')" />
 				<q-tab name="community-reports" icon="M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6L12 2Zm-1 5h2v6h-2V7Zm0 8h2v2h-2v-2Z" :label="t('community.moderation')" />
-				<q-tab name="business-pro" icon="verified" :label="t('businessPro.title')" />
+				<q-tab name="business-pro" icon="verified" :label="t('businessPro.plansTitle')" />
 				<q-tab name="users" icon="manage_accounts" :label="t('admin.userTable')" />
 				<q-tab name="pages" :icon="pagesTabIcon" :label="t('admin.pages.title')" />
 				<q-tab name="landing-pages" icon="dashboard" :label="t('admin.landingPages')" />

@@ -11,6 +11,7 @@ use App\Services\Billing\BusinessProBillingService;
 use App\Services\BusinessProEntitlementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class BusinessProBillingController extends Controller
 {
@@ -20,16 +21,17 @@ class BusinessProBillingController extends Controller
     {
         $this->entitlements->assertVisible($request->user());
         $input = $request->validate([
-            'page_id' => ['required', 'integer', 'min:1'],
+            'plan_key' => ['sometimes', Rule::in(['private_pro', 'business_pro'])],
+            'page_id' => [Rule::requiredIf($request->input('plan_key', 'business_pro') === 'business_pro'), Rule::prohibitedIf($request->input('plan_key') === 'private_pro'), 'nullable', 'integer', 'min:1'],
             'consent' => ['required', 'accepted'],
             'amount_minor' => ['required', 'integer', 'min:100'],
             'currency' => ['required', 'in:ILS'],
             'locale' => ['sometimes', 'in:he,en,ru,fr'],
         ]);
-        $page = Page::query()->findOrFail($input['page_id']);
+        $page = isset($input['page_id']) ? Page::query()->findOrFail($input['page_id']) : null;
 
         return $this->run(function () use ($request, $input, $page) {
-            $payment = $this->billing->checkout($request->user(), $page, $input['amount_minor'], $input['currency'], $input['locale'] ?? 'he');
+            $payment = $this->billing->checkout($request->user(), $page, $input['amount_minor'], $input['currency'], $input['locale'] ?? 'he', $input['plan_key'] ?? 'business_pro');
 
             return ['payment' => $this->entitlements->paymentPayload($payment), 'checkout_url' => $payment->checkout_url];
         });

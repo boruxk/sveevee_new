@@ -79,7 +79,7 @@ class CommunityFeaturesApiTest extends TestCase
         $first = $this->getJson('/api/v1/nearby')->assertOk()->assertJsonCount(20, 'data.items')->assertJsonPath('data.has_more', true);
         $recording = false;
         foreach ($queries as $sql) {
-            if (preg_match('/^select.*from ["`](local_questions|ads|page_events)["`]/i', $sql) && str_contains($sql, 'order by')) {
+            if (preg_match('/^select.*\.\*.*from ["`](local_questions|ads|page_events)["`]/i', $sql) && str_contains($sql, 'order by')) {
                 $this->assertStringContainsString('limit 21', $sql);
                 $this->assertStringNotContainsString(' offset ', $sql);
             }

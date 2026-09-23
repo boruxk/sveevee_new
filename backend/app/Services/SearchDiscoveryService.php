@@ -13,9 +13,11 @@ class SearchDiscoveryService
 {
     private const PER_PAGE = 20;
 
+    public function __construct(private readonly FeaturedAdService $featuredAds) {}
+
     public function paginate(array $scopes, ?string $city, ?string $neighborhood, int $page, ?string $cursor): array
     {
-        $context = hash('sha256', json_encode([$city, $neighborhood], JSON_THROW_ON_ERROR));
+        $context = hash('sha256', json_encode([$city, $neighborhood, $this->featuredAds->fingerprint()], JSON_THROW_ON_ERROR));
         $after = $cursor !== null ? $this->decodeCursor($cursor, $context) : null;
         $page = $after['page'] ?? $page;
         $totals = [];
@@ -43,7 +45,7 @@ class SearchDiscoveryService
                 'has_more' => $hasMore,
                 'next_page' => $hasMore ? $page + 1 : null,
                 'next_cursor' => $hasMore ? Crypt::encryptString(json_encode([
-                    'version' => 1, 'context' => $context, 'page' => $page + 1, ...$last,
+                    'version' => 2, 'context' => $context, 'page' => $page + 1, ...$last,
                 ], JSON_THROW_ON_ERROR)) : null,
             ],
         ];
@@ -101,7 +103,7 @@ class SearchDiscoveryService
         }
 
         return DB::query()->fromSub($union, 'discovery_candidates')
-            ->orderBy('priority')->orderByDesc('created_at')->orderByDesc('kind')->orderByDesc('id')
+            ->orderBy('priority')->orderByDesc('featured')->orderByDesc('created_at')->orderByDesc('kind')->orderByDesc('id')
             ->offset($offset)->limit(self::PER_PAGE + 1)->get()
             ->map(fn ($row): array => $this->candidate($row));
     }
@@ -129,8 +131,12 @@ class SearchDiscoveryService
             }
         }
 
+        [$featuredSql, $featuredBindings] = $this->featuredPriority($kind);
+
         return $query->select([$id.' as id', $createdAt.' as created_at'])
             ->selectRaw('? as kind, ? as priority', [$kind, $priority])
+            ->selectRaw($featuredSql.' as featured', $featuredBindings)
+            ->when($kind === 'ad', fn (Builder $query) => $query->orderByDesc('featured'))
             ->orderByDesc($createdAt)->orderByDesc($id);
     }
 
@@ -138,6 +144,27 @@ class SearchDiscoveryService
     {
         $createdAt = $query->getModel()->qualifyColumn('created_at');
         $id = $query->getModel()->getQualifiedKeyName();
+        if ($kind !== 'ad') {
+            // A featured cursor always precedes ordinary content in this tier.
+            // Keep the existing page index seek free of constant OR expressions.
+            if ($after['featured'] === 0) {
+                $this->afterCreation($query, $createdAt, $id, $kind, $after);
+            }
+
+            return;
+        }
+        [$featuredSql, $featuredBindings] = $this->featuredPriority($kind);
+        $query->where(function (Builder $priority) use ($createdAt, $id, $kind, $after, $featuredSql, $featuredBindings): void {
+            $priority->whereRaw($featuredSql.' < ?', [...$featuredBindings, $after['featured']])
+                ->orWhere(function (Builder $samePriority) use ($createdAt, $id, $kind, $after, $featuredSql, $featuredBindings): void {
+                    $samePriority->whereRaw($featuredSql.' = ?', [...$featuredBindings, $after['featured']]);
+                    $this->afterCreation($samePriority, $createdAt, $id, $kind, $after);
+                });
+        });
+    }
+
+    private function afterCreation(Builder $query, string $createdAt, string $id, string $kind, array $after): void
+    {
         $query->where(function (Builder $position) use ($createdAt, $id, $kind, $after): void {
             if ($after['created_at'] !== null) {
                 $position->where($createdAt, '<', $after['created_at'])->orWhereNull($createdAt);
@@ -157,12 +184,14 @@ class SearchDiscoveryService
 
     private function candidate(object $row): array
     {
-        return ['id' => (int) $row->id, 'created_at' => $row->created_at, 'kind' => $row->kind, 'priority' => (int) $row->priority];
+        return ['id' => (int) $row->id, 'created_at' => $row->created_at, 'kind' => $row->kind,
+            'priority' => (int) $row->priority, 'featured' => (int) $row->featured];
     }
 
     private function compare(array $left, array $right): int
     {
         return ($left['priority'] <=> $right['priority'])
+            ?: ($right['featured'] <=> $left['featured'])
             ?: strcmp($right['created_at'] ?? '', $left['created_at'] ?? '')
             ?: strcmp($right['kind'], $left['kind'])
             ?: ($right['id'] <=> $left['id']);
@@ -175,11 +204,12 @@ class SearchDiscoveryService
                 throw new \UnexpectedValueException;
             }
             $position = json_decode(Crypt::decryptString($cursor), true, 16, JSON_THROW_ON_ERROR);
-            if (! is_array($position) || ($position['version'] ?? null) !== 1 || ($position['context'] ?? null) !== $context
+            if (! is_array($position) || ($position['version'] ?? null) !== 2 || ($position['context'] ?? null) !== $context
                 || ! is_int($position['page'] ?? null) || $position['page'] < 2
                 || ! is_int($position['id'] ?? null) || $position['id'] < 1
                 || ! in_array($position['kind'] ?? null, ['page', 'product', 'service', 'event', 'ad'], true)
                 || ! is_int($position['priority'] ?? null) || $position['priority'] < 0 || $position['priority'] > 2
+                || ! in_array($position['featured'] ?? null, [0, 1], true)
                 || ! array_key_exists('created_at', $position)
                 || ($position['created_at'] !== null && (! is_string($position['created_at']) || strlen($position['created_at']) > 32))) {
                 throw new \UnexpectedValueException;
@@ -189,5 +219,10 @@ class SearchDiscoveryService
         } catch (\Throwable) {
             throw ValidationException::withMessages(['cursor' => ['The search position is invalid. Start the search again.']]);
         }
+    }
+
+    private function featuredPriority(string $kind): array
+    {
+        return $kind === 'ad' ? $this->featuredAds->expression() : ['0', []];
     }
 }

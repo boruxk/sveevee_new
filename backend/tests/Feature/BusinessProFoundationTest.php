@@ -36,15 +36,16 @@ class BusinessProFoundationTest extends TestCase
             ->post('/api/v1/test-business-pro/pages/{page}', fn (Page $page) => ApiResponseService::success(['page_id' => $page->id]));
     }
 
-    public function test_private_rollout_returns_404_and_no_metadata_for_other_accounts(): void
+    public function test_published_offers_are_visible_but_private_checkout_and_draft_features_remain_locked(): void
     {
         $user = User::factory()->create();
         $page = $this->page($user);
         Sanctum::actingAs($user);
-        $this->getJson('/api/v1/business-pro')->assertNotFound();
-        $this->getJson("/api/v1/business-pro/pages/{$page->id}")->assertNotFound();
+        $this->getJson('/api/v1/business-pro')->assertOk()->assertJsonPath('data.can_checkout', false)
+            ->assertJsonPath('data.offers.0.plan_key', 'private_pro')->assertJsonPath('data.offers.0.can_checkout', false);
+        $this->getJson("/api/v1/business-pro/pages/{$page->id}")->assertOk();
         $this->postJson("/api/v1/test-business-pro/pages/{$page->id}")->assertNotFound();
-        $this->assertArrayNotHasKey('business_pro_preview', app(PayloadService::class)->user($user, true));
+        $this->assertTrue(app(PayloadService::class)->user($user, true)['business_pro_preview']);
         $this->assertArrayNotHasKey('business_pro_tester', $user->toArray());
         $this->getJson('/api/v1/admin/business-pro/subscriptions')->assertForbidden();
     }
@@ -173,7 +174,8 @@ class BusinessProFoundationTest extends TestCase
         config()->set('business_pro.rollout', 'public');
         Sanctum::actingAs($user);
         $this->getJson('/api/v1/business-pro')->assertOk()->assertJsonPath('data.private_preview', false)
-            ->assertJsonPath('data.features', [])->assertJsonPath('data.has_access', false);
+            ->assertJsonCount(1, 'data.features')->assertJsonPath('data.features.0.key', 'featured_ads')
+            ->assertJsonPath('data.features.0.available', false)->assertJsonPath('data.has_access', false);
         $this->postJson("/api/v1/test-business-pro/pages/{$page->id}")->assertNotFound();
     }
 

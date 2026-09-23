@@ -222,6 +222,49 @@ class BusinessProBillingTest extends TestCase
         return ['unfinished' => [1, 0], 'declined' => [0, 4], 'validation' => [0, 700], 'authorization hold' => [0, 701]];
     }
 
+    public function test_actual_pending_cardcom_result_keeps_verification_and_forged_success_webhook_unpaid(): void
+    {
+        [$user, $page, $payment] = $this->pending();
+        // Unpaid terminal-1000 GetLpResult response observed on 2026-09-23.
+        $this->fakeReceipt($payment, [
+            'ResponseCode' => 5119,
+            'Description' => 'עסקה ממתינה או לא הושלמה',
+            'TerminalNumber' => 1000,
+            'LowProfileId' => self::PROFILE,
+            'ReturnValue' => $payment->public_id,
+            'TranzactionInfo' => null,
+            'TokenInfo' => null,
+        ]);
+
+        Sanctum::actingAs($user);
+        $this->postJson('/api/v1/business-pro/payments/'.$payment->public_id.'/verify', ['result' => 'success'])
+            ->assertOk()
+            ->assertJsonPath('data.payment.status', 'pending')
+            ->assertJsonPath('data.overview.has_access', false);
+
+        $this->app['auth']->forgetGuards();
+        $this->postJson('/api/v1/billing/cardcom/webhook', $this->receipt($payment))
+            ->assertOk()->assertJsonPath('data.received', true);
+
+        $payment->refresh();
+        $subscription = $payment->subscription->fresh();
+        $this->assertSame('pending', $payment->status);
+        $this->assertNull($payment->paid_at);
+        $this->assertNull($payment->period_start);
+        $this->assertNull($payment->period_end);
+        $this->assertNull($payment->provider_transaction_id);
+        $this->assertSame('pending', $subscription->status);
+        $this->assertNull($subscription->current_period_start);
+        $this->assertNull($subscription->current_period_end);
+        $this->assertNull($subscription->next_charge_at);
+        $this->assertNull($subscription->last_payment_id);
+        $this->assertNull($subscription->provider_token);
+        $this->assertFalse($this->access($user, $page));
+        $this->assertSame(0, $this->requestCount('/LowProfile/Create'));
+        $this->assertSame(2, $this->requestCount('/LowProfile/GetLpResult'));
+        $this->assertDatabaseCount('business_pro_payments', 1);
+    }
+
     public function test_redirect_hint_and_foreign_account_cannot_verify_or_activate_payment(): void
     {
         [$user, $page, $payment] = $this->pending();

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdFeatureController;
 use App\Http\Controllers\Api\AdminBusinessProController;
 use App\Http\Controllers\Api\BusinessProBillingController;
 use App\Http\Controllers\Api\BusinessProController;
@@ -7,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware(['platform.available', 'recaptcha', 'auth:sanctum', 'role:user,admin'])->group(function (): void {
     Route::get('/business-pro', [BusinessProController::class, 'index']);
+    Route::get('/business-pro/ad-feature', AdFeatureController::class);
     Route::get('/business-pro/pages/{page}', [BusinessProController::class, 'show']);
     Route::post('/business-pro/checkout', [BusinessProBillingController::class, 'checkout'])->middleware('throttle:6,1');
     Route::post('/business-pro/payments/{payment:public_id}/verify', [BusinessProBillingController::class, 'verify'])->middleware('throttle:20,1');

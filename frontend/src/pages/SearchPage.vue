@@ -23,6 +23,7 @@
 	const loading = ref(false)
 	const loadingMore = ref(false)
 	const searchFailed = ref(false)
+	const searchNotice = ref('')
 	const searchRequest = createLatestRequest()
 	let discoveryRequestLocation = null
 	const hasSearched = ref(false)
@@ -40,12 +41,13 @@
 	const advancedOpen = ref(false)
 	const results = reactive({ users: [], pages: [], products: [], services: [], events: [], ads: [] })
 	const searchResults = computed(() => [
+		...results.ads.filter(ad => ad.is_featured === true).map(ad => ({ id: `ad-${ad.id}`, kind: 'ad', value: ad })),
 		...results.users.map((user) => ({ id: `user-${user.id}`, kind: 'user', value: user })),
 		...results.pages.map((page) => ({ id: `page-${page.id}`, kind: 'page', value: page })),
 		...results.products.map((product) => ({ id: `product-${product.id}`, kind: 'product', value: product })),
 		...results.services.map((service) => ({ id: `service-${service.id}`, kind: 'service', value: service })),
 		...results.events.map((event) => ({ id: `event-${event.id}`, kind: 'event', value: event })),
-		...results.ads.map((ad) => ({ id: `ad-${ad.id}`, kind: 'ad', value: ad }))
+		...results.ads.filter(ad => ad.is_featured !== true).map((ad) => ({ id: `ad-${ad.id}`, kind: 'ad', value: ad }))
 	])
 	const discoveryResults = computed(() => [
 		...results.ads.map((ad) => ({ id: `ad-${ad.id}`, kind: 'ad', value: ad })),
@@ -160,6 +162,9 @@
 			return priorityDifference
 		}
 
+		const featuredDifference = Number(right.kind === 'ad' && right.value.is_featured === true) - Number(left.kind === 'ad' && left.value.is_featured === true)
+		if (featuredDifference !== 0) return featuredDifference
+
 		const leftTime = Date.parse(left.value.created_at || '') || 0
 		const rightTime = Date.parse(right.value.created_at || '') || 0
 		if (leftTime !== rightTime) {
@@ -187,6 +192,7 @@
 				loading.value = !append
 				loadingMore.value = append
 				searchFailed.value = false
+				if (!append) searchNotice.value = ''
 			},
 			async request(signal) {
 				if (routeTarget) await router.replace(routeTarget)
@@ -203,7 +209,12 @@
 				discoveryMode.value = discovery
 				hasSearched.value = !discovery
 			},
-			onError() {
+			onError(error) {
+				if (append && discovery && params.cursor && error.response?.status === 422 && error.response?.data?.errors?.cursor) {
+					loadDiscovery()
+					searchNotice.value = t('community.feedChanged')
+					return
+				}
 				searchFailed.value = true
 			},
 			onSettled() {
@@ -418,6 +429,7 @@
 				</div>
 			</section>
 
+			<p v-if="searchNotice" role="status">{{ searchNotice }}</p>
 			<p v-if="searchFailed" class="search-error" role="alert">{{ t('search.loadFailed') }}</p>
 
 			<section v-if="discoveryMode || hasSearched || combinedResults.length > 0" class="result-section">

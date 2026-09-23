@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HidesCommunityContent;
+use App\Services\FeaturedAdService;
 use App\Support\PublicImageVariants;
 use App\Support\PublicSlug;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,7 +14,7 @@ use Illuminate\Support\Facades\Storage;
 
 class Ad extends Model
 {
-    use \App\Models\Concerns\HidesCommunityContent;
+    use HidesCommunityContent;
 
     public const IMAGE_DIRECTORY = 'media/listings';
 
@@ -35,12 +37,15 @@ class Ad extends Model
         'expires_at',
         'city',
         'neighborhood',
+        'is_featured',
     ];
 
     protected function casts(): array
     {
         return [
             'expires_at' => 'datetime',
+            'is_featured' => 'boolean',
+            'featured_active' => 'boolean',
         ];
     }
 
@@ -78,6 +83,16 @@ class Ad extends Model
                     ->whereNull('page_id')
                     ->orWhereHas('page', fn (Builder $page) => $page->managed());
             });
+    }
+
+    public function scopeWithFeaturedState(Builder $query): Builder
+    {
+        [$expression, $bindings] = app(FeaturedAdService::class)->expression($this->getTable());
+        if ($query->getQuery()->columns === null) {
+            $query->select($this->qualifyColumn('*'));
+        }
+
+        return $query->selectRaw($expression.' as featured_active', $bindings);
     }
 
     public function scopeNotExpired(Builder $query): Builder

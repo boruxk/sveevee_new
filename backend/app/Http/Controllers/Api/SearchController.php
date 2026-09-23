@@ -196,6 +196,7 @@ class SearchController extends Controller
 
         $ads = $this->shouldSearch('ads', $resultScope) ? Ad::query()
             ->with(['user.profile', 'page'])
+            ->withFeaturedState()
             ->active()
             ->whereHas('user', fn ($query) => $query->whereNull('banned_at'))
             ->when($topicKey && $adCategories === [], fn (Builder $query) => $query->whereRaw('1 = 0'))
@@ -208,7 +209,9 @@ class SearchController extends Controller
                 });
             })
             ->inLocation($city, $neighborhood)
+            ->orderByDesc('featured_active')
             ->latest()
+            ->orderByDesc('id')
             ->limit(30)
             ->get()
             ->map(fn (Ad $ad) => $this->payloads->ad($ad))
@@ -254,7 +257,7 @@ class SearchController extends Controller
                 'location' => fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $query->inOwnerLocation($tierCity, $tierNeighborhood),
             ],
             'ads' => [
-                'query' => Ad::query()->with(['user.profile', 'page'])->active()
+                'query' => Ad::query()->with(['user.profile', 'page'])->withFeaturedState()->active()
                     ->whereHas('user', fn (Builder $user) => $user->whereNull('banned_at')),
                 'location' => fn (Builder $query, ?string $tierCity, ?string $tierNeighborhood): Builder => $query->inLocation($tierCity, $tierNeighborhood),
             ],

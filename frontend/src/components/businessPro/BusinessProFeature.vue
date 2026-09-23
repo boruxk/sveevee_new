@@ -2,25 +2,23 @@
 	import { computed } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { matLock } from '@quasar/extras/material-icons'
-	import { useAuthStore } from '@/stores/auth'
-	import { businessProFeatureAvailable, canPreviewBusinessPro, localizedProText } from '@/utils/businessPro'
+	import { businessProFeatureAvailable, localizedProText } from '@/utils/businessPro'
 
 	const props = defineProps({ feature: { type: Object, required: true } })
-	const auth = useAuthStore()
 	const { locale, t } = useI18n()
-	const visible = computed(() => canPreviewBusinessPro(auth))
-	const available = computed(() => visible.value && businessProFeatureAvailable(props.feature))
+	const available = computed(() => businessProFeatureAvailable(props.feature))
 	const title = computed(() => localizedProText(props.feature.labels, locale.value) || props.feature.key)
 	const description = computed(() => localizedProText(props.feature.descriptions, locale.value))
-	const reason = computed(() => props.feature.locked_reason === 'subscription_required' ? 'businessPro.subscriptionRequired' : 'businessPro.notAvailable')
+	const reason = computed(() => props.feature.locked_reason === 'subscription_required' ? (props.feature.key === 'featured_ads' ? 'businessPro.featuredAdRequiresPlan' : 'businessPro.subscriptionRequired') : 'businessPro.notAvailable')
 </script>
 
 <template>
-	<article v-if="visible" class="business-pro-feature" :class="{ 'business-pro-feature--locked': !available }" :aria-disabled="!available">
+	<article class="business-pro-feature" :class="{ 'business-pro-feature--locked': !available }" :aria-disabled="!available" :tabindex="!available ? 0 : undefined" :title="!available ? t(reason) : undefined">
 		<header><h3>{{ title }}</h3><q-badge :color="available ? 'positive' : 'grey-7'">{{ t(available ? 'businessPro.available' : 'businessPro.locked') }}</q-badge></header>
 		<p v-if="description">{{ description }}</p>
-		<slot v-if="available" />
-		<p v-else class="business-pro-feature__reason"><q-icon :name="matLock" size="18px" />{{ t(reason) }}</p>
+		<div v-if="$slots.default" :inert="!available || undefined"><slot /></div>
+		<p v-if="!available" class="business-pro-feature__reason"><q-icon :name="matLock" size="18px" />{{ t(reason) }}</p>
+		<q-tooltip v-if="!available">{{ t(reason) }}</q-tooltip>
 	</article>
 </template>
 

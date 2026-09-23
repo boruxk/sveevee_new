@@ -6,6 +6,7 @@
 	import { localizedAdCategoryMeta } from '@/constants/adCategories'
 	import ResponsiveImage from '@/components/ResponsiveImage.vue'
 	import AdExpiryTimer from '@/components/AdExpiryTimer.vue'
+	import FeaturedAdBadge from '@/components/FeaturedAdBadge.vue'
 	import CommunityActions from '@/components/community/CommunityActions.vue'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
 	import { adRoute, catalogHubPath, catalogLabel, catalogPath, catalogTopicForAdCategory, pageRoute, userRoute } from '@/constants/catalogTopics'
@@ -183,7 +184,7 @@
 	<article
 		v-if="isVisible"
 		class="listing-card"
-		:class="{ 'listing-card--with-image': hasImage, 'listing-card--expanded': isExpanded, 'listing-card--with-category': categoryMeta }"
+		:class="{ 'listing-card--with-image': hasImage, 'listing-card--expanded': isExpanded, 'listing-card--with-category': categoryMeta, 'featured-ad': ad.is_featured === true }"
 		:style="cardStyle"
 	>
 		<RouterLink
@@ -215,6 +216,7 @@
 		/>
 		<div class="listing-card__body">
 			<div class="listing-card__head">
+				<FeaturedAdBadge v-if="ad.is_featured === true" />
 				<RouterLink v-if="ownerRoute" :to="ownerRoute" class="listing-card__badge-link">
 					<q-chip dense clickable :color="typeColor" text-color="white" class="listing-card__badge">
 						{{ badgeLabel }}

@@ -6,6 +6,9 @@ async function toAdFormData(payload) {
 	formData.append('title', payload.title || '')
 	formData.append('text', payload.text || '')
 	formData.append('category', payload.category || '')
+	if (typeof payload.is_featured === 'boolean') {
+		formData.append('is_featured', payload.is_featured ? '1' : '0')
+	}
 
 	if (payload.page_id) {
 		formData.append('page_id', payload.page_id)

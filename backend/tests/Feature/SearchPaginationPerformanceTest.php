@@ -68,7 +68,7 @@ class SearchPaginationPerformanceTest extends TestCase
         $this->assertCount(20, $hydrated, 'Only displayed full page models should be hydrated, never prior cursor pages.');
         $this->assertEqualsCanonicalizing($displayed, $hydrated);
 
-        $ordered = array_values(array_filter($queries, static fn (string $sql): bool => preg_match('/^select\b.*\bfrom ["`]?pages["`]?\s/si', $sql) === 1
+        $ordered = array_values(array_filter($queries, static fn (string $sql): bool => preg_match('/^select\b(?:(?!\bfrom\b).)*\bfrom ["`]?pages["`]?\s/si', $sql) === 1
             && str_contains(strtolower($sql), 'order by') && ! str_contains(strtolower($sql), 'count(')));
         $this->assertNotEmpty($ordered, 'The request should seek through bounded page candidates.');
         foreach ($ordered as $sql) {

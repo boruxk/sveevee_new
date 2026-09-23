@@ -1,4 +1,5 @@
 <script setup>
+	import FeaturedAdBadge from '@/components/FeaturedAdBadge.vue'
 	import { computed } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { localizedAdCategoryMeta } from '@/constants/adCategories'
@@ -208,7 +209,7 @@
 	<router-link
 		:to="resultRoute"
 		class="search-result-card"
-		:class="`search-result-card--${item.kind}`"
+		:class="[`search-result-card--${item.kind}`, { 'featured-ad': item.kind === 'ad' && value.is_featured === true }]"
 		:style="cardStyle"
 	>
 		<div
@@ -266,6 +267,7 @@
 
 		<div class="search-result-card__copy">
 			<div class="search-result-card__badges">
+				<FeaturedAdBadge v-if="item.kind === 'ad' && value.is_featured === true" />
 				<div class="search-result-card__type">
 					<q-icon :name="typeIcon" size="17px" />
 					<span>{{ typeLabel }}</span>

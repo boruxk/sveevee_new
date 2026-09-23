@@ -14,21 +14,30 @@ class BusinessProBillingService
 {
     public function __construct(private CardcomClient $cardcom, private BusinessProEntitlementService $entitlements) {}
 
-    public function checkout(User $user, Page $page, int $expectedAmount, string $currency, string $locale): BusinessProPayment
+    public function checkout(User $user, ?Page $page, int $expectedAmount, string $currency, string $locale, string $planKey = 'business_pro'): BusinessProPayment
     {
         $this->entitlements->assertVisible($user);
-        $this->entitlements->assertOwnedBusiness($user, $page);
+        abort_unless(in_array($planKey, ['private_pro', 'business_pro'], true), 422);
+        if ($planKey === 'business_pro') {
+            abort_unless($page, 422);
+            $this->entitlements->assertOwnedBusiness($user, $page);
+        } else {
+            abort_if($page !== null, 422);
+        }
         $this->assertEnabled();
-        $offer = $this->entitlements->offer();
+        if (! $this->entitlements->canPurchase($user)) {
+            throw new BusinessProBillingException('billing_unavailable', 503);
+        }
+        $offer = $this->entitlements->offer($planKey);
         if ($expectedAmount !== $offer['amount_minor'] || $currency !== $offer['currency']) {
             throw new BusinessProBillingException('offer_changed');
         }
         try {
-            $this->cardcom->validateCheckout($this->checkoutFields((string) Str::uuid(), $offer['amount_minor'], $locale));
+            $this->cardcom->validateCheckout($this->checkoutFields((string) Str::uuid(), $offer['amount_minor'], $locale, $planKey));
         } catch (CardcomException $error) {
             throw new BusinessProBillingException('billing_unavailable', 503);
         }
-        [$payment, $create] = DB::transaction(function () use ($user, $page, $offer, $locale) {
+        [$payment, $create] = DB::transaction(function () use ($user, $page, $offer, $locale, $planKey) {
             // Lock the stable account row, including the first-ever checkout.
             User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
             $subscription = BusinessProSubscription::query()->where('user_id', $user->id)->lockForUpdate()->first();
@@ -49,7 +58,7 @@ class BusinessProBillingService
                     ->where('terminal_number', $terminal)->whereIn('status', ['pending', 'processing', 'unknown'])
                     ->orderByDesc('id')->first();
                 if ($unfinished) {
-                    if ($unfinished->page_id !== $page->id || $unfinished->amount_minor !== $offer['amount_minor']) {
+                    if ($unfinished->page_id !== $page?->id || $unfinished->plan_key !== $planKey || $unfinished->amount_minor !== $offer['amount_minor']) {
                         throw new BusinessProBillingException('payment_pending');
                     }
                     $this->assertEnvironment($unfinished);
@@ -68,7 +77,7 @@ class BusinessProBillingService
                 ]);
             }
             $subscription->forceFill([
-                'user_id' => $user->id, 'page_id' => $page->id, 'plan_key' => 'business_pro', 'included_pages' => 1,
+                'user_id' => $user->id, 'page_id' => $page?->id, 'plan_key' => $planKey, 'included_pages' => $offer['included_pages'],
                 'status' => 'pending', 'environment' => config('business_pro.environment'),
                 'terminal_number' => config('business_pro.cardcom.terminal_number'),
                 'amount_minor' => $offer['amount_minor'], 'currency' => 'ILS', 'interval' => 'monthly',
@@ -77,7 +86,7 @@ class BusinessProBillingService
             ])->save();
             $uuid = (string) Str::uuid();
             $payment = BusinessProPayment::query()->forceCreate([
-                'subscription_id' => $subscription->id, 'user_id' => $user->id, 'page_id' => $page->id,
+                'subscription_id' => $subscription->id, 'user_id' => $user->id, 'page_id' => $page?->id, 'plan_key' => $planKey,
                 'public_id' => $uuid, 'idempotency_key' => $uuid, 'kind' => 'initial', 'status' => 'processing',
                 'amount_minor' => $offer['amount_minor'], 'currency' => 'ILS',
                 'environment' => $subscription->environment, 'terminal_number' => $subscription->terminal_number,
@@ -94,7 +103,7 @@ class BusinessProBillingService
             return $payment;
         }
         try {
-            $result = $this->cardcom->createCheckout($this->checkoutFields($payment->public_id, $payment->amount_minor, $locale));
+            $result = $this->cardcom->createCheckout($this->checkoutFields($payment->public_id, $payment->amount_minor, $locale, $planKey));
         } catch (CardcomException $error) {
             $payment->forceFill(['status' => $error->ambiguous ? 'unknown' : 'failed', 'failure_code' => 'gateway_unavailable'])->save();
             throw new BusinessProBillingException('gateway_unavailable', 503);
@@ -217,7 +226,8 @@ class BusinessProBillingService
             }
             if (! $user || $user->banned_at || ! $this->entitlements->isVisible($user)
                 || ($subscription->environment === 'sandbox' && ! $this->entitlements->canPreview($user))
-                || ! $page || $page->user_id !== $user->id || $page->is_unclaimed || $page->type !== Page::TYPE_BUSINESS) {
+                || ($subscription->plan_key === 'business_pro' && (! $page || $page->user_id !== $user->id || $page->is_unclaimed || $page->type !== Page::TYPE_BUSINESS))
+                || ! in_array($subscription->plan_key, ['private_pro', 'business_pro'], true)) {
                 $subscription->forceFill(['cancel_at_period_end' => true, 'cancelled_at' => now(), 'next_charge_at' => null])->save();
 
                 return [null, false];
@@ -235,7 +245,7 @@ class BusinessProBillingService
             }
             $payment = BusinessProPayment::query()->forceCreate([
                 'public_id' => (string) Str::uuid(), 'subscription_id' => $subscription->id,
-                'user_id' => $subscription->user_id, 'page_id' => $subscription->page_id,
+                'user_id' => $subscription->user_id, 'page_id' => $subscription->page_id, 'plan_key' => $subscription->plan_key,
                 'kind' => 'renewal', 'status' => 'processing', 'environment' => $subscription->environment,
                 'terminal_number' => $subscription->terminal_number, 'amount_minor' => $subscription->amount_minor,
                 'currency' => $subscription->currency, 'idempotency_key' => $key,
@@ -321,6 +331,7 @@ class BusinessProBillingService
                 return $payment;
             }
             $stale = $subscription->user_id !== $payment->user_id || $subscription->page_id !== $payment->page_id
+                || $subscription->plan_key !== $payment->plan_key
                 || $subscription->environment !== $payment->environment
                 || $subscription->terminal_number !== $payment->terminal_number
                 || $subscription->amount_minor !== $payment->amount_minor
@@ -345,8 +356,8 @@ class BusinessProBillingService
             $page = $subscription->page_id
                 ? Page::query()->whereKey($subscription->page_id)->lockForUpdate()->first()
                 : null;
-            if (! $page || (int) $page->user_id !== (int) $subscription->user_id
-                || $page->is_unclaimed || $page->type !== Page::TYPE_BUSINESS) {
+            if ($subscription->plan_key === 'business_pro' && (! $page || (int) $page->user_id !== (int) $subscription->user_id
+                || $page->is_unclaimed || $page->type !== Page::TYPE_BUSINESS)) {
                 // A valid receipt still records money received. A page reassigned
                 // or removed while the hosted checkout was open needs review,
                 // not an unusable active subscription or another future charge.
@@ -383,13 +394,13 @@ class BusinessProBillingService
         });
     }
 
-    private function checkoutFields(string $publicId, int $amountMinor, string $locale): array
+    private function checkoutFields(string $publicId, int $amountMinor, string $locale, string $planKey): array
     {
         $returnUrl = rtrim(config('business_pro.cardcom.frontend_url'), '/').'/business-pro/payment/'.$publicId;
 
         return [
             'Amount' => $amountMinor / 100, 'ReturnValue' => $publicId,
-            'ProductName' => 'Sveevee Business Pro - monthly',
+            'ProductName' => $planKey === 'private_pro' ? 'Sveevee Private Pro - monthly' : 'Sveevee Business Pro - monthly',
             'Language' => in_array($locale, ['he', 'en', 'ru'], true) ? $locale : 'en',
             'SuccessRedirectUrl' => $returnUrl.'?result=success',
             'FailedRedirectUrl' => $returnUrl.'?result=failure',

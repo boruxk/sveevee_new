@@ -1,0 +1,13 @@
+:root .listing-card.featured-ad,
+:root .search-result-card.featured-ad,
+:root .nearby-feed-card.featured-ad {
+  border-color: #e9b367;
+  background: linear-gradient(125deg, #fff3de 0%, #fffaf2 60%, #fff 100%);
+  box-shadow: 0 3px 12px rgb(176 108 21 / 8%);
+}
+
+:root .search-result-card.featured-ad:hover,
+:root .nearby-feed-card.featured-ad:hover {
+  border-color: #c8862a;
+  box-shadow: 0 10px 24px rgb(176 108 21 / 14%);
+}

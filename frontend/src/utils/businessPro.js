@@ -1,5 +1,6 @@
 export function canPreviewBusinessPro(auth) {
-	return Boolean(auth?.isAuthenticated && (auth.isAdmin || auth.user?.business_pro_preview === true))
+	// Offers are visible to every account; the API separately authorizes checkout and paid features.
+	return Boolean(auth?.isAuthenticated && ['user', 'admin'].includes(auth.user?.role || 'user'))
 }
 
 export function businessProFeatureAvailable(feature) {

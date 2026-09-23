@@ -350,6 +350,8 @@ class PayloadService
             'user_id' => $ad->user_id,
             'page_id' => $ad->page_id,
             'type' => $ad->type,
+            'is_featured' => app(FeaturedAdService::class)->isFeatured($ad),
+            'featured_requested' => (bool) $ad->is_featured,
             'title' => $ad->title,
             'text' => $ad->text,
             'category' => $ad->category,

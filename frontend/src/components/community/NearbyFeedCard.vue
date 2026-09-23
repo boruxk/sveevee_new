@@ -1,4 +1,5 @@
 <script setup>
+	import FeaturedAdBadge from '@/components/FeaturedAdBadge.vue'
 	import { computed, ref } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute } from 'vue-router'
@@ -53,11 +54,19 @@
 		const date = new Date(`${value.value.date}T00:00:00`)
 		return Number.isNaN(date.getTime()) ? '' : [new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(date), value.value.time].filter(Boolean).join(' ')
 	})
-	const meta = computed(() => [dateLabel.value, location.value, owner.value].filter(Boolean).join(' \u00b7 '))
+	const activityLabel = computed(() => {
+		if (props.item.type !== 'question' || !props.item.activity_at) return ''
+		const activity = new Date(props.item.activity_at)
+		const created = new Date(props.item.created_at || value.value.created_at)
+		if (Number.isNaN(activity.getTime()) || Number.isNaN(created.getTime()) || activity <= created) return ''
+		const date = new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(activity)
+		return t('community.lastReply', { date })
+	})
+	const meta = computed(() => [activityLabel.value, dateLabel.value, location.value, owner.value].filter(Boolean).join(' \u00b7 '))
 </script>
 
 <template>
-	<article class="nearby-feed-card">
+	<article class="nearby-feed-card" :class="{ 'featured-ad': item.type === 'ad' && value.is_featured === true }">
 		<div class="nearby-feed-card__media" aria-hidden="true">
 			<ResponsiveImage v-if="value.image_url"
 				:src="value.image_url"
@@ -70,6 +79,7 @@
 		</div>
 		<div class="nearby-feed-card__copy">
 			<div class="nearby-feed-card__badges">
+				<FeaturedAdBadge v-if="item.type === 'ad' && value.is_featured === true" />
 				<CommunityBadge>{{ typeLabel }}</CommunityBadge>
 				<CommunityBadge v-if="value.resolved">{{ t('community.resolved') }}</CommunityBadge>
 				<CommunityBadge v-else-if="category" :title="category">{{ category }}</CommunityBadge>

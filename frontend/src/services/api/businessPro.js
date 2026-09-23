@@ -2,6 +2,7 @@ import apiClient from '@/services/api/client'
 
 const segment = value => encodeURIComponent(String(value))
 export const fetchBusinessPro = (config = {}) => apiClient.get('/business-pro', config)
+export const fetchAdProFeature = (params = {}, config = {}) => apiClient.get('/business-pro/ad-feature', { ...config, params })
 export const fetchPageBusinessPro = (pageId, config = {}) => apiClient.get(`/business-pro/pages/${segment(pageId)}`, config)
 export const createBusinessProCheckout = (payload, config = {}) => apiClient.post('/business-pro/checkout', payload, config)
 export const verifyBusinessProPayment = (id, config = {}) => apiClient.post(`/business-pro/payments/${segment(id)}/verify`, {}, config)

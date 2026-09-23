@@ -21,17 +21,19 @@ function panel(t, { preview = true, compact = false } = {}) {
     createBusinessProCheckout: payload => new Promise((resolve, reject) => checkouts.push({ payload, resolve, reject })),
     cancelBusinessPro: () => new Promise((resolve, reject) => cancels.push({ resolve, reject })), window: { location: { assign: url => redirects.push(url) } }
   }
-  const factory = new Function(...Object.keys(dependencies), panelSource + '\nreturn { overview, consent, selectedPageId, busy, error, load, checkout, cancel, canCheckout, visible, detailsOpen, openDetails, closeDetails, canOpenDetails, privatePreview, hasSubscription, detailsButtonKey }')
+  const factory = new Function(...Object.keys(dependencies), panelSource + '\nreturn { overview, consent, selectedPageId, busy, error, load, checkout, cancel, canCheckout, visible, detailsOpen, openDetails, closeDetails, canOpenDetails, privatePreview, subscription, accountSubscription, offer, offers, selectedPlanKey, detailsButtonKey }')
   const scope = effectScope(), component = scope.run(() => factory(...Object.values(dependencies)))
   t.after(() => { cleanup.forEach(fn => fn()); scope.stop() })
   return { component, auth, route, reads, checkouts, cancels, redirects }
 }
 
-test('ordinary accounts cannot request private metadata; opt-in preview loads on eligibility change', async t => {
-  const { component, auth, reads } = panel(t, { preview: false })
-  assert.equal(reads.length, 0); assert.equal(component.visible.value, false)
-  auth.user.business_pro_preview = true; await flush(); assert.equal(reads.length, 1)
-  reads[0].resolve(ok(snapshot())); await flush(); assert.equal(component.selectedPageId.value, 9)
+test('ordinary accounts see Pro offers while the server keeps test checkout locked', async t => {
+  const { component, auth, reads, checkouts } = panel(t, { preview: false })
+  assert.equal(reads.length, 1); assert.equal(component.visible.value, true)
+  reads[0].resolve(ok(snapshot({ can_checkout: false }))); await flush()
+  assert.equal(component.canOpenDetails.value, true); assert.equal(component.canCheckout.value, false)
+  component.consent.value = true; await component.checkout(); assert.equal(checkouts.length, 0)
+  auth.isAuthenticated = false; await flush(); assert.equal(component.visible.value, false)
 })
 
 test('checkout requires consent and selected owned page, binds displayed49ILS price, rejects unsafe destination', async t => {
@@ -40,7 +42,7 @@ test('checkout requires consent and selected owned page, binds displayed49ILS pr
   await component.checkout(); assert.equal(checkouts.length, 0)
   component.consent.value = true
   const request = component.checkout()
-  assert.deepEqual(checkouts[0].payload, { page_id: 9, consent: true, locale: 'en', amount_minor: 4900, currency: 'ILS' })
+  assert.deepEqual(checkouts[0].payload, { plan_key: 'business_pro', page_id: 9, consent: true, locale: 'en', amount_minor: 4900, currency: 'ILS' })
   checkouts[0].resolve(ok({ checkout_url: 'https://secure.cardcom.solutions.evil.test/checkout' })); await request
   assert.equal(redirects.length, 0); assert.equal(component.error.value, 'businessPro.checkoutFailed')
   component.selectedPageId.value = 999; await flush(); component.consent.value = true
@@ -68,7 +70,7 @@ test('a checkout response from a previous session cannot redirect a different ac
 
 test('cancellation refresh preserves paid access through the returned period end', async t => {
   const { component, reads, cancels } = panel(t)
-  const active = snapshot({ subscription: { status: 'active', has_access: true, page_id: 9, current_period_end: '2026-10-22T12:00:00Z', cancel_at_period_end: false }, has_access: true, can_checkout: false, can_cancel: true })
+  const active = snapshot({ subscription: { plan_key: 'business_pro', status: 'active', has_access: true, page_id: 9, current_period_end: '2026-10-22T12:00:00Z', cancel_at_period_end: false }, has_access: true, can_checkout: false, can_cancel: true })
   reads[0].resolve(ok(active)); await flush()
   const request = component.cancel(); cancels[0].resolve(ok({})); await flush()
   assert.equal(component.overview.value.has_access, true)
@@ -94,7 +96,7 @@ test('future feature interactions require authoritative implemented/enabled enti
   assert.equal(businessProFeatureAvailable({ available: true, implemented: true, enabled: true, lifecycle: 'draft' }), true)
   for (const key of ['available', 'implemented', 'enabled']) assert.equal(businessProFeatureAvailable({ available: true, implemented: true, enabled: true, [key]: false }), false)
   assert.equal(businessProFeatureAvailable({ available: 'true', implemented: true, enabled: true }), false)
-  assert.equal(canPreviewBusinessPro({ isAuthenticated: true, user: { business_pro_preview: 'true' } }), false)
+  assert.equal(canPreviewBusinessPro({ isAuthenticated: true, user: { business_pro_preview: false } }), true)
 })
 
 test('Cardcom redirects permit exact HTTPS secure/test hosts only, without credentials or nonstandard ports', () => {
@@ -107,7 +109,7 @@ test('Cardcom redirects permit exact HTTPS secure/test hosts only, without crede
 test('compact Buy only opens shared details, without requesting checkout or loading another panel', async t => {
   const { component, reads, checkouts, cancels } = panel(t, { compact: true })
   reads[0].resolve(ok(snapshot({ private_preview: true }))); await flush()
-  component.openDetails(); await flush()
+  component.openDetails('business_pro'); await flush()
   assert.equal(component.detailsOpen.value, true)
   assert.equal(component.consent.value, false)
   assert.equal(reads.length, 1)
@@ -118,20 +120,21 @@ test('compact Buy only opens shared details, without requesting checkout or load
   assert.equal(component.consent.value, false)
 })
 
-test('compact Buy is disabled without billing but existing paid subscription remains manageable', async t => {
+test('details remain visible without billing while paid subscriptions stay manageable', async t => {
   const { component, reads } = panel(t, { compact: true })
   reads[0].resolve(ok(snapshot({ offer: { ...snapshot().offer, billing_enabled: false }, can_checkout: false }))); await flush()
-  assert.equal(component.canOpenDetails.value, false)
-  component.openDetails(); assert.equal(component.detailsOpen.value, false)
-  const request = component.load()
-  reads[1].resolve(ok(snapshot({ offer: { ...snapshot().offer, billing_enabled: false }, subscription: { status: 'active', has_access: true, page_id: 9 }, has_access: true, can_checkout: false, can_cancel: true }))); await request
   assert.equal(component.canOpenDetails.value, true)
-  component.openDetails(); assert.equal(component.detailsOpen.value, true)
+  component.openDetails('business_pro'); assert.equal(component.detailsOpen.value, true)
+  assert.equal(component.canCheckout.value, false)
+  const request = component.load()
+  reads[1].resolve(ok(snapshot({ offer: { ...snapshot().offer, billing_enabled: false }, subscription: { plan_key: 'business_pro', status: 'active', has_access: true, page_id: 9 }, has_access: true, can_checkout: false, can_cancel: true }))); await request
+  assert.equal(component.canOpenDetails.value, true)
+  component.openDetails('business_pro'); assert.equal(component.detailsOpen.value, true)
 })
 
 test('profile route change closes details and ignores an in-flight checkout redirect', async t => {
   const { component, route, reads, checkouts, redirects } = panel(t, { compact: true })
-  reads[0].resolve(ok(snapshot())); await flush(); component.openDetails(); component.consent.value = true
+  reads[0].resolve(ok(snapshot())); await flush(); component.openDetails('business_pro'); component.consent.value = true
   const request = component.checkout()
   route.fullPath = '/business'; await flush()
   assert.equal(component.detailsOpen.value, false)
@@ -144,7 +147,7 @@ test('private-preview copy follows server rollout metadata and logout closes the
   const { component, auth, reads } = panel(t, { compact: true })
   reads[0].resolve(ok(snapshot({ private_preview: false, offer: { ...snapshot().offer, environment: 'production' } }))); await flush()
   assert.equal(component.privatePreview.value, false)
-  component.openDetails(); component.consent.value = true
+  component.openDetails('business_pro'); component.consent.value = true
   auth.token = null; auth.user = null; auth.isAuthenticated = false; await flush()
   assert.equal(component.detailsOpen.value, false)
   assert.equal(component.consent.value, false)
@@ -154,11 +157,11 @@ test('private-preview copy follows server rollout metadata and logout closes the
 
 test('inactive failed subscriptions remain manageable when billing is disabled without enabling payments', async t => {
   const { component, reads, checkouts, cancels } = panel(t, { compact: true })
-  reads[0].resolve(ok(snapshot({ subscription: { status: 'inactive', has_access: false }, offer: { ...snapshot().offer, billing_enabled: false }, can_checkout: false }))); await flush()
-  assert.equal(component.hasSubscription.value, true)
+  reads[0].resolve(ok(snapshot({ subscription: { plan_key: 'business_pro', status: 'inactive', has_access: false }, offer: { ...snapshot().offer, billing_enabled: false }, can_checkout: false }))); await flush()
+  assert.equal(Boolean(component.subscription.value), true)
   assert.equal(component.canOpenDetails.value, true)
-  assert.equal(component.detailsButtonKey.value, 'businessPro.manage')
-  component.openDetails()
+  assert.equal(component.detailsButtonKey(component.offer.value), 'businessPro.manage')
+  component.openDetails('business_pro')
   assert.equal(component.detailsOpen.value, true)
   assert.equal(component.canCheckout.value, false)
   component.consent.value = true
@@ -171,13 +174,73 @@ test('inactive failed subscriptions remain manageable when billing is disabled w
 test('private testers without a subscription can inspect details while checkout stays unavailable', async t => {
   const { component, reads, checkouts } = panel(t, { compact: true })
   reads[0].resolve(ok(snapshot({ private_preview: true, offer: { ...snapshot().offer, billing_enabled: false }, can_checkout: false }))); await flush()
-  assert.equal(component.hasSubscription.value, false)
-  assert.equal(component.detailsButtonKey.value, 'businessPro.viewDetails')
+  assert.equal(Boolean(component.subscription.value), false)
+  assert.equal(component.detailsButtonKey(component.offer.value), 'businessPro.viewDetails')
   assert.equal(component.canOpenDetails.value, true)
-  component.openDetails()
+  component.openDetails('business_pro')
   assert.equal(component.detailsOpen.value, true)
   component.consent.value = true
   await component.checkout()
   assert.equal(checkouts.length, 0)
   assert.equal(reads.length, 1)
+})
+
+const twoPlans = (overrides = {}) => snapshot({ offers: [
+  { plan_key: 'private_pro', amount_minor: 1900, currency: 'ILS', included_pages: 0, billing_enabled: true, can_checkout: true, features: [] },
+  { plan_key: 'business_pro', ...snapshot().offer, can_checkout: true, features: [] }
+], ...overrides })
+
+test('Private Pro is 19ILS, needs no page, and never sends a business page in checkout', async t => {
+  const { component, reads, checkouts } = panel(t)
+  reads[0].resolve(ok(twoPlans({ pages: [] }))); await flush()
+  assert.equal(component.offer.value.plan_key, 'private_pro')
+  assert.equal(component.canCheckout.value, true)
+  component.consent.value = true
+  const checkout = component.checkout()
+  assert.deepEqual(checkouts[0].payload, { plan_key: 'private_pro', consent: true, locale: 'en', amount_minor: 1900, currency: 'ILS' })
+  checkouts[0].resolve(ok({ checkout_url: 'https://invalid.example/' })); await checkout
+})
+
+test('switching paid plans clears consent and Business Pro still needs an owned page', async t => {
+  const { component, reads } = panel(t)
+  reads[0].resolve(ok(twoPlans({ pages: [] }))); await flush()
+  component.consent.value = true
+  component.openDetails('business_pro'); await flush()
+  assert.equal(component.consent.value, false)
+  assert.equal(component.canCheckout.value, false)
+  assert.equal(component.offer.value.amount_minor, 4900)
+})
+
+test('a Business subscriber retains the covered page and management button when private offer is shown first', async t => {
+  const { component, reads } = panel(t)
+  reads[0].resolve(ok(twoPlans({ subscription: { plan_key: 'business_pro', page_id: 7, has_access: true, status: 'active' }, can_cancel: true }))); await flush()
+  assert.equal(component.selectedPageId.value, 7)
+  assert.equal(component.subscription.value, null)
+  component.openDetails('business_pro'); await flush()
+  assert.equal(component.subscription.value.plan_key, 'business_pro')
+  assert.equal(component.detailsButtonKey(component.offer.value), 'businessPro.manage')
+})
+
+
+test('staff-only worker accounts do not see unsupported billing routes', () => {
+  assert.equal(canPreviewBusinessPro({ isAuthenticated: true, user: { role: 'ai_worker' } }), false)
+  assert.equal(canPreviewBusinessPro({ isAuthenticated: true, user: { role: 'admin' } }), true)
+  assert.equal(canPreviewBusinessPro({ isAuthenticated: false, user: { role: 'user' } }), false)
+})
+
+test('pending Business checkout preselects its page and resumes only the server-approved offer', async t => {
+  const { component, reads, checkouts } = panel(t)
+  const data = twoPlans({ pending_plan_key: 'business_pro', pending_payment: { plan_key: 'business_pro', page_id: 7 } })
+  data.offers[0].can_checkout = false
+  data.offers[1].can_resume = true
+  reads[0].resolve(ok(data)); await flush()
+  assert.equal(component.canCheckout.value, false)
+  assert.equal(component.selectedPageId.value, 7)
+  component.openDetails('business_pro'); await flush()
+  assert.equal(component.detailsButtonKey(component.offer.value), 'businessPro.resumeCheckout')
+  component.consent.value = true
+  const request = component.checkout()
+  assert.equal(checkouts[0].payload.page_id, 7)
+  assert.equal(checkouts[0].payload.plan_key, 'business_pro')
+  checkouts[0].resolve(ok({ checkout_url: 'https://invalid.example/' })); await request
 })

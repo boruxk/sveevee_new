@@ -54,16 +54,19 @@ class AdminBusinessProController extends Controller
         return ApiResponseService::success($entitlements->featurePayload($feature));
     }
 
-    public function offer(BusinessProEntitlementService $entitlements)
+    public function offer(Request $request, BusinessProEntitlementService $entitlements)
     {
-        return ApiResponseService::success($entitlements->offer());
+        $data = $request->validate(['plan_key' => ['sometimes', Rule::in(['private_pro', 'business_pro'])]]);
+
+        return ApiResponseService::success($entitlements->offer($data['plan_key'] ?? 'business_pro'));
     }
 
     public function updateOffer(Request $request, BusinessProEntitlementService $entitlements)
     {
-        $data = $request->validate(['amount_minor' => ['required', 'integer', 'min:100', 'max:1000000']]);
+        $data = $request->validate(['amount_minor' => ['required', 'integer', 'min:100', 'max:1000000'],
+            'plan_key' => ['sometimes', Rule::in(['private_pro', 'business_pro'])]]);
 
-        return ApiResponseService::success($entitlements->updateOffer((int) $data['amount_minor'], $request->user()));
+        return ApiResponseService::success($entitlements->updateOffer((int) $data['amount_minor'], $request->user(), $data['plan_key'] ?? 'business_pro'));
     }
 
     private function perPage(Request $request): int

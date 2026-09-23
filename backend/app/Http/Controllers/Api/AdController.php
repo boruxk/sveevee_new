@@ -9,6 +9,7 @@ use App\Models\Page;
 use App\Models\User;
 use App\Rules\CleanContent;
 use App\Services\ApiResponseService;
+use App\Services\BusinessProEntitlementService;
 use App\Services\PayloadService;
 use App\Services\SystemSettingsService;
 use App\Support\CatalogTopics;
@@ -22,6 +23,7 @@ class AdController extends Controller
     public function __construct(
         private readonly PayloadService $payloads,
         private readonly SystemSettingsService $settings,
+        private readonly BusinessProEntitlementService $entitlements,
     ) {}
 
     public function index(Request $request)
@@ -30,11 +32,12 @@ class AdController extends Controller
         $neighborhood = $this->nullableString($request->query('neighborhood'));
 
         $query = Ad::query()
+            ->withFeaturedState()
             ->with(['user.profile', 'page'])
             ->active()
             ->whereHas('user', fn ($inner) => $inner->whereNull('banned_at'))
             ->inLocation($city, $neighborhood)
-            ->latest();
+            ->orderByDesc('featured_active')->latest();
 
         if ($request->query('scope') === 'mine') {
             $query->where('user_id', $request->user()->id);
@@ -75,6 +78,7 @@ class AdController extends Controller
             'text' => ['required', 'string', 'max:5000', new CleanContent],
             'category' => $this->categoryRules(),
             'page_id' => ['nullable', 'integer', 'exists:pages,id'],
+            'is_featured' => ['sometimes', 'boolean'],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
         ]);
 
@@ -90,6 +94,10 @@ class AdController extends Controller
             return $limitError;
         }
 
+        if ($request->boolean('is_featured') && ! $this->entitlements->canFeatureAd($request->user(), $page)) {
+            return $this->featuredRequired();
+        }
+
         $location = $this->locationFor($page, $request->user());
 
         $image = $request->file('image');
@@ -98,6 +106,7 @@ class AdController extends Controller
             'user_id' => $request->user()->id,
             'page_id' => $page?->id,
             'type' => $this->typeForPage($page),
+            'is_featured' => $request->boolean('is_featured'),
             'title' => $data['title'],
             'text' => $data['text'],
             'category' => $data['category'] ?? null,
@@ -125,9 +134,17 @@ class AdController extends Controller
             'status' => ['nullable', Rule::in(['active', 'paused'])],
             'image' => ['nullable', 'image', 'mimetypes:image/jpeg,image/png,image/x-png,image/webp', 'max:20480'],
             'image_remove' => ['nullable', 'boolean'],
+            'is_featured' => ['sometimes', 'boolean'],
         ]);
 
         $ad->loadMissing(['page', 'user.profile']);
+
+        // An admin editing someone else's ad still needs that owner's entitlement.
+        if ($request->boolean('is_featured') && (! $ad->user
+            || ($ad->type !== Ad::TYPE_PRIVATE && ! $ad->page)
+            || ! $this->entitlements->canFeatureAd($ad->user, $ad->page))) {
+            return $this->featuredRequired();
+        }
 
         if (($data['status'] ?? $ad->status) === 'active' && $ad->status !== 'active') {
             if ($limitError = $this->activeLimitError($request, $ad->page, $ad->id)) {
@@ -138,6 +155,7 @@ class AdController extends Controller
         $location = $this->locationFor($ad->page, $ad->user);
 
         $ad->fill([
+            'is_featured' => array_key_exists('is_featured', $data) ? (bool) $data['is_featured'] : $ad->is_featured,
             'title' => $data['title'],
             'text' => $data['text'],
             'category' => array_key_exists('category', $data) ? $data['category'] : $ad->category,
@@ -214,6 +232,15 @@ class AdController extends Controller
     private function canManage(Request $request, Ad $ad): bool
     {
         return $request->user()->id === $ad->user_id || $request->user()->hasRole('admin');
+    }
+
+    private function featuredRequired()
+    {
+        return ApiResponseService::error(
+            message: 'An active paid plan covering this ad is required.',
+            status: 402,
+            data: ['reason' => 'pro_feature_required']
+        );
     }
 
     private function nullableString(mixed $value): ?string

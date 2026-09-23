@@ -39,6 +39,12 @@ php artisan serve
 Logins:
 user@sveevee.local / password
 admin@sveevee.local / password
+support@sveevee.local / password
+ai-works@sveevee.local / [Passwort unbekannt; nur als Hash gespeichert]
+fdgdfgd@fgfd.dfg / [Passwort unbekannt; nur als Hash gespeichert]
+asdasdsa@sdfsfsd.sdf / [Passwort unbekannt; nur als Hash gespeichert]
+user2@sveevee.local / password
+pro@sveevee.local / password
 
 
 

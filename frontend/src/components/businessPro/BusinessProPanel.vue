@@ -27,21 +27,28 @@
 	let request = 0
 	let action = 0
 	let disposed = false
-	const offer = computed(() => overview.value?.offer || {})
-	const subscription = computed(() => overview.value?.subscription || null)
-	const hasSubscription = computed(() => Boolean(subscription.value))
+	const selectedPlanKey = ref('private_pro')
+	const offers = computed(() => overview.value?.offers || (overview.value?.offer ? [{ ...overview.value.offer, plan_key: 'business_pro', can_checkout: overview.value.can_checkout, features: overview.value.features }] : []))
+	const offer = computed(() => offers.value.find(plan => plan.plan_key === selectedPlanKey.value) || offers.value[0] || {})
+	const privatePlan = computed(() => offer.value.plan_key === 'private_pro')
+	const accountSubscription = computed(() => overview.value?.subscription || null)
+	const subscription = computed(() => accountSubscription.value?.plan_key === offer.value.plan_key ? accountSubscription.value : null)
+	const features = computed(() => offer.value.features || [])
+	const planTitle = key => t(key === 'private_pro' ? 'businessPro.privateTitle' : 'businessPro.title')
+	const offerSubscription = plan => accountSubscription.value?.plan_key === plan.plan_key ? accountSubscription.value : null
+	const offerPrice = plan => {
+		const current = offerSubscription(plan)
+		return proMoney(current?.has_access ? current.amount_minor : plan.amount_minor, current?.has_access ? current.currency : plan.currency, locale.value)
+	}
+	const detailsButtonKey = plan => offerSubscription(plan) ? 'businessPro.manage' : plan.can_checkout ? (plan.can_resume === true ? 'businessPro.resumeCheckout' : 'businessPro.buy') : 'businessPro.viewDetails'
 	const privatePreview = computed(() => overview.value?.private_preview === true)
-	const canOpenDetails = computed(() => visible.value && Boolean(overview.value) && !loading.value && !busy.value && (hasSubscription.value || privatePreview.value || offer.value.billing_enabled === true))
-	const detailsButtonKey = computed(() => {
-		if (hasSubscription.value) return 'businessPro.manage'
-		return privatePreview.value && !offer.value.billing_enabled ? 'businessPro.viewDetails' : 'businessPro.buy'
-	})
+	const canOpenDetails = computed(() => visible.value && Boolean(overview.value) && !loading.value && !busy.value)
 	const testMode = computed(() => offer.value.environment === 'sandbox')
 	const monthlyPrice = computed(() => proMoney(offer.value.amount_minor, offer.value.currency, locale.value))
 	const contractPrice = computed(() => proMoney(subscription.value?.amount_minor ?? offer.value.amount_minor, subscription.value?.currency || offer.value.currency, locale.value))
 	const pageOptions = computed(() => (overview.value?.pages || []).map(page => ({ label: page.name, value: page.id })))
 	const selectedPageExists = computed(() => pageOptions.value.some(page => String(page.value) === String(selectedPageId.value)))
-	const canCheckout = computed(() => overview.value?.can_checkout === true && offer.value.billing_enabled === true && selectedPageExists.value)
+	const canCheckout = computed(() => offer.value.can_checkout === true && offer.value.billing_enabled === true && (privatePlan.value || selectedPageExists.value))
 	const current = version => !disposed && request === version && visible.value
 	const periodEnd = computed(() => {
 		const value = subscription.value?.current_period_end
@@ -50,8 +57,9 @@
 		return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat(locale.value, { dateStyle: 'long' }).format(date)
 	})
 
-	function openDetails() {
+	function openDetails(planKey) {
 		if (!canOpenDetails.value) return
+		selectedPlanKey.value = planKey
 		consent.value = false
 		detailsOpen.value = true
 	}
@@ -71,8 +79,9 @@
 			const { data } = await fetchBusinessPro()
 			if (current(version)) {
 				overview.value = data.data
+				if (!offers.value.some(plan => plan.plan_key === selectedPlanKey.value)) selectedPlanKey.value = offers.value[0]?.plan_key || 'private_pro'
 				const pageIds = (overview.value?.pages || []).map(page => String(page.id))
-				const preferred = [subscription.value?.page_id, selectedPageId.value, props.pageId].find(id => id != null && pageIds.includes(String(id)))
+				const preferred = [overview.value?.pending_payment?.page_id, accountSubscription.value?.page_id, selectedPageId.value, props.pageId].find(id => id != null && pageIds.includes(String(id)))
 				selectedPageId.value = preferred ?? overview.value?.pages?.[0]?.id ?? null
 			}
 		} catch {
@@ -87,7 +96,7 @@
 		busy.value = 'checkout'
 		error.value = ''
 		try {
-			const { data } = await createBusinessProCheckout({ page_id: selectedPageId.value, consent: true, locale: locale.value, amount_minor: offer.value.amount_minor, currency: offer.value.currency })
+			const { data } = await createBusinessProCheckout({ plan_key: offer.value.plan_key, ...(privatePlan.value ? {} : { page_id: selectedPageId.value }), consent: true, locale: locale.value, amount_minor: offer.value.amount_minor, currency: offer.value.currency })
 			if (!current(version)) return
 			const url = validCardcomCheckoutUrl(data.data?.checkout_url)
 			if (!url) throw new Error('Invalid checkout destination')
@@ -117,7 +126,7 @@
 		} catch { if (current(version)) error.value = t('businessPro.cancelFailed') } finally { if (!disposed && action === actionId) busy.value = '' }
 	}
 
-	watch(selectedPageId, () => { consent.value = false })
+	watch([selectedPageId, selectedPlanKey], () => { consent.value = false })
 	watch(detailsOpen, (open) => { if (!open) { consent.value = false; cancelOpen.value = false } })
 	watch(() => route.fullPath, () => {
 		closeDetails()
@@ -141,24 +150,28 @@
 <template>
 	<section v-if="visible" class="business-pro-panel" :class="{ 'business-pro-panel--compact': compact }">
 		<template v-if="compact">
-			<header class="business-pro-summary-heading"><h2>{{ t('businessPro.title') }}</h2><q-badge v-if="testMode" color="orange-9">{{ t('businessPro.testMode') }}</q-badge></header>
+			<header class="business-pro-summary-heading"><h2>{{ t('businessPro.plansTitle') }}</h2><q-badge v-if="testMode" color="orange-9">{{ t('businessPro.testMode') }}</q-badge></header>
 			<div v-if="loading && !detailsOpen" class="q-py-sm"><q-spinner color="primary" size="24px" /></div>
-			<template v-if="overview">
-				<div class="business-pro-summary-price"><strong>{{ t('businessPro.pricePerMonth', { price: subscription?.has_access ? contractPrice : monthlyPrice }) }}</strong><q-badge v-if="subscription">{{ t(`businessPro.status.${proStatusKey(subscription.status)}`) }}</q-badge></div>
-				<p class="business-pro-summary-intro">{{ t('businessPro.profileIntro') }}</p>
-				<div class="business-pro-summary-actions"><q-btn rounded
-					unelevated
-					color="primary"
-					:label="t(detailsButtonKey)"
-					:disable="!canOpenDetails"
-					@click="openDetails"
-				/><p v-if="!hasSubscription && !offer.billing_enabled" class="business-pro-muted">{{ t('businessPro.availableLater') }}</p></div>
-			</template>
+			<div v-if="overview" class="business-pro-offers">
+				<article v-for="plan in offers" :key="plan.plan_key" class="business-pro-offer">
+					<h3>{{ planTitle(plan.plan_key) }}</h3>
+					<div class="business-pro-summary-price"><strong>{{ t('businessPro.pricePerMonth', { price: offerPrice(plan) }) }}</strong><q-badge v-if="offerSubscription(plan)">{{ t(`businessPro.status.${proStatusKey(offerSubscription(plan).status)}`) }}</q-badge></div>
+					<p class="business-pro-summary-intro">{{ t(plan.plan_key === 'private_pro' ? 'businessPro.privateIntro' : 'businessPro.profileIntro') }}</p>
+					<p v-if="overview.pending_plan_key && overview.pending_plan_key !== plan.plan_key" class="business-pro-muted">{{ t('businessPro.pendingCheckoutNotice') }}</p>
+					<div class="business-pro-summary-actions"><q-btn rounded
+						unelevated
+						color="primary"
+						:label="t(detailsButtonKey(plan))"
+						:disable="!canOpenDetails"
+						@click="openDetails(plan.plan_key)"
+					/><p v-if="!offerSubscription(plan) && !plan.billing_enabled" class="business-pro-muted">{{ t('businessPro.availableLater') }}</p></div>
+				</article>
+			</div>
 			<div v-if="error && !detailsOpen" role="alert" class="business-pro-error"><span>{{ error }}</span><q-btn v-if="!overview" flat color="primary" :label="t('businessPro.retry')" @click="load" /></div>
 		</template>
 		<component :is="compact ? QDialog : 'div'" :model-value="compact ? detailsOpen : undefined" :persistent="Boolean(busy)" @update:model-value="detailsOpen = $event">
-			<component :is="compact ? QCard : 'div'" class="business-pro-details" :class="{ 'business-pro-details--dialog': compact }" :aria-label="compact ? t('businessPro.title') : undefined">
-				<header class="business-pro-heading"><div><h2>{{ t('businessPro.title') }}</h2><p v-if="privatePreview">{{ t('businessPro.privatePreview') }}</p></div><q-badge v-if="testMode || privatePreview" :color="testMode ? 'orange-9' : 'grey-7'">{{ t(testMode ? 'businessPro.testMode' : 'businessPro.privatePreview') }}</q-badge><q-btn v-if="compact"
+			<component :is="compact ? QCard : 'div'" class="business-pro-details" :class="{ 'business-pro-details--dialog': compact }" :aria-label="compact ? planTitle(offer.plan_key) : undefined">
+				<header class="business-pro-heading"><div><h2>{{ planTitle(offer.plan_key) }}</h2><p v-if="privatePreview">{{ t('businessPro.privatePreview') }}</p></div><q-badge v-if="testMode || privatePreview" :color="testMode ? 'orange-9' : 'grey-7'">{{ t(testMode ? 'businessPro.testMode' : 'businessPro.privatePreview') }}</q-badge><q-btn v-if="compact"
 					flat
 					round
 					icon="close"
@@ -171,21 +184,25 @@
 				<template v-if="overview && !loading">
 					<section class="business-pro-plan">
 						<div class="business-pro-plan__headline"><strong class="business-pro-price">{{ t('businessPro.pricePerMonth', { price: subscription?.has_access ? contractPrice : monthlyPrice }) }}</strong><q-badge>{{ t(`businessPro.status.${proStatusKey(subscription?.status || 'inactive')}`) }}</q-badge></div>
-						<p>{{ t('businessPro.accountPlan') }}</p>
-						<q-select v-if="pageOptions.length"
-							v-model="selectedPageId"
-							outlined
-							emit-value
-							map-options
-							:options="pageOptions"
-							:label="t('businessPro.includedPage')"
-							:disable="!overview.can_checkout || Boolean(busy)"
-						/>
-						<div v-else class="business-pro-muted"><p>{{ t('businessPro.noBusinessPage') }}</p><q-btn flat color="primary" :to="{ name: 'business' }" :label="t('businessPro.createBusiness')" /></div>
+						<p>{{ t(privatePlan ? 'businessPro.privateAccountPlan' : 'businessPro.accountPlan') }}</p>
+						<p v-if="overview.pending_plan_key && overview.pending_plan_key !== offer.plan_key" class="business-pro-muted">{{ t('businessPro.pendingCheckoutNotice') }}</p>
+						<p v-if="accountSubscription && !subscription" class="business-pro-muted">{{ t('businessPro.currentPlanNotice') }}</p>
+						<template v-if="!privatePlan">
+							<q-select v-if="pageOptions.length"
+								v-model="selectedPageId"
+								outlined
+								emit-value
+								map-options
+								:options="pageOptions"
+								:label="t('businessPro.includedPage')"
+								:disable="!offer.can_checkout || offer.can_resume === true || Boolean(busy)"
+							/>
+							<div v-else class="business-pro-muted"><p>{{ t('businessPro.noBusinessPage') }}</p><q-btn flat color="primary" :to="{ name: 'business' }" :label="t('businessPro.createBusiness')" /></div>
+						</template>
 						<p v-if="testMode" class="business-pro-test-note">{{ t('businessPro.testNotice') }}</p>
 						<p v-if="subscription?.cancel_at_period_end && periodEnd">{{ t('businessPro.endsOn', { date: periodEnd }) }}</p>
 						<p v-else-if="periodEnd && overview.has_access">{{ t('businessPro.renewsOn', { date: periodEnd }) }}</p>
-						<template v-if="overview.can_checkout">
+						<template v-if="offer.can_checkout">
 							<q-checkbox v-model="consent" class="business-pro-consent" :disable="Boolean(busy) || !canCheckout" :label="t('businessPro.billingConsent', { price: monthlyPrice })" />
 							<p class="business-pro-muted">{{ t('businessPro.cancelTerms') }}</p>
 							<q-btn rounded
@@ -198,7 +215,7 @@
 							/>
 						</template>
 						<p v-if="!offer.billing_enabled" class="business-pro-muted">{{ t('businessPro.checkoutUnavailable') }}</p>
-						<div class="business-pro-actions"><q-btn v-if="overview.can_cancel"
+						<div class="business-pro-actions"><q-btn v-if="subscription && overview.can_cancel"
 							outline
 							color="primary"
 							:label="t('businessPro.cancelRenewal')"
@@ -206,7 +223,7 @@
 							@click="cancelOpen = true"
 						/><q-btn flat color="primary" :label="t('businessPro.refresh')" :disable="Boolean(busy)" @click="load" /></div>
 					</section>
-					<section class="business-pro-features"><h3>{{ t('businessPro.features') }}</h3><p v-if="!overview.features?.length" class="business-pro-empty">{{ t('businessPro.noFeatures') }}</p><BusinessProFeature v-for="feature in overview.features || []" :key="feature.key" :feature="feature" /></section>
+					<section class="business-pro-features"><h3>{{ t('businessPro.features') }}</h3><p v-if="!features.length" class="business-pro-empty">{{ t('businessPro.noFeatures') }}</p><BusinessProFeature v-for="feature in features" :key="feature.key" :feature="feature" /></section>
 				</template>
 			</component>
 		</component>
@@ -217,6 +234,11 @@
 <style scoped>
 .business-pro-panel, .business-pro-details { display: grid; gap: 24px; min-width: 0; }
 .business-pro-panel--compact { gap: 16px; }
+.business-pro-offers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.business-pro-offer { display: flex; flex-direction: column; gap: 16px; min-width: 0; border: 1px solid var(--soz-line); border-radius: 20px; padding: 20px; background: rgba(255,255,255,.75); }
+.business-pro-offer h3 { margin: 0; font-size: 23px; }
+.business-pro-offer .business-pro-summary-actions { margin-top: auto; }
+@media (max-width: 700px) { .business-pro-offers { grid-template-columns: 1fr; } }
 .business-pro-summary-heading, .business-pro-summary-price, .business-pro-summary-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .business-pro-summary-heading h2 { margin: 0; font-size: 24px; font-weight: 800; }
 .business-pro-summary-price { justify-content: flex-start; }

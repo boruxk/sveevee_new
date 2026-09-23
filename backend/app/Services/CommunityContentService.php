@@ -210,6 +210,7 @@ class CommunityContentService
         ];
         if ($target instanceof Ad) {
             $value += ['slug' => $target->public_slug, 'type' => $target->type, 'title' => $target->title, 'text' => $target->text,
+                'is_featured' => app(FeaturedAdService::class)->isFeatured($target), 'featured_requested' => (bool) $target->is_featured,
                 'category' => $target->category, 'status' => $target->status, 'city' => $context['city'], 'neighborhood' => $context['neighborhood'],
                 'expires_at' => $target->expires_at?->toISOString()];
         } else {
