@@ -1,5 +1,7 @@
 export default {
 	businessPro: {
+		localTestAccess: 'Local test access: Private Pro and Business Pro features are enabled without payment.',
+		billingStatus: 'Billing: {status}',
 		pendingCheckoutNotice: 'A payment for another Pro plan is still pending. Finish or verify that payment before starting another plan.',
 		resumeCheckout: 'Continue payment',
 		plansTitle: 'Pro plans',

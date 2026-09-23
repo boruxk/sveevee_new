@@ -1,5 +1,7 @@
 export default {
 	businessPro: {
+		localTestAccess: 'גישת בדיקה מקומית: התכונות של פרטי פרו ועסק פרו פעילות ללא תשלום.',
+		billingStatus: 'חיוב: {status}',
 		pendingCheckoutNotice: 'תשלום עבור מסלול פרו אחר עדיין ממתין. השלימו או בדקו את התשלום הזה לפני התחלת מסלול נוסף.',
 		resumeCheckout: 'המשך לתשלום',
 		plansTitle: 'מסלולי פרו',

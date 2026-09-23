@@ -8,6 +8,7 @@ use App\Models\BusinessProPayment;
 use App\Models\BusinessProSubscription;
 use App\Models\Page;
 use App\Models\User;
+use App\Services\BusinessProEntitlementService;
 use App\Services\FeaturedAdService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -47,6 +48,27 @@ class FeaturedAdsApiTest extends TestCase
             ->assertJsonPath('data.is_featured', false)->json('data.id');
         $this->putJson('/api/v1/ads/'.$id, $this->form(true))->assertStatus(402);
         $this->assertFalse(Ad::findOrFail($id)->is_featured);
+    }
+
+    public function test_hiding_offers_preserves_existing_paid_customer_feature_access(): void
+    {
+        config()->set(['business_pro.rollout' => 'private', 'business_pro.environment' => 'production']);
+        foreach (['private_pro', 'business_pro'] as $plan) {
+            [$user, $subscription, $page] = $this->paid($plan);
+            $user->forceFill(['business_pro_tester' => false])->save();
+            $subscription->forceFill(['environment' => 'production'])->save();
+            $subscription->payments()->update(['environment' => 'production']);
+            Sanctum::actingAs($user);
+            $this->getJson('/api/v1/business-pro')->assertNotFound();
+            $this->getJson('/api/v1/business-pro/ad-feature'.($page ? '?page_id='.$page->id : ''))
+                ->assertOk()->assertJsonPath('data.available', true);
+            $id = $this->postJson('/api/v1/ads', [...$this->form(true), 'page_id' => $page?->id])
+                ->assertCreated()->assertJsonPath('data.is_featured', true)->json('data.id');
+            $this->assertTrue(app(FeaturedAdService::class)->query()->whereKey($id)->exists());
+            if ($page) {
+                app(BusinessProEntitlementService::class)->assertFeature($user, $page, 'featured_ads');
+            }
+        }
     }
 
     public function test_private_pro_can_create_edit_and_disable_private_featured_ads(): void

@@ -36,16 +36,21 @@ class BusinessProFoundationTest extends TestCase
             ->post('/api/v1/test-business-pro/pages/{page}', fn (Page $page) => ApiResponseService::success(['page_id' => $page->id]));
     }
 
-    public function test_published_offers_are_visible_but_private_checkout_and_draft_features_remain_locked(): void
+    public function test_private_offers_are_hidden_while_paid_feature_controls_remain_locked(): void
     {
         $user = User::factory()->create();
         $page = $this->page($user);
+        config()->set('business_pro.features.featured_ads.implemented', true);
         Sanctum::actingAs($user);
-        $this->getJson('/api/v1/business-pro')->assertOk()->assertJsonPath('data.can_checkout', false)
-            ->assertJsonPath('data.offers.0.plan_key', 'private_pro')->assertJsonPath('data.offers.0.can_checkout', false);
-        $this->getJson("/api/v1/business-pro/pages/{$page->id}")->assertOk();
+        $this->getJson('/api/v1/business-pro')->assertNotFound();
+        $this->getJson("/api/v1/business-pro/pages/{$page->id}")->assertNotFound();
+        foreach (['', '?page_id='.$page->id] as $query) {
+            $this->getJson('/api/v1/business-pro/ad-feature'.$query)->assertOk()
+                ->assertJsonPath('data.available', false)
+                ->assertJsonPath('data.locked_reason', 'subscription_required');
+        }
         $this->postJson("/api/v1/test-business-pro/pages/{$page->id}")->assertNotFound();
-        $this->assertTrue(app(PayloadService::class)->user($user, true)['business_pro_preview']);
+        $this->assertArrayNotHasKey('business_pro_preview', app(PayloadService::class)->user($user, true));
         $this->assertArrayNotHasKey('business_pro_tester', $user->toArray());
         $this->getJson('/api/v1/admin/business-pro/subscriptions')->assertForbidden();
     }
@@ -73,6 +78,9 @@ class BusinessProFoundationTest extends TestCase
         $page = $this->page($admin);
         $this->feature();
         Sanctum::actingAs($admin);
+        $this->getJson('/api/v1/business-pro')->assertOk()
+            ->assertJsonPath('data.offers.0.plan_key', 'private_pro')
+            ->assertJsonPath('data.offers.1.plan_key', 'business_pro');
         $this->getJson('/api/v1/admin/business-pro/features')->assertOk();
         $this->postJson("/api/v1/test-business-pro/pages/{$page->id}")->assertStatus(402);
     }
@@ -176,6 +184,7 @@ class BusinessProFoundationTest extends TestCase
         $this->getJson('/api/v1/business-pro')->assertOk()->assertJsonPath('data.private_preview', false)
             ->assertJsonCount(1, 'data.features')->assertJsonPath('data.features.0.key', 'featured_ads')
             ->assertJsonPath('data.features.0.available', false)->assertJsonPath('data.has_access', false);
+        $this->assertTrue(app(PayloadService::class)->user($user, true)['business_pro_preview']);
         $this->postJson("/api/v1/test-business-pro/pages/{$page->id}")->assertNotFound();
     }
 

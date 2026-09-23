@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 import { computed, effectScope, nextTick, reactive, ref, watch } from 'vue'
 import { apiErrorMessage } from '../src/utils/apiErrors.js'
+import { canPreviewBusinessPro } from '../src/utils/businessPro.js'
 
 const source = (await readFile(new URL('../src/components/AdComposer.vue', import.meta.url), 'utf8')).split('<script setup>')[1].split('</script>')[0].replace(/^\s*import .+\r?\n/gm, '')
 const flush = async () => { await nextTick(); await new Promise(resolve => setImmediate(resolve)) }
@@ -11,14 +12,14 @@ function composer(t, ad = null) {
   const props = reactive({ ad, pageId: null, disabled: false })
   const auth = reactive({ user: { id: 1 }, token: 'token', isAuthenticated: true })
   const reads = [], writes = [], cleanup = [], notices = [], server = { failure: null }
-  const dependencies = { computed, reactive, ref, watch, defineProps: () => props, defineEmits: () => () => {}, useI18n: () => ({ t: key => key }), useQuasar: () => ({ notify: notice => notices.push(notice) }), useAuthStore: () => auth,
+  const dependencies = { computed, reactive, ref, watch, canPreviewBusinessPro, defineProps: () => props, defineEmits: () => () => {}, useI18n: () => ({ t: key => key }), useQuasar: () => ({ notify: notice => notices.push(notice) }), useAuthStore: () => auth,
     fetchAdProFeature: params => new Promise((resolve, reject) => reads.push({ params, resolve, reject })),
     createAd: async payload => { writes.push({ payload }); if (server.failure) throw server.failure; return ok({ id: 91 }) }, updateAd: async (id, payload) => { writes.push({ id, payload }); if (server.failure) throw server.failure; return ok({ id }) },
     useRequiredFields: () => ({ requiredLabel: value => value, requiredRule: () => true, validateRequiredForm: async () => true }),
     useCatalogTopics: () => ({ catalogGroups: ref([]), loadCatalogTopics: async () => [] }), catalogTopicForAdCategory: () => null,
     imageUploadDisplayName: () => '', apiErrorMessage, matLock: '', matStars: '', onMounted: () => {}, onBeforeUnmount: callback => cleanup.push(callback) }
   const scope = effectScope()
-  const component = scope.run(() => new Function(...Object.keys(dependencies), source + '\nreturn { form, feature, canFeature, submit }')(...Object.values(dependencies)))
+  const component = scope.run(() => new Function(...Object.keys(dependencies), source + '\nreturn { form, feature, canFeature, showProPlans, featureHint, submit }')(...Object.values(dependencies)))
   t.after(() => { cleanup.forEach(fn => fn()); scope.stop() })
   return { component, props, auth, reads, writes, notices, server }
 }
@@ -69,4 +70,18 @@ test('an entitlement that expires during editing locks the control, explains the
   await component.submit()
   assert(!Object.hasOwn(writes[1].payload, 'is_featured'))
   assert.equal(writes[1].payload.title, 'Ad')
+})
+
+test('locked paid controls remain available to ordinary users while the link follows plan visibility', async t => {
+  const { component, auth, reads } = composer(t)
+  assert.equal(reads.length, 1)
+  reads[0].resolve(ok({ available: false, locked_reason: 'subscription_required' })); await flush()
+  assert.equal(component.canFeature.value, false)
+  assert.equal(component.featureHint.value, 'businessPro.featuredAdRequiresPlan')
+  assert.equal(component.showProPlans.value, false)
+  auth.user.business_pro_preview = true; await flush()
+  assert.equal(component.showProPlans.value, true)
+  assert.equal(component.canFeature.value, false)
+  auth.user.business_pro_preview = false; await flush()
+  assert.equal(component.showProPlans.value, false)
 })

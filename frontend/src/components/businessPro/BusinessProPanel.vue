@@ -42,6 +42,11 @@
 	}
 	const detailsButtonKey = plan => offerSubscription(plan) ? 'businessPro.manage' : plan.can_checkout ? (plan.can_resume === true ? 'businessPro.resumeCheckout' : 'businessPro.buy') : 'businessPro.viewDetails'
 	const privatePreview = computed(() => overview.value?.private_preview === true)
+	const localTestAccess = computed(() => overview.value?.local_test_access === true)
+	const billingStatus = status => {
+		const label = t(`businessPro.status.${proStatusKey(status || 'inactive')}`)
+		return localTestAccess.value ? t('businessPro.billingStatus', { status: label }) : label
+	}
 	const canOpenDetails = computed(() => visible.value && Boolean(overview.value) && !loading.value && !busy.value)
 	const testMode = computed(() => offer.value.environment === 'sandbox')
 	const monthlyPrice = computed(() => proMoney(offer.value.amount_minor, offer.value.currency, locale.value))
@@ -151,11 +156,12 @@
 	<section v-if="visible" class="business-pro-panel" :class="{ 'business-pro-panel--compact': compact }">
 		<template v-if="compact">
 			<header class="business-pro-summary-heading"><h2>{{ t('businessPro.plansTitle') }}</h2><q-badge v-if="testMode" color="orange-9">{{ t('businessPro.testMode') }}</q-badge></header>
+			<p v-if="localTestAccess" class="business-pro-local-access">{{ t('businessPro.localTestAccess') }}</p>
 			<div v-if="loading && !detailsOpen" class="q-py-sm"><q-spinner color="primary" size="24px" /></div>
 			<div v-if="overview" class="business-pro-offers">
 				<article v-for="plan in offers" :key="plan.plan_key" class="business-pro-offer">
 					<h3>{{ planTitle(plan.plan_key) }}</h3>
-					<div class="business-pro-summary-price"><strong>{{ t('businessPro.pricePerMonth', { price: offerPrice(plan) }) }}</strong><q-badge v-if="offerSubscription(plan)">{{ t(`businessPro.status.${proStatusKey(offerSubscription(plan).status)}`) }}</q-badge></div>
+					<div class="business-pro-summary-price"><strong>{{ t('businessPro.pricePerMonth', { price: offerPrice(plan) }) }}</strong><q-badge v-if="offerSubscription(plan)">{{ billingStatus(offerSubscription(plan).status) }}</q-badge></div>
 					<p class="business-pro-summary-intro">{{ t(plan.plan_key === 'private_pro' ? 'businessPro.privateIntro' : 'businessPro.profileIntro') }}</p>
 					<p v-if="overview.pending_plan_key && overview.pending_plan_key !== plan.plan_key" class="business-pro-muted">{{ t('businessPro.pendingCheckoutNotice') }}</p>
 					<div class="business-pro-summary-actions"><q-btn rounded
@@ -182,8 +188,9 @@
 				<div v-if="loading" class="text-center q-pa-lg"><q-spinner color="primary" size="32px" /></div>
 				<div v-if="error" role="alert" class="business-pro-error"><span>{{ error }}</span><q-btn v-if="!overview" flat color="primary" :label="t('businessPro.retry')" @click="load" /></div>
 				<template v-if="overview && !loading">
+					<p v-if="localTestAccess" class="business-pro-local-access">{{ t('businessPro.localTestAccess') }}</p>
 					<section class="business-pro-plan">
-						<div class="business-pro-plan__headline"><strong class="business-pro-price">{{ t('businessPro.pricePerMonth', { price: subscription?.has_access ? contractPrice : monthlyPrice }) }}</strong><q-badge>{{ t(`businessPro.status.${proStatusKey(subscription?.status || 'inactive')}`) }}</q-badge></div>
+						<div class="business-pro-plan__headline"><strong class="business-pro-price">{{ t('businessPro.pricePerMonth', { price: subscription?.has_access ? contractPrice : monthlyPrice }) }}</strong><q-badge>{{ billingStatus(subscription?.status) }}</q-badge></div>
 						<p>{{ t(privatePlan ? 'businessPro.privateAccountPlan' : 'businessPro.accountPlan') }}</p>
 						<p v-if="overview.pending_plan_key && overview.pending_plan_key !== offer.plan_key" class="business-pro-muted">{{ t('businessPro.pendingCheckoutNotice') }}</p>
 						<p v-if="accountSubscription && !subscription" class="business-pro-muted">{{ t('businessPro.currentPlanNotice') }}</p>
@@ -256,6 +263,7 @@
 .business-pro-price { font-size: clamp(22px,3vw,30px); }
 .business-pro-plan p { line-height: 1.65; }
 .business-pro-test-note { padding: 12px 16px; background: #fff2db; border-radius: 12px; color: #754413; }
+.business-pro-local-access { margin: 0; padding: 14px 18px; border: 1px solid #a9d9c0; border-radius: 14px; background: #edf9f2; color: #215c3c; line-height: 1.6; }
 .business-pro-muted { color: var(--soz-muted); font-size: 13px; }
 .business-pro-consent { margin-inline-start: -8px; }
 .business-pro-actions { justify-content: flex-start; margin-top: 20px; }

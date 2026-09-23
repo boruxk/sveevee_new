@@ -1,10 +1,11 @@
 export function canPreviewBusinessPro(auth) {
-	// Offers are visible to every account; the API separately authorizes checkout and paid features.
-	return Boolean(auth?.isAuthenticated && ['user', 'admin'].includes(auth.user?.role || 'user'))
+	// The server permits dedicated testers and, after public rollout, ordinary accounts.
+	const role = auth?.user?.role || 'user'
+	return Boolean(auth?.isAuthenticated && ['user', 'admin'].includes(role) && (role === 'admin' || auth.user?.business_pro_preview === true))
 }
 
 export function businessProFeatureAvailable(feature) {
-	return feature?.available === true && feature?.implemented === true && feature?.enabled === true
+	return feature?.available === true && feature?.implemented === true && (feature?.enabled === true || feature?.local_test_access === true)
 }
 
 export function localizedProText(values, locale) {

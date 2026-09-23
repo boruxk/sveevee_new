@@ -8,6 +8,7 @@
 	import { matLock, matStars } from '@quasar/extras/material-icons'
 	import { useRequiredFields } from '@/composables/useRequiredFields'
 	import { apiErrorMessage } from '@/utils/apiErrors'
+	import { canPreviewBusinessPro } from '@/utils/businessPro'
 	import { IMAGE_ACCEPT, imageUploadDisplayName } from '@/utils/imageUploads'
 	import CatalogCategorySelect from '@/components/CatalogCategorySelect.vue'
 	import { useCatalogTopics } from '@/composables/useCatalogTopics'
@@ -36,6 +37,7 @@
 	const feature = ref(null)
 	let featureRequest = 0
 	const canFeature = computed(() => feature.value?.available === true)
+	const showProPlans = computed(() => canPreviewBusinessPro(auth))
 	const featureRequiredHint = computed(() => t(props.pageId || props.ad?.page_id || props.ad?.page?.id ? 'businessPro.featuredAdPageRequired' : 'businessPro.featuredAdRequiresPlan'))
 	const featureHint = computed(() => {
 		if (canFeature.value) return t('businessPro.featuredAdDescription')
@@ -197,7 +199,7 @@
 				/>
 			</div>
 			<p>{{ featureHint }}</p>
-			<router-link v-if="!canFeature" :to="{ name: 'profile', hash: '#business-pro' }">{{ t('businessPro.plansTitle') }}</router-link>
+			<router-link v-if="!canFeature && showProPlans" :to="{ name: 'profile', hash: '#business-pro' }">{{ t('businessPro.plansTitle') }}</router-link>
 			<q-tooltip>{{ featureHint }}</q-tooltip>
 		</div>
 		<div class="listing-composer__row">

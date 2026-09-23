@@ -21,19 +21,26 @@ function panel(t, { preview = true, compact = false } = {}) {
     createBusinessProCheckout: payload => new Promise((resolve, reject) => checkouts.push({ payload, resolve, reject })),
     cancelBusinessPro: () => new Promise((resolve, reject) => cancels.push({ resolve, reject })), window: { location: { assign: url => redirects.push(url) } }
   }
-  const factory = new Function(...Object.keys(dependencies), panelSource + '\nreturn { overview, consent, selectedPageId, busy, error, load, checkout, cancel, canCheckout, visible, detailsOpen, openDetails, closeDetails, canOpenDetails, privatePreview, subscription, accountSubscription, offer, offers, selectedPlanKey, detailsButtonKey }')
+  const factory = new Function(...Object.keys(dependencies), panelSource + '\nreturn { overview, consent, selectedPageId, busy, error, load, checkout, cancel, canCheckout, visible, detailsOpen, openDetails, closeDetails, canOpenDetails, privatePreview, localTestAccess, subscription, accountSubscription, offer, offers, selectedPlanKey, detailsButtonKey }')
   const scope = effectScope(), component = scope.run(() => factory(...Object.values(dependencies)))
   t.after(() => { cleanup.forEach(fn => fn()); scope.stop() })
   return { component, auth, route, reads, checkouts, cancels, redirects }
 }
 
-test('ordinary accounts see Pro offers while the server keeps test checkout locked', async t => {
+test('ordinary accounts do not load offers and server permission revocation closes the plan dialog', async t => {
   const { component, auth, reads, checkouts } = panel(t, { preview: false })
+  assert.equal(reads.length, 0); assert.equal(component.visible.value, false)
+  await component.load(); component.openDetails('business_pro'); await component.checkout()
+  assert.equal(reads.length, 0); assert.equal(component.detailsOpen.value, false); assert.equal(checkouts.length, 0)
+  auth.user.business_pro_preview = true; await flush()
   assert.equal(reads.length, 1); assert.equal(component.visible.value, true)
   reads[0].resolve(ok(snapshot({ can_checkout: false }))); await flush()
   assert.equal(component.canOpenDetails.value, true); assert.equal(component.canCheckout.value, false)
   component.consent.value = true; await component.checkout(); assert.equal(checkouts.length, 0)
-  auth.isAuthenticated = false; await flush(); assert.equal(component.visible.value, false)
+  component.openDetails('business_pro'); assert.equal(component.detailsOpen.value, true)
+  auth.user.business_pro_preview = false; await flush()
+  assert.equal(component.visible.value, false); assert.equal(component.detailsOpen.value, false)
+  assert.equal(component.overview.value, null); assert.equal(component.consent.value, false)
 })
 
 test('checkout requires consent and selected owned page, binds displayed49ILS price, rejects unsafe destination', async t => {
@@ -96,7 +103,17 @@ test('future feature interactions require authoritative implemented/enabled enti
   assert.equal(businessProFeatureAvailable({ available: true, implemented: true, enabled: true, lifecycle: 'draft' }), true)
   for (const key of ['available', 'implemented', 'enabled']) assert.equal(businessProFeatureAvailable({ available: true, implemented: true, enabled: true, [key]: false }), false)
   assert.equal(businessProFeatureAvailable({ available: 'true', implemented: true, enabled: true }), false)
-  assert.equal(canPreviewBusinessPro({ isAuthenticated: true, user: { business_pro_preview: false } }), true)
+  assert.equal(canPreviewBusinessPro({ isAuthenticated: true, user: { business_pro_preview: false } }), false)
+})
+
+test('local test feature access allows implemented disabled drafts only with authoritative availability', () => {
+  const feature = { available: true, implemented: true, enabled: false, lifecycle: 'draft', local_test_access: true }
+  assert.equal(businessProFeatureAvailable(feature), true)
+  for (const key of ['available', 'implemented', 'local_test_access']) {
+    assert.equal(businessProFeatureAvailable({ ...feature, [key]: false }), false)
+    assert.equal(businessProFeatureAvailable({ ...feature, [key]: 'true' }), false)
+  }
+  assert.equal(businessProFeatureAvailable({ ...feature, local_test_access: undefined }), false)
 })
 
 test('Cardcom redirects permit exact HTTPS secure/test hosts only, without credentials or nonstandard ports', () => {
@@ -222,8 +239,10 @@ test('a Business subscriber retains the covered page and management button when 
 })
 
 
-test('staff-only worker accounts do not see unsupported billing routes', () => {
-  assert.equal(canPreviewBusinessPro({ isAuthenticated: true, user: { role: 'ai_worker' } }), false)
+test('plan visibility requires admin role or the exact server permission on a supported account', () => {
+  for (const preview of [undefined, false, 'true', 1]) assert.equal(canPreviewBusinessPro({ isAuthenticated: true, user: { role: 'user', business_pro_preview: preview } }), false)
+  assert.equal(canPreviewBusinessPro({ isAuthenticated: true, user: { role: 'user', business_pro_preview: true } }), true)
+  assert.equal(canPreviewBusinessPro({ isAuthenticated: true, user: { role: 'ai_worker', business_pro_preview: true } }), false)
   assert.equal(canPreviewBusinessPro({ isAuthenticated: true, user: { role: 'admin' } }), true)
   assert.equal(canPreviewBusinessPro({ isAuthenticated: false, user: { role: 'user' } }), false)
 })
@@ -243,4 +262,30 @@ test('pending Business checkout preselects its page and resumes only the server-
   assert.equal(checkouts[0].payload.page_id, 7)
   assert.equal(checkouts[0].payload.plan_key, 'business_pro')
   checkouts[0].resolve(ok({ checkout_url: 'https://invalid.example/' })); await request
+})
+
+test('local test access keeps the actual pending subscription and checkout restrictions', async t => {
+  const { component, reads, checkouts } = panel(t)
+  const data = twoPlans({
+    local_test_access: true,
+    subscription: { plan_key: 'business_pro', status: 'pending', has_access: false },
+    pending_plan_key: 'business_pro',
+    pending_payment: { plan_key: 'business_pro', page_id: 7 }
+  })
+  data.offers[0].can_checkout = false
+  data.offers[1].can_resume = true
+  reads[0].resolve(ok(data)); await flush()
+  assert.equal(component.localTestAccess.value, true)
+  assert.equal(component.subscription.value, null)
+  assert.equal(component.canCheckout.value, false)
+  component.consent.value = true
+  await component.checkout()
+  assert.equal(checkouts.length, 0)
+  component.openDetails('business_pro'); await flush()
+  assert.equal(component.subscription.value.status, 'pending')
+  assert.equal(component.subscription.value.has_access, false)
+  assert.equal(component.canCheckout.value, true)
+  const request = component.load()
+  reads[1].resolve(ok(twoPlans({ local_test_access: false }))); await request
+  assert.equal(component.localTestAccess.value, false)
 })

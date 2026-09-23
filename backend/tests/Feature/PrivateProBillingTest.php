@@ -35,8 +35,9 @@ class PrivateProBillingTest extends TestCase
         ]);
     }
 
-    public function test_both_offers_are_visible_without_business_page_but_sandbox_purchases_stay_private(): void
+    public function test_public_rollout_shows_both_offers_without_business_page_but_sandbox_purchases_stay_private(): void
     {
+        config()->set('business_pro.rollout', 'public');
         Sanctum::actingAs(User::factory()->create());
         $this->getJson('/api/v1/business-pro')->assertOk()
             ->assertJsonPath('data.offers.0.plan_key', 'private_pro')

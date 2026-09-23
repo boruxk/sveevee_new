@@ -1,5 +1,7 @@
 export default {
 	businessPro: {
+		localTestAccess: 'Локальный тестовый доступ: функции тарифов «Личный Pro» и «Бизнес Pro» включены без оплаты.',
+		billingStatus: 'Оплата: {status}',
 		pendingCheckoutNotice: 'Платёж за другой тариф Pro ещё ожидается. Завершите или проверьте его, прежде чем выбрать другой тариф.',
 		resumeCheckout: 'Продолжить оплату',
 		plansTitle: 'Тарифы Pro',

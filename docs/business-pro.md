@@ -10,22 +10,24 @@ There is no public launch in this change. Existing free features stay free. A fu
 
 - Login: `pro@sveevee.local`, local password `password`.
 - Open the Pro plans section in your profile (`/profile#business-pro`). `/business-pro` redirects there for existing links.
-- The local account has a claimed `Business Pro Test` page. It has **no paid entitlement**.
-- The profile shows both plan offers with purchase buttons. Private Pro needs no page; Business Pro requires a selected business page. Monthly consent and payment take place in the dialog; paid accounts can manage their subscription there. Published plan offers and paid feature controls are visible to ordinary users too; unavailable features remain disabled with an explanation.
+- The local account has a claimed `Business Pro Test` page and **free local test access to all implemented features from both Private Pro and Business Pro**. No payment is required. This access also covers implemented features that are disabled or still drafts, while unfinished features remain unavailable.
+- This override requires `APP_ENV=local`, `BUSINESS_PRO_LOCAL_TESTER_ACCESS=true` (the default), and the server-controlled dedicated tester flag on an active account. An admin role or tester email alone does not grant it. It never grants access in testing, staging or production environments.
+- The Pro panel labels this as local test access. Its subscription and payment badges still show the actual billing state, including a pending checkout. The override does not create or mark subscriptions, receipts or payments as paid; checkout, verification and cancellation remain available for sandbox billing tests.
+- The profile shows both plan offers with purchase buttons. Private Pro needs no page; Business Pro requires a selected business page. Monthly consent and payment take place in the dialog; paid accounts can manage their subscription there. During private rollout, plan offers are visible only to admins and the dedicated tester. Paid feature controls remain visible to ordinary users, disabled with an explanation when unavailable.
 - Admin: Pro plans tab contains separate Private Pro and Business Pro prices, subscriptions, payments and feature controls.
 - The four interface languages are Hebrew, English, Russian and French.
 
-Authenticated users can read the offers and published feature descriptions. Checkout in the sandbox still requires an admin or dedicated DB-marked tester; ordinary users cannot purchase simulated entitlement. Unpublished future features remain restricted to preview accounts. The tester flag and payment status are not mass-assignable from normal profile/page requests.
+During private rollout, only admins and dedicated DB-marked testers can read plan offers and feature lists. The server controls visibility through the authenticated user payload; registration and profile updates cannot grant this permission. A future public rollout allows ordinary users to read published offers, while sandbox checkout still requires an admin or dedicated tester. Unpublished future features remain restricted to preview accounts. The tester flag and payment status are not mass-assignable from normal profile/page requests. Ordinary accounts still require the appropriate verified paid entitlement.
 
 ## Featured ads
 
 The first implemented feature, `featured_ads`, is registered enabled and published by the Private Pro migration. Both plans allow the account's private ads to be featured; Business Pro additionally allows business ads on its selected, currently owned page. Community ads and other business pages do not qualify. The existing free ad creation flow remains available.
 
-The creation/editing control stays visible and explains the required paid plan when locked. Server-side writes validate entitlement independently of the control. Public highlighting and ordering also recheck a current paid receipt, matching plan/environment/terminal, ownership, account status and the feature's admin switch. Expiry or disabling the feature removes the paid presentation without deleting the ad or its saved preference.
+The creation/editing control stays visible and explains the required paid plan when locked. Server-side writes validate entitlement independently of the control. Public highlighting and ordering also recheck a current paid receipt, matching plan/environment/terminal, ownership, account status and the feature's admin switch. Expiry or disabling the feature removes the paid presentation without deleting the ad or its saved preference. For the dedicated local tester, the local override replaces the paid receipt and feature-switch requirements for implemented features. It allows private ads and business ads on any currently owned, claimed business page; community ads, other owners' pages and normal moderation exclusions remain ineligible.
 
 Search discovery preserves neighborhood, city and remaining-results priority; eligible featured ads lead only within their location tier. Filtered search keeps its filters and promotes matching featured ads ahead of the ordinary result groups. Nearby keeps its profile location, category and subscription filters; eligible featured ads lead, followed by the existing activity ordering (including new visible replies to questions). Within each group the existing date and ID tie-breakers remain. If featured eligibility changes while loading more results, the cursor is refreshed with a notice instead of silently skipping or repeating cards.
 
-`GET /api/v1/business-pro` returns `offers` for both plans, per-offer `can_checkout`, `can_resume`, and `features`, plus `subscription.plan_key` and safe `pending_payment`/`pending_plan_key` metadata. The legacy `offer` field remains the Business Pro offer. Checkout accepts `plan_key: private_pro|business_pro` (default Business); Private Pro omits `page_id`, while Business requires its selected page. Admin offer GET accepts `?plan_key=private_pro`; PATCH accepts `plan_key` alongside `amount_minor`. Payment rows retain their purchased `plan_key` even after a later subscription change.
+`GET /api/v1/business-pro` returns `offers` for both plans, per-offer `can_checkout`, `can_resume`, and `features`, plus `subscription.plan_key` and safe `pending_payment`/`pending_plan_key` metadata. Its `local_test_access` flag identifies the dedicated local override. Feature snapshots also carry `local_test_access`; `available` can be true for an implemented feature under the override even when the real global `enabled` switch is false. The legacy `offer` field remains the Business Pro offer. Checkout accepts `plan_key: private_pro|business_pro` (default Business); Private Pro omits `page_id`, while Business requires its selected page. Admin offer GET accepts `?plan_key=private_pro`; PATCH accepts `plan_key` alongside `amount_minor`. Payment rows retain their purchased `plan_key` even after a later subscription change.
 
 ## Cardcom verification on 2026-09-23
 
@@ -51,6 +53,7 @@ Shared test credentials are not committed. Local `.env` contains the API name co
 
 ```dotenv
 BUSINESS_PRO_ROLLOUT=private
+BUSINESS_PRO_LOCAL_TESTER_ACCESS=true
 BUSINESS_PRO_BILLING_ENABLED=false
 BUSINESS_PRO_RENEWALS_ENABLED=false
 CARDCOM_ENV=sandbox
@@ -66,7 +69,7 @@ CARDCOM_AUTO_RECURRING_TERMINAL=false
 
 Local HTTP callbacks are allowed only with the explicit flag, terminal 1000, and a local/testing application environment. Cardcom cannot reach a loopback webhook on the developer's computer. After a local hosted checkout, the return page independently asks the backend to fetch and verify the receipt; use a public HTTPS test deployment for the actual webhook test. Production rejects local callbacks even if that flag was accidentally retained.
 
-The configuration example above keeps billing disabled by default. The local `.env` now has `BUSINESS_PRO_BILLING_ENABLED=true` after the successful test-access verification. To test automatic renewal processing explicitly enable `BUSINESS_PRO_RENEWALS_ENABLED`; it defaults off. Neither switch is changed by an admin editing the price.
+The configuration example above keeps billing disabled by default. The local `.env` now has `BUSINESS_PRO_BILLING_ENABLED=true` after the successful test-access verification. Set `BUSINESS_PRO_LOCAL_TESTER_ACCESS=false` when testing payment-dependent feature activation, expiry or cancellation; this restores the normal receipt-based entitlement checks for the local tester. This switch defaults to true but is effective only in the local application environment and does not enable payments or renewals. To test automatic renewal processing explicitly enable `BUSINESS_PRO_RENEWALS_ENABLED`; it defaults off. Neither billing switch is changed by an admin editing the price.
 
 The client has no arbitrary API base URL and never forwards PAN/CVV data. Card entry happens on Cardcom's hosted page. Tokens are encrypted at rest and excluded from all public/admin API responses. API passwords are configured for later provider operations; the implemented v11 creation, receipt and token endpoints authenticate with terminal and API name as documented.
 
@@ -76,7 +79,7 @@ The client has no arbitrary API base URL and never forwards PAN/CVV data. Card e
 2. The backend validates ownership, the server price and callback configuration. It serializes checkout creation on the account and persists a payment snapshot.
 3. `LowProfile/Create` uses `ChargeAndCreateToken`; the returned Cardcom HTTPS URL opens the hosted page.
 4. The webhook or authenticated return verification calls `LowProfile/GetLpResult`. The return URL and webhook payload themselves never grant access.
-5. Access requires a successful charge, matching terminal/order/amount/currency/operation and non-refund receipt. A paid period is recorded once. Cardcom's actual field spellings include `TranzactionInfo` and `TranzactionId`.
+5. Paid subscription access requires a successful charge, matching terminal/order/amount/currency/operation and non-refund receipt. A paid period is recorded once. Cardcom's actual field spellings include `TranzactionInfo` and `TranzactionId`. The dedicated local feature override is separate from this billing lifecycle.
 6. A valid token is encrypted for renewal. If token creation fails after a successful first charge, the paid month is honored and automatic renewal is disabled.
 7. At renewal, the server uses the contract's saved amount and one immutable `ExternalUniqTranId` for that billing period. Unknown network outcomes are reconciled through `GetTransactionByExternalUniqTran`; they never create another charge attempt with a new ID. A declined renewal is not retried automatically.
 8. Cancellation stops future renewals and retains access through the confirmed paid period. Expiry, deletion, banning or environment mismatch removes access. Losing the selected business page also removes Business Pro access; Private Pro has no page ownership requirement. A late payment after ownership changes is recorded for admin review without enabling another owner's page or scheduling further charges.
@@ -105,7 +108,7 @@ Add a code definition to `config/business_pro.php`:
 ],
 ```
 
-Run `php artisan business-pro:sync-features`. This creates a **disabled draft** DB row and preserves existing admin settings. The admin can enable an implemented draft for private testing; the global rollout remains private. A database row without implemented code cannot unlock a feature. The implemented Featured ads feature is seeded enabled and published; future feature definitions still start as drafts.
+Run `php artisan business-pro:sync-features`. This creates a **disabled draft** DB row and preserves existing admin settings. The admin can enable an implemented draft for private testing; the global rollout remains private. The dedicated local tester can exercise implemented registered features under the local override, including disabled drafts from either plan. A database row without implemented code cannot unlock a feature, even for that tester. The implemented Featured ads feature is seeded enabled and published; future feature definitions still start as drafts.
 
 For page-scoped feature endpoints use `auth:sanctum` plus `business-pro.feature:your_feature` on a bound `{page}` route, or call `BusinessProEntitlementService::assertFeature($user, $page, 'your_feature')` inside the service. Apply the check to reads, writes and background jobs as appropriate; CSS disabling alone is not protection.
 
@@ -113,7 +116,7 @@ Render paid controls visibly but disabled with an explanatory hover/focus hint w
 
 ## Deployment later, after push and explicit approval
 
-No live deployment or live test user was created for this task.
+On 2026-09-23, the dedicated live account `pro@sveevee.local` was created using the existing production-safe command. It has the ordinary user role and the server-controlled tester flag, with no business page, subscription or payment. Live billing remains disabled and this account has preview access only; the free feature override applies exclusively to the local environment. The later local override and tariff-visibility edits have not been deployed.
 
 1. Deploy the pushed code and run pending migrations, including the Pro foundation, `2026_09_23_000300_add_private_pro_plan`, and the ad featured flag, before publishing the frontend.
 2. Keep the rollout private and production charging disabled.
@@ -121,4 +124,4 @@ No live deployment or live test user was created for this task.
 4. Configure a working Cardcom test API account and public HTTPS return/webhook URLs. Complete successful/failed checkout, duplicate callback, return-without-webhook, token renewal and cancellation tests.
 5. For real payments obtain the merchant terminal and appropriate LowProfile/token/recurring permissions from Cardcom, configure the real API keys, receipts/documents and actual recurring terminal settings. `IsAutoRecurringPayment` does not create a recurring plan; enable it only when Cardcom instructs you to for that terminal.
 6. An explicit `CARDCOM_ENV=production` plus `CARDCOM_PRODUCTION_ENABLED=true`, billing and renewal switches are required. Sandbox receipts/tokens cannot grant or renew production access. Moving a sandbox account to its first real checkout preserves test history but clears simulated paid periods and tokens. Moving a real contract between terminals or into sandbox is refused.
-7. Public charging, commercial terms and future page packages are separate release decisions; published paid feature descriptions are already visible. This task leaves `BUSINESS_PRO_ROLLOUT=private`.
+7. Public charging, commercial terms and future page packages are separate release decisions; paid feature controls remain visible to everyone, while the tariff blocks stay restricted during private rollout. This task leaves `BUSINESS_PRO_ROLLOUT=private`.

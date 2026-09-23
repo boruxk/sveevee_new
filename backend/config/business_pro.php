@@ -1,12 +1,14 @@
 <?php
 
 return [
-    // Published paid controls are visible to everyone. This switch still gates
-    // real purchases; sandbox purchases always require an admin/test account.
+    // Plan offers stay private until public rollout; paid controls remain visible.
+    // Sandbox purchases always require an admin/test account.
     'rollout' => env('BUSINESS_PRO_ROLLOUT', 'private'),
     'environment' => env('CARDCOM_ENV', 'sandbox'),
     'billing_enabled' => (bool) env('BUSINESS_PRO_BILLING_ENABLED', false),
     'renewals_enabled' => (bool) env('BUSINESS_PRO_RENEWALS_ENABLED', false),
+    // Effective only in APP_ENV=local for the dedicated DB-marked test account.
+    'local_tester_access' => (bool) env('BUSINESS_PRO_LOCAL_TESTER_ACCESS', true),
     'amount_minor' => 4900,
     'private_amount_minor' => 1900,
     'currency' => 'ILS',

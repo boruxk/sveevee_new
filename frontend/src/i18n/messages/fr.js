@@ -1,5 +1,7 @@
 export default {
 	businessPro: {
+		localTestAccess: 'Accès de test local : les fonctionnalités de Particulier Pro et Business Pro sont activées sans paiement.',
+		billingStatus: 'Facturation : {status}',
 		pendingCheckoutNotice: 'Un paiement pour une autre offre Pro est en attente. Terminez-le ou vérifiez-le avant de choisir une autre offre.',
 		resumeCheckout: 'Continuer le paiement',
 		plansTitle: 'Offres Pro',

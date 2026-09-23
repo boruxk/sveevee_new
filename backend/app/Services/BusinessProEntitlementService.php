@@ -21,10 +21,27 @@ class BusinessProEntitlementService
             && ($user->hasRole('admin') || ($user->hasRole('user') && (bool) $user->business_pro_tester));
     }
 
-    public function isVisible(?User $user): bool
+    private function isEligibleAccount(?User $user): bool
     {
         return $user !== null && $user->banned_at === null
             && ($user->hasRole('admin') || $user->hasRole('user'));
+    }
+
+    public function isVisible(?User $user): bool
+    {
+        return $this->isEligibleAccount($user)
+            && ($this->canPreview($user) || config('business_pro.rollout', 'private') === 'public');
+    }
+
+    private function localTesterAccessEnabled(): bool
+    {
+        return app()->environment('local') && (bool) config('business_pro.local_tester_access', true);
+    }
+
+    public function hasLocalTesterAccess(User $user): bool
+    {
+        return $this->localTesterAccessEnabled() && $user->hasRole('user')
+            && $user->business_pro_tester && $user->banned_at === null;
     }
 
     public function canPurchase(User $user): bool
@@ -41,7 +58,7 @@ class BusinessProEntitlementService
 
     public function assertOwnedBusiness(User $user, Page $page): void
     {
-        $this->assertVisible($user);
+        abort_unless($this->isEligibleAccount($user), 404);
         abort_unless($page->type === Page::TYPE_BUSINESS && ! $page->is_unclaimed
             && (int) $page->user_id === (int) $user->id, 404);
     }
@@ -53,8 +70,12 @@ class BusinessProEntitlementService
 
     public function hasAccess(User $user, ?Page $page = null): bool
     {
-        if (! $this->isVisible($user)) {
+        if (! $this->isEligibleAccount($user)) {
             return false;
+        }
+        if ($this->hasLocalTesterAccess($user)) {
+            return $page === null || ((int) $page->user_id === (int) $user->id
+                && $page->type === Page::TYPE_BUSINESS && ! $page->is_unclaimed);
         }
         $query = $this->paidSubscriptions()->where('pro_subscription.user_id', $user->id);
         if ($page) {
@@ -109,7 +130,11 @@ class BusinessProEntitlementService
 
     public function canFeatureAd(User $user, ?Page $page = null): bool
     {
-        if (! $this->featuredAdsEnabled() || ! $this->hasAccess($user, $page)) {
+        $feature = BusinessProFeature::query()->where('key', 'featured_ads')->first();
+        $localTestAccess = $this->hasLocalTesterAccess($user);
+        if (! $feature || ($feature->lifecycle !== 'published' && ! $localTestAccess)
+            || ! $this->hasAccess($user, $page)
+            || ! $this->featurePayload($feature, true, $localTestAccess)['available']) {
             return false;
         }
 
@@ -130,14 +155,23 @@ class BusinessProEntitlementService
                     ->whereColumn('pro_subscription.page_id', $table.'.page_id')));
 
         return $ads->whereExists(fn (QueryBuilder $feature) => $feature->selectRaw('1')
-            ->from('business_pro_features')->where('key', 'featured_ads')->where('enabled', true)->where('lifecycle', 'published'))
-            ->whereExists($subscriptions);
-    }
-
-    private function featuredAdsEnabled(): bool
-    {
-        return (bool) config('business_pro.features.featured_ads.implemented', false)
-            && BusinessProFeature::query()->where('key', 'featured_ads')->where('enabled', true)->where('lifecycle', 'published')->exists();
+            ->from('business_pro_features')->where('key', 'featured_ads'))
+            ->where(function (Builder $eligible) use ($subscriptions, $table): void {
+                $eligible->where(fn (Builder $paid) => $paid
+                    ->whereExists(fn (QueryBuilder $feature) => $feature->selectRaw('1')
+                        ->from('business_pro_features')->where('key', 'featured_ads')->where('enabled', true)->where('lifecycle', 'published'))
+                    ->whereExists($subscriptions));
+                if ($this->localTesterAccessEnabled()) {
+                    $eligible->orWhereExists(fn (QueryBuilder $tester) => $tester->selectRaw('1')->from('users as pro_local_tester')
+                        ->whereColumn('pro_local_tester.id', $table.'.user_id')->where('pro_local_tester.role', 'user')
+                        ->where('pro_local_tester.business_pro_tester', true)->whereNull('pro_local_tester.banned_at')
+                        ->where(fn (QueryBuilder $scope) => $scope->whereNull($table.'.page_id')
+                            ->orWhereExists(fn (QueryBuilder $page) => $page->selectRaw('1')->from('pages as pro_local_page')
+                                ->whereColumn('pro_local_page.id', $table.'.page_id')
+                                ->whereColumn('pro_local_page.user_id', $table.'.user_id')
+                                ->where('pro_local_page.type', Page::TYPE_BUSINESS)->where('pro_local_page.is_unclaimed', false))));
+                }
+            });
     }
 
     public function offer(string $planKey = 'business_pro'): array
@@ -178,6 +212,7 @@ class BusinessProEntitlementService
             $this->assertOwnedBusiness($user, $page);
         }
         $subscription = $this->subscription($user);
+        $localTestAccess = $this->hasLocalTesterAccess($user);
         $hasAccess = $this->hasAccess($user, $page);
         $pages = $user->pages()->where('type', Page::TYPE_BUSINESS)->where('is_unclaimed', false)
             ->orderBy('id')->get(['id', 'name']);
@@ -210,6 +245,7 @@ class BusinessProEntitlementService
             'pages' => $pages->map(fn (Page $entry): array => ['id' => $entry->id, 'name' => $entry->name])->all(),
             'offer' => $offers[1], 'offers' => $offers,
             'private_preview' => config('business_pro.rollout', 'private') !== 'public',
+            'local_test_access' => $localTestAccess,
             'subscription' => $subscription ? $this->subscriptionPayload($subscription) : null,
             'pending_payment' => $pendingPayment ? $this->paymentPayload($pendingPayment) : null,
             'pending_plan_key' => $pendingPayment?->plan_key,
@@ -217,28 +253,31 @@ class BusinessProEntitlementService
             'can_checkout' => $offers[1]['can_checkout'],
             'can_cancel' => $subscription !== null && ! $subscription->cancel_at_period_end
                 && in_array($subscription->status, ['active', 'past_due'], true),
-            'features' => $this->features($user, $hasAccess, $subscription?->plan_key ?? 'business_pro'),
+            'features' => $this->features($user, $hasAccess, $localTestAccess ? null : ($subscription?->plan_key ?? 'business_pro')),
         ];
     }
 
-    public function features(User $user, bool $hasAccess = false, string $planKey = 'business_pro'): array
+    public function features(User $user, bool $hasAccess = false, ?string $planKey = 'business_pro'): array
     {
         if (! $this->isVisible($user)) {
             return [];
         }
 
+        $localTestAccess = $this->hasLocalTesterAccess($user);
+
         return BusinessProFeature::query()
             ->when(! $this->canPreview($user), fn ($query) => $query->where('lifecycle', 'published'))
             ->orderBy('sort_order')->orderBy('id')->get()
-            ->filter(fn (BusinessProFeature $feature): bool => in_array($planKey, (array) config("business_pro.features.{$feature->key}.plans", ['business_pro']), true))
-            ->values()->map(fn (BusinessProFeature $feature): array => $this->featurePayload($feature, $hasAccess))->all();
+            ->filter(fn (BusinessProFeature $feature): bool => ($localTestAccess && $planKey === null)
+                || in_array($planKey, (array) config("business_pro.features.{$feature->key}.plans", ['business_pro']), true))
+            ->values()->map(fn (BusinessProFeature $feature): array => $this->featurePayload($feature, $hasAccess, $localTestAccess))->all();
     }
 
-    public function featurePayload(BusinessProFeature $feature, bool $hasAccess = false): array
+    public function featurePayload(BusinessProFeature $feature, bool $hasAccess = false, bool $localTestAccess = false): array
     {
         $implemented = (bool) config("business_pro.features.{$feature->key}.implemented", false);
         $reason = ! $implemented ? 'not_implemented'
-            : (! $feature->enabled ? 'disabled' : (! $hasAccess ? 'subscription_required' : null));
+            : ($localTestAccess ? null : (! $feature->enabled ? 'disabled' : (! $hasAccess ? 'subscription_required' : null)));
 
         return [
             'id' => $feature->id,
@@ -250,6 +289,7 @@ class BusinessProEntitlementService
             'enabled' => (bool) $feature->enabled,
             'implemented' => $implemented,
             'available' => $reason === null,
+            'local_test_access' => $localTestAccess,
             'locked_reason' => $reason,
         ];
     }
@@ -259,7 +299,7 @@ class BusinessProEntitlementService
         $this->assertOwnedBusiness($user, $page);
         $feature = BusinessProFeature::query()->where('key', $key)->first();
         abort_unless($feature && ($feature->lifecycle === 'published' || $this->canPreview($user)), 404);
-        $state = $this->featurePayload($feature, $this->hasAccess($user, $page));
+        $state = $this->featurePayload($feature, $this->hasAccess($user, $page), $this->hasLocalTesterAccess($user));
         if (! $state['available']) {
             throw ValidationException::withMessages(['business_pro' => [$state['locked_reason']]])
                 ->status($state['locked_reason'] === 'subscription_required' ? 402 : 403);
